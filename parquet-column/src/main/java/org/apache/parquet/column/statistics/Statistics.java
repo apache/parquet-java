@@ -260,14 +260,24 @@ public abstract class Statistics<T extends Comparable<T>> {
       case INT64:
         return new LongStatistics(primitive);
       case FLOAT:
-        return new FloatStatistics(primitive);
+        return primitive.columnOrder().equals(ColumnOrder.ieee754TotalOrder())
+            ? new IEEE754FloatStatistics(primitive)
+            : new FloatStatistics(primitive);
       case DOUBLE:
-        return new DoubleStatistics(primitive);
+        return primitive.columnOrder().equals(ColumnOrder.ieee754TotalOrder())
+            ? new IEEE754DoubleStatistics(primitive)
+            : new DoubleStatistics(primitive);
       case BOOLEAN:
         return new BooleanStatistics(primitive);
       case BINARY:
       case INT96:
       case FIXED_LEN_BYTE_ARRAY:
+        if (primitive.getLogicalTypeAnnotation()
+            instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation) {
+          return primitive.columnOrder().equals(ColumnOrder.ieee754TotalOrder())
+              ? new IEEE754Float16Statistics(primitive)
+              : new Float16Statistics(primitive);
+        }
         return new BinaryStatistics(primitive);
       default:
         throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());

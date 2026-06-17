@@ -2020,7 +2020,8 @@ public class ParquetMetadataConverter {
     if (root.isSetField_id()) {
       builder.id(root.field_id);
     }
-    buildChildren(builder, iterator, root.getNum_children(), columnOrders, 0);
+    Iterator<ColumnOrder> columnOrderIterator = columnOrders == null ? null : columnOrders.iterator();
+    buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
     return builder.named(root.name);
   }
 
@@ -2028,8 +2029,7 @@ public class ParquetMetadataConverter {
       Types.GroupBuilder builder,
       Iterator<SchemaElement> schema,
       int childrenCount,
-      List<ColumnOrder> columnOrders,
-      int columnCount) {
+      Iterator<ColumnOrder> columnOrders) {
     for (int i = 0; i < childrenCount; i++) {
       SchemaElement schemaElement = schema.next();
 
@@ -2048,8 +2048,7 @@ public class ParquetMetadataConverter {
           primitiveBuilder.scale(schemaElement.scale);
         }
         if (columnOrders != null) {
-          org.apache.parquet.schema.ColumnOrder columnOrder =
-              fromParquetColumnOrder(columnOrders.get(columnCount));
+          org.apache.parquet.schema.ColumnOrder columnOrder = fromParquetColumnOrder(columnOrders.next());
           // As per parquet format 2.4.0 no UNDEFINED order is supported. So, set undefined column order for
           // the types
           // where ordering is not supported.
@@ -2063,12 +2062,7 @@ public class ParquetMetadataConverter {
         childBuilder = primitiveBuilder;
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
-        buildChildren(
-            (Types.GroupBuilder) childBuilder,
-            schema,
-            schemaElement.num_children,
-            columnOrders,
-            columnCount);
+        buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders);
       }
 
       if (schemaElement.isSetLogicalType()) {
@@ -2096,7 +2090,6 @@ public class ParquetMetadataConverter {
       }
 
       childBuilder.named(schemaElement.name);
-      ++columnCount;
     }
   }
 

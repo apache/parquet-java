@@ -61,6 +61,11 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
     }
 
     @Override
+    boolean hasNaNs(int pageIndex) {
+      return nanCounts == null || nanCounts[pageIndex] > 0;
+    }
+
+    @Override
     ByteBuffer getMinValueAsBytes(int pageIndex) {
       return convert(minValues[pageIndex]);
     }

@@ -45,6 +45,7 @@ import static org.junit.Assert.fail;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.FloatStatistics;
@@ -677,6 +678,16 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(gt(doubleColumn, 50.0), metas));
     assertFalse(canDrop(gtEq(doubleColumn, 50.0), metas));
     assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas));
+    assertFalse(canDrop(lt(doubleColumn, 0.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 200.0), metas));
+
+    DoubleStatistics mixedEqualStats = new DoubleStatistics();
+    mixedEqualStats.setMinMax(5.0, 5.0);
+    mixedEqualStats.setNumNulls(0);
+    mixedEqualStats.incrementNanCount(1);
+    List<ColumnChunkMetaData> mixedEqualMetas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(mixedEqualStats, 177L));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), mixedEqualMetas));
 
     // NaN literal: NaN values are present so cannot drop
     assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
@@ -686,6 +697,27 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
     assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
     assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+  }
+
+  @Test
+  public void testNaNDoubleMissingNaNCountIsConservative() {
+    org.apache.parquet.column.statistics.Statistics<?> statsWithUnknownNaNs =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(
+                Types.required(PrimitiveTypeName.DOUBLE).named("test_double"))
+            .withMin(BytesUtils.longToBytes(Double.doubleToLongBits(10.0)))
+            .withMax(BytesUtils.longToBytes(Double.doubleToLongBits(100.0)))
+            .withNumNulls(0)
+            .build();
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(statsWithUnknownNaNs, 177L));
+
+    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 200.0), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, 200.0), metas));
   }
 
   @Test
@@ -718,7 +750,7 @@ public class TestStatisticsFilter {
 
   @Test
   public void testNaNDoubleIeee754TotalOrder() {
-    // All-NaN with IEEE_754_TOTAL_ORDER — stats built via builder (no min/max)
+    // All-NaN with IEEE_754_TOTAL_ORDER, stats built via builder (no min/max)
     PrimitiveType ieee754Type = Types.required(PrimitiveTypeName.DOUBLE)
         .columnOrder(ColumnOrder.ieee754TotalOrder())
         .named("test_double");
@@ -795,6 +827,16 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(gt(floatCol, 50.0f), metas));
     assertFalse(canDrop(gtEq(floatCol, 50.0f), metas));
     assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas));
+    assertFalse(canDrop(lt(floatCol, 0.0f), metas));
+    assertFalse(canDrop(gt(floatCol, 200.0f), metas));
+
+    FloatStatistics mixedEqualStats = new FloatStatistics();
+    mixedEqualStats.setMinMax(5.0f, 5.0f);
+    mixedEqualStats.setNumNulls(0);
+    mixedEqualStats.incrementNanCount(1);
+    List<ColumnChunkMetaData> mixedEqualMetas =
+        List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(mixedEqualStats, 177L));
+    assertFalse(canDrop(notEq(floatCol, 5.0f), mixedEqualMetas));
 
     assertFalse(canDrop(eq(floatCol, Float.NaN), metas));
     assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));

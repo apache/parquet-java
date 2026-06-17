@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.statistics;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -150,6 +154,23 @@ public class TestIeee754TotalOrderE2E {
     return result;
   }
 
+  private List<Float> readFloatValuesWithRecordFilter(Path path, FilterCompat.Filter filter) throws IOException {
+    List<Float> result = new ArrayList<>();
+    ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), path)
+        .useBloomFilter(false)
+        .useDictionaryFilter(false)
+        .useStatsFilter(false)
+        .useColumnIndexFilter(false)
+        .withFilter(filter);
+    try (ParquetReader<Group> reader = builder.build()) {
+      Group group;
+      while ((group = reader.read()) != null) {
+        result.add(group.getFloat("float_col", 0));
+      }
+    }
+    return result;
+  }
+
   private List<Double> readDoubleValues(Path path) throws IOException {
     return readDoubleValues(path, null);
   }
@@ -167,6 +188,37 @@ public class TestIeee754TotalOrderE2E {
       }
     }
     return result;
+  }
+
+  private List<Double> readDoubleValuesWithRecordFilter(Path path, FilterCompat.Filter filter) throws IOException {
+    List<Double> result = new ArrayList<>();
+    ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), path)
+        .useBloomFilter(false)
+        .useDictionaryFilter(false)
+        .useStatsFilter(false)
+        .useColumnIndexFilter(false)
+        .withFilter(filter);
+    try (ParquetReader<Group> reader = builder.build()) {
+      Group group;
+      while ((group = reader.read()) != null) {
+        result.add(group.getDouble("double_col", 0));
+      }
+    }
+    return result;
+  }
+
+  private static void assertFloatBits(List<Float> values, int... expectedBits) {
+    assertEquals(expectedBits.length, values.size());
+    for (int i = 0; i < expectedBits.length; i++) {
+      assertEquals(expectedBits[i], Float.floatToRawIntBits(values.get(i)));
+    }
+  }
+
+  private static void assertDoubleBits(List<Double> values, long... expectedBits) {
+    assertEquals(expectedBits.length, values.size());
+    for (int i = 0; i < expectedBits.length; i++) {
+      assertEquals(expectedBits[i], Double.doubleToRawLongBits(values.get(i)));
+    }
   }
 
   @Test
@@ -271,10 +323,42 @@ public class TestIeee754TotalOrderE2E {
       assertTrue(stats.isNanCountSet());
       assertEquals(3, stats.getNanCount());
 
-      assertTrue("All-NaN column should have non-null min/max values", stats.hasNonNullValue());
-      assertTrue("All-NaN min should be NaN", Float.isNaN(((FloatStatistics) stats).getMin()));
-      assertTrue("All-NaN max should be NaN", Float.isNaN(((FloatStatistics) stats).getMax()));
+      assertTrue("All-NaN column should have min/max values", stats.hasNonNullValue());
+      FloatStatistics floatStats = (FloatStatistics) stats;
+      assertTrue("All-NaN min should be NaN", Float.isNaN(floatStats.getMin()));
+      assertTrue("All-NaN max should be NaN", Float.isNaN(floatStats.getMax()));
     }
+  }
+
+  @Test
+  public void testRecordLevelFloatFiltersDistinguishSignedNaNValues() throws IOException {
+    float negativeNaN = Float.intBitsToFloat(0xffc00001);
+    float positiveNaN = Float.intBitsToFloat(0x7fc00001);
+    Path path = writeFloatFile(negativeNaN, positiveNaN, 1.0f);
+
+    assertFloatBits(
+        readFloatValuesWithRecordFilter(path, FilterCompat.get(eq(floatColumn("float_col"), negativeNaN))),
+        0xffc00001);
+    assertFloatBits(
+        readFloatValuesWithRecordFilter(path, FilterCompat.get(notEq(floatColumn("float_col"), negativeNaN))),
+        0x7fc00001,
+        Float.floatToRawIntBits(1.0f));
+  }
+
+  @Test
+  public void testRecordLevelDoubleFiltersDistinguishSignedNaNValues() throws IOException {
+    double negativeNaN = Double.longBitsToDouble(0xfff8000000000001L);
+    double positiveNaN = Double.longBitsToDouble(0x7ff8000000000001L);
+    Path path = writeDoubleFile(negativeNaN, positiveNaN, 1.0);
+
+    assertDoubleBits(
+        readDoubleValuesWithRecordFilter(path, FilterCompat.get(eq(doubleColumn("double_col"), negativeNaN))),
+        0xfff8000000000001L);
+    assertDoubleBits(
+        readDoubleValuesWithRecordFilter(
+            path, FilterCompat.get(notEq(doubleColumn("double_col"), negativeNaN))),
+        0x7ff8000000000001L,
+        Double.doubleToRawLongBits(1.0));
   }
 
   @Test

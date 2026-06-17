@@ -2013,6 +2013,41 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testNestedColumnOrdersUseLeafOrder() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .requiredGroup()
+        .required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("a")
+        .required(PrimitiveTypeName.DOUBLE)
+        .named("b")
+        .named("g")
+        .required(PrimitiveTypeName.DOUBLE)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("c")
+        .named("Message");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    List<ColumnDescriptor> columns = resultSchema.getColumns();
+    assertEquals(3, columns.size());
+    assertEquals(
+        ColumnOrder.ieee754TotalOrder(),
+        columns.get(0).getPrimitiveType().columnOrder());
+    assertEquals(
+        ColumnOrder.typeDefined(), columns.get(1).getPrimitiveType().columnOrder());
+    assertEquals(
+        ColumnOrder.ieee754TotalOrder(),
+        columns.get(2).getPrimitiveType().columnOrder());
+  }
+
+  @Test
   public void testStatisticsNanCountRoundTripFloat() {
     PrimitiveType type = Types.required(PrimitiveTypeName.FLOAT).named("test_float");
     FloatStatistics stats = (FloatStatistics) Statistics.createStats(type);

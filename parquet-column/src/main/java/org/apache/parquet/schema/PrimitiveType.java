@@ -894,7 +894,7 @@ public final class PrimitiveType extends Type {
       builder.length(length);
     }
 
-    return builder.as(getLogicalTypeAnnotation()).named(getName());
+    return builder.as(getLogicalTypeAnnotation()).columnOrder(columnOrder()).named(getName());
   }
 
   /**

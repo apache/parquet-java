@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder;
-import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -76,7 +75,8 @@ public class TestStatisticsNanCount {
 
     assertTrue(stats.isNanCountSet());
     assertEquals(2, stats.getNanCount());
-    assertTrue(Float.isNaN(stats.getMax()) || Float.isNaN(stats.getMin()));
+    assertEquals(1.0f, stats.getMin(), 0.0f);
+    assertEquals(3.0f, stats.getMax(), 0.0f);
   }
 
   @Test
@@ -87,7 +87,7 @@ public class TestStatisticsNanCount {
 
     assertTrue(stats.isNanCountSet());
     assertEquals(2, stats.getNanCount());
-    assertTrue(stats.hasNonNullValue());
+    assertFalse(stats.hasNonNullValue());
   }
 
   @Test
@@ -109,12 +109,13 @@ public class TestStatisticsNanCount {
 
     assertTrue(stats.isNanCountSet());
     assertEquals(1, stats.getNanCount());
-    assertTrue(Double.isNaN(stats.getMax()) || Double.isNaN(stats.getMin()));
+    assertEquals(1.0, stats.getMin(), 0.0);
+    assertEquals(2.0, stats.getMax(), 0.0);
   }
 
   @Test
   public void testFloat16NanCountMixedValues() {
-    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(FLOAT16_TYPE);
+    Float16Statistics stats = (Float16Statistics) Statistics.createStats(FLOAT16_TYPE);
     stats.updateStats(FLOAT16_ONE);
     stats.updateStats(FLOAT16_NAN);
     stats.updateStats(FLOAT16_TWO);
@@ -122,13 +123,13 @@ public class TestStatisticsNanCount {
     assertTrue(stats.isNanCountSet());
     assertEquals(1, stats.getNanCount());
     assertTrue(stats.hasNonNullValue());
-    assertTrue(Float16.isNaN(stats.genericGetMin().get2BytesLittleEndian())
-        || Float16.isNaN(stats.genericGetMax().get2BytesLittleEndian()));
+    assertEquals(FLOAT16_ONE, stats.genericGetMin());
+    assertEquals(FLOAT16_TWO, stats.genericGetMax());
   }
 
   @Test
   public void testFloat16NanCountNoNaN() {
-    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(FLOAT16_TYPE);
+    Float16Statistics stats = (Float16Statistics) Statistics.createStats(FLOAT16_TYPE);
     stats.updateStats(FLOAT16_ONE);
 
     assertTrue(stats.isNanCountSet());
@@ -208,37 +209,37 @@ public class TestStatisticsNanCount {
   }
 
   @Test
-  public void testFloatIEEE754NanOnlySetHasNonNullValue() {
+  public void testFloatIEEE754NanOnlySetsHasNonNullValue() {
     FloatStatistics stats = (FloatStatistics) Statistics.createStats(FLOAT_IEEE754_TYPE);
     stats.updateStats(Float.NaN);
     stats.updateStats(Float.NaN);
 
     assertTrue(stats.hasNonNullValue());
-    assertEquals(2, stats.getNanCount());
     assertTrue(Float.isNaN(stats.getMin()));
     assertTrue(Float.isNaN(stats.getMax()));
+    assertEquals(2, stats.getNanCount());
   }
 
   @Test
-  public void testDoubleIEEE754NanOnlySetHasNonNullValue() {
+  public void testDoubleIEEE754NanOnlySetsHasNonNullValue() {
     DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(DOUBLE_IEEE754_TYPE);
     stats.updateStats(Double.NaN);
 
     assertTrue(stats.hasNonNullValue());
-    assertEquals(1, stats.getNanCount());
     assertTrue(Double.isNaN(stats.getMin()));
     assertTrue(Double.isNaN(stats.getMax()));
+    assertEquals(1, stats.getNanCount());
   }
 
   @Test
-  public void testFloat16IEEE754NanOnlySetHasNonNullValue() {
-    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
+  public void testFloat16IEEE754NanOnlySetsHasNonNullValue() {
+    IEEE754Float16Statistics stats = (IEEE754Float16Statistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
     stats.updateStats(FLOAT16_NAN);
 
     assertTrue(stats.hasNonNullValue());
+    assertEquals(FLOAT16_NAN, stats.genericGetMin());
+    assertEquals(FLOAT16_NAN, stats.genericGetMax());
     assertEquals(1, stats.getNanCount());
-    assertTrue(Float16.isNaN(stats.genericGetMin().get2BytesLittleEndian()));
-    assertTrue(Float16.isNaN(stats.genericGetMax().get2BytesLittleEndian()));
   }
 
   @Test
@@ -269,7 +270,7 @@ public class TestStatisticsNanCount {
 
   @Test
   public void testFloat16IEEE754AllNaNTracksNaNRange() {
-    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
+    IEEE754Float16Statistics stats = (IEEE754Float16Statistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
     stats.updateStats(FLOAT16_NAN_LARGE);
     stats.updateStats(FLOAT16_NAN_SMALL);
 
@@ -281,13 +282,51 @@ public class TestStatisticsNanCount {
   }
 
   @Test
+  public void testFloatIEEE754NonNaNReplacesAllNaNRange() {
+    FloatStatistics stats = (FloatStatistics) Statistics.createStats(FLOAT_IEEE754_TYPE);
+    stats.updateStats(Float.intBitsToFloat(0x7fffffff));
+    stats.updateStats(Float.intBitsToFloat(0x7fc00001));
+    stats.updateStats(1.0f);
+    stats.updateStats(2.0f);
+
+    assertEquals(2, stats.getNanCount());
+    assertEquals(1.0f, stats.getMin(), 0.0f);
+    assertEquals(2.0f, stats.getMax(), 0.0f);
+  }
+
+  @Test
+  public void testDoubleIEEE754NonNaNReplacesAllNaNRange() {
+    DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(DOUBLE_IEEE754_TYPE);
+    stats.updateStats(Double.longBitsToDouble(0x7fffffffffffffffL));
+    stats.updateStats(Double.longBitsToDouble(0x7ff0000000000001L));
+    stats.updateStats(1.0);
+    stats.updateStats(2.0);
+
+    assertEquals(2, stats.getNanCount());
+    assertEquals(1.0, stats.getMin(), 0.0);
+    assertEquals(2.0, stats.getMax(), 0.0);
+  }
+
+  @Test
+  public void testFloat16IEEE754NonNaNReplacesAllNaNRange() {
+    IEEE754Float16Statistics stats = (IEEE754Float16Statistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
+    stats.updateStats(FLOAT16_NAN_LARGE);
+    stats.updateStats(FLOAT16_NAN_SMALL);
+    stats.updateStats(FLOAT16_ONE);
+    stats.updateStats(FLOAT16_TWO);
+
+    assertEquals(2, stats.getNanCount());
+    assertEquals(FLOAT16_ONE, stats.genericGetMin());
+    assertEquals(FLOAT16_TWO, stats.genericGetMax());
+  }
+
+  @Test
   public void testFloatIEEE754NanExcludedFromMax() {
     FloatStatistics stats = (FloatStatistics) Statistics.createStats(FLOAT_IEEE754_TYPE);
     stats.updateStats(1.0f);
     stats.updateStats(Float.NaN);
     stats.updateStats(2.0f);
 
-    // NaN is excluded from min/max on the write path for all column orders
     assertEquals(2.0f, stats.getMax(), 0.0f);
     assertEquals(1.0f, stats.getMin(), 0.0f);
     assertEquals(1, stats.getNanCount());
@@ -300,37 +339,36 @@ public class TestStatisticsNanCount {
     stats.updateStats(Double.NaN);
     stats.updateStats(2.0);
 
-    // NaN is excluded from min/max on the write path for all column orders
     assertEquals(2.0, stats.getMax(), 0.0);
     assertEquals(1.0, stats.getMin(), 0.0);
     assertEquals(1, stats.getNanCount());
   }
 
   @Test
-  public void testFloatTypeDefinedNanOnlySetHasNonNullValue() {
+  public void testFloatTypeDefinedNanOnlyDoesNotSetHasNonNullValue() {
     FloatStatistics stats = (FloatStatistics) Statistics.createStats(FLOAT_TYPE);
     stats.updateStats(Float.NaN);
     stats.updateStats(Float.NaN);
 
-    assertTrue(stats.hasNonNullValue());
+    assertFalse(stats.hasNonNullValue());
     assertEquals(2, stats.getNanCount());
   }
 
   @Test
-  public void testDoubleTypeDefinedNanOnlySetHasNonNullValue() {
+  public void testDoubleTypeDefinedNanOnlyDoesNotSetHasNonNullValue() {
     DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(DOUBLE_TYPE);
     stats.updateStats(Double.NaN);
 
-    assertTrue(stats.hasNonNullValue());
+    assertFalse(stats.hasNonNullValue());
     assertEquals(1, stats.getNanCount());
   }
 
   @Test
-  public void testFloat16TypeDefinedNanOnlySetHasNonNullValue() {
-    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(FLOAT16_TYPE);
+  public void testFloat16TypeDefinedNanOnlyDoesNotSetHasNonNullValue() {
+    Float16Statistics stats = (Float16Statistics) Statistics.createStats(FLOAT16_TYPE);
     stats.updateStats(FLOAT16_NAN);
 
-    assertTrue(stats.hasNonNullValue());
+    assertFalse(stats.hasNonNullValue());
     assertEquals(1, stats.getNanCount());
   }
 }

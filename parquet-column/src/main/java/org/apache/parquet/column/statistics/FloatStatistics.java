@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -29,8 +28,8 @@ public class FloatStatistics extends Statistics<Float> {
   private static final PrimitiveType DEFAULT_FAKE_TYPE =
       Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named("fake_float_type");
 
-  private float max;
-  private float min;
+  protected float max;
+  protected float min;
 
   /**
    * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
@@ -46,7 +45,7 @@ public class FloatStatistics extends Statistics<Float> {
     incrementNanCount(0);
   }
 
-  private FloatStatistics(FloatStatistics other) {
+  protected FloatStatistics(FloatStatistics other) {
     super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
@@ -59,11 +58,12 @@ public class FloatStatistics extends Statistics<Float> {
   public void updateStats(float value) {
     if (Float.isNaN(value)) {
       incrementNanCount();
+      return;
     }
     if (!this.hasNonNullValue()) {
-      initializeStats(value, value);
+      initializeStats(normalizeMinValue(value), normalizeMaxValue(value));
     } else {
-      updateStats(value, value);
+      updateStats(normalizeMinValue(value), normalizeMaxValue(value));
     }
   }
 
@@ -105,24 +105,18 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   public void updateStats(float min_value, float max_value) {
-    if (type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
-      if (Float.isNaN(min_value)) {
-        if (Float.isNaN(min) && comparator().compare(min, min_value) > 0) {
-          min = min_value;
-        }
-      } else if (Float.isNaN(min) || comparator().compare(min, min_value) > 0) {
-        min = min_value;
-      }
-
-      if (Float.isNaN(max_value)) {
-        if (Float.isNaN(max) && comparator().compare(max, max_value) < 0) {
-          max = max_value;
-        }
-      } else if (Float.isNaN(max) || comparator().compare(max, max_value) < 0) {
-        max = max_value;
-      }
+    if (Float.isNaN(min_value) && Float.isNaN(max_value)) {
       return;
     }
+    if (Float.isNaN(min_value)) {
+      min_value = max_value;
+    }
+    if (Float.isNaN(max_value)) {
+      max_value = min_value;
+    }
+
+    min_value = normalizeMinValue(min_value);
+    max_value = normalizeMaxValue(max_value);
 
     if (comparator().compare(min, min_value) > 0) {
       min = min_value;
@@ -168,6 +162,14 @@ public class FloatStatistics extends Statistics<Float> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  private static float normalizeMinValue(float value) {
+    return value == 0.0f ? -0.0f : value;
+  }
+
+  private static float normalizeMaxValue(float value) {
+    return value == 0.0f ? 0.0f : value;
   }
 
   @Override

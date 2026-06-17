@@ -205,7 +205,9 @@ public class TestMessageType {
         Types.buildMessage()
             .addFields(
                 Types.requiredList()
-                    .element(Types.optional(BINARY).named("a"))
+                    .element(Types.optional(BINARY)
+                        .columnOrder(ColumnOrder.undefined())
+                        .named("a"))
                     .named("g"),
                 Types.optional(INT96).named("b"),
                 Types.optional(BINARY).named("c"))

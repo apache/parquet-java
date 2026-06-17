@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -29,8 +28,8 @@ public class DoubleStatistics extends Statistics<Double> {
   private static final PrimitiveType DEFAULT_FAKE_TYPE =
       Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE).named("fake_double_type");
 
-  private double max;
-  private double min;
+  protected double max;
+  protected double min;
 
   /**
    * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
@@ -45,7 +44,7 @@ public class DoubleStatistics extends Statistics<Double> {
     incrementNanCount(0);
   }
 
-  private DoubleStatistics(DoubleStatistics other) {
+  protected DoubleStatistics(DoubleStatistics other) {
     super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
@@ -58,11 +57,12 @@ public class DoubleStatistics extends Statistics<Double> {
   public void updateStats(double value) {
     if (Double.isNaN(value)) {
       incrementNanCount();
+      return;
     }
     if (!this.hasNonNullValue()) {
-      initializeStats(value, value);
+      initializeStats(normalizeMinValue(value), normalizeMaxValue(value));
     } else {
-      updateStats(value, value);
+      updateStats(normalizeMinValue(value), normalizeMaxValue(value));
     }
   }
 
@@ -104,24 +104,18 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   public void updateStats(double min_value, double max_value) {
-    if (type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
-      if (Double.isNaN(min_value)) {
-        if (Double.isNaN(min) && comparator().compare(min, min_value) > 0) {
-          min = min_value;
-        }
-      } else if (Double.isNaN(min) || comparator().compare(min, min_value) > 0) {
-        min = min_value;
-      }
-
-      if (Double.isNaN(max_value)) {
-        if (Double.isNaN(max) && comparator().compare(max, max_value) < 0) {
-          max = max_value;
-        }
-      } else if (Double.isNaN(max) || comparator().compare(max, max_value) < 0) {
-        max = max_value;
-      }
+    if (Double.isNaN(min_value) && Double.isNaN(max_value)) {
       return;
     }
+    if (Double.isNaN(min_value)) {
+      min_value = max_value;
+    }
+    if (Double.isNaN(max_value)) {
+      max_value = min_value;
+    }
+
+    min_value = normalizeMinValue(min_value);
+    max_value = normalizeMaxValue(max_value);
 
     if (comparator().compare(min, min_value) > 0) {
       min = min_value;
@@ -167,6 +161,14 @@ public class DoubleStatistics extends Statistics<Double> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  private static double normalizeMinValue(double value) {
+    return value == 0.0 ? -0.0 : value;
+  }
+
+  private static double normalizeMaxValue(double value) {
+    return value == 0.0 ? 0.0 : value;
   }
 
   @Override

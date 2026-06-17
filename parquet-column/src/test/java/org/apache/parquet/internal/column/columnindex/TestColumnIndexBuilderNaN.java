@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -111,6 +112,12 @@ public class TestColumnIndexBuilderNaN {
     return result;
   }
 
+  private static ByteBuffer floatBuffer(float value) {
+    ByteBuffer buffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    buffer.putFloat(0, value);
+    return buffer;
+  }
+
   // TYPE_DEFINED_ORDER: build column index with NaN
 
   @Test
@@ -146,7 +153,7 @@ public class TestColumnIndexBuilderNaN {
   public void testFloatIeee754BuildNanCounts() {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(FLOAT_IEEE754_TYPE, Integer.MAX_VALUE);
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 1.0f, 2.0f));
-    builder.add(floatStats(FLOAT_IEEE754_TYPE, Float.NaN, Float.NaN));
+    builder.add(floatStats(FLOAT_IEEE754_TYPE, Float.NaN, 2.5f, Float.NaN));
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 3.0f, Float.NaN, 4.0f));
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
@@ -157,18 +164,18 @@ public class TestColumnIndexBuilderNaN {
   public void testDoubleIeee754BuildNanCounts() {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(DOUBLE_IEEE754_TYPE, Integer.MAX_VALUE);
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 1.0, 2.0));
-    builder.add(doubleStats(DOUBLE_IEEE754_TYPE, Double.NaN, Double.NaN, Double.NaN));
+    builder.add(doubleStats(DOUBLE_IEEE754_TYPE, Double.NaN, 2.5, Double.NaN));
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 3.0, Double.NaN, 4.0));
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
-    assertEquals(List.of(0L, 3L, 1L), ci.getNanCounts());
+    assertEquals(List.of(0L, 2L, 1L), ci.getNanCounts());
   }
 
   @Test
   public void testFloat16Ieee754BuildNanCounts() {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(FLOAT16_IEEE754_TYPE, Integer.MAX_VALUE);
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_ONE, FLOAT16_NAN, FLOAT16_TWO));
-    builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN, FLOAT16_NAN));
+    builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN, FLOAT16_TWO, FLOAT16_NAN));
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_ONE));
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
@@ -247,7 +254,7 @@ public class TestColumnIndexBuilderNaN {
     assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(FLOAT_COL, 1.5f))));
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))));
 
-    // NaN literal: nanCounts all zero → eq returns empty, notEq returns all
+    // NaN literal: nanCounts all zero, so eq returns empty and notEq returns all
     assertEquals(List.of(), toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN))));
     assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN))));
     assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT_COL, Float.NaN))));
@@ -258,19 +265,39 @@ public class TestColumnIndexBuilderNaN {
   }
 
   @Test
+  public void testNaNFloatUnknownNaNCounts() {
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        FLOAT_IEEE754_TYPE,
+        BoundaryOrder.ASCENDING,
+        List.of(false, false),
+        List.of(0L, 0L),
+        null,
+        List.of(floatBuffer(1.0f), floatBuffer(3.0f)),
+        List.of(floatBuffer(2.0f), floatBuffer(4.0f)),
+        null,
+        null);
+    assertNotNull(ci);
+
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT_COL, 0.0f))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(FLOAT_COL, 5.0f))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f))));
+  }
+
+  @Test
   public void testNaNFloatMixed() {
-    // Pages: [1.0, 2.0], [NaN, NaN], [3.0, 4.0]
+    // Pages: [1.0, 2.0], [NaN, 2.5], [3.0, 4.0]
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(FLOAT_IEEE754_TYPE, Integer.MAX_VALUE);
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 1.0f, 2.0f));
-    builder.add(floatStats(FLOAT_IEEE754_TYPE, Float.NaN, Float.NaN));
+    builder.add(floatStats(FLOAT_IEEE754_TYPE, Float.NaN, 2.5f));
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 3.0f, 4.0f));
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
 
     assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(FLOAT_COL, 1.5f))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.lt(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, 1.5f))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT_COL, 1.5f))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, 1.5f))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT_COL, 1.5f))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(FLOAT_COL, 1.5f))));
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))));
@@ -314,18 +341,18 @@ public class TestColumnIndexBuilderNaN {
 
   @Test
   public void testNaNDoubleMixed() {
-    // Pages: [1.0, 2.0], [NaN, NaN], [3.0, 4.0]
+    // Pages: [1.0, 2.0], [NaN, 2.5], [3.0, 4.0]
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(DOUBLE_IEEE754_TYPE, Integer.MAX_VALUE);
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 1.0, 2.0));
-    builder.add(doubleStats(DOUBLE_IEEE754_TYPE, Double.NaN, Double.NaN));
+    builder.add(doubleStats(DOUBLE_IEEE754_TYPE, Double.NaN, 2.5));
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 3.0, 4.0));
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
 
     assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(DOUBLE_COL, 1.5))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.lt(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, 1.5))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(DOUBLE_COL, 1.5))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, 1.5))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(DOUBLE_COL, 1.5))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, 1.5))));
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(1.5))))));
@@ -369,18 +396,18 @@ public class TestColumnIndexBuilderNaN {
 
   @Test
   public void testNaNFloat16Mixed() {
-    // Pages: [1.0, 2.0], [NaN, NaN], [3.0, 4.0]
+    // Pages: [1.0, 2.0], [NaN, 2.0], [3.0, 4.0]
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(FLOAT16_IEEE754_TYPE, Integer.MAX_VALUE);
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_ONE, FLOAT16_TWO));
-    builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN, FLOAT16_NAN));
+    builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN, FLOAT16_TWO));
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_THREE, FLOAT16_FOUR));
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
 
     assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_ONE))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_ONE))));
+    assertEquals(List.of(1), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_ONE))));
+    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_ONE))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_ONE))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_ONE))));
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_ONE))))));

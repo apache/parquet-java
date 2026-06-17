@@ -66,6 +66,11 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     }
 
     @Override
+    boolean hasNaNs(int pageIndex) {
+      return isFloat16 && (nanCounts == null || nanCounts[pageIndex] > 0);
+    }
+
+    @Override
     ByteBuffer getMinValueAsBytes(int pageIndex) {
       return convert(minValues[pageIndex]);
     }

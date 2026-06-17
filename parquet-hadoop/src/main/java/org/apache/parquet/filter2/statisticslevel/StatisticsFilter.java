@@ -126,6 +126,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
         && stats.getNanCount() + stats.getNumNulls() == column.getValueCount();
   }
 
+  private boolean hasNaNs(ColumnChunkMetaData column) {
+    if (!isFloatingPointColumn(column)) {
+      return false;
+    }
+    Statistics<?> stats = column.getStatistics();
+    return !stats.isNanCountSet() || stats.getNanCount() > 0;
+  }
+
   private static boolean isNaNLiteral(ColumnChunkMetaData column, Object value) {
     if (!isFloatingPointColumn(column)) {
       return false;
@@ -381,6 +389,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    if (hasNaNs(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
@@ -426,6 +438,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    if (hasNaNs(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // drop if value <= min
     return stats.compareMinToValue(value) >= 0;
   }
@@ -463,6 +479,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = ltEq.getValue();
 
     if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (hasNaNs(meta)) {
       return BLOCK_MIGHT_MATCH;
     }
 
@@ -506,6 +526,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    if (hasNaNs(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // drop if value >= max
     return stats.compareMaxToValue(value) <= 0;
   }
@@ -543,6 +567,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = gtEq.getValue();
 
     if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (hasNaNs(meta)) {
       return BLOCK_MIGHT_MATCH;
     }
 
@@ -607,7 +635,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       }
     }
 
-    if (!stats.hasNonNullValue() || hasNaNMinMax(columnChunk, stats)) {
+    if (!stats.hasNonNullValue() || hasNaNMinMax(columnChunk, stats) || hasNaNs(columnChunk)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
