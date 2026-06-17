@@ -210,38 +210,38 @@ public class TestByteBitPacking512VectorLE {
     return IntStream.range(0, finalItemCount)
         .filter(i -> i == 0 || i == finalItemCount - 1)
         .mapToObj(i -> {
-      int len;
-      if ((i == finalItemCount - 1) && mode != 0) {
-        len = mode;
-      } else {
-        len = itemMax;
-      }
-      if (len < 64) {
-        len = 64;
-      } else {
-        len += 64;
-      }
-      int[] array = new int[len];
-      int j = 0;
-      while (j < len) {
-        int value = j + i * itemMax;
-        if (value > maxValue) {
-          if (maxValue < Integer.MAX_VALUE) {
-            value = (int) maxValue;
+          int len;
+          if ((i == finalItemCount - 1) && mode != 0) {
+            len = mode;
           } else {
-            value = Integer.MAX_VALUE;
+            len = itemMax;
           }
-        }
-        if (value < 0) {
-          if (bitWidth < 32) {
-            value = value - Integer.MIN_VALUE;
+          if (len < 64) {
+            len = 64;
+          } else {
+            len += 64;
           }
-        }
-        array[j] = value;
-        j++;
-      }
-      return array;
-    });
+          int[] array = new int[len];
+          int j = 0;
+          while (j < len) {
+            int value = j + i * itemMax;
+            if (value > maxValue) {
+              if (maxValue < Integer.MAX_VALUE) {
+                value = (int) maxValue;
+              } else {
+                value = Integer.MAX_VALUE;
+              }
+            }
+            if (value < 0) {
+              if (bitWidth < 32) {
+                value = value - Integer.MIN_VALUE;
+              }
+            }
+            array[j] = value;
+            j++;
+          }
+          return array;
+        });
   }
 
   private long getMaxValue(int bitWidth) {
