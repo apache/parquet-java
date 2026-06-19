@@ -188,7 +188,10 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param codec         the compression codec used to compress the pages
    * @param validating    if schema validation should be turned on
    * @param props         parquet encoding properties
+   * @deprecated Use {@link #ParquetRecordWriter(ParquetFileWriter, WriteSupport, MessageType, Map, long, boolean, ParquetProperties, MemoryManager, Configuration)}
+   *             and set the compression codec in {@link ParquetProperties} instead
    */
+  @Deprecated
   ParquetRecordWriter(
       ParquetFileWriter w,
       WriteSupport<T> writeSupport,
@@ -200,16 +203,42 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       ParquetProperties props,
       MemoryManager memoryManager,
       Configuration conf) {
-    this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
-    internalWriter = new InternalParquetRecordWriter<T>(
+    this(
         w,
         writeSupport,
         schema,
         extraMetaData,
         blockSize,
-        codecFactory.getCompressor(codec),
         validating,
-        props);
+        ParquetProperties.copy(props).withCompressionCodec(codec).build(),
+        memoryManager,
+        conf);
+  }
+
+  /**
+   * @param w             the file to write to
+   * @param writeSupport  the class to convert incoming records
+   * @param schema        the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param blockSize     the size of a block in the file (this will be approximate)
+   * @param validating    if schema validation should be turned on
+   * @param props         parquet encoding properties (including compression codec configuration)
+   * @param memoryManager memory manager for the write
+   * @param conf          hadoop configuration
+   */
+  public ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long blockSize,
+      boolean validating,
+      ParquetProperties props,
+      MemoryManager memoryManager,
+      Configuration conf) {
+    this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
+    internalWriter = new InternalParquetRecordWriter<T>(
+        w, writeSupport, schema, extraMetaData, blockSize, codecFactory, validating, props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
   }
