@@ -65,6 +65,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -1361,8 +1362,32 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    // Request a vectored read;
-    f.readVectored(ranges, options.getAllocator());
+    // Wrap the allocator to track buffers allocated during the vectored read.
+    // Hadoop's vectored IO may merge ranges and return slices of merged buffers,
+    // so the buffers returned via CompletableFuture may differ from those originally
+    // allocated. We track the originals here to ensure they are properly released.
+    ByteBufferAllocator baseAllocator = options.getAllocator();
+    List<ByteBuffer> allocatedBuffers = new ArrayList<>();
+    ByteBufferAllocator trackingAllocator = new ByteBufferAllocator() {
+      @Override
+      public ByteBuffer allocate(int size) {
+        ByteBuffer buf = baseAllocator.allocate(size);
+        allocatedBuffers.add(buf);
+        return buf;
+      }
+
+      @Override
+      public void release(ByteBuffer b) {
+        baseAllocator.release(b);
+      }
+
+      @Override
+      public boolean isDirect() {
+        return baseAllocator.isDirect();
+      }
+    };
+    f.readVectored(ranges, trackingAllocator);
+    builder.addBuffersToRelease(allocatedBuffers);
     int k = 0;
     for (ConsecutivePartList consecutivePart : allParts) {
       ParquetFileRange currRange = ranges.get(k++);
