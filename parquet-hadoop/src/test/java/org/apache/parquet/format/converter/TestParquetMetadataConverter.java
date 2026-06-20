@@ -2158,5 +2158,104 @@ public class TestParquetMetadataConverter {
     ColumnIndex roundTrip = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
     assertNotNull(roundTrip);
     assertEquals(List.of(1L, 0L, 0L), roundTrip.getNanCounts());
+
+  public void testCorruptStatsPerColumnGate() {
+    // A created_by string from a version known to have the PARQUET-251 bug
+    String corruptCreatedBy = "parquet-mr version 1.6.0 (build abcd)";
+
+    // Set up legacy V1 statistics with min/max (not min_value/max_value)
+    org.apache.parquet.format.Statistics formatStats = new org.apache.parquet.format.Statistics();
+    byte[] minBytes = new byte[] {0, 1, 2, 3};
+    byte[] maxBytes = new byte[] {4, 5, 6, 7};
+    formatStats.setMin(minBytes);
+    formatStats.setMax(maxBytes);
+    formatStats.setNull_count(5);
+
+    // For BINARY column: stats should be ignored (only null_count preserved)
+    PrimitiveType binaryType = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "bin_col");
+    Statistics binaryStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        corruptCreatedBy, formatStats, binaryType, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertFalse("BINARY min/max should be ignored for corrupt file", binaryStats.hasNonNullValue());
+    assertEquals(5, binaryStats.getNumNulls());
+
+    // For FIXED_LEN_BYTE_ARRAY column: stats should also be ignored
+    PrimitiveType fixedType =
+        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, 4, "fixed_col");
+    Statistics fixedStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        corruptCreatedBy, formatStats, fixedType, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertFalse("FIXED_LEN_BYTE_ARRAY min/max should be ignored for corrupt file", fixedStats.hasNonNullValue());
+    assertEquals(5, fixedStats.getNumNulls());
+
+    // For INT32 column: stats should NOT be ignored (per-column gate)
+    PrimitiveType int32Type = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col");
+    Statistics int32Stats = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        corruptCreatedBy, formatStats, int32Type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue("INT32 min/max should NOT be ignored for corrupt file", int32Stats.hasNonNullValue());
+    assertEquals(5, int32Stats.getNumNulls());
+
+    // For INT64 column: stats should NOT be ignored
+    org.apache.parquet.format.Statistics formatStatsLong = new org.apache.parquet.format.Statistics();
+    byte[] minLong = new byte[] {0, 0, 0, 0, 0, 0, 0, 1};
+    byte[] maxLong = new byte[] {0, 0, 0, 0, 0, 0, 0, 7};
+    formatStatsLong.setMin(minLong);
+    formatStatsLong.setMax(maxLong);
+    formatStatsLong.setNull_count(5);
+    PrimitiveType int64Type = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT64, "long_col");
+    Statistics int64Stats = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        corruptCreatedBy, formatStatsLong, int64Type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue("INT64 min/max should NOT be ignored for corrupt file", int64Stats.hasNonNullValue());
+    assertEquals(5, int64Stats.getNumNulls());
+
+    // For a non-corrupt file, BINARY stats should be preserved
+    String goodCreatedBy = "parquet-mr version 1.8.0 (build abcd)";
+    Statistics binaryStatsGood = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        goodCreatedBy, formatStats, binaryType, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue("BINARY min/max should be kept for non-corrupt file", binaryStatsGood.hasNonNullValue());
+  }
+
+  @Test
+  public void testSchemaGateSkipsCorruptStatsCheckForNonBinarySchema() throws Exception {
+    // A file with ONLY INT32/INT64 columns should never trigger corrupt stats detection,
+    // even with a known-corrupt createdBy string.
+    String corruptCreatedBy = "parquet-mr version 1.6.0 (build abcd)";
+
+    MessageType intOnlySchema = Types.buildMessage()
+        .required(PrimitiveTypeName.INT32).named("id")
+        .required(PrimitiveTypeName.INT64).named("ts")
+        .named("msg");
+
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    List<SchemaElement> schemaElements = converter.toParquetSchema(intOnlySchema);
+
+    // Build ColumnMetaData with V1 statistics for the INT32 column
+    org.apache.parquet.format.Statistics stats = new org.apache.parquet.format.Statistics();
+    stats.setMin(new byte[] {0, 0, 0, 1});
+    stats.setMax(new byte[] {0, 0, 0, 7});
+    stats.setNull_count(0);
+
+    ColumnMetaData cmd = new ColumnMetaData(
+        Type.INT32,
+        Collections.<org.apache.parquet.format.Encoding>emptyList(),
+        Collections.singletonList("id"),
+        UNCOMPRESSED,
+        100L, 200L, 100L, 0L);
+    cmd.setStatistics(stats);
+
+    ColumnChunk cc = new ColumnChunk(0L);
+    cc.setMeta_data(cmd);
+    RowGroup rg = new RowGroup(List.of(cc), 100L, 1);
+
+    FileMetaData fmd = new FileMetaData(1, schemaElements, 1, List.of(rg));
+    fmd.setCreated_by(corruptCreatedBy);
+
+    // Parse via fromParquetMetadata – the schema gate should prevent fileHasCorruptStats
+    ParquetMetadata metadata = converter.fromParquetMetadata(fmd);
+    Statistics<?> columnStats =
+        metadata.getBlocks().get(0).getColumns().get(0).getStatistics();
+
+    // Stats should be preserved (not ignored) because schema has no BINARY/FIXED columns
+    assertTrue(
+        "INT32 stats should be preserved when schema has no corrupt-stats-affected columns",
+        columnStats.hasNonNullValue());
   }
 }
