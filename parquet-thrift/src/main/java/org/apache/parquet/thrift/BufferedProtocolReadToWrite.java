@@ -226,7 +226,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         writeShortAction(buffer, s);
         break;
       case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32
-        // field
+      // field
       case TType.I32:
         final int i = in.readI32();
         checkEnum(expectedType, i);
