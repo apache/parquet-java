@@ -388,6 +388,17 @@ public class TestVariantScalarBuilder {
   }
 
   @Test
+  public void testBinaryBuilderDoesNotMutateCallerBuffer() {
+    ByteBuffer buf = ByteBuffer.wrap(new byte[] {0, 1, 2, 3});
+    int positionBefore = buf.position();
+    int remainingBefore = buf.remaining();
+    VariantBuilder vb = new VariantBuilder();
+    vb.appendBinary(buf);
+    Assert.assertEquals(positionBefore, buf.position());
+    Assert.assertEquals(remainingBefore, buf.remaining());
+  }
+
+  @Test
   public void testStringBuilder() {
     IntStream.range(VariantUtil.MAX_SHORT_STR_SIZE - 3, VariantUtil.MAX_SHORT_STR_SIZE + 3)
         .forEach(len -> {

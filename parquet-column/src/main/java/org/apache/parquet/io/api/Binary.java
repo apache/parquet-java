@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -268,14 +267,16 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
       return "Binary{\"" + toStringUsingUTF8() + "\"}";
     }
 
-    private static final ThreadLocal<CharsetEncoder> ENCODER =
-        ThreadLocal.withInitial(StandardCharsets.UTF_8::newEncoder);
-
     private static ByteBuffer encodeUTF8(CharSequence value) {
       try {
-        return ENCODER.get().encode(CharBuffer.wrap(value));
+        // Use a fresh encoder per call rather than a static ThreadLocal initialized with a lambda
+        // (UTF_8::newEncoder): that lambda's class is loaded by the application ClassLoader and can
+        // keep it from being unloaded in long-lived pooled threads, leaking Metaspace (GH-3398).
+        // The encoder also preserves strict CodingErrorAction.REPORT, so malformed UTF-16 fails
+        // fast instead of being silently replaced (as String#getBytes(UTF_8) would).
+        return StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(value));
       } catch (CharacterCodingException e) {
-        throw new ParquetEncodingException("UTF-8 not supported.", e);
+        throw new ParquetEncodingException("Failed to encode CharSequence as UTF-8.", e);
       }
     }
   }
