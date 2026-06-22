@@ -410,9 +410,14 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
   @Override
   public void close() {
-    for (ColumnChunkPageReader reader : readers.values()) {
-      reader.releaseBuffers();
+    try {
+      for (ColumnChunkPageReader reader : readers.values()) {
+        reader.releaseBuffers();
+      }
+    } finally {
+      if (releaser != null) {
+        releaser.close();
+      }
     }
-    releaser.close();
   }
 }
