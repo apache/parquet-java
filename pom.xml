@@ -97,6 +97,7 @@
     <avro.version>1.11.5</avro.version>
     <guava.version>33.6.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
+    <assertj.version>3.27.7</assertj.version>
     <mockito.version>5.23.0</mockito.version>
     <net.openhft.version>0.27ea1</net.openhft.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
@@ -161,6 +162,12 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

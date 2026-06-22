@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.variant;
 
-import org.junit.Assert;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +35,7 @@ public class TestVariantArrayBuilder {
     b.endArray();
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(0);
     });
   }
 
@@ -47,10 +49,10 @@ public class TestVariantArrayBuilder {
     b.endArray();
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(511, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(511);
       for (int i = 0; i < 511; i++) {
         VariantTestUtil.checkType(v.getElementAtIndex(i), VariantUtil.PRIMITIVE, Variant.Type.INT);
-        Assert.assertEquals(i, v.getElementAtIndex(i).getInt());
+        assertThat(v.getElementAtIndex(i).getInt()).isEqualTo(i);
       }
     });
   }
@@ -82,28 +84,28 @@ public class TestVariantArrayBuilder {
 
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(4, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(4);
       VariantTestUtil.checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getElementAtIndex(0).getBoolean());
+      assertThat(v.getElementAtIndex(0).getBoolean()).isTrue();
 
       VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(1, v.getElementAtIndex(1).numObjectElements());
+      assertThat(v.getElementAtIndex(1).numObjectElements()).isEqualTo(1);
       VariantTestUtil.checkType(
           v.getElementAtIndex(1).getFieldByKey("key"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(321, v.getElementAtIndex(1).getFieldByKey("key").getInt());
+      assertThat(v.getElementAtIndex(1).getFieldByKey("key").getInt()).isEqualTo(321);
 
       VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getLong());
+      assertThat(v.getElementAtIndex(2).getLong()).isEqualTo(1234567890);
 
       VariantTestUtil.checkType(v.getElementAtIndex(3), VariantUtil.ARRAY, Variant.Type.ARRAY);
       Variant nested = v.getElementAtIndex(3);
-      Assert.assertEquals(3, nested.numArrayElements());
+      assertThat(nested.numArrayElements()).isEqualTo(3);
       VariantTestUtil.checkType(nested.getElementAtIndex(0), VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, nested.getElementAtIndex(0).numArrayElements());
+      assertThat(nested.getElementAtIndex(0).numArrayElements()).isEqualTo(0);
       VariantTestUtil.checkType(nested.getElementAtIndex(1), VariantUtil.SHORT_STR, Variant.Type.STRING);
-      Assert.assertEquals("variant", nested.getElementAtIndex(1).getString());
+      assertThat(nested.getElementAtIndex(1).getString()).isEqualTo("variant");
       VariantTestUtil.checkType(nested.getElementAtIndex(2), VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, nested.getElementAtIndex(2).numObjectElements());
+      assertThat(nested.getElementAtIndex(2).numObjectElements()).isEqualTo(0);
     });
   }
 
@@ -126,11 +128,11 @@ public class TestVariantArrayBuilder {
       for (int i = 1000; i >= 0; i--) {
         VariantTestUtil.checkType(curr, VariantUtil.ARRAY, Variant.Type.ARRAY);
         if (i == 0) {
-          Assert.assertEquals(0, curr.numArrayElements());
+          assertThat(curr.numArrayElements()).isEqualTo(0);
         } else {
-          Assert.assertEquals(2, curr.numArrayElements());
+          assertThat(curr.numArrayElements()).isEqualTo(2);
           VariantTestUtil.checkType(curr.getElementAtIndex(0), VariantUtil.SHORT_STR, Variant.Type.STRING);
-          Assert.assertEquals("str" + i, curr.getElementAtIndex(0).getString());
+          assertThat(curr.getElementAtIndex(0).getString()).isEqualTo("str" + i);
           curr = curr.getElementAtIndex(1);
         }
       }
@@ -147,13 +149,13 @@ public class TestVariantArrayBuilder {
 
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(3, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(3);
       VariantTestUtil.checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals(randomString, v.getElementAtIndex(0).getString());
+      assertThat(v.getElementAtIndex(0).getString()).isEqualTo(randomString);
       VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
+      assertThat(v.getElementAtIndex(1).getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getLong());
+      assertThat(v.getElementAtIndex(2).getLong()).isEqualTo(1234567890);
     });
   }
 
@@ -179,47 +181,35 @@ public class TestVariantArrayBuilder {
   public void testMissingEndArray() {
     VariantBuilder b = new VariantBuilder();
     b.startArray();
-    try {
-      b.build();
-      Assert.fail("Expected Exception when calling build() without endArray()");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::build)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call build() while an array is being built. Must call endArray() first.");
   }
 
   @Test
   public void testMissingStartArray() {
     VariantBuilder b = new VariantBuilder();
-    try {
-      b.endArray();
-      Assert.fail("Expected Exception when calling endArray() without startArray()");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() without calling startArray() first.");
   }
 
   @Test
   public void testInvalidAppendDuringArray() {
     VariantBuilder b = new VariantBuilder();
     b.startArray();
-    try {
-      b.appendInt(1);
-      Assert.fail("Expected Exception when calling append() before endArray()");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> b.appendInt(1))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call append() methods while an array is being built. Must call endArray() first.");
   }
 
   @Test
   public void testStartArrayEndObject() {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder obj = b.startArray();
-    try {
-      obj.endObject();
-      Assert.fail("Expected Exception when calling endObject() while building array");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(obj::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() without calling startObject() first.");
   }
 
   @Test
@@ -227,12 +217,9 @@ public class TestVariantArrayBuilder {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder arr = b.startArray();
     arr.startObject();
-    try {
-      b.endArray();
-      Assert.fail("Expected Exception when calling endArray() with an open nested object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() while a nested object/array is still open.");
   }
 
   @Test
@@ -241,12 +228,9 @@ public class TestVariantArrayBuilder {
     VariantArrayBuilder arr = b.startArray();
     VariantObjectBuilder nested = arr.startObject();
     nested.appendKey("nested");
-    try {
-      b.endArray();
-      Assert.fail("Expected Exception when calling endArray() with an open nested object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() while a nested object/array is still open.");
   }
 
   @Test
@@ -256,12 +240,9 @@ public class TestVariantArrayBuilder {
     VariantObjectBuilder nested = arr.startObject();
     nested.appendKey("nested");
     nested.appendInt(1);
-    try {
-      b.endArray();
-      Assert.fail("Expected Exception when calling endArray() with an open nested object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() while a nested object/array is still open.");
   }
 
   @Test
@@ -269,12 +250,9 @@ public class TestVariantArrayBuilder {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder arr = b.startArray();
     arr.startArray();
-    try {
-      b.endArray();
-      Assert.fail("Expected Exception when calling endArray() with an open nested array");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() while a nested object/array is still open.");
   }
 
   @Test
@@ -283,11 +261,8 @@ public class TestVariantArrayBuilder {
     VariantArrayBuilder arr = b.startArray();
     VariantArrayBuilder nested = arr.startArray();
     nested.appendInt(1);
-    try {
-      b.endArray();
-      Assert.fail("Expected Exception when calling endArray() with an open nested array");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() while a nested object/array is still open.");
   }
 }
