@@ -497,7 +497,6 @@ public class VariantBuilder {
     int numFields = fields.size();
     Collections.sort(fields);
     int maxId = numFields == 0 ? 0 : fields.get(0).id;
-    int dataSize = numFields == 0 ? 0 : fields.get(0).valueSize;
 
     int distinctPos = 0;
     // Maintain a list of distinct keys in-place.
@@ -512,7 +511,6 @@ public class VariantBuilder {
         // Found a distinct key. Add the field to the list.
         distinctPos++;
         fields.set(distinctPos, fields.get(i));
-        dataSize += fields.get(i).valueSize;
       }
     }
 
@@ -520,6 +518,13 @@ public class VariantBuilder {
       numFields = distinctPos + 1;
       // Resize `fields` to `size`.
       fields.subList(numFields, fields.size()).clear();
+    }
+
+    // Compute the data size from the retained fields. This must happen after deduplication, since a
+    // duplicate key keeps the last-written value, whose size may differ from the first occurrence.
+    int dataSize = 0;
+    for (int i = 0; i < numFields; ++i) {
+      dataSize += fields.get(i).valueSize;
     }
 
     boolean largeSize = numFields > VariantUtil.U8_MAX;

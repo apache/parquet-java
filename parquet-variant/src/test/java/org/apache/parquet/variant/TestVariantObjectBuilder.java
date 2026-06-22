@@ -278,6 +278,72 @@ public class TestVariantObjectBuilder {
   }
 
   @Test
+  public void testDuplicateKeysKeptValueLarger() {
+    // The retained (last-written) value is larger than the first occurrence. The data size must be
+    // computed from the retained value, otherwise the encoded object is truncated/corrupt.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendInt(1); // 5 bytes
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendString("hello"); // 6 bytes
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.numObjectElements());
+      Variant variant = v.getFieldByKey("duplicate");
+      VariantTestUtil.checkType(variant, VariantUtil.SHORT_STR, Variant.Type.STRING);
+      Assert.assertEquals("hello", variant.getString());
+    });
+  }
+
+  @Test
+  public void testDuplicateKeysKeptValueSmaller() {
+    // The retained (last-written) value is smaller than the first occurrence. The data size must be
+    // computed from the retained value, otherwise the encoded object reserves stale trailing bytes.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendString("hello"); // 6 bytes
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendInt(1); // 5 bytes
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.numObjectElements());
+      Variant variant = v.getFieldByKey("duplicate");
+      VariantTestUtil.checkType(variant, VariantUtil.PRIMITIVE, Variant.Type.INT);
+      Assert.assertEquals(1, variant.getInt());
+    });
+  }
+
+  @Test
+  public void testDuplicateKeysDifferentSizesAcrossMultipleKeys() {
+    // Exercises deduplication across several keys where the retained values differ in size from the
+    // first occurrence, ensuring offsets remain consistent for every field.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("a");
+    objBuilder.appendInt(1); // 5 bytes
+    objBuilder.appendKey("b");
+    objBuilder.appendBoolean(true); // 1 byte
+    objBuilder.appendKey("a");
+    objBuilder.appendString("a-final"); // larger, retained for "a"
+    objBuilder.appendKey("b");
+    objBuilder.appendLong(123456789L); // 9 bytes, retained for "b"
+    objBuilder.appendKey("c");
+    objBuilder.appendString("c-only");
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(3, v.numObjectElements());
+      Assert.assertEquals("a-final", v.getFieldByKey("a").getString());
+      Assert.assertEquals(123456789L, v.getFieldByKey("b").getLong());
+      Assert.assertEquals("c-only", v.getFieldByKey("c").getString());
+    });
+  }
+
+  @Test
   public void testSortingKeys() {
     VariantBuilder b = new VariantBuilder();
     VariantObjectBuilder objBuilder = b.startObject();
