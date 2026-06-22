@@ -33,26 +33,47 @@ import org.junit.Test;
 public class ValidatingRecordConsumerTest {
 
   private static final RecordConsumer NOOP = new RecordConsumer() {
-    @Override public void startMessage() {}
-    @Override public void endMessage() {}
-    @Override public void startField(String field, int index) {}
-    @Override public void endField(String field, int index) {}
-    @Override public void startGroup() {}
-    @Override public void endGroup() {}
-    @Override public void addInteger(int value) {}
-    @Override public void addLong(long value) {}
-    @Override public void addBoolean(boolean value) {}
-    @Override public void addBinary(Binary value) {}
-    @Override public void addFloat(float value) {}
-    @Override public void addDouble(double value) {}
+    @Override
+    public void startMessage() {}
+
+    @Override
+    public void endMessage() {}
+
+    @Override
+    public void startField(String field, int index) {}
+
+    @Override
+    public void endField(String field, int index) {}
+
+    @Override
+    public void startGroup() {}
+
+    @Override
+    public void endGroup() {}
+
+    @Override
+    public void addInteger(int value) {}
+
+    @Override
+    public void addLong(long value) {}
+
+    @Override
+    public void addBoolean(boolean value) {}
+
+    @Override
+    public void addBinary(Binary value) {}
+
+    @Override
+    public void addFloat(float value) {}
+
+    @Override
+    public void addDouble(double value) {}
   };
 
   @Test
   public void testNoPreviousFieldLeakAfterMessage() throws Exception {
     MessageType schema = new MessageType(
-        "test",
-        new PrimitiveType(REQUIRED, INT32, "a"),
-        new PrimitiveType(REQUIRED, INT32, "b"));
+        "test", new PrimitiveType(REQUIRED, INT32, "a"), new PrimitiveType(REQUIRED, INT32, "b"));
 
     ValidatingRecordConsumer consumer = new ValidatingRecordConsumer(NOOP, schema);
     Field previousFieldField = ValidatingRecordConsumer.class.getDeclaredField("previousField");
@@ -70,9 +91,7 @@ public class ValidatingRecordConsumerTest {
 
       Deque<?> previousField = (Deque<?>) previousFieldField.get(consumer);
       assertEquals(
-          "previousField deque should be empty after endMessage (row " + row + ")",
-          0,
-          previousField.size());
+          "previousField deque should be empty after endMessage (row " + row + ")", 0, previousField.size());
     }
   }
 }
