@@ -47,6 +47,30 @@ public interface CompressionCodecFactory {
   BytesInputCompressor getCompressor(CompressionCodecName codecName);
 
   /**
+   * Returns a {@link BytesInputCompressor} instance for the specified codec name and compression level.
+   * <p>
+   * The compression level controls the trade-off between compression speed and ratio. The valid range
+   * and meaning of the level is codec-specific:
+   * <ul>
+   *   <li>ZSTD: 1 (fastest) to 22 (best compression), default 3</li>
+   *   <li>GZIP: 1 (fastest) to 9 (best compression), default 6</li>
+   *   <li>BROTLI: 0 (fastest) to 11 (best compression), default 1</li>
+   * </ul>
+   * Implementations that do not support compression levels should ignore the {@code level} parameter
+   * and delegate to {@link #getCompressor(CompressionCodecName)}.
+   * <p>
+   * The compressor is not thread-safe, so one instance for each working thread is required.
+   *
+   * @param codecName the codec name which the compressor instance is to be returned
+   * @param level     the compression level; codec-specific, ignored if the codec does not support levels
+   * @return the compressor instance for the specified codec name and level
+   * @see BytesInputCompressor#release()
+   */
+  default BytesInputCompressor getCompressor(CompressionCodecName codecName, int level) {
+    return getCompressor(codecName);
+  }
+
+  /**
    * Returns a {@link BytesInputDecompressor} instance for the specified codec name to be used for decompressing page
    * data.
    * <p>

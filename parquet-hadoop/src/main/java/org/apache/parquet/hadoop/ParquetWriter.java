@@ -395,7 +395,6 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     this.codecFactory = codecFactory;
-    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
 
     final Map<String, String> extraMetadata;
     if (encodingProps.getExtraMetaData() == null
@@ -418,7 +417,7 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     this.writer = new InternalParquetRecordWriter<T>(
-        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, compressor, validating, encodingProps);
+        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, codecFactory, compressionCodecName, validating, encodingProps);
   }
 
   public void write(T object) throws IOException {
@@ -566,6 +565,32 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withCompressionCodec(CompressionCodecName codecName) {
       this.codecName = codecName;
+      return self();
+    }
+
+    /**
+     * Override the compression codec for a specific column.
+     *
+     * @param columnPath dot-string path of the column (e.g. {@code "my_col"})
+     * @param codecName  the codec to use for that column
+     * @return this builder for method chaining.
+     */
+    public SELF withCompressionCodec(String columnPath, CompressionCodecName codecName) {
+      encodingPropsBuilder.withCompressionCodec(columnPath, codecName);
+      return self();
+    }
+
+    /**
+     * Set the compression level for a specific column.
+     * The valid range is codec-specific (e.g. ZSTD: 1–22 (default 3), GZIP: 0–9 or -1 (default 6), BROTLI: 0–11 (default 1)).
+     * Pass {@code null} to unset a previously configured level for that column.
+     *
+     * @param columnPath dot-string path of the column (e.g. {@code "my_col"})
+     * @param level      codec-specific compression level, or {@code null} to unset
+     * @return this builder for method chaining.
+     */
+    public SELF withCompressionLevel(String columnPath, Integer level) {
+      encodingPropsBuilder.withCompressionLevel(columnPath, level);
       return self();
     }
 
