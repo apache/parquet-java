@@ -44,7 +44,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.LongStream;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -156,7 +158,11 @@ public class TestRecordLevelFilters {
   }
 
   private static void assertPredicate(FilterPredicate predicate, long... expectedIds) throws IOException {
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(predicate));
+    assertPredicate(phonebookFile, predicate, expectedIds);
+  }
+
+  private static void assertPredicate(File file, FilterPredicate predicate, long... expectedIds) throws IOException {
+    List<Group> found = PhoneBookWriter.readFile(file, FilterCompat.get(predicate));
 
     assertEquals(expectedIds.length, found.size());
     for (int i = 0; i < expectedIds.length; i++) {
@@ -173,6 +179,35 @@ public class TestRecordLevelFilters {
         return true;
       }
     });
+  }
+
+  @Test
+  public void testNotInChecksAllValues() throws Exception {
+    File file = PhoneBookWriter.writeToFile(List.of(
+        new User(300, "lon-1", null, new Location(1.0, null)),
+        new User(301, "lon-2", null, new Location(2.0, null)),
+        new User(302, "lon-3", null, new Location(3.0, null))));
+    DoubleColumn lon = doubleColumn("location.lon");
+
+    Set<Double> values = new LinkedHashSet<>();
+    values.add(1.0);
+    values.add(3.0);
+    assertPredicate(file, notIn(lon, values), 301L);
+  }
+
+  @Test
+  public void testInAndNotInCheckNullAndNonNullValues() throws Exception {
+    File file = PhoneBookWriter.writeToFile(List.of(
+        new User(300, "lon-null", null, new Location(null, null)),
+        new User(301, "lon-2", null, new Location(2.0, null)),
+        new User(302, "lon-3", null, new Location(3.0, null))));
+    DoubleColumn lon = doubleColumn("location.lon");
+
+    Set<Double> values = new LinkedHashSet<>();
+    values.add(null);
+    values.add(3.0);
+    assertPredicate(file, in(lon, values), 300L, 302L);
+    assertPredicate(file, notIn(lon, values), 301L);
   }
 
   @Test
