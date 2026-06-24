@@ -316,4 +316,72 @@ public class RowRanges {
   public String toString() {
     return ranges.toString();
   }
+
+  /**
+   * @return a new {@link Builder} for constructing a {@link RowRanges} from a sequence of
+   *     selected row indices.
+   */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Constructs a {@link RowRanges} by appending selected row indices in strictly increasing
+   * order. Consecutive indices are coalesced into a single {@link Range}; gaps close the
+   * current run and start a new one.
+   *
+   * <p>Usage:
+   * <pre>{@code
+   * RowRanges.Builder builder = RowRanges.builder();
+   * for (long row : selectedRowsInOrder) {
+   *   builder.addSelected(row);
+   * }
+   * RowRanges ranges = builder.build();
+   * }</pre>
+   */
+  public static class Builder {
+    private final List<Range> ranges = new ArrayList<>();
+    private long runStart = -1; // -1 = no active run
+    private long runEnd = -1; // valid iff runStart >= 0
+
+    /**
+     * Marks {@code blockRow} as selected. Must be called in strictly increasing order; calling
+     * with a value less than or equal to the previous call's value throws
+     * {@link IllegalArgumentException}.
+     *
+     * @param blockRow the row index to mark selected (must be {@code >} the last value passed)
+     * @return this builder for chaining
+     */
+    public Builder addSelected(long blockRow) {
+      if (runStart < 0) {
+        runStart = blockRow;
+        runEnd = blockRow;
+      } else if (blockRow == runEnd + 1) {
+        runEnd = blockRow;
+      } else if (blockRow > runEnd + 1) {
+        ranges.add(new Range(runStart, runEnd));
+        runStart = blockRow;
+        runEnd = blockRow;
+      } else {
+        throw new IllegalArgumentException(
+            "addSelected requires strictly increasing row indices; got " + blockRow + " after " + runEnd);
+      }
+      return this;
+    }
+
+    /**
+     * @return the constructed {@link RowRanges}, or {@link RowRanges#EMPTY} when no rows were
+     *     selected.
+     */
+    public RowRanges build() {
+      if (runStart >= 0) {
+        ranges.add(new Range(runStart, runEnd));
+        runStart = -1;
+      }
+      if (ranges.isEmpty()) {
+        return RowRanges.EMPTY;
+      }
+      return new RowRanges(ranges);
+    }
+  }
 }
