@@ -105,6 +105,11 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     rawDataByteSize = 0;
     firstPage = false;
     currentWriter.reset();
+    // After a fallback, currentWriter is the fallback writer, so the initial dictionary writer is never reset at
+    // row-group boundaries, which can silently corrupt the next row group
+    if (currentWriter != initialWriter) {
+      initialWriter.reset();
+    }
   }
 
   @Override
