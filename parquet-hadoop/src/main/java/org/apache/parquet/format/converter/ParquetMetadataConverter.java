@@ -86,6 +86,7 @@ import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.GeospatialStatistics;
+import org.apache.parquet.format.Int96TimestampOrder;
 import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.LogicalType;
@@ -143,6 +144,7 @@ import org.slf4j.LoggerFactory;
 public class ParquetMetadataConverter {
 
   private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();
+  private static final Int96TimestampOrder INT96_TIMESTAMP_ORDER = new Int96TimestampOrder();
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
@@ -278,11 +280,16 @@ public class ParquetMetadataConverter {
 
   private List<ColumnOrder> getColumnOrders(MessageType schema) {
     List<ColumnOrder> columnOrders = new ArrayList<>();
-    // Currently, only TypeDefinedOrder is supported, so we create a column order for each columns with
-    // TypeDefinedOrder even if some types (e.g. INT96) have undefined column orders.
-    for (int i = 0, n = schema.getPaths().size(); i < n; ++i) {
+    // Columns with the INT96_TIMESTAMP_ORDER column order are tagged as such; all other columns are
+    // tagged with TypeDefinedOrder even if some types have undefined column orders.
+    for (String[] path : schema.getPaths()) {
       ColumnOrder columnOrder = new ColumnOrder();
-      columnOrder.setTYPE_ORDER(TYPE_DEFINED_ORDER);
+      if (schema.getType(path).asPrimitiveType().columnOrder().getColumnOrderName() ==
+          ColumnOrderName.INT96_TIMESTAMP_ORDER) {
+        columnOrder.setINT96_TIMESTAMP_ORDER(INT96_TIMESTAMP_ORDER);
+      } else {
+        columnOrder.setTYPE_ORDER(TYPE_DEFINED_ORDER);
+      }
       columnOrders.add(columnOrder);
     }
     return columnOrders;
@@ -893,7 +900,9 @@ public class ParquetMetadataConverter {
   }
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {
-    return type.columnOrder().getColumnOrderName() == ColumnOrderName.TYPE_DEFINED_ORDER;
+    ColumnOrderName name = type.columnOrder().getColumnOrderName();
+    return name == ColumnOrderName.TYPE_DEFINED_ORDER
+      || name == ColumnOrderName.INT96_TIMESTAMP_ORDER;
   }
 
   /**
@@ -2036,7 +2045,17 @@ public class ParquetMetadataConverter {
                   || schemaElement.converted_type == ConvertedType.INTERVAL)) {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
+          // INT96_TIMESTAMP_ORDER is only valid for INT96 columns, ignore it anywhere else.
+          if (columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER
+              && schemaElement.type != Type.INT96) {
+            columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
+          }
           primitiveBuilder.columnOrder(columnOrder);
+        } else if (schemaElement.type == Type.INT96) {
+          // A footer without column orders predates INT96_TIMESTAMP_ORDER, so an INT96 column here
+          // must not inherit the (chronological) construction-time default: its stats, if any, were
+          // written under the legacy order and must be ignored.
+          primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.undefined());
         }
         childBuilder = primitiveBuilder;
       } else {
@@ -2091,6 +2110,9 @@ public class ParquetMetadataConverter {
   private static org.apache.parquet.schema.ColumnOrder fromParquetColumnOrder(ColumnOrder columnOrder) {
     if (columnOrder.isSetTYPE_ORDER()) {
       return org.apache.parquet.schema.ColumnOrder.typeDefined();
+    }
+    if (columnOrder.isSetINT96_TIMESTAMP_ORDER()) {
+      return org.apache.parquet.schema.ColumnOrder.int96TimestampOrder();
     }
     // The column order is not yet supported by this API
     return org.apache.parquet.schema.ColumnOrder.undefined();

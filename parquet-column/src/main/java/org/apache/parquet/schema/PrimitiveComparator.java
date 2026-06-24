@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Comparator;
 import org.apache.parquet.io.api.Binary;
 
@@ -291,6 +292,38 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     @Override
     public String toString() {
       return "BINARY_AS_FLOAT16_COMPARATOR";
+    }
+  };
+
+  /**
+   * Comparator for two timestamps encoded as INT96 (12-byte little-endian) binary.
+   * Layout: first 8 bytes = nanoseconds within the day, last 4 bytes = Julian day.
+   *
+   * Two-level comparison, matching the INT96 timestamp sort order:
+   * 1. Compare the last 4 bytes (Julian day) as a signed little-endian int32.
+   * 2. If equal, compare the first 8 bytes (nanos) as a signed little-endian int64.
+   */
+  static final PrimitiveComparator<Binary> BINARY_AS_INT96_TIMESTAMP_COMPARATOR = new BinaryComparator() {
+    @Override
+    int compareBinary(Binary b1, Binary b2) {
+      if (b1.length() != 12 || b2.length() != 12) {
+        throw new IllegalArgumentException(
+          "INT96 binary length must be 12, got " + b1.length() + " and " + b2.length());
+      }
+
+      ByteBuffer bb1 = b1.toByteBuffer().slice();
+      ByteBuffer bb2 = b2.toByteBuffer().slice();
+      bb1.order(ByteOrder.LITTLE_ENDIAN);
+      bb2.order(ByteOrder.LITTLE_ENDIAN);
+
+      int result = Integer.compare(bb1.getInt(8), bb2.getInt(8));
+      if (result != 0) return result;
+      return Long.compare(bb1.getLong(0), bb2.getLong(0));
+    }
+
+    @Override
+    public String toString() {
+      return "BINARY_AS_INT96_TIMESTAMP_COMPARATOR";
     }
   };
 }
