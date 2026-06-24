@@ -63,4 +63,19 @@ public class SchemaCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
     command.run();
   }
+
+  @Test
+  public void testSchemaCommandWithEncryptedFileParquetSchema() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_schema_parquet_test.parquet");
+
+    SchemaCommand command = new SchemaCommand(createLogger());
+    command.targets = Arrays.asList(encryptedFile.getAbsolutePath());
+    command.parquetSchema = true;
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
+  }
 }

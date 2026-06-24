@@ -34,4 +34,18 @@ public class ShowColumnIndexTest extends ParquetFileTest {
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
   }
+
+  @Test
+  public void testShowColumnIndexCommandWithEncryptedFile() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_columnindex_test.parquet");
+
+    ShowColumnIndexCommand command = new ShowColumnIndexCommand(createLogger());
+    command.files = Arrays.asList(encryptedFile.getAbsolutePath());
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
+  }
 }

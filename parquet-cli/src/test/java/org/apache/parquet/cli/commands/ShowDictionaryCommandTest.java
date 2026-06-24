@@ -27,7 +27,7 @@ import org.junit.Test;
 
 public class ShowDictionaryCommandTest extends ParquetFileTest {
   @Test
-  public void testShowDirectoryCommand() throws IOException {
+  public void testShowDictionaryCommand() throws IOException {
     File file = parquetFile();
     ShowDictionaryCommand command = new ShowDictionaryCommand(createLogger());
     command.targets = Arrays.asList(file.getAbsolutePath());
@@ -55,5 +55,20 @@ public class ShowDictionaryCommandTest extends ParquetFileTest {
     command.column = FIXED_LEN_BYTE_ARRAY_FIELD;
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
+  }
+
+  @Test
+  public void testShowDictionaryCommandWithEncryptedFile() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_dict_test.parquet");
+
+    ShowDictionaryCommand command = new ShowDictionaryCommand(createLogger());
+    command.targets = Arrays.asList(encryptedFile.getAbsolutePath());
+    command.column = "name";
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
   }
 }
