@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -75,8 +76,58 @@ public class TestColumnChunkPageReadStore {
   @Test
   public void closeReleasesReleaserEvenWhenReaderThrows() throws Exception {
     RuntimeException releaseFailure = new RuntimeException("release boom");
+    ByteBufferAllocator throwingAllocator = throwingAllocator(releaseFailure);
 
-    ByteBufferAllocator throwingAllocator = new ByteBufferAllocator() {
+    try (TrackingByteBufferAllocator storeAllocator =
+        TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
+      ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L);
+      store.addColumn(COLUMN, newReaderWithQueuedBuffer(throwingAllocator));
+
+      // The store-level releaser holds a tracked buffer that must still be released even though the reader
+      // fails first.
+      ByteBufferReleaser storeReleaser = new ByteBufferReleaser(storeAllocator);
+      storeReleaser.releaseLater(storeAllocator.allocate(8));
+      store.setReleaser(storeReleaser);
+
+      try {
+        store.close();
+        throw new AssertionError("Expected close() to propagate the reader failure");
+      } catch (RuntimeException e) {
+        assertSame(releaseFailure, e.getCause());
+      }
+    }
+  }
+
+  @Test
+  public void closeReportsBothReaderAndReleaserFailures() {
+    RuntimeException readerFailure = new RuntimeException("reader boom");
+    RuntimeException releaserFailure = new RuntimeException("releaser boom");
+
+    ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L);
+    store.addColumn(COLUMN, newReaderWithQueuedBuffer(throwingAllocator(readerFailure)));
+
+    // The store-level releaser also fails to release its queued buffer.
+    ByteBufferAllocator throwingReleaserAllocator = throwingAllocator(releaserFailure);
+    ByteBufferReleaser storeReleaser = new ByteBufferReleaser(throwingReleaserAllocator);
+    storeReleaser.releaseLater(throwingReleaserAllocator.allocate(8));
+    store.setReleaser(storeReleaser);
+
+    try {
+      store.close();
+      throw new AssertionError("Expected close() to propagate the failures");
+    } catch (RuntimeException e) {
+      // Readers are released before the releaser, so the reader failure is the primary (root) cause and the
+      // releaser failure is attached to it as a suppressed exception, ensuring both are reported.
+      Throwable root = e.getCause();
+      assertSame(readerFailure, root);
+      Throwable[] suppressed = root.getSuppressed();
+      assertEquals(1, suppressed.length);
+      assertSame(releaserFailure, suppressed[0]);
+    }
+  }
+
+  private static ByteBufferAllocator throwingAllocator(RuntimeException releaseFailure) {
+    return new ByteBufferAllocator() {
       @Override
       public ByteBuffer allocate(int size) {
         return ByteBuffer.allocateDirect(size);
@@ -92,24 +143,6 @@ public class TestColumnChunkPageReadStore {
         return true;
       }
     };
-
-    try (TrackingByteBufferAllocator storeAllocator =
-        TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
-      ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L);
-      store.addColumn(COLUMN, newReaderWithQueuedBuffer(throwingAllocator));
-
-      // The store-level releaser holds a tracked buffer that must be released by close()'s finally block.
-      ByteBufferReleaser storeReleaser = new ByteBufferReleaser(storeAllocator);
-      storeReleaser.releaseLater(storeAllocator.allocate(8));
-      store.setReleaser(storeReleaser);
-
-      try {
-        store.close();
-        throw new AssertionError("Expected close() to propagate the reader failure");
-      } catch (RuntimeException e) {
-        assertEquals(releaseFailure, e);
-      }
-    }
   }
 
   private static ColumnChunkPageReader newReaderWithoutPages(ParquetReadOptions options) {
