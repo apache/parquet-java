@@ -47,6 +47,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -928,6 +929,13 @@ public class ParquetMetadataConverter {
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
       String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
+    boolean fileHasCorruptStats = CorruptStatistics.fileHasCorruptStatistics(createdBy);
+    return fromParquetStatisticsInternal(formatStats, type, typeSortOrder, fileHasCorruptStats);
+  }
+
+  // Core implementation using pre-computed file-level corrupt stats flag
+  static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+      Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder, boolean fileHasCorruptStats) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
         org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
@@ -950,8 +958,10 @@ public class ParquetMetadataConverter {
         // valid with the type's sort order. In previous releases, all stats were
         // aggregated using a signed byte-wise ordering, which isn't valid for all the
         // types (e.g. strings, decimals etc.).
-        if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName())
-            && (sortOrdersMatch || maxEqualsMin)) {
+        // The fileHasCorruptStats flag applies only to BINARY and FIXED_LEN_BYTE_ARRAY columns.
+        boolean ignoreForThisColumn =
+            fileHasCorruptStats && CorruptStatistics.isCorruptStatisticsColumnType(type.getPrimitiveTypeName());
+        if (!ignoreForThisColumn && (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
             statsBuilder.withMin(formatStats.min.array());
             statsBuilder.withMax(formatStats.max.array());
@@ -1796,13 +1806,23 @@ public class ParquetMetadataConverter {
 
   public ColumnChunkMetaData buildColumnChunkMetaData(
       ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, String createdBy) {
+    boolean fileHasCorruptStats = CorruptStatistics.fileHasCorruptStatistics(createdBy);
+    return buildColumnChunkMetaData(metaData, columnPath, type, fileHasCorruptStats);
+  }
+
+  ColumnChunkMetaData buildColumnChunkMetaData(
+      ColumnMetaData metaData,
+      ColumnPath columnPath,
+      PrimitiveType type,
+      boolean fileHasCorruptStats) {
+    SortOrder typeSortOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
     return ColumnChunkMetaData.get(
         columnPath,
         type,
         fromFormatCodec(metaData.codec),
         convertEncodingStats(metaData.getEncoding_stats()),
         fromFormatEncodings(metaData.encodings),
-        fromParquetStatistics(createdBy, metaData.statistics, type),
+        fromParquetStatisticsInternal(metaData.statistics, type, typeSortOrder, fileHasCorruptStats),
         metaData.data_page_offset,
         metaData.dictionary_page_offset,
         metaData.num_values,
@@ -1831,6 +1851,11 @@ public class ParquetMetadataConverter {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
+    // Compute once per file: whether this file was written by a version with the PARQUET-251 bug.
+    // Only parse created_by if the schema has columns affected by the bug (BINARY/FIXED_LEN_BYTE_ARRAY).
+    // The per-column type check is applied later when statistics are actually read.
+    boolean fileHasCorruptStats = schemaHasCorruptStatisticsColumnType(messageType)
+        && CorruptStatistics.fileHasCorruptStatistics(parquetMetadata.getCreated_by());
 
     if (row_groups != null) {
       for (RowGroup rowGroup : row_groups) {
@@ -1911,7 +1936,7 @@ public class ParquetMetadataConverter {
                 metaData,
                 columnPath,
                 messageType.getType(columnPath.toArray()).asPrimitiveType(),
-                createdBy);
+                fileHasCorruptStats);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             if (metaData.isSetBloom_filter_offset()) {
               column.setBloomFilterOffset(metaData.getBloom_filter_offset());
@@ -1988,6 +2013,18 @@ public class ParquetMetadataConverter {
   private static ColumnPath getPath(ColumnMetaData metaData) {
     String[] path = metaData.path_in_schema.toArray(new String[0]);
     return ColumnPath.get(path);
+  }
+
+  /**
+   * Returns true if the schema contains at least one column with a type affected by the PARQUET-251 bug.
+   */
+  private static boolean schemaHasCorruptStatisticsColumnType(MessageType schema) {
+    for (ColumnDescriptor column : schema.getColumns()) {
+      if (CorruptStatistics.isCorruptStatisticsColumnType(column.getPrimitiveType().getPrimitiveTypeName())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Visible for testing
