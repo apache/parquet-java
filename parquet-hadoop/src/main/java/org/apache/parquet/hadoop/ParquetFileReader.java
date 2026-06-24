@@ -1140,7 +1140,14 @@ public class ParquetFileReader implements Closeable {
   public PageReadStore readNextRowGroup() throws IOException {
     ColumnChunkPageReadStore rowGroup = null;
     try {
-      rowGroup = internalReadRowGroup(currentBlock);
+      // Approach 2 (micro-row-group) dispatch: if this block's column chunks are physically
+      // shared with other blocks, use a path that locates pages via OffsetIndex and slices
+      // rows via an absolute RowRanges.
+      if (currentBlock < blocks.size() && blocks.get(currentBlock).isApproach2()) {
+        rowGroup = internalReadApproach2RowGroup(currentBlock);
+      } else {
+        rowGroup = internalReadRowGroup(currentBlock);
+      }
     } catch (ParquetEmptyBlockException e) {
       LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
       advanceToNextBlock();
@@ -1197,6 +1204,209 @@ public class ParquetFileReader implements Closeable {
     }
 
     return rowGroup;
+  }
+
+  /**
+   * Reads a row group whose column chunks are physically shared with other blocks via the
+   * Approach 2 (micro-row-group) format extension. See
+   * {@link org.apache.parquet.hadoop.metadata.BlockMetaData#isApproach2()}.
+   *
+   * <p>For each column the page list is taken straight from the block's OffsetIndex sidecar
+   * &mdash; the writer is responsible for emitting an OffsetIndex that contains exactly the
+   * pages whose absolute row range overlaps this block's {@code [rowIndexOffset,
+   * rowIndexOffset + rowCount)} window, with {@code PageLocation.first_row_index} as a
+   * file-absolute row index. The dictionary page (if any) is located via
+   * {@link org.apache.parquet.hadoop.metadata.ColumnChunkMetaData#getDictionaryPageOffset()}
+   * (which the spec leaves valid even when {@code data_page_offset == -1}), and its body is
+   * sized by reading its page header in-band.
+   *
+   * <p>The returned {@link ColumnChunkPageReadStore} carries a {@link RowRanges} covering
+   * {@code [rowIndexOffset, rowIndexOffset + rowCount - 1]} in absolute coordinates, so the
+   * downstream {@link org.apache.parquet.column.impl.SynchronizingColumnReader} discards
+   * rows that fall outside this block's window when a physical page spans into the next
+   * block.
+   *
+   * <p>Prototype-grade limitations:
+   * <ul>
+   *   <li>Each block re-fetches and re-decodes the shared dictionary page independently.</li>
+   *   <li>Each block re-fetches each of its data pages from disk (no cross-block page
+   *       cache &mdash; a {@link PhysicalChunkPageSource} is built per-call rather than
+   *       hoisted to the file level).</li>
+   *   <li>Page deduplication across blocks (boundary pages listed by multiple blocks) is
+   *       not yet implemented at the IO layer; in practice a boundary page is read twice.</li>
+   * </ul>
+   * These are acceptable for a correctness-first prototype and are called out in the
+   * accompanying design plan.
+   *
+   * @param blockIndex the index of the Approach 2 block to read
+   * @return a {@link ColumnChunkPageReadStore} whose pages cover the block's absolute row
+   *         range, or {@code null} if {@code blockIndex} is out of range
+   */
+  private ColumnChunkPageReadStore internalReadApproach2RowGroup(int blockIndex) throws IOException {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      return null;
+    }
+    BlockMetaData block = blocks.get(blockIndex);
+    if (block.getRowCount() == 0) {
+      throw new ParquetEmptyBlockException("Illegal row group of 0 rows");
+    }
+    if (block.getRowIndexOffset() < 0) {
+      throw new IOException(
+          "Approach 2 block must declare an absolute rowIndexOffset; block " + blockIndex + " has none");
+    }
+
+    final long absFrom = block.getRowIndexOffset();
+    final long absTo = absFrom + block.getRowCount() - 1L;
+    final RowRanges rowRanges = RowRanges.createBetween(absFrom, absTo);
+    final ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(rowRanges, absFrom);
+
+    // Use the absolute upper bound (absTo + 1) as the ChunkListBuilder's rowCount: the
+    // resulting Chunk passes it to ColumnChunkPageReader which uses it as the upper bound
+    // for OffsetIndex#getLastRowIndex on the final page. Under Approach 2 the OffsetIndex
+    // stores absolute first_row_index values, so the upper bound must also be absolute.
+    final long absoluteUpperBound = absTo + 1L;
+    final ChunkListBuilder builder = new ChunkListBuilder(absoluteUpperBound);
+    final List<ConsecutivePartList> allParts = new ArrayList<>();
+    final Map<ChunkDescriptor, DictionaryPage> dictPagesByDescriptor = new HashMap<>();
+
+    final ColumnIndexStore ciStore = getColumnIndexStore(blockIndex);
+    for (ColumnChunkMetaData mc : block.getColumns()) {
+      ColumnPath pathKey = mc.getPath();
+      ColumnDescriptor columnDescriptor = paths.get(pathKey);
+      if (columnDescriptor == null) {
+        continue;
+      }
+      if (!mc.isPhysicallyShared()) {
+        throw new IOException("Approach 2 block " + blockIndex + " mixes physically-shared and legacy columns; "
+            + "mixed-mode blocks are not supported by this prototype");
+      }
+
+      OffsetIndex offsetIndex = ciStore.getOffsetIndex(pathKey);
+      if (offsetIndex == null) {
+        throw new IOException("Approach 2 column missing OffsetIndex: " + pathKey);
+      }
+
+      // Build per-page byte ranges. Each page gets its own ChunkDescriptor; consecutive
+      // pages collapse into a single ConsecutivePartList for vectored IO.
+      ConsecutivePartList currentParts = null;
+      for (int i = 0, n = offsetIndex.getPageCount(); i < n; i++) {
+        long off = offsetIndex.getOffset(i);
+        int len = offsetIndex.getCompressedPageSize(i);
+        BenchmarkCounter.incrementTotalBytes(len);
+        if (currentParts == null || currentParts.endPos() != off) {
+          currentParts = new ConsecutivePartList(off);
+          allParts.add(currentParts);
+        }
+        ChunkDescriptor cd = new ChunkDescriptor(columnDescriptor, mc, off, len);
+        currentParts.addChunk(cd);
+        builder.setOffsetIndex(cd, offsetIndex);
+      }
+
+      // Dictionary page is located via getDictionaryPageOffset() (still valid under the
+      // sentinel per spec); read its bytes out-of-band because its compressed size is not
+      // in the OffsetIndex.
+      long dictOffset = mc.getDictionaryPageOffset();
+      if (dictOffset > 0) {
+        DictionaryPage dictPage = readDictionaryPageDirect(dictOffset);
+        if (dictPage != null) {
+          // Stash by a synthetic descriptor that won't clash with data-page descriptors
+          // (descriptors equal by ColumnDescriptor; we encode a unique fileOffset/size
+          // pair to keep the map well-formed).
+          dictPagesByDescriptor.put(new ChunkDescriptor(columnDescriptor, mc, -dictOffset, 0), dictPage);
+        }
+      }
+    }
+
+    if (!allParts.isEmpty()) {
+      readAllPartsVectoredOrNormal(allParts, builder);
+    }
+    rowGroup.setReleaser(builder.releaser);
+
+    // Each Chunk now wraps one column's data-page bytes (concatenated in OffsetIndex order)
+    // plus its OffsetIndex; readAllPages parses the bytes and returns a ColumnChunkPageReader.
+    // For Approach 2 we splice in the separately-read dictionary page if present.
+    for (Chunk chunk : builder.build()) {
+      ColumnChunkPageReader dataPagesReader = chunk.readAllPages();
+      DictionaryPage dictPage = null;
+      for (Map.Entry<ChunkDescriptor, DictionaryPage> e : dictPagesByDescriptor.entrySet()) {
+        if (e.getKey().col.equals(chunk.descriptor.col)) {
+          dictPage = e.getValue();
+          break;
+        }
+      }
+      if (dictPage == null) {
+        rowGroup.addColumn(chunk.descriptor.col, dataPagesReader);
+      } else {
+        rowGroup.addColumn(
+            chunk.descriptor.col,
+            new ColumnChunkPageReader(
+                options.getCodecFactory().getDecompressor(chunk.descriptor.metadata.getCodec()),
+                drainDataPagesQueue(dataPagesReader),
+                dictPage,
+                chunk.offsetIndex,
+                chunk.rowCount,
+                null /* blockDecryptor */,
+                null /* fileAAD */,
+                block.getOrdinal(),
+                0 /* columnOrdinal — not used in non-encrypted prototype */,
+                options));
+      }
+    }
+
+    return rowGroup;
+  }
+
+  /**
+   * Reads a single dictionary page directly from {@code f} at {@code dictOffset}. Used by
+   * the Approach 2 reader path because the compressed dictionary page size is not in the
+   * OffsetIndex; we discover it by parsing the page header in-band.
+   *
+   * @param dictOffset absolute file offset of the dictionary page header
+   * @return the compressed {@link DictionaryPage}, or {@code null} if the page header
+   *         indicates this is not a dictionary page (shouldn't happen for a well-formed file)
+   */
+  private DictionaryPage readDictionaryPageDirect(long dictOffset) throws IOException {
+    f.seek(dictOffset);
+    PageHeader header = Util.readPageHeader(f);
+    if (header.type != org.apache.parquet.format.PageType.DICTIONARY_PAGE) {
+      LOG.warn("Expected DICTIONARY_PAGE at offset {} but got {}", dictOffset, header.type);
+      return null;
+    }
+    int compressedSize = header.getCompressed_page_size();
+    int uncompressedSize = header.getUncompressed_page_size();
+    DictionaryPageHeader dicHeader = header.getDictionary_page_header();
+    ByteBuffer buf = options.getAllocator().allocate(compressedSize);
+    try {
+      f.readFully(buf);
+      buf.flip();
+      DictionaryPage page = new DictionaryPage(
+          org.apache.parquet.bytes.BytesInput.from(buf),
+          uncompressedSize,
+          dicHeader.getNum_values(),
+          converter.getEncoding(dicHeader.getEncoding()));
+      if (header.isSetCrc()) {
+        page.setCrc(header.getCrc());
+      }
+      return page;
+    } catch (RuntimeException | IOException e) {
+      options.getAllocator().release(buf);
+      throw e;
+    }
+  }
+
+  /**
+   * Drains all data pages out of a {@link ColumnChunkPageReader} returned by
+   * {@code Chunk.readAllPages()} so we can rebuild it with a different dictionary page.
+   * The returned list preserves page order. The {@code dataPagesReader} should not be
+   * used after this call.
+   */
+  private static List<DataPage> drainDataPagesQueue(ColumnChunkPageReader dataPagesReader) {
+    List<DataPage> drained = new ArrayList<>();
+    DataPage p;
+    while ((p = dataPagesReader.readPage()) != null) {
+      drained.add(p);
+    }
+    return drained;
   }
 
   /**

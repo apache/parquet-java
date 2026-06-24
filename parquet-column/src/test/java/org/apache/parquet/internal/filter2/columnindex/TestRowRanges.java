@@ -152,4 +152,38 @@ public class TestRowRanges {
     assertAllRowsEqual(intersection(empty, ranges2).iterator());
     assertAllRowsEqual(intersection(empty, empty).iterator());
   }
+
+  @Test
+  public void testCreateBetween() {
+    // Single-element range
+    RowRanges single = RowRanges.createBetween(42L, 42L);
+    assertEquals(1L, single.rowCount());
+    assertAllRowsEqual(single.iterator(), 42L);
+
+    // Multi-element range starting at zero (matches createSingle semantics)
+    RowRanges fromZero = RowRanges.createBetween(0L, 4L);
+    assertEquals(5L, fromZero.rowCount());
+    assertAllRowsEqual(fromZero.iterator(), 0L, 1L, 2L, 3L, 4L);
+    assertEquals(
+        RowRanges.createSingle(5L).getRanges().toString(),
+        fromZero.getRanges().toString());
+
+    // Multi-element range with non-zero (file-absolute) start, the Approach 2 use case
+    RowRanges absolute = RowRanges.createBetween(100_000L, 100_004L);
+    assertEquals(5L, absolute.rowCount());
+    assertAllRowsEqual(absolute.iterator(), 100_000L, 100_001L, 100_002L, 100_003L, 100_004L);
+    assertTrue(absolute.isOverlapping(100_002L, 100_003L));
+    assertFalse(absolute.isOverlapping(99_000L, 99_999L));
+    assertFalse(absolute.isOverlapping(100_005L, 100_010L));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCreateBetweenRejectsNegativeFrom() {
+    RowRanges.createBetween(-1L, 0L);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCreateBetweenRejectsInvertedRange() {
+    RowRanges.createBetween(10L, 5L);
+  }
 }

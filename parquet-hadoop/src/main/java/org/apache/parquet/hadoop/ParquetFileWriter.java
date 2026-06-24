@@ -1564,6 +1564,205 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
+   * Writes one physical column-chunk group as a sequence of {@code K} logical
+   * {@link BlockMetaData} entries that share the chunk's physical bytes — the writer side
+   * of the Approach 2 (micro-row-group) format extension consumed by
+   * {@link ParquetFileReader#readNextRowGroup()} via
+   * {@code BlockMetaData.isApproach2()} dispatch.
+   *
+   * <p>What this method emits on disk:
+   * <ul>
+   *   <li>One row-group-aligned region per call (mirroring {@link #startBlock}'s alignment).</li>
+   *   <li>For each column, an optional dictionary page at a real file offset, followed by all
+   *       data pages concatenated in page order (one physical column chunk per logical column).</li>
+   *   <li>{@code K} entries in {@link #blocks} where each block's columns carry
+   *       {@code firstDataPageOffset == ColumnChunkMetaData.SENTINEL_OFFSET} and a real
+   *       {@code dictionaryPageOffset}, and each per-column {@link OffsetIndex} sidecar lists
+   *       exactly the pages whose absolute row range overlaps that micro-block's window, with
+   *       file-absolute {@code first_row_index} values.</li>
+   * </ul>
+   *
+   * <p>Encryption is not supported: this method throws if a {@code fileEncryptor} is
+   * configured, matching {@link
+   * org.apache.parquet.hadoop.metadata.ColumnChunkMetaData#isPhysicallyShared()} returning
+   * {@code false} for encrypted columns on the reader side.
+   *
+   * <p>Per-block statistics, per-block ColumnIndex, and bloom filters are intentionally
+   * empty/absent (prototype scope) — those become follow-ups for predicate pushdown over
+   * micro-row-groups. Per-block {@code valueCount} is approximated as the sum of per-page
+   * row counts in the slice, which is exact for non-repeated columns; repeated columns will
+   * report value counts equal to row counts (a known prototype limitation).
+   *
+   * <p>Boundary pages that straddle two adjacent micro-blocks are listed in both blocks'
+   * OffsetIndex; the reader's {@code SynchronizingColumnReader} trims rows that fall outside
+   * each block's absolute {@link
+   * org.apache.parquet.internal.filter2.columnindex.RowRanges} window.
+   *
+   * @param perColumn one entry per column in {@link #schema} order; column ordering is
+   *     the caller's responsibility
+   * @param microRowGroupRowCounts row counts of the K micro-row-groups; must sum to the
+   *     total row count of the shared physical chunk and all be positive
+   * @throws IOException on IO error
+   * @throws IllegalArgumentException if {@code microRowGroupRowCounts} is empty or contains
+   *     non-positive entries
+   * @throws IllegalStateException if the writer has an encryptor configured
+   */
+  public void writeMicroRowGroups(List<MicroRowGroupColumnData> perColumn, long[] microRowGroupRowCounts)
+      throws IOException {
+    if (fileEncryptor != null) {
+      throw new IllegalStateException(
+          "writeMicroRowGroups (Approach 2) does not support encryption in this prototype");
+    }
+    if (microRowGroupRowCounts == null || microRowGroupRowCounts.length == 0) {
+      throw new IllegalArgumentException("microRowGroupRowCounts must be non-empty");
+    }
+    long totalRows = 0;
+    for (long r : microRowGroupRowCounts) {
+      if (r <= 0) {
+        throw new IllegalArgumentException("micro-row-group row count must be positive: " + r);
+      }
+      totalRows += r;
+    }
+
+    // Absolute row index at the start of this physical group — derived from preceding
+    // blocks just like the reader does in ParquetMetadataConverter.generateRowGroupOffsets.
+    long absRowStart = 0;
+    for (BlockMetaData prev : blocks) {
+      absRowStart += prev.getRowCount();
+    }
+
+    // Step 1: open a transient block, write each column's bytes via writeColumnChunk, then
+    // close the block. This produces one "wrong" BlockMetaData with real firstDataPageOffset
+    // values and one per-column OffsetIndex carrying file-absolute page byte offsets but
+    // block-relative first_row_index values. We pop and replace it below.
+    startBlock(totalRows);
+    for (MicroRowGroupColumnData col : perColumn) {
+      // SizeStatistics / GeospatialStatistics are constructed fresh and left invalid/empty
+      // — they're not used by the reader's Approach 2 path.
+      writeColumnChunk(
+          col.descriptor,
+          col.totalValueCount,
+          col.codec,
+          col.dictionaryPage,
+          col.concatenatedPageBytes,
+          col.totalUncompressedSize,
+          col.totalCompressedSize,
+          Statistics.getBuilderForReading(col.descriptor.getPrimitiveType()).build(),
+          SizeStatistics.newBuilder(
+                  col.descriptor.getPrimitiveType(),
+                  col.descriptor.getMaxRepetitionLevel(),
+                  col.descriptor.getMaxDefinitionLevel())
+              .build(),
+          GeospatialStatistics.newBuilder(col.descriptor.getPrimitiveType())
+              .build(),
+          ColumnIndexBuilder.getNoOpBuilder(),
+          col.offsetIndexBuilder,
+          null /* bloomFilter */,
+          col.rlEncodings,
+          col.dlEncodings,
+          col.dataEncodings);
+    }
+    endBlock();
+
+    // Pop the transient block; its data feeds the K replacements.
+    BlockMetaData sharedBlock = blocks.remove(blocks.size() - 1);
+    List<OffsetIndex> sharedOffsetIndexes = offsetIndexes.remove(offsetIndexes.size() - 1);
+    columnIndexes.remove(columnIndexes.size() - 1);
+    bloomFilters.remove(bloomFilters.size() - 1);
+
+    List<ColumnChunkMetaData> sharedColumns = sharedBlock.getColumns();
+    int numColumns = sharedColumns.size();
+
+    // Step 2: emit K micro-blocks. For each, per column: slice pages whose [absRowStart +
+    // pageFirstRowIndex, ...) overlaps the micro-block's absolute row window, build a fresh
+    // OffsetIndex with absolute first_row_index values, and construct a ColumnChunkMetaData
+    // with firstDataPageOffset = SENTINEL_OFFSET and the real shared dictionaryPageOffset.
+    long blockRelStart = 0;
+    for (int m = 0; m < microRowGroupRowCounts.length; m++) {
+      long rowCountM = microRowGroupRowCounts[m];
+      long blockRelEnd = blockRelStart + rowCountM;
+      long absStartM = absRowStart + blockRelStart;
+
+      BlockMetaData microBlock = new BlockMetaData();
+      microBlock.setRowCount(rowCountM);
+      microBlock.setOrdinal(blocks.size());
+
+      List<OffsetIndex> microOIList = new ArrayList<>(numColumns);
+      List<ColumnIndex> microCIList = new ArrayList<>(numColumns);
+      long microBlockTotalByteSize = 0;
+
+      for (int c = 0; c < numColumns; c++) {
+        ColumnChunkMetaData sharedCcm = sharedColumns.get(c);
+        OffsetIndex sharedOI = sharedOffsetIndexes.get(c);
+        MicroRowGroupColumnData colDesc = perColumn.get(c);
+
+        OffsetIndexBuilder microOIB = OffsetIndexBuilder.getBuilder();
+        long valueCountSlice = 0;
+        long compressedSlice = 0;
+        int pageCount = sharedOI.getPageCount();
+        for (int p = 0; p < pageCount; p++) {
+          long pageRelStart = sharedOI.getFirstRowIndex(p);
+          long pageRelEnd =
+              (p + 1 < pageCount) ? sharedOI.getFirstRowIndex(p + 1) : totalRows;
+          if (pageRelEnd <= blockRelStart) {
+            continue;
+          }
+          if (pageRelStart >= blockRelEnd) {
+            break;
+          }
+          long absoluteFirstRowIndex = absRowStart + pageRelStart;
+          long pageOffset = sharedOI.getOffset(p);
+          int pageSize = sharedOI.getCompressedPageSize(p);
+          microOIB.add(pageOffset, pageSize, absoluteFirstRowIndex);
+          valueCountSlice += (pageRelEnd - pageRelStart);
+          compressedSlice += pageSize;
+        }
+        OffsetIndex microOI = microOIB.build();
+        microOIList.add(microOI);
+        microCIList.add(null);
+
+        // Distribute uncompressed total proportionally by compressed bytes (a rough
+        // estimate — these fields are informational on the Approach 2 read path).
+        long uncompressedSlice = sharedCcm.getTotalSize() == 0
+            ? 0
+            : Math.round(((double) compressedSlice / sharedCcm.getTotalSize())
+                * sharedCcm.getTotalUncompressedSize());
+
+        ColumnChunkMetaData microCcm = ColumnChunkMetaData.get(
+            sharedCcm.getPath(),
+            sharedCcm.getPrimitiveType(),
+            sharedCcm.getCodec(),
+            sharedCcm.getEncodingStats(),
+            sharedCcm.getEncodings(),
+            Statistics.getBuilderForReading(sharedCcm.getPrimitiveType()).build(),
+            ColumnChunkMetaData.SENTINEL_OFFSET,
+            sharedCcm.getDictionaryPageOffset(),
+            valueCountSlice,
+            compressedSlice,
+            uncompressedSlice,
+            SizeStatistics.newBuilder(
+                    colDesc.descriptor.getPrimitiveType(),
+                    colDesc.descriptor.getMaxRepetitionLevel(),
+                    colDesc.descriptor.getMaxDefinitionLevel())
+                .build(),
+            GeospatialStatistics.newBuilder(colDesc.descriptor.getPrimitiveType())
+                .build());
+        microCcm.setRowGroupOrdinal(microBlock.getOrdinal());
+        microBlock.addColumn(microCcm);
+        microBlockTotalByteSize += uncompressedSlice;
+      }
+      microBlock.setTotalByteSize(microBlockTotalByteSize);
+
+      blocks.add(microBlock);
+      offsetIndexes.add(microOIList);
+      columnIndexes.add(microCIList);
+      bloomFilters.add(new HashMap<>());
+
+      blockRelStart = blockRelEnd;
+    }
+  }
+
+  /**
    * Overwrite the column total statistics. This special used when the column total statistics
    * is known while all the page statistics are invalid, for example when rewriting the column.
    *

@@ -225,12 +225,25 @@ class InternalParquetRecordWriter<T> {
 
       if (recordCount > 0) {
         rowGroupOrdinal++;
-        parquetFileWriter.startBlock(recordCount);
-        columnStore.flush();
-        pageStore.flushToFileWriter(parquetFileWriter);
-        recordCount = 0;
-        parquetFileWriter.endBlock();
-        this.nextRowGroupSize = Math.min(parquetFileWriter.getNextRowGroupSize(), rowGroupSizeThreshold);
+        long microRowGroupRowCount = props.getMicroRowGroupRowCount();
+        if (microRowGroupRowCount > 0 && fileEncryptor == null && recordCount > microRowGroupRowCount) {
+          // Approach 2 path: flush all pages, then write one physical column chunk per
+          // column whose pages are sliced into K logical micro-row-groups, each marked
+          // with data_page_offset == SENTINEL_OFFSET. Encryption short-circuits to the
+          // legacy path because writeMicroRowGroups does not support encrypted columns.
+          columnStore.flush();
+          long[] microRowGroupRowCounts = splitIntoMicroRowGroupCounts(recordCount, microRowGroupRowCount);
+          parquetFileWriter.writeMicroRowGroups(pageStore.drainForMicroRowGroups(), microRowGroupRowCounts);
+          recordCount = 0;
+          this.nextRowGroupSize = Math.min(parquetFileWriter.getNextRowGroupSize(), rowGroupSizeThreshold);
+        } else {
+          parquetFileWriter.startBlock(recordCount);
+          columnStore.flush();
+          pageStore.flushToFileWriter(parquetFileWriter);
+          recordCount = 0;
+          parquetFileWriter.endBlock();
+          this.nextRowGroupSize = Math.min(parquetFileWriter.getNextRowGroupSize(), rowGroupSizeThreshold);
+        }
       }
     } finally {
       AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore);
@@ -238,6 +251,22 @@ class InternalParquetRecordWriter<T> {
       pageStore = null;
       bloomFilterWriteStore = null;
     }
+  }
+
+  /**
+   * Split a total record count into K logical micro-row-group row counts of
+   * approximately {@code target} rows each, with the final entry absorbing the remainder.
+   */
+  private static long[] splitIntoMicroRowGroupCounts(long total, long target) {
+    int k = Math.toIntExact((total + target - 1) / target);
+    long[] counts = new long[k];
+    long remaining = total;
+    for (int i = 0; i < k - 1; i++) {
+      counts[i] = target;
+      remaining -= target;
+    }
+    counts[k - 1] = remaining;
+    return counts;
   }
 
   long getRowGroupSizeThreshold() {

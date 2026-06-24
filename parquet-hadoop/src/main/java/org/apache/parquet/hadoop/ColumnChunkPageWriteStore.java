@@ -426,6 +426,35 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       return buf.size();
     }
 
+    /**
+     * Snapshot this page writer's accumulated state as a {@link MicroRowGroupColumnData}
+     * for the Approach 2 (micro-row-group) writer path. Returns the SAME {@code buf} and
+     * {@code offsetIndexBuilder} references this writer owns — the caller (typically
+     * {@link ParquetFileWriter#writeMicroRowGroups}) will write the buffer to disk once
+     * and reuse the builder; this writer must not be touched again after the drain.
+     *
+     * @throws IllegalStateException if the writer is configured for encrypted output —
+     *     Approach 2 does not support encryption in this prototype.
+     */
+    MicroRowGroupColumnData drainForMicroRowGroups() {
+      if (headerBlockEncryptor != null) {
+        throw new IllegalStateException(
+            "drainForMicroRowGroups (Approach 2) does not support encryption");
+      }
+      return new MicroRowGroupColumnData(
+          path,
+          compressor.getCodecName(),
+          dictionaryPage,
+          buf,
+          uncompressedLength,
+          compressedLength,
+          totalValueCount,
+          offsetIndexBuilder,
+          rlEncodings,
+          dlEncodings,
+          dataEncodings);
+    }
+
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       if (null == headerBlockEncryptor) {
         writer.writeColumnChunk(
@@ -699,5 +728,21 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       ColumnChunkPageWriter pageWriter = writers.get(path);
       pageWriter.writeToFileWriter(writer);
     }
+  }
+
+  /**
+   * Snapshot every column's accumulated pages as {@link MicroRowGroupColumnData} entries
+   * (in {@link #schema} column order) for the Approach 2 (micro-row-group) writer path.
+   * After this call, the underlying page writers must not be used to write any more pages;
+   * the typical caller closes this store immediately afterwards.
+   *
+   * @throws IllegalStateException if any column writer was configured for encrypted output
+   */
+  List<MicroRowGroupColumnData> drainForMicroRowGroups() {
+    List<MicroRowGroupColumnData> result = new ArrayList<>(schema.getColumns().size());
+    for (ColumnDescriptor path : schema.getColumns()) {
+      result.add(writers.get(path).drainForMicroRowGroups());
+    }
+    return result;
   }
 }

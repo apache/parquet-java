@@ -161,6 +161,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
+  /**
+   * Approach 2 (micro-row-group) writer knob: target row count per logical
+   * {@code BlockMetaData} when emitting K logical blocks per physical column chunk.
+   * A value of {@code 0} (the default) selects the legacy single-block-per-flush path.
+   * See {@link org.apache.parquet.column.ParquetProperties#getMicroRowGroupRowCount()}.
+   */
+  public static final String MICRO_ROW_GROUP_ROW_COUNT = "parquet.writer.micro-row-group.row-count";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
 
@@ -408,6 +415,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     conf.setBoolean(PAGE_WRITE_CHECKSUM_ENABLED, val);
   }
 
+  public static void setMicroRowGroupRowCount(JobContext jobContext, long rowCount) {
+    setMicroRowGroupRowCount(getConfiguration(jobContext), rowCount);
+  }
+
+  public static void setMicroRowGroupRowCount(Configuration conf, long rowCount) {
+    conf.setLong(MICRO_ROW_GROUP_ROW_COUNT, rowCount);
+  }
+
+  static long getMicroRowGroupRowCount(Configuration conf) {
+    return conf.getLong(MICRO_ROW_GROUP_ROW_COUNT, ParquetProperties.DEFAULT_MICRO_ROW_GROUP_ROW_COUNT);
+  }
+
   public static boolean getPageWriteChecksumEnabled(Configuration conf) {
     return conf.getBoolean(PAGE_WRITE_CHECKSUM_ENABLED, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
@@ -526,7 +545,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .withStatisticsEnabled(getStatisticsEnabled(conf));
+        .withStatisticsEnabled(getStatisticsEnabled(conf))
+        .withMicroRowGroupRowCount(getMicroRowGroupRowCount(conf));
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
