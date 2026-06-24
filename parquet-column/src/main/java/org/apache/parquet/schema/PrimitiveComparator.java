@@ -295,7 +295,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   };
 
-  /*
+  /**
    * Comparator for two timestamps encoded as INT96 (12-byte little-endian) binary.
    * Layout: first 8 bytes = nanoseconds within the day, last 4 bytes = Julian day.
    *
