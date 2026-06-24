@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.statistics;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -51,7 +52,9 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
@@ -60,6 +63,10 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 public class TestIeee754TotalOrderE2E {
+
+  private static final Binary FLOAT16_NAN_A = Binary.fromConstantByteArray(new byte[] {0x01, 0x7e});
+  private static final Binary FLOAT16_NAN_B = Binary.fromConstantByteArray(new byte[] {0x02, 0x7e});
+  private static final Binary FLOAT16_ONE = Binary.fromConstantByteArray(new byte[] {0x00, 0x3c});
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
@@ -85,6 +92,34 @@ public class TestIeee754TotalOrderE2E {
       .named("double_col")
       .named("msg");
 
+  private static final MessageType FLOAT16_SCHEMA = Types.buildMessage()
+      .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+      .length(LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES)
+      .as(LogicalTypeAnnotation.float16Type())
+      .columnOrder(ColumnOrder.ieee754TotalOrder())
+      .named("float16_col")
+      .named("msg");
+
+  private static final MessageType TYPE_DEFINED_FLOAT_SCHEMA = Types.buildMessage()
+      .required(PrimitiveTypeName.FLOAT)
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("float_col")
+      .named("msg");
+
+  private static final MessageType TYPE_DEFINED_DOUBLE_SCHEMA = Types.buildMessage()
+      .required(PrimitiveTypeName.DOUBLE)
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("double_col")
+      .named("msg");
+
+  private static final MessageType TYPE_DEFINED_FLOAT16_SCHEMA = Types.buildMessage()
+      .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+      .length(LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES)
+      .as(LogicalTypeAnnotation.float16Type())
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("float16_col")
+      .named("msg");
+
   private Path newTempPath() throws IOException {
     File file = temp.newFile();
     Preconditions.checkArgument(file.delete(), "Could not remove temp file");
@@ -92,12 +127,16 @@ public class TestIeee754TotalOrderE2E {
   }
 
   private Path writeFloatFile(float... values) throws IOException {
+    return writeFloatFile(FLOAT_SCHEMA, values);
+  }
+
+  private Path writeFloatFile(MessageType schema, float... values) throws IOException {
     Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withType(FLOAT_SCHEMA)
+        .withType(schema)
         .withDictionaryEncoding(false)
         .build()) {
-      GroupFactory factory = new SimpleGroupFactory(FLOAT_SCHEMA);
+      GroupFactory factory = new SimpleGroupFactory(schema);
       for (float v : values) {
         writer.write(factory.newGroup().append("float_col", v));
       }
@@ -106,14 +145,32 @@ public class TestIeee754TotalOrderE2E {
   }
 
   private Path writeDoubleFile(double... values) throws IOException {
+    return writeDoubleFile(DOUBLE_SCHEMA, values);
+  }
+
+  private Path writeDoubleFile(MessageType schema, double... values) throws IOException {
     Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withType(DOUBLE_SCHEMA)
+        .withType(schema)
         .withDictionaryEncoding(false)
         .build()) {
-      GroupFactory factory = new SimpleGroupFactory(DOUBLE_SCHEMA);
+      GroupFactory factory = new SimpleGroupFactory(schema);
       for (double v : values) {
         writer.write(factory.newGroup().append("double_col", v));
+      }
+    }
+    return path;
+  }
+
+  private Path writeFloat16File(MessageType schema, Binary... values) throws IOException {
+    Path path = newTempPath();
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withDictionaryEncoding(false)
+        .build()) {
+      GroupFactory factory = new SimpleGroupFactory(schema);
+      for (Binary v : values) {
+        writer.write(factory.newGroup().append("float16_col", v));
       }
     }
     return path;
@@ -207,6 +264,23 @@ public class TestIeee754TotalOrderE2E {
     return result;
   }
 
+  private List<Binary> readFloat16ValuesWithRecordFilter(Path path, FilterCompat.Filter filter) throws IOException {
+    List<Binary> result = new ArrayList<>();
+    ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), path)
+        .useBloomFilter(false)
+        .useDictionaryFilter(false)
+        .useStatsFilter(false)
+        .useColumnIndexFilter(false)
+        .withFilter(filter);
+    try (ParquetReader<Group> reader = builder.build()) {
+      Group group;
+      while ((group = reader.read()) != null) {
+        result.add(group.getBinary("float16_col", 0));
+      }
+    }
+    return result;
+  }
+
   private static void assertFloatBits(List<Float> values, int... expectedBits) {
     assertEquals(expectedBits.length, values.size());
     for (int i = 0; i < expectedBits.length; i++) {
@@ -218,6 +292,13 @@ public class TestIeee754TotalOrderE2E {
     assertEquals(expectedBits.length, values.size());
     for (int i = 0; i < expectedBits.length; i++) {
       assertEquals(expectedBits[i], Double.doubleToRawLongBits(values.get(i)));
+    }
+  }
+
+  private static void assertFloat16Bits(List<Binary> values, int... expectedBits) {
+    assertEquals(expectedBits.length, values.size());
+    for (int i = 0; i < expectedBits.length; i++) {
+      assertEquals(expectedBits[i], values.get(i).get2BytesLittleEndian());
     }
   }
 
@@ -331,34 +412,93 @@ public class TestIeee754TotalOrderE2E {
   }
 
   @Test
-  public void testRecordLevelFloatFiltersDistinguishSignedNaNValues() throws IOException {
-    float negativeNaN = Float.intBitsToFloat(0xffc00001);
-    float positiveNaN = Float.intBitsToFloat(0x7fc00001);
-    Path path = writeFloatFile(negativeNaN, positiveNaN, 1.0f);
+  public void testRecordLevelFloatFiltersDistinguishNaNRawBitsWithIeee754TotalOrder() throws IOException {
+    float nanA = Float.intBitsToFloat(0x7fc00001);
+    float nanB = Float.intBitsToFloat(0x7fc00002);
+    Path path = writeFloatFile(nanA, nanB, 1.0f);
 
     assertFloatBits(
-        readFloatValuesWithRecordFilter(path, FilterCompat.get(eq(floatColumn("float_col"), negativeNaN))),
-        0xffc00001);
+        readFloatValuesWithRecordFilter(path, FilterCompat.get(eq(floatColumn("float_col"), nanA))),
+        0x7fc00001);
     assertFloatBits(
-        readFloatValuesWithRecordFilter(path, FilterCompat.get(notEq(floatColumn("float_col"), negativeNaN))),
-        0x7fc00001,
+        readFloatValuesWithRecordFilter(path, FilterCompat.get(notEq(floatColumn("float_col"), nanA))),
+        0x7fc00002,
         Float.floatToRawIntBits(1.0f));
   }
 
   @Test
-  public void testRecordLevelDoubleFiltersDistinguishSignedNaNValues() throws IOException {
-    double negativeNaN = Double.longBitsToDouble(0xfff8000000000001L);
-    double positiveNaN = Double.longBitsToDouble(0x7ff8000000000001L);
-    Path path = writeDoubleFile(negativeNaN, positiveNaN, 1.0);
+  public void testRecordLevelDoubleFiltersDistinguishNaNRawBitsWithIeee754TotalOrder() throws IOException {
+    double nanA = Double.longBitsToDouble(0x7ff8000000000001L);
+    double nanB = Double.longBitsToDouble(0x7ff8000000000002L);
+    Path path = writeDoubleFile(nanA, nanB, 1.0);
 
     assertDoubleBits(
-        readDoubleValuesWithRecordFilter(path, FilterCompat.get(eq(doubleColumn("double_col"), negativeNaN))),
-        0xfff8000000000001L);
+        readDoubleValuesWithRecordFilter(path, FilterCompat.get(eq(doubleColumn("double_col"), nanA))),
+        0x7ff8000000000001L);
     assertDoubleBits(
-        readDoubleValuesWithRecordFilter(
-            path, FilterCompat.get(notEq(doubleColumn("double_col"), negativeNaN))),
-        0x7ff8000000000001L,
+        readDoubleValuesWithRecordFilter(path, FilterCompat.get(notEq(doubleColumn("double_col"), nanA))),
+        0x7ff8000000000002L,
         Double.doubleToRawLongBits(1.0));
+  }
+
+  @Test
+  public void testRecordLevelFloat16FiltersDistinguishNaNRawBitsWithIeee754TotalOrder() throws IOException {
+    Path path = writeFloat16File(FLOAT16_SCHEMA, FLOAT16_NAN_A, FLOAT16_NAN_B, FLOAT16_ONE);
+
+    assertFloat16Bits(
+        readFloat16ValuesWithRecordFilter(
+            path, FilterCompat.get(eq(binaryColumn("float16_col"), FLOAT16_NAN_A))),
+        0x7e01);
+    assertFloat16Bits(
+        readFloat16ValuesWithRecordFilter(
+            path, FilterCompat.get(notEq(binaryColumn("float16_col"), FLOAT16_NAN_A))),
+        0x7e02,
+        0x3c00);
+  }
+
+  @Test
+  public void testRecordLevelFloatFiltersTreatNaNsEqualWithTypeDefinedOrder() throws IOException {
+    float nanA = Float.intBitsToFloat(0x7fc00001);
+    float nanB = Float.intBitsToFloat(0x7fc00002);
+    Path path = writeFloatFile(TYPE_DEFINED_FLOAT_SCHEMA, nanA, nanB, 1.0f);
+
+    assertFloatBits(
+        readFloatValuesWithRecordFilter(path, FilterCompat.get(eq(floatColumn("float_col"), nanA))),
+        0x7fc00001,
+        0x7fc00002);
+    assertFloatBits(
+        readFloatValuesWithRecordFilter(path, FilterCompat.get(notEq(floatColumn("float_col"), nanA))),
+        Float.floatToRawIntBits(1.0f));
+  }
+
+  @Test
+  public void testRecordLevelDoubleFiltersTreatNaNsEqualWithTypeDefinedOrder() throws IOException {
+    double nanA = Double.longBitsToDouble(0x7ff8000000000001L);
+    double nanB = Double.longBitsToDouble(0x7ff8000000000002L);
+    Path path = writeDoubleFile(TYPE_DEFINED_DOUBLE_SCHEMA, nanA, nanB, 1.0);
+
+    assertDoubleBits(
+        readDoubleValuesWithRecordFilter(path, FilterCompat.get(eq(doubleColumn("double_col"), nanA))),
+        0x7ff8000000000001L,
+        0x7ff8000000000002L);
+    assertDoubleBits(
+        readDoubleValuesWithRecordFilter(path, FilterCompat.get(notEq(doubleColumn("double_col"), nanA))),
+        Double.doubleToRawLongBits(1.0));
+  }
+
+  @Test
+  public void testRecordLevelFloat16FiltersTreatNaNsEqualWithTypeDefinedOrder() throws IOException {
+    Path path = writeFloat16File(TYPE_DEFINED_FLOAT16_SCHEMA, FLOAT16_NAN_A, FLOAT16_NAN_B, FLOAT16_ONE);
+
+    assertFloat16Bits(
+        readFloat16ValuesWithRecordFilter(
+            path, FilterCompat.get(eq(binaryColumn("float16_col"), FLOAT16_NAN_A))),
+        0x7e01,
+        0x7e02);
+    assertFloat16Bits(
+        readFloat16ValuesWithRecordFilter(
+            path, FilterCompat.get(notEq(binaryColumn("float16_col"), FLOAT16_NAN_A))),
+        0x3c00);
   }
 
   @Test

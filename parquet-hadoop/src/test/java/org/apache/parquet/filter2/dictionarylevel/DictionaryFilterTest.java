@@ -61,9 +61,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.FixedBinaryTestUtils;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -82,9 +84,15 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -101,6 +109,12 @@ public class DictionaryFilterTest {
   private static final Configuration conf = new Configuration();
   private static final Path FILE_V1 = new Path("target/test/TestDictionaryFilter/testParquetFileV1.parquet");
   private static final Path FILE_V2 = new Path("target/test/TestDictionaryFilter/testParquetFileV2.parquet");
+  private static final double DOUBLE_NAN_A = Double.longBitsToDouble(0x7ff8000000000001L);
+  private static final double DOUBLE_NAN_B = Double.longBitsToDouble(0x7ff8000000000002L);
+  private static final float FLOAT_NAN_A = Float.intBitsToFloat(0x7fc00001);
+  private static final float FLOAT_NAN_B = Float.intBitsToFloat(0x7fc00002);
+  private static final Binary FLOAT16_NAN_A = Binary.fromConstantByteArray(new byte[] {0x01, 0x7e});
+  private static final Binary FLOAT16_NAN_B = Binary.fromConstantByteArray(new byte[] {0x02, 0x7e});
   private static final MessageType schema = parseMessageType("message test { "
       + "required binary binary_field; "
       + "required binary single_value_field; "
@@ -116,7 +130,6 @@ public class DictionaryFilterTest {
       + "required int96 int96_field; "
       + "repeated binary repeated_binary_field;"
       + "} ");
-
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
   private static final int[] intValues = new int[] {
     -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
@@ -507,6 +520,99 @@ public class DictionaryFilterTest {
 
     assertFalse(
         "Should not drop: contains matching values", canDrop(gtEq(d, Double.MIN_VALUE), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testNaNDictionaryFilterIsConservative() throws Exception {
+    List<ColumnChunkMetaData> nanColumns = nanColumns();
+    DictionaryPageReadStore nanDictionaries = nanDictionaries();
+    DoubleColumn doubleColumn = doubleColumn("double_nan_field");
+    FloatColumn floatColumn = floatColumn("float_nan_field");
+    BinaryColumn float16Column = binaryColumn("float16_nan_field");
+
+    assertFalse(canDrop(eq(doubleColumn, DOUBLE_NAN_A), nanColumns, nanDictionaries));
+    assertFalse(canDrop(eq(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notEq(doubleColumn, DOUBLE_NAN_A), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notEq(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(lt(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(gt(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
+
+    assertFalse(canDrop(eq(floatColumn, FLOAT_NAN_A), nanColumns, nanDictionaries));
+    assertFalse(canDrop(eq(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notEq(floatColumn, FLOAT_NAN_A), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notEq(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(lt(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(gt(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
+
+    Set<Double> doubleSet = new HashSet<>();
+    doubleSet.add(DOUBLE_NAN_B);
+    assertFalse(canDrop(in(doubleColumn, doubleSet), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notIn(doubleColumn, doubleSet), nanColumns, nanDictionaries));
+
+    Set<Float> floatSet = new HashSet<>();
+    floatSet.add(FLOAT_NAN_B);
+    assertFalse(canDrop(in(floatColumn, floatSet), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notIn(floatColumn, floatSet), nanColumns, nanDictionaries));
+
+    Set<Binary> float16Set = new HashSet<>();
+    float16Set.add(FLOAT16_NAN_B);
+    assertFalse(canDrop(in(float16Column, float16Set), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notIn(float16Column, float16Set), nanColumns, nanDictionaries));
+
+    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN_A), nanColumns, nanDictionaries));
+    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN_A), nanColumns, nanDictionaries));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
+  }
+
+  private static List<ColumnChunkMetaData> nanColumns() {
+    return List.of(
+        nanColumn(
+            "double_nan_field",
+            Types.required(PrimitiveTypeName.DOUBLE).named("double_nan_field")),
+        nanColumn(
+            "float_nan_field",
+            Types.required(PrimitiveTypeName.FLOAT).named("float_nan_field")),
+        nanColumn(
+            "float16_nan_field",
+            Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+                .length(2)
+                .as(LogicalTypeAnnotation.float16Type())
+                .named("float16_nan_field")));
+  }
+
+  private static ColumnChunkMetaData nanColumn(String name, PrimitiveType type) {
+    EncodingStats encodingStats = new EncodingStats.Builder()
+        .addDictEncoding(Encoding.PLAIN)
+        .addDataEncoding(Encoding.RLE_DICTIONARY)
+        .build();
+    org.apache.parquet.column.statistics.Statistics<?> stats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type)
+            .build();
+    stats.setNumNulls(0);
+    return ColumnChunkMetaData.get(
+        ColumnPath.get(name),
+        type,
+        CompressionCodecName.UNCOMPRESSED,
+        encodingStats,
+        new HashSet<>(List.of(Encoding.PLAIN, Encoding.RLE_DICTIONARY)),
+        stats,
+        0L,
+        0L,
+        1L,
+        0L,
+        0L);
+  }
+
+  private static DictionaryPageReadStore nanDictionaries() {
+    return new DictionaryPageReadStore() {
+      @Override
+      public DictionaryPage readDictionaryPage(ColumnDescriptor descriptor) {
+        throw new AssertionError("NaN literals should not read dictionary pages");
+      }
+    };
   }
 
   @Test
