@@ -420,6 +420,7 @@ public class VariantBuilder {
    * @param bytes a 16-byte value.
    */
   void appendUUIDBytes(ByteBuffer bytes) {
+    onAppend();
     checkCapacity(1 + VariantUtil.UUID_SIZE);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
     if (bytes.remaining() < VariantUtil.UUID_SIZE) {

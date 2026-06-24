@@ -19,6 +19,8 @@
 package org.apache.parquet.variant;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -27,6 +29,29 @@ import org.slf4j.LoggerFactory;
 
 public class TestVariantObjectBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TestVariantObjectBuilder.class);
+
+  @Test
+  public void testObjectBuilderWithUUIDBytes() {
+    byte[] uuid = new byte[] {0, 17, 34, 51, 68, 85, 102, 119, -120, -103, -86, -69, -52, -35, -18, -1};
+    long msb = ByteBuffer.wrap(uuid, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    long lsb = ByteBuffer.wrap(uuid, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    UUID expected = new UUID(msb, lsb);
+
+    VariantBuilder builder = new VariantBuilder();
+    VariantObjectBuilder object = builder.startObject();
+    object.appendKey("id");
+    // appendUUIDBytes must go through onAppend() so that numValues stays in sync with the
+    // appended keys. Otherwise endObject() throws because keys (1) != values (0).
+    object.appendUUIDBytes(ByteBuffer.wrap(uuid));
+    builder.endObject();
+
+    VariantTestUtil.testVariant(builder.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.numObjectElements());
+      VariantTestUtil.checkType(v.getFieldByKey("id"), VariantUtil.PRIMITIVE, Variant.Type.UUID);
+      Assert.assertEquals(expected, v.getFieldByKey("id").getUUID());
+    });
+  }
 
   @Test
   public void testEmptyObjectBuilder() {
