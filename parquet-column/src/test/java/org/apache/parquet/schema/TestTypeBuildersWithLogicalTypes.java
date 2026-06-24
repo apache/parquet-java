@@ -528,6 +528,81 @@ public class TestTypeBuildersWithLogicalTypes {
     assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion());
   }
 
+  @Test
+  public void testFileLogicalTypePathOnly() {
+    String name = "file_field";
+    GroupType file = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.fileType(),
+        Types.required(BINARY).as(LogicalTypeAnnotation.stringType()).named("path"));
+
+    assertEquals(
+        "required group file_field (FILE) {\n"
+            + "  required binary path (STRING);\n"
+            + "}",
+        file.toString());
+
+    LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
+    assertEquals(LogicalTypeAnnotation.LogicalTypeToken.FILE, annotation.getType());
+    assertNull(annotation.toOriginalType());
+    assertTrue(annotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+  }
+
+  @Test
+  public void testFileLogicalTypeAllFields() {
+    String name = "file_field";
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .required(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(INT64).named("size")
+        .optional(INT64).named("offset")
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("etag")
+        .named(name);
+
+    LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
+    assertTrue(annotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(4, file.getFieldCount());
+    assertEquals("path", file.getType("path").getName());
+    assertEquals("size", file.getType("size").getName());
+    assertEquals("offset", file.getType("offset").getName());
+    assertEquals("etag", file.getType("etag").getName());
+  }
+
+  @Test
+  public void testFileLogicalTypeRequiresPathField() {
+    assertThrows(
+        "FILE type group must contain required field 'path'",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64).named("size")
+            .named("missing_path"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsUnrecognizedField() {
+    assertThrows(
+        "FILE type group must not contain unrecognized field names",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .required(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .optional(BINARY).named("unknown_field")
+            .named("file_with_bad_field"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRequiresRequiredPathField() {
+    assertThrows(
+        "FILE type field 'path' must be REQUIRED",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .named("file_with_optional_path"));
+  }
+
   /**
    * A convenience method to avoid a large number of @Test(expected=...) tests
    *

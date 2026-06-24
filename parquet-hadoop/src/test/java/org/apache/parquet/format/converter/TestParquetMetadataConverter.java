@@ -1978,4 +1978,52 @@ public class TestParquetMetadataConverter {
     assertNull(ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(null));
     assertNull(ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
+
+  @Test
+  public void testFileLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    MessageType expected = Types.buildMessage()
+        .requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("path")
+        .optional(PrimitiveTypeName.INT64)
+        .named("size")
+        .optional(PrimitiveTypeName.INT64)
+        .named("offset")
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("etag")
+        .named("f")
+        .named("example");
+
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
+    LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
+    assertTrue(logicalType instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(LogicalTypeAnnotation.fileType(), logicalType);
+  }
+
+  @Test
+  public void testFileLogicalTypeRoundTripPathOnly() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    MessageType expected = Types.buildMessage()
+        .requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("path")
+        .named("f")
+        .named("example");
+
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
+    LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
+    assertTrue(logicalType instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+  }
 }
