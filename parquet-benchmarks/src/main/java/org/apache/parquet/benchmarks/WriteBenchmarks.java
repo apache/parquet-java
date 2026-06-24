@@ -33,9 +33,11 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS8M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS4M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS8M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_LZO;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_SNAPPY;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.openjdk.jmh.annotations.Scope.Thread;
@@ -128,20 +130,19 @@ public class WriteBenchmarks {
         ONE_MILLION);
   }
 
-  // TODO how to handle lzo jar?
-  //  @Benchmark
-  //  public void write1MRowsDefaultBlockAndPageSizeLZO()
-  //          throws IOException
-  //  {
-  //    dataGenerator.generateData(parquetFile_1M_LZO,
-  //            configuration,
-  //            WriterVersion.PARQUET_2_0,
-  //            BLOCK_SIZE_DEFAULT,
-  //            PAGE_SIZE_DEFAULT,
-  //            FIXED_LEN_BYTEARRAY_SIZE,
-  //            LZO,
-  //            ONE_MILLION);
-  //  }
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
+  public void write1MRowsDefaultBlockAndPageSizeLZO() throws IOException {
+    dataGenerator.generateData(
+        file_1M_LZO,
+        configuration,
+        PARQUET_2_0,
+        BLOCK_SIZE_DEFAULT,
+        PAGE_SIZE_DEFAULT,
+        FIXED_LEN_BYTEARRAY_SIZE,
+        LZO,
+        ONE_MILLION);
+  }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)

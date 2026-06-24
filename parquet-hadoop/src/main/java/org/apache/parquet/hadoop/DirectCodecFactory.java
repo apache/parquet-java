@@ -103,8 +103,14 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyCompressor();
       case ZSTD:
         return new ZstdCompressor();
-        // todo: create class similar to the SnappyCompressor for zlib and exclude it as
-        // snappy is above since it also generates allocateDirect calls.
+      case LZ4_RAW:
+        return new Lz4RawCompressor();
+      case BROTLI:
+        if (Brotli4j.AVAILABLE) {
+          return new BrotliDirectCompressor();
+        }
+        return super.createCompressor(codecName);
+      case LZO:
       default:
         return super.createCompressor(codecName);
     }
@@ -117,6 +123,17 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyDecompressor();
       case ZSTD:
         return new ZstdDecompressor();
+      case LZ4_RAW:
+        return new Lz4RawDecompressor();
+      case BROTLI:
+        if (Brotli4j.AVAILABLE) {
+          return new BrotliDirectDecompressor();
+        }
+        // fall through to super (which also checks Brotli4j, then Hadoop codec)
+      case GZIP:
+      case LZO:
+      case UNCOMPRESSED:
+        return super.createDecompressor(codecName);
       default:
         CompressionCodec codec = getCodec(codecName);
         if (codec == null) {
@@ -405,6 +422,26 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  /**
+   * Direct-memory LZ4_RAW decompressor using airlift's LZ4 decompressor with
+   * direct ByteBuffers, avoiding reflection-based {@link FullDirectDecompressor}.
+   */
+  private class Lz4RawDecompressor extends BaseDecompressor {
+    private final io.airlift.compress.lz4.Lz4Decompressor decompressor =
+        new io.airlift.compress.lz4.Lz4Decompressor();
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) {
+      decompressor.decompress(input, output);
+      return output.position();
+    }
+
+    @Override
+    void closeDecompressor() {
+      // no-op
+    }
+  }
+
   private class ZstdCompressor extends BaseCompressor {
     private final ZstdCompressCtx context;
 
@@ -434,6 +471,95 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     @Override
     void closeCompressor() {
       context.close();
+    }
+  }
+
+  /**
+   * Direct-memory LZ4_RAW compressor using airlift's LZ4 compressor with
+   * direct ByteBuffers, avoiding the stream-based heap path.
+   */
+  private class Lz4RawCompressor extends BaseCompressor {
+    private final io.airlift.compress.lz4.Lz4Compressor compressor = new io.airlift.compress.lz4.Lz4Compressor();
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.LZ4_RAW;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      return compressor.maxCompressedLength(size);
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) {
+      compressor.compress(input, output);
+      return output.position();
+    }
+
+    @Override
+    void closeCompressor() {
+      // no-op
+    }
+  }
+
+  /**
+   * Direct-memory Brotli decompressor using brotli4j via reflection.
+   * brotli4j only exposes a byte-array API, so input/output are copied through heap arrays.
+   * Brotli is slow enough that the copy overhead is negligible.
+   */
+  private class BrotliDirectDecompressor extends BaseDecompressor {
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) throws IOException {
+      byte[] compressedBytes = new byte[input.remaining()];
+      input.get(compressedBytes);
+      byte[] decompressed = Brotli4j.decompress(compressedBytes);
+      output.put(decompressed);
+      return decompressed.length;
+    }
+
+    @Override
+    void closeDecompressor() {
+      // no-op
+    }
+  }
+
+  /**
+   * Direct-memory Brotli compressor using brotli4j via reflection.
+   * Uses quality=1 by default (fast compression, matching the old jbrotli default).
+   * brotli4j only exposes a byte-array API, so input/output are copied through heap arrays.
+   */
+  private class BrotliDirectCompressor extends BaseCompressor {
+    private final Object params;
+
+    BrotliDirectCompressor() {
+      this.params = Brotli4j.newParams(1);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.BROTLI;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      // Brotli worst case: input size + (input size >> 2) + 1K overhead for small inputs
+      return size + (size >> 2) + 1024;
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) throws IOException {
+      byte[] inputBytes = new byte[input.remaining()];
+      input.get(inputBytes);
+      byte[] compressed = Brotli4j.compress(inputBytes, params);
+      output.put(compressed);
+      return compressed.length;
+    }
+
+    @Override
+    void closeCompressor() {
+      // no-op
     }
   }
 

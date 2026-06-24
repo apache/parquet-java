@@ -35,12 +35,14 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS8M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS4M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS8M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_LZO;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_SNAPPY;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.targetDir;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
@@ -111,8 +113,15 @@ public class DataGenerator {
           ONE_MILLION);
 
       // generate data for different codecs
-      //      generateData(parquetFile_1M_LZO, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
-      // FIXED_LEN_BYTEARRAY_SIZE, LZO, ONE_MILLION);
+      generateData(
+          file_1M_LZO,
+          configuration,
+          PARQUET_2_0,
+          BLOCK_SIZE_DEFAULT,
+          PAGE_SIZE_DEFAULT,
+          FIXED_LEN_BYTEARRAY_SIZE,
+          LZO,
+          ONE_MILLION);
       generateData(
           file_1M_SNAPPY,
           configuration,
