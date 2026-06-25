@@ -135,19 +135,19 @@ public class CompressionConverterTest {
   }
 
   private void validateColumns(String file, int numRecord, TestDocs testDocs) throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file))
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file))
         .withConf(conf)
-        .build();
-    for (int i = 0; i < numRecord; i++) {
-      Group group = reader.read();
-      assertTrue(group.getLong("DocId", 0) == testDocs.docId[i]);
-      assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
-      assertArrayEquals(group.getBinary("Gender", 0).getBytes(), testDocs.gender[i].getBytes());
-      Group subGroup = group.getGroup("Links", 0);
-      assertArrayEquals(subGroup.getBinary("Backward", 0).getBytes(), testDocs.linkBackward[i].getBytes());
-      assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
+        .build()) {
+      for (int i = 0; i < numRecord; i++) {
+        Group group = reader.read();
+        assertTrue(group.getLong("DocId", 0) == testDocs.docId[i]);
+        assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
+        assertArrayEquals(group.getBinary("Gender", 0).getBytes(), testDocs.gender[i].getBytes());
+        Group subGroup = group.getGroup("Links", 0);
+        assertArrayEquals(subGroup.getBinary("Backward", 0).getBytes(), testDocs.linkBackward[i].getBytes());
+        assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
+      }
     }
-    reader.close();
   }
 
   private void validMeta(String inputFile, String outFile) throws Exception {
