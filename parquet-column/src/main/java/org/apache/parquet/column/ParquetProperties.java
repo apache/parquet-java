@@ -66,6 +66,7 @@ public class ParquetProperties {
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
+  public static final boolean DEFAULT_DELTA_LENGTH_BYTE_ARRAY_FOR_BINARY = true;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -132,6 +133,7 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
+  private final boolean deltaLengthByteArrayForBinary;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
@@ -164,6 +166,7 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
+    this.deltaLengthByteArrayForBinary = builder.deltaLengthByteArrayForBinary;
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
@@ -348,6 +351,10 @@ public class ParquetProperties {
     return numBloomFilterCandidates.getValue(column);
   }
 
+  public boolean isDeltaLengthByteArrayForBinaryEnabled() {
+    return deltaLengthByteArrayForBinary;
+  }
+
   public Map<String, String> getExtraMetaData() {
     return extraMetaData;
   }
@@ -416,6 +423,7 @@ public class ParquetProperties {
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
+    private boolean deltaLengthByteArrayForBinary = DEFAULT_DELTA_LENGTH_BYTE_ARRAY_FOR_BINARY;
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
@@ -457,6 +465,7 @@ public class ParquetProperties {
       this.numBloomFilterCandidates = ColumnProperty.builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
+      this.deltaLengthByteArrayForBinary = toCopy.deltaLengthByteArrayForBinary;
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
@@ -531,6 +540,18 @@ public class ParquetProperties {
     public Builder withExtendedByteStreamSplitEncoding(boolean enable) {
       this.byteStreamSplitEnabled.withDefaultValue(
           enable ? ByteStreamSplitMode.EXTENDED : ByteStreamSplitMode.NONE);
+      return this;
+    }
+
+    /**
+     * Enable or disable DELTA_LENGTH_BYTE_ARRAY encoding as the fallback for BINARY columns in
+     * PARQUET_1_0 writer version. When disabled, PLAIN encoding is used as the fallback instead.
+     *
+     * @param enable whether DELTA_LENGTH_BYTE_ARRAY encoding should be used for binary
+     * @return this builder for method chaining.
+     */
+    public Builder withDeltaLengthByteArrayForBinary(boolean enable) {
+      this.deltaLengthByteArrayForBinary = enable;
       return this;
     }
 
