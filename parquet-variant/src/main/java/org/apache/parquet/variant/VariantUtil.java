@@ -950,7 +950,7 @@ class VariantUtil {
     int offsetSize = (typeInfo & 0x3) + 1;
     int sizeBytes = largeSize ? U32_SIZE : 1;
     Preconditions.checkArgument(1L + sizeBytes <= length, "variant container header truncated");
-    int numElements = readUnsigned(valueBuffer, pos + 1, sizeBytes);
+    int numElements = readUnsignedLittleEndian(valueBuffer, pos + 1, sizeBytes);
     long idStart = 1L + sizeBytes;
     long idBytes = isObject ? (long) numElements * idSize : 0L;
     long offsetStart = idStart + idBytes;
@@ -961,7 +961,7 @@ class VariantUtil {
     long dataLen = length - dataStart;
     if (isObject) {
       for (int i = 0; i < numElements; i++) {
-        int id = readUnsigned(valueBuffer, pos + (int) idStart + i * idSize, idSize);
+        int id = readUnsignedLittleEndian(valueBuffer, pos + (int) idStart + i * idSize, idSize);
         Preconditions.checkArgument(
             id < dictSize, "variant object key id %s out of range (dictSize=%s)", id, dictSize);
       }
@@ -970,7 +970,7 @@ class VariantUtil {
     // the trailing terminator offset is range-checked for the same reason.
     for (int i = 0; i <= numElements; i++) {
       // O(elements)
-      int off = readUnsigned(valueBuffer, pos + (int) offsetStart + i * offsetSize, offsetSize);
+      int off = readUnsignedLittleEndian(valueBuffer, pos + (int) offsetStart + i * offsetSize, offsetSize);
       Preconditions.checkArgument(
           off <= dataLen, "variant child offset out of range: %s (data length %s)", off, dataLen);
     }

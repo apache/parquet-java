@@ -72,9 +72,8 @@ public final class Variant {
   static final int BINARY_SEARCH_THRESHOLD = 32;
 
   /**
-   * Create a Variant from a tuple of (value, metadata) byte arrays..
-   * Includes validation of version and a validation of the toplevel
-   * structure.
+   * Create a Variant from a tuple of (value, metadata) byte arrays.
+   * Includes validation of the version and the top-level structure.
    * @param value value buffer
    * @param metadata metadata buffer
    * @throws UnsupportedOperationException if there is a version mismatch
@@ -87,8 +86,7 @@ public final class Variant {
   /**
    * Create a Variant from a subset of the (value, metadata) buffers
    * supplied.
-   * Includes validation of version and a validation of the toplevel
-   * structure.
+   * Includes validation of the version and the toplevel structure.
    * @param value value buffer
    * @param valuePos offset where the value data begins
    * @param valueLength length of value data
@@ -108,8 +106,7 @@ public final class Variant {
 
   /**
    * Create a Variant from a tuple of (value, metadata) buffers.
-   * Includes validation of version and a validation of the toplevel
-   * structure.
+   * Includes validation of the version and the toplevel structure.
    * @param value value buffer
    * @param metadata metadata buffer
    * @throws UnsupportedOperationException if there is a version mismatch
@@ -119,6 +116,8 @@ public final class Variant {
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.depth = 0;
+    // A metadata buffer must contain at least the version byte
+    Preconditions.checkArgument(this.metadata.remaining() >= 1, "variant metadata is empty");
     // There is currently only one allowed version.
     if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
       throw new UnsupportedOperationException(String.format(
@@ -129,18 +128,14 @@ public final class Variant {
     // Pre-compute dictionary size for lazy metadata cache allocation.
     int pos = this.metadata.position();
     int metaOffsetSize = ((this.metadata.get(pos) >> 6) & 0x3) + 1;
-    if (this.metadata.remaining() > 1) {
-      Preconditions.checkArgument(
-          this.metadata.remaining() >= 1 + metaOffsetSize,
-          "variant metadata truncated: offsetSize=" + metaOffsetSize);
-      this.dictSize = VariantUtil.readUnsignedLittleEndian(this.metadata, pos + 1, metaOffsetSize);
-      long dictTableEnd = 1L + metaOffsetSize + ((long) this.dictSize + 1) * metaOffsetSize;
-      Preconditions.checkArgument(
-          dictTableEnd <= this.metadata.remaining(),
-          "variant metadata dictionary extends past buffer: dictSize=" + this.dictSize);
-    } else {
-      this.dictSize = 0;
-    }
+    Preconditions.checkArgument(
+        this.metadata.remaining() >= 1 + metaOffsetSize,
+        "variant metadata truncated: offsetSize=" + metaOffsetSize);
+    this.dictSize = VariantUtil.readUnsignedLittleEndian(this.metadata, pos + 1, metaOffsetSize);
+    long dictTableEnd = 1L + metaOffsetSize + ((long) this.dictSize + 1) * metaOffsetSize;
+    Preconditions.checkArgument(
+        dictTableEnd <= this.metadata.remaining(),
+        "variant metadata dictionary extends past buffer: dictSize=" + this.dictSize);
     this.metadataCache = null;
     VariantUtil.validateValueShallow(this.value, dictSize);
   }
@@ -407,6 +402,7 @@ public final class Variant {
 
   /**
    * Creates a child Variant that shares this instance's metadata cache.
+   * @throws IllegalArgumentException validation error during construction.
    */
   private Variant childVariant(ByteBuffer childValue) {
     return new Variant(childValue, metadata, metadataCache, dictSize, depth + 1);

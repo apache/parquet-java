@@ -310,6 +310,40 @@ public class TestHardenedReader {
     expectRoundTripRaisesIllegalArgument(metadata, arrayOneNull(), "dictionary");
   }
 
+  /**
+   * Reject an empty metadata buffer.
+   */
+  @Test
+  public void testEmptyMetadataRejected() {
+    IllegalArgumentException thrown = assertThrows(
+        IllegalArgumentException.class,
+        () -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[0])));
+    assertExceptionMessageContains(thrown, "empty");
+  }
+
+  /**
+   * Reject a single-byte metadata buffer.
+   */
+  @Test
+  public void testSingleByteMetadataRejected() {
+    IllegalArgumentException thrown = assertThrows(
+        IllegalArgumentException.class,
+        () -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[] {0x01})));
+    assertExceptionMessageContains(thrown, "truncated");
+  }
+
+  /**
+   * Reject metadata whose version bits are not the single supported version.
+   */
+  @Test
+  public void testUnsupportedMetadataVersionRejected() {
+    // Header 0x02: version=2 in the low bits, offsetSize=1. A well-formed empty dictionary.
+    UnsupportedOperationException thrown = assertThrows(
+        UnsupportedOperationException.class,
+        () -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[] {0x02, 0x00, 0x00})));
+    assertExceptionMessageContains(thrown, "version");
+  }
+
   // ------------------------------------------------------------------
   // Helpers
   // ------------------------------------------------------------------
