@@ -23,7 +23,6 @@ import java.nio.charset.Charset;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
-import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -41,18 +40,16 @@ public class PlainValuesWriter extends ValuesWriter {
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private CapacityByteArrayOutputStream arrayOut;
-  private LittleEndianDataOutputStream out;
 
   public PlainValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
     arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
-    out = new LittleEndianDataOutputStream(arrayOut);
   }
 
   @Override
   public final void writeBytes(Binary v) {
     try {
-      out.writeInt(v.length());
-      v.writeTo(out);
+      arrayOut.writeInt(v.length());
+      v.writeTo(arrayOut);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write bytes", e);
     }
@@ -60,47 +57,27 @@ public class PlainValuesWriter extends ValuesWriter {
 
   @Override
   public final void writeInteger(int v) {
-    try {
-      out.writeInt(v);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write int", e);
-    }
+    arrayOut.writeInt(v);
   }
 
   @Override
   public final void writeLong(long v) {
-    try {
-      out.writeLong(v);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write long", e);
-    }
+    arrayOut.writeLong(v);
   }
 
   @Override
   public final void writeFloat(float v) {
-    try {
-      out.writeFloat(v);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write float", e);
-    }
+    arrayOut.writeInt(Float.floatToIntBits(v));
   }
 
   @Override
   public final void writeDouble(double v) {
-    try {
-      out.writeDouble(v);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write double", e);
-    }
+    arrayOut.writeLong(Double.doubleToLongBits(v));
   }
 
   @Override
   public void writeByte(int value) {
-    try {
-      out.write(value);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write byte", e);
-    }
+    arrayOut.write(value);
   }
 
   @Override
@@ -110,11 +87,6 @@ public class PlainValuesWriter extends ValuesWriter {
 
   @Override
   public BytesInput getBytes() {
-    try {
-      out.flush();
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page", e);
-    }
     if (LOG.isDebugEnabled()) LOG.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.from(arrayOut);
   }
@@ -127,7 +99,6 @@ public class PlainValuesWriter extends ValuesWriter {
   @Override
   public void close() {
     arrayOut.close();
-    out.close();
   }
 
   @Override
