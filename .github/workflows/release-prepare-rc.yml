@@ -1,0 +1,94 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Release - Prepare RC
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.18.0)'
+        required: true
+        type: string
+      rc_number:
+        description: 'RC number override (leave empty for auto-detect)'
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: 'Dry run mode (no actual changes)'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-rc:
+    if: github.repository_owner == 'apache'
+    name: Prepare Release Candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Import GPG key and configure Git
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.PARQUET_GPG_PRIVATE_KEY }}
+        run: |
+          echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+          KEY_ID=$(gpg --list-keys --with-colons | grep '^fpr' | head -1 | cut -d: -f10)
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.signingkey "${KEY_ID}"
+          git config --global commit.gpgsign true
+
+      - name: Install Subversion
+        run: sudo apt-get update -q && sudo apt-get install -q -y subversion
+
+      - name: Prepare Release Candidate
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          NEXUS_USERNAME: ${{ secrets.PARQUET_NEXUS_USER }}
+          NEXUS_PASSWORD: ${{ secrets.PARQUET_NEXUS_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.PARQUET_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.PARQUET_SVN_DEV_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_RC_NUMBER: ${{ inputs.rc_number }}
+        run: |
+          args=("${INPUT_VERSION}")
+          if [[ -n "${INPUT_RC_NUMBER}" ]]; then
+            args+=(--rc "${INPUT_RC_NUMBER}")
+          fi
+          ./release/bin/prepare-rc.sh "${args[@]}"
