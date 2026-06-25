@@ -53,6 +53,8 @@ import com.google.common.primitives.Ints;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,6 +63,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.FixedBinaryTestUtils;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -88,6 +91,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -111,8 +115,10 @@ public class DictionaryFilterTest {
   private static final Path FILE_V2 = new Path("target/test/TestDictionaryFilter/testParquetFileV2.parquet");
   private static final double DOUBLE_NAN_A = Double.longBitsToDouble(0x7ff8000000000001L);
   private static final double DOUBLE_NAN_B = Double.longBitsToDouble(0x7ff8000000000002L);
+  private static final double NEGATIVE_DOUBLE_NAN = Double.longBitsToDouble(0xfff8000000000001L);
   private static final float FLOAT_NAN_A = Float.intBitsToFloat(0x7fc00001);
   private static final float FLOAT_NAN_B = Float.intBitsToFloat(0x7fc00002);
+  private static final float NEGATIVE_FLOAT_NAN = Float.intBitsToFloat(0xffc00001);
   private static final Binary FLOAT16_NAN_A = Binary.fromConstantByteArray(new byte[] {0x01, 0x7e});
   private static final Binary FLOAT16_NAN_B = Binary.fromConstantByteArray(new byte[] {0x02, 0x7e});
   private static final MessageType schema = parseMessageType("message test { "
@@ -567,6 +573,36 @@ public class DictionaryFilterTest {
     assertFalse(canDrop(gt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
   }
 
+  @Test
+  public void testNaNDictionaryValuesMakeRangeFiltersConservative() throws Exception {
+    DictionaryPageReadStore dictionariesWithNaNs = dictionariesWithNaNs();
+    assertNaNDictionaryRangeFiltersAreConservative(nanColumns(), dictionariesWithNaNs);
+    assertNaNDictionaryRangeFiltersAreConservative(ieeeNaNColumns(), dictionariesWithNaNs);
+  }
+
+  private static void assertNaNDictionaryRangeFiltersAreConservative(
+      List<ColumnChunkMetaData> nanColumns, DictionaryPageReadStore dictionariesWithNaNs) throws IOException {
+    DoubleColumn doubleColumn = doubleColumn("double_nan_field");
+    FloatColumn floatColumn = floatColumn("float_nan_field");
+    BinaryColumn float16Column = binaryColumn("float16_nan_field");
+
+    assertFalse(canDrop(gt(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(gtEq(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(lt(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(ltEq(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
+
+    assertFalse(canDrop(gt(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(gtEq(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(lt(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(ltEq(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
+
+    Binary zero = Binary.fromConstantByteArray(new byte[] {0x00, 0x00});
+    assertFalse(canDrop(gt(float16Column, zero), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(gtEq(float16Column, zero), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(lt(float16Column, zero), nanColumns, dictionariesWithNaNs));
+    assertFalse(canDrop(ltEq(float16Column, zero), nanColumns, dictionariesWithNaNs));
+  }
+
   private static List<ColumnChunkMetaData> nanColumns() {
     return List.of(
         nanColumn(
@@ -580,6 +616,27 @@ public class DictionaryFilterTest {
             Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
                 .length(2)
                 .as(LogicalTypeAnnotation.float16Type())
+                .named("float16_nan_field")));
+  }
+
+  private static List<ColumnChunkMetaData> ieeeNaNColumns() {
+    return List.of(
+        nanColumn(
+            "double_nan_field",
+            Types.required(PrimitiveTypeName.DOUBLE)
+                .columnOrder(ColumnOrder.ieee754TotalOrder())
+                .named("double_nan_field")),
+        nanColumn(
+            "float_nan_field",
+            Types.required(PrimitiveTypeName.FLOAT)
+                .columnOrder(ColumnOrder.ieee754TotalOrder())
+                .named("float_nan_field")),
+        nanColumn(
+            "float16_nan_field",
+            Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+                .length(2)
+                .as(LogicalTypeAnnotation.float16Type())
+                .columnOrder(ColumnOrder.ieee754TotalOrder())
                 .named("float16_nan_field")));
   }
 
@@ -613,6 +670,52 @@ public class DictionaryFilterTest {
         throw new AssertionError("NaN literals should not read dictionary pages");
       }
     };
+  }
+
+  private static DictionaryPageReadStore dictionariesWithNaNs() {
+    return new DictionaryPageReadStore() {
+      @Override
+      public DictionaryPage readDictionaryPage(ColumnDescriptor descriptor) {
+        PrimitiveTypeName type = descriptor.getPrimitiveType().getPrimitiveTypeName();
+        switch (type) {
+          case DOUBLE:
+            return new DictionaryPage(
+                BytesInput.from(littleEndianLongs(
+                    Double.doubleToRawLongBits(NEGATIVE_DOUBLE_NAN),
+                    Double.doubleToRawLongBits(DOUBLE_NAN_A))),
+                2,
+                Encoding.PLAIN);
+          case FLOAT:
+            return new DictionaryPage(
+                BytesInput.from(littleEndianInts(
+                    Float.floatToRawIntBits(NEGATIVE_FLOAT_NAN),
+                    Float.floatToRawIntBits(FLOAT_NAN_A))),
+                2,
+                Encoding.PLAIN);
+          case FIXED_LEN_BYTE_ARRAY:
+            return new DictionaryPage(
+                BytesInput.from(new byte[] {(byte) 0x01, (byte) 0xfe, 0x01, 0x7e}), 2, Encoding.PLAIN);
+          default:
+            throw new AssertionError("Unexpected dictionary type: " + type);
+        }
+      }
+    };
+  }
+
+  private static byte[] littleEndianLongs(long... values) {
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * values.length).order(ByteOrder.LITTLE_ENDIAN);
+    for (long value : values) {
+      buffer.putLong(value);
+    }
+    return buffer.array();
+  }
+
+  private static byte[] littleEndianInts(int... values) {
+    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * values.length).order(ByteOrder.LITTLE_ENDIAN);
+    for (int value : values) {
+      buffer.putInt(value);
+    }
+    return buffer.array();
   }
 
   @Test
