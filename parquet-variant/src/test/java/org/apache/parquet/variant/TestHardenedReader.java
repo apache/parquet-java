@@ -347,6 +347,73 @@ public class TestHardenedReader {
     assertExceptionMessageContains(thrown, "version");
   }
 
+  /**
+   * Reject an object whose field id points past the metadata dictionary. The shallow validator
+   * bounds every object key id against {@code dictSize}; an id {@code >= dictSize} cannot name a
+   * dictionary entry and must be rejected at construction.
+   */
+  @Test
+  public void testFieldIdOutOfRange() throws IOException {
+    // Metadata with a one-entry dictionary {"a"} (dictSize=1):
+    //   [0] 0x01 header: version=1, offsetSize=1
+    //   [1] 0x01 dictSize = 1
+    //   [2] 0x00 offset[0] = 0
+    //   [3] 0x01 offset[1] = 1
+    //   [4] 'a'  string data
+    byte[] metadata = {0x01, 0x01, 0x00, 0x01, 'a'};
+
+    // One-field object whose id is 5 — past the single dictionary entry.
+    // objectHeader(largeSize=false, idSize=1, offsetSize=1) = 0x02
+    //   [0] 0x02 header
+    //   [1] 0x01 numElements = 1
+    //   [2] 0x05 id[0] = 5   (out of range: dictSize = 1)
+    //   [3] 0x00 offset[0] = 0
+    //   [4] 0x01 offset[1] = 1
+    //   [5] 0x00 data: NULL primitive
+    byte[] value = {0x02, 0x01, 0x05, 0x00, 0x01, 0x00};
+    expectRoundTripRaisesIllegalArgument(metadata, value, "out of range");
+  }
+
+  /**
+   * Reject a long-string/binary primitive whose declared size runs past the buffer.
+   */
+  @Test
+  public void testOversizedPrimitiveStringSize() throws IOException {
+    byte[] value = {0x40, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x7F};
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "extends past buffer");
+  }
+
+  /**
+   * Reject a long-string/binary primitive whose four-byte size field does not fit in the buffer.
+   */
+  @Test
+  public void testTruncatedPrimitiveSizeField() throws IOException {
+    byte[] value = {0x40};
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "truncated");
+  }
+
+  /**
+   * Reject metadata whose four-byte dictionary size reads as a negative int. With offsetSize=4 the
+   * dictionary_size field is read via the wide path, whose {@code v >= 0} guard is the only thing
+   * standing between {@code 0xFFFFFFFF} and a negative size used in later arithmetic.
+   */
+  @Test
+  public void testNegativeDictionarySize() throws IOException {
+    // Header 0xC1: version=1 (low bits), offsetSize=4 (bits 6-7). dictSize field = 0xFFFFFFFF.
+    byte[] metadata = {(byte) 0xC1, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+    expectRoundTripRaisesIllegalArgument(metadata, arrayOneNull(), "unsigned int");
+  }
+
+  /**
+   * Reject a short-string primitive whose inline length (carried in the header's type-info bits)
+   * runs past the buffer. Here the header claims a 7-byte string but no string bytes follow.
+   */
+  @Test
+  public void testShortStringLengthExceedsBuffer() throws IOException {
+    // shortStringHeader(basicType=SHORT_STR=1, length=7) = (7 << 2) | 1 = 0x1D, with no payload.
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, new byte[] {0x1D}, "short string");
+  }
+
   // ------------------------------------------------------------------
   // Helpers
   // ------------------------------------------------------------------
