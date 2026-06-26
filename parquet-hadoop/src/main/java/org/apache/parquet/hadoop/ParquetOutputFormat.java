@@ -161,6 +161,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
+  /**
+   * Raw data byte threshold after which the dictionary compression check is performed.
+   * Once cumulative raw bytes (excluding nulls) written to a column chunk reach this value,
+   * the writer evaluates whether dictionary encoding is effective. If not, it falls back to
+   * plain encoding. A value of 0 means check on the first page.
+   */
+  public static final String DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES =
+      "parquet.dictionary.check.threshold.raw.size.bytes";
+
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
 
@@ -412,6 +421,16 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(PAGE_WRITE_CHECKSUM_ENABLED, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
+  public static void setDictionaryCheckThresholdRawSizeBytes(Configuration conf, long val) {
+    conf.setLong(DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES, val);
+  }
+
+  public static long getDictionaryCheckThresholdRawSizeBytes(Configuration conf) {
+    return conf.getLong(
+        DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES,
+        ParquetProperties.DEFAULT_DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES);
+  }
+
   public static void setStatisticsEnabled(JobContext jobContext, boolean enabled) {
     getConfiguration(jobContext).setBoolean(STATISTICS_ENABLED, enabled);
   }
@@ -526,6 +545,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
+        .withDictionaryCheckThresholdRawSizeBytes(getDictionaryCheckThresholdRawSizeBytes(conf))
         .withStatisticsEnabled(getStatisticsEnabled(conf));
     new ColumnConfigParser()
         .withColumnConfig(

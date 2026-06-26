@@ -111,7 +111,9 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
       ValuesWriter writerToFallBackTo) {
     if (parquetProperties.isDictionaryEnabled(path)) {
       return FallbackValuesWriter.of(
-          dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding), writerToFallBackTo);
+          dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding),
+          writerToFallBackTo,
+          parquetProperties.getDictionaryCheckThresholdRawSizeBytes());
     } else {
       return writerToFallBackTo;
     }

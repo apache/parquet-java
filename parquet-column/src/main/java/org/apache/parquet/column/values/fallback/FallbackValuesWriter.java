@@ -30,7 +30,12 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
       I initialWriter, F fallBackWriter) {
-    return new FallbackValuesWriter<>(initialWriter, fallBackWriter);
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, /*dictionaryCheckThresholdRawSizeBytes=*/ 0);
+  }
+
+  public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
+      I initialWriter, F fallBackWriter, long dictionaryCheckThresholdRawSizeBytes) {
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, dictionaryCheckThresholdRawSizeBytes);
   }
 
   /**
@@ -43,6 +48,17 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   public final F fallBackWriter;
 
   private boolean fellBackAlready = false;
+  private boolean compressionChecked = false;
+  private final long dictionaryCheckThresholdRawSizeBytes;
+  /** Accumulates raw bytes across pages (only reset in resetDictionary) so the
+   * threshold check works even when individual pages are smaller than the threshold.
+   * Overflow is not a concern: a long would require writing over 9.2 exabytes to a single
+   * column chunk, which is physically impossible. */
+  private long cumulativeRawBytes = 0;
+  /** Accumulates dictionary-encoded size across pages (only reset in resetDictionary) so the
+   * compression decision compares like-scoped cumulative quantities — the column-chunk
+   * dictionary cost is amortized over all pages it covers, not charged against a single page. */
+  private long cumulativeEncodedBytes = 0;
 
   /**
    * writer currently written to
@@ -57,16 +73,16 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
    */
   private long rawDataByteSize = 0;
 
-  /**
-   * indicates if this is the first page being processed
-   */
-  private boolean firstPage = true;
-
   public FallbackValuesWriter(I initialWriter, F fallBackWriter) {
+    this(initialWriter, fallBackWriter, /*dictionaryCheckThresholdRawSizeBytes=*/ 0);
+  }
+
+  public FallbackValuesWriter(I initialWriter, F fallBackWriter, long dictionaryCheckThresholdRawSizeBytes) {
     super();
     this.initialWriter = initialWriter;
     this.fallBackWriter = fallBackWriter;
     this.currentWriter = initialWriter;
+    this.dictionaryCheckThresholdRawSizeBytes = dictionaryCheckThresholdRawSizeBytes;
   }
 
   @Override
@@ -79,16 +95,38 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public BytesInput getBytes() {
-    if (!fellBackAlready && firstPage) {
-      // we use the first page to decide if we're going to use this encoding
+    try {
+      cumulativeRawBytes = Math.addExact(cumulativeRawBytes, rawDataByteSize);
+    } catch (ArithmeticException e) {
+      // overflow, keep the previous value
+    }
+    if (!fellBackAlready && !compressionChecked && cumulativeRawBytes >= dictionaryCheckThresholdRawSizeBytes) {
+      compressionChecked = true;
       BytesInput bytes = initialWriter.getBytes();
-      if (!initialWriter.isCompressionSatisfying(rawDataByteSize, bytes.size())) {
+      try {
+        cumulativeEncodedBytes = Math.addExact(cumulativeEncodedBytes, bytes.size());
+      } catch (ArithmeticException e) {
+        // overflow, keep the previous value
+      }
+      // Compare cumulative raw vs cumulative encoded so the column-chunk dictionary
+      // (which is itself cumulative) is amortized over all pages it covers, not charged
+      // against a single page.
+      if (!initialWriter.isCompressionSatisfying(cumulativeRawBytes, cumulativeEncodedBytes)) {
         fallBack();
       } else {
         return bytes;
       }
     }
-    return currentWriter.getBytes();
+    BytesInput result = currentWriter.getBytes();
+    if (!fellBackAlready && !compressionChecked) {
+      // Accumulate dictionary-encoded size for pages flushed before the check fires.
+      try {
+        cumulativeEncodedBytes = Math.addExact(cumulativeEncodedBytes, result.size());
+      } catch (ArithmeticException e) {
+        // overflow, keep the previous value
+      }
+    }
+    return result;
   }
 
   @Override
@@ -103,7 +141,6 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   @Override
   public void reset() {
     rawDataByteSize = 0;
-    firstPage = false;
     currentWriter.reset();
   }
 
@@ -131,8 +168,10 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     }
     currentWriter = initialWriter;
     fellBackAlready = false;
+    compressionChecked = false;
+    cumulativeRawBytes = 0;
+    cumulativeEncodedBytes = 0;
     initialUsedAndHadDictionary = false;
-    firstPage = true;
   }
 
   @Override

@@ -772,6 +772,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Set the raw data byte threshold after which the dictionary compression check is performed.
+     *
+     * @param val byte threshold (0 means checking on the first page for every column chunk)
+     * @return this builder for method chaining.
+     */
+    public SELF withDictionaryCheckThresholdRawSizeBytes(long val) {
+      encodingPropsBuilder.withDictionaryCheckThresholdRawSizeBytes(val);
+      return self();
+    }
+
+    /**
      * Set max Bloom filter bytes for related columns.
      *
      * @param maxBloomFilterBytes the max bytes of a Bloom filter bitset for a column.
