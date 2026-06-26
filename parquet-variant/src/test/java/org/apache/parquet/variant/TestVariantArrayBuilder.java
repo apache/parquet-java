@@ -149,12 +149,13 @@ public class TestVariantArrayBuilder {
   @Test
   public void testNestedBuilder() {
     VariantBuilder b = new VariantBuilder();
-    buildNested(1000, b.startArray());
+    int depth = VariantUtil.MAX_VARIANT_DEPTH - 1;
+    buildNested(depth, b.startArray());
     b.endArray();
 
     VariantTestUtil.testVariant(b.build(), v -> {
       Variant curr = v;
-      for (int i = 1000; i >= 0; i--) {
+      for (int i = depth; i >= 0; i--) {
         VariantTestUtil.checkType(curr, VariantUtil.ARRAY, Variant.Type.ARRAY);
         if (i == 0) {
           Assert.assertEquals(0, curr.numArrayElements());
