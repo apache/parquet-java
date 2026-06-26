@@ -70,6 +70,7 @@ public class TestHardenedReader {
   /**
    * Set to {@code true} to persist the generated Parquet files under
    * {@code target/test-hardened-reader/$testName.parquet}.
+   * This allows file to added to the bad_data section of parquet-testing repository.
    */
   private static final boolean SAVE_GENERATED_FILES = false;
 
@@ -336,11 +337,13 @@ public class TestHardenedReader {
    * Reject metadata whose version bits are not the single supported version.
    */
   @Test
-  public void testUnsupportedMetadataVersionRejected() {
+  public void testUnsupportedMetadataVersionRejected() throws IOException {
     // Header 0x02: version=2 in the low bits, offsetSize=1. A well-formed empty dictionary.
+    final byte[] metadata = {0x02, 0x00, 0x00};
+    byte[][] roundTripped = roundTrip(metadata, arrayOneNull());
     UnsupportedOperationException thrown = assertThrows(
         UnsupportedOperationException.class,
-        () -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[] {0x02, 0x00, 0x00})));
+        () -> new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0])));
     assertExceptionMessageContains(thrown, "version");
   }
 
@@ -388,10 +391,11 @@ public class TestHardenedReader {
   }
 
   /**
-   * Write one row of {@code (metadata, value)} to an in-memory Parquet file, read it back.
+   * Write one row of {@code (metadata, value)} to an in-memory Parquet file, read it back
+   * as [metadata, value]
    * @param metadata variant metadata
    * @param value data
-   * @return the data read back
+   * @return the data read back as the tuple of metadata and value.
    */
   private byte[][] roundTrip(byte[] metadata, byte[] value) throws IOException {
     ByteArrayOutputFile out = new ByteArrayOutputFile();
