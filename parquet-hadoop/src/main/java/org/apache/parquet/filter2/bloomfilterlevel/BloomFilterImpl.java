@@ -32,6 +32,10 @@ import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +83,9 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
       // the column isn't in this file so all values are null, but the value
       // must be non-null because of the above check.
       return BLOCK_CANNOT_MATCH;
+    }
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
     }
 
     try {
@@ -141,6 +148,9 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
       // must be non-null because of the above check.
       return BLOCK_CANNOT_MATCH;
     }
+    if (containsNaNLiteral(meta, values)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(meta);
     if (bloomFilter != null) {
@@ -179,6 +189,37 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
       Operators.UserDefined<T, U> ud, boolean inverted) {
     return BLOCK_MIGHT_MATCH;
+  }
+
+  private static <T> boolean containsNaNLiteral(ColumnChunkMetaData meta, Set<T> values) {
+    for (T value : values) {
+      if (isNaNLiteral(meta, value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isNaNLiteral(ColumnChunkMetaData meta, Object value) {
+    PrimitiveTypeName type = meta.getPrimitiveType().getPrimitiveTypeName();
+    switch (type) {
+      case FLOAT:
+        return value instanceof Float && Float.isNaN((Float) value);
+      case DOUBLE:
+        return value instanceof Double && Double.isNaN((Double) value);
+      case FIXED_LEN_BYTE_ARRAY:
+        return isFloat16(meta)
+            && value instanceof Binary
+            && ((Binary) value).length() == 2
+            && Float16.isNaN(((Binary) value).get2BytesLittleEndian());
+      default:
+        return false;
+    }
+  }
+
+  private static boolean isFloat16(ColumnChunkMetaData meta) {
+    return meta.getPrimitiveType().getLogicalTypeAnnotation()
+        instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
   }
 
   @Override

@@ -75,9 +75,9 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.21.4</jackson.version>
-    <jackson-databind.version>2.21.4</jackson-databind.version>
-    <jackson-annotations.version>2.21</jackson-annotations.version>
+    <jackson.version>2.22.0</jackson.version>
+    <jackson-databind.version>2.22.0</jackson-databind.version>
+    <jackson-annotations.version>2.22</jackson-annotations.version>
     <japicmp.version>0.26.1</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.46.1</spotless.version>
@@ -98,6 +98,7 @@
     <guava.version>33.6.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <assertj.version>3.27.7</assertj.version>
+    <junit.version>5.14.4</junit.version>
     <mockito.version>5.23.0</mockito.version>
     <net.openhft.version>0.27ea1</net.openhft.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
@@ -159,9 +160,15 @@
 
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.2</version>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -636,6 +643,7 @@
               <ignoreNonCompile>true</ignoreNonCompile>
               <ignoredDependencies>
                 <dependency>javax.annotation:javax.annotation-api:jar:1.3.2</dependency>
+                <dependency>junit:junit</dependency>
               </ignoredDependencies>
             </configuration>
           </execution>
@@ -644,7 +652,7 @@
       <plugin>
         <groupId>org.cyclonedx</groupId>
         <artifactId>cyclonedx-maven-plugin</artifactId>
-        <version>2.9.1</version>
+        <version>2.9.2</version>
         <executions>
           <execution>
             <phase>package</phase>

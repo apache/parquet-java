@@ -132,11 +132,11 @@ public class TestFloat16Statistics {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7e})
   }; // NaN
 
-  // Float16Builder: Drop min/max values in case of NaN as the sorting order of values is undefined
+  // Float16Statistics: NaN values are counted but excluded from min/max
   private Binary[] valuesWithNaNStatsMinMax = {
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00})
-  }; // +0
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0}), // -2.0
+    Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b})
+  }; // 65504.0
 
   @Test
   public void testFloat16StatisticsMultipleCases() throws IOException {
