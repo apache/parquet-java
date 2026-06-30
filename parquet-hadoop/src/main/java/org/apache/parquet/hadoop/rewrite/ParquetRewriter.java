@@ -810,6 +810,10 @@ public class ParquetRewriter implements Closeable {
       org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
           org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
       statsBuilder.withNumNulls(columnIndex.getNullCounts().get(pageIndex));
+      List<Long> nanCounts = columnIndex.getNanCounts();
+      if (nanCounts != null && pageIndex < nanCounts.size()) {
+        statsBuilder.withNanCount(nanCounts.get(pageIndex));
+      }
 
       if (!columnIndex.getNullPages().get(pageIndex)) {
         statsBuilder.withMin(

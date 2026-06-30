@@ -75,6 +75,7 @@ import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.Bin
 import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.DoubleIsInteger;
 import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.IntegerIsDivisableWith3;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
 
@@ -88,6 +89,7 @@ public class TestColumnIndexFilter {
     private final BoundaryOrder order;
     private List<Boolean> nullPages = new ArrayList<>();
     private List<Long> nullCounts = new ArrayList<>();
+    private List<Long> nanCounts;
     private List<ByteBuffer> minValues = new ArrayList<>();
     private List<ByteBuffer> maxValues = new ArrayList<>();
 
@@ -99,6 +101,7 @@ public class TestColumnIndexFilter {
     CIBuilder addNullPage(long nullCount) {
       nullPages.add(true);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(EMPTY);
       maxValues.add(EMPTY);
       return this;
@@ -107,6 +110,7 @@ public class TestColumnIndexFilter {
     CIBuilder addPage(long nullCount, int min, int max) {
       nullPages.add(false);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(ByteBuffer.wrap(BytesUtils.intToBytes(min)));
       maxValues.add(ByteBuffer.wrap(BytesUtils.intToBytes(max)));
       return this;
@@ -115,6 +119,7 @@ public class TestColumnIndexFilter {
     CIBuilder addPage(long nullCount, String min, String max) {
       nullPages.add(false);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(ByteBuffer.wrap(min.getBytes(UTF_8)));
       maxValues.add(ByteBuffer.wrap(max.getBytes(UTF_8)));
       return this;
@@ -123,13 +128,37 @@ public class TestColumnIndexFilter {
     CIBuilder addPage(long nullCount, double min, double max) {
       nullPages.add(false);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(ByteBuffer.wrap(BytesUtils.longToBytes(Double.doubleToLongBits(min))));
       maxValues.add(ByteBuffer.wrap(BytesUtils.longToBytes(Double.doubleToLongBits(max))));
       return this;
     }
 
+    private void addNanCount(long nanCount) {
+      if (hasFloatingPointNanSemantics()) {
+        if (nanCounts == null) {
+          nanCounts = new ArrayList<>();
+        }
+        nanCounts.add(nanCount);
+      }
+    }
+
+    private boolean hasFloatingPointNanSemantics() {
+      switch (type.getPrimitiveTypeName()) {
+        case FLOAT:
+        case DOUBLE:
+          return true;
+        case FIXED_LEN_BYTE_ARRAY:
+          return type.getLogicalTypeAnnotation()
+              instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+        default:
+          return false;
+      }
+    }
+
     ColumnIndex build() {
-      return ColumnIndexBuilder.build(type, order, nullPages, nullCounts, minValues, maxValues);
+      return ColumnIndexBuilder.build(
+          type, order, nullPages, nullCounts, nanCounts, minValues, maxValues, null, null);
     }
   }
 
