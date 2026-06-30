@@ -157,10 +157,10 @@ public class TestRowRanges {
   public void testBuilderBasic() {
     // Select rows 2, 3, 4, 5 (one contiguous run)
     RowRanges ranges = RowRanges.builder()
-        .addSelected(2)
-        .addSelected(3)
-        .addSelected(4)
-        .addSelected(5)
+        .addSelectedRow(2)
+        .addSelectedRow(3)
+        .addSelectedRow(4)
+        .addSelectedRow(5)
         .build();
     assertAllRowsEqual(ranges.iterator(), 2, 3, 4, 5);
     assertEquals(4, ranges.rowCount());
@@ -170,11 +170,11 @@ public class TestRowRanges {
   public void testBuilderMultipleRanges() {
     // Two runs: 1-2 and 5-7
     RowRanges ranges = RowRanges.builder()
-        .addSelected(1)
-        .addSelected(2)
-        .addSelected(5)
-        .addSelected(6)
-        .addSelected(7)
+        .addSelectedRow(1)
+        .addSelectedRow(2)
+        .addSelectedRow(5)
+        .addSelectedRow(6)
+        .addSelectedRow(7)
         .build();
     assertAllRowsEqual(ranges.iterator(), 1, 2, 5, 6, 7);
     assertEquals(5, ranges.rowCount());
@@ -197,7 +197,7 @@ public class TestRowRanges {
     // Five contiguous rows starting at 0
     RowRanges.Builder builder = RowRanges.builder();
     for (long i = 0; i < 5; i++) {
-      builder.addSelected(i);
+      builder.addSelectedRow(i);
     }
     RowRanges ranges = builder.build();
     assertAllRowsEqual(ranges.iterator(), 0, 1, 2, 3, 4);
@@ -206,7 +206,7 @@ public class TestRowRanges {
 
   @Test
   public void testBuilderSingleRow() {
-    RowRanges ranges = RowRanges.builder().addSelected(3).build();
+    RowRanges ranges = RowRanges.builder().addSelectedRow(3).build();
     assertAllRowsEqual(ranges.iterator(), 3);
     assertEquals(1, ranges.rowCount());
     assertTrue(ranges.isOverlapping(3, 3));
@@ -219,7 +219,7 @@ public class TestRowRanges {
     // Every other row selected: 0, 2, 4, 6, 8 — five singleton runs.
     RowRanges.Builder builder = RowRanges.builder();
     for (long i = 0; i < 10; i += 2) {
-      builder.addSelected(i);
+      builder.addSelectedRow(i);
     }
     RowRanges ranges = builder.build();
     assertAllRowsEqual(ranges.iterator(), 0, 2, 4, 6, 8);
@@ -228,16 +228,17 @@ public class TestRowRanges {
 
   @Test
   public void testBuilderFirstAndLast() {
-    RowRanges ranges = RowRanges.builder().addSelected(0).addSelected(99).build();
+    RowRanges ranges =
+        RowRanges.builder().addSelectedRow(0).addSelectedRow(99).build();
     assertAllRowsEqual(ranges.iterator(), 0, 99);
     assertEquals(2, ranges.rowCount());
   }
 
   @Test
   public void testBuilderRejectsOutOfOrder() {
-    RowRanges.Builder builder = RowRanges.builder().addSelected(5).addSelected(7);
+    RowRanges.Builder builder = RowRanges.builder().addSelectedRow(5).addSelectedRow(7);
     try {
-      builder.addSelected(6);
+      builder.addSelectedRow(6);
       org.junit.Assert.fail("expected IllegalArgumentException for out-of-order index");
     } catch (IllegalArgumentException expected) {
       // expected
@@ -246,12 +247,43 @@ public class TestRowRanges {
 
   @Test
   public void testBuilderRejectsDuplicate() {
-    RowRanges.Builder builder = RowRanges.builder().addSelected(3);
+    RowRanges.Builder builder = RowRanges.builder().addSelectedRow(3);
     try {
-      builder.addSelected(3);
+      builder.addSelectedRow(3);
       org.junit.Assert.fail("expected IllegalArgumentException for duplicate index");
     } catch (IllegalArgumentException expected) {
       // expected
     }
+  }
+
+  @Test
+  public void testBuilderRejectsNegativeRow() {
+    RowRanges.Builder builder = RowRanges.builder();
+    try {
+      builder.addSelectedRow(-1);
+      org.junit.Assert.fail("expected IllegalArgumentException for negative index");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testBuilderBuildReturnsSnapshot() {
+    // build() must return a snapshot: continuing to use the builder afterwards must not
+    // mutate a previously built result.
+    RowRanges.Builder builder = RowRanges.builder().addSelectedRow(0).addSelectedRow(1);
+    RowRanges first = builder.build();
+    assertAllRowsEqual(first.iterator(), 0, 1);
+    assertEquals(2, first.rowCount());
+
+    builder.addSelectedRow(5);
+    RowRanges second = builder.build();
+
+    // The first result is unchanged.
+    assertAllRowsEqual(first.iterator(), 0, 1);
+    assertEquals(2, first.rowCount());
+    // The second result reflects the additional row.
+    assertAllRowsEqual(second.iterator(), 0, 1, 5);
+    assertEquals(3, second.rowCount());
   }
 }

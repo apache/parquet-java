@@ -334,54 +334,63 @@ public class RowRanges {
    * <pre>{@code
    * RowRanges.Builder builder = RowRanges.builder();
    * for (long row : selectedRowsInOrder) {
-   *   builder.addSelected(row);
+   *   builder.addSelectedRow(row);
    * }
    * RowRanges ranges = builder.build();
    * }</pre>
    */
-  public static class Builder {
+  public static final class Builder {
     private final List<Range> ranges = new ArrayList<>();
     private long runStart = -1; // -1 = no active run
     private long runEnd = -1; // valid iff runStart >= 0
 
+    private Builder() {}
+
     /**
-     * Marks {@code blockRow} as selected. Must be called in strictly increasing order; calling
-     * with a value less than or equal to the previous call's value throws
-     * {@link IllegalArgumentException}.
+     * Marks {@code rowIndex} as selected. The value is a 0-based row index within the current row
+     * group. Must be called in strictly increasing order; calling with a value less than or equal
+     * to the previous call's value throws {@link IllegalArgumentException}.
      *
-     * @param blockRow the row index to mark selected (must be {@code >} the last value passed)
+     * @param rowIndex the 0-based row index to mark selected (must be {@code >} the last value
+     *     passed and non-negative)
      * @return this builder for chaining
      */
-    public Builder addSelected(long blockRow) {
+    public Builder addSelectedRow(long rowIndex) {
+      if (rowIndex < 0) {
+        throw new IllegalArgumentException("addSelectedRow requires a non-negative row index; got " + rowIndex);
+      }
       if (runStart < 0) {
-        runStart = blockRow;
-        runEnd = blockRow;
-      } else if (blockRow == runEnd + 1) {
-        runEnd = blockRow;
-      } else if (blockRow > runEnd + 1) {
+        runStart = rowIndex;
+        runEnd = rowIndex;
+      } else if (rowIndex == runEnd + 1) {
+        runEnd = rowIndex;
+      } else if (rowIndex > runEnd + 1) {
         ranges.add(new Range(runStart, runEnd));
-        runStart = blockRow;
-        runEnd = blockRow;
+        runStart = rowIndex;
+        runEnd = rowIndex;
       } else {
-        throw new IllegalArgumentException(
-            "addSelected requires strictly increasing row indices; got " + blockRow + " after " + runEnd);
+        throw new IllegalArgumentException("addSelectedRow requires strictly increasing row indices; got "
+            + rowIndex + " after " + runEnd);
       }
       return this;
     }
 
     /**
+     * Returns a snapshot of the rows selected so far. The returned {@link RowRanges} is independent
+     * of this builder, so the builder may continue to be used afterwards without affecting it.
+     *
      * @return the constructed {@link RowRanges}, or {@link RowRanges#EMPTY} when no rows were
      *     selected.
      */
     public RowRanges build() {
+      List<Range> snapshot = new ArrayList<>(ranges);
       if (runStart >= 0) {
-        ranges.add(new Range(runStart, runEnd));
-        runStart = -1;
+        snapshot.add(new Range(runStart, runEnd));
       }
-      if (ranges.isEmpty()) {
+      if (snapshot.isEmpty()) {
         return RowRanges.EMPTY;
       }
-      return new RowRanges(ranges);
+      return new RowRanges(snapshot);
     }
   }
 }
