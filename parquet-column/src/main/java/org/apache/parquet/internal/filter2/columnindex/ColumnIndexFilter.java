@@ -21,6 +21,7 @@ package org.apache.parquet.internal.filter2.columnindex;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.Function;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;

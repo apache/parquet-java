@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.internal.filter2.columnindex;
+package org.apache.parquet.filter2.columnindex;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +33,8 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
  * filtering. To be used iterate over the matching row indexes to be read from a row-group, retrieve the count of the
  * matching rows or check overlapping of a row index range.
  *
- * @see ColumnIndexFilter#calculateRowRanges(Filter, ColumnIndexStore, Set, long)
+ * @see org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter#calculateRowRanges(Filter,
+ *     org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore, Set, long)
  */
 public class RowRanges {
   // Make it public because some uppler layer application need to access it
