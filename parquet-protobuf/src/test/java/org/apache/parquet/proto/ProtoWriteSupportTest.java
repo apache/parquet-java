@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.proto;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -975,8 +976,8 @@ public class ProtoWriteSupportTest {
     Mockito.verifyNoMoreInteractions(readConsumerMock);
   }
 
-  @Test(expected = UnsupportedOperationException.class)
-  public void testMessageWithExtensions() throws Exception {
+  @Test
+  public void testMessageWithExtensions() {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.Vehicle> instance =
         createReadConsumerInstance(TestProtobuf.Vehicle.class, readConsumerMock);
@@ -987,7 +988,9 @@ public class ProtoWriteSupportTest {
     // will cause an exception.
     msg.setExtension(TestProtobuf.Airplane.wingSpan, 50);
 
-    instance.write(msg.build());
+    assertThatThrownBy(() -> instance.write(msg.build()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Cannot convert Protobuf message with extension field(s)");
   }
 
   @Test

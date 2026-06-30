@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Resources;
@@ -349,7 +351,7 @@ public class TestStringBehavior {
     Assert.assertEquals("Should have the correct BigDecimal value", BIG_DECIMAL, parquetRecord.stringable_class);
   }
 
-  @Test(expected = SecurityException.class)
+  @Test
   public void testSpecificValidationFail() throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
@@ -359,11 +361,16 @@ public class TestStringBehavior {
         AvroParquetReader.<org.apache.parquet.avro.StringBehaviorTest>builder(parquetFile)
             .withConf(conf)
             .build()) {
-      parquet.read();
+      assertThatThrownBy(parquet::read)
+          .isInstanceOf(SecurityException.class)
+          .hasMessage(
+              "Forbidden java.math.BigDecimal! This class is not trusted to be included in Avro schema "
+                  + "using java-class or java-key-class. Please set the Parquet/Hadoop configuration "
+                  + "parquet.avro.serializable.classes with the classes you trust.");
     }
   }
 
-  @Test(expected = SecurityException.class)
+  @Test
   public void testReflectValidationFail() throws IOException {
     Schema reflectSchema = ReflectData.get().getSchema(ReflectRecord.class);
 
@@ -374,11 +381,16 @@ public class TestStringBehavior {
     try (ParquetReader<ReflectRecord> parquet = AvroParquetReader.<ReflectRecord>builder(parquetFile)
         .withConf(conf)
         .build()) {
-      parquet.read();
+      assertThatThrownBy(parquet::read)
+          .isInstanceOf(SecurityException.class)
+          .hasMessage(
+              "Forbidden java.math.BigDecimal! This class is not trusted to be included in Avro schema "
+                  + "using java-class or java-key-class. Please set the Parquet/Hadoop configuration "
+                  + "parquet.avro.serializable.classes with the classes you trust.");
     }
   }
 
-  @Test(expected = SecurityException.class)
+  @Test
   public void testReflectJavaClassValidationFail() throws IOException {
     Schema reflectSchema = ReflectData.get().getSchema(ReflectRecordJavaClass.class);
 
@@ -391,7 +403,12 @@ public class TestStringBehavior {
             parquetFile)
         .withConf(conf)
         .build()) {
-      parquet.read();
+      assertThatThrownBy(parquet::read)
+          .isInstanceOf(SecurityException.class)
+          .hasMessage(
+              "Forbidden java.math.BigDecimal! This class is not trusted to be included in Avro schema "
+                  + "using java-class or java-key-class. Please set the Parquet/Hadoop configuration "
+                  + "parquet.avro.serializable.classes with the classes you trust.");
     }
   }
 

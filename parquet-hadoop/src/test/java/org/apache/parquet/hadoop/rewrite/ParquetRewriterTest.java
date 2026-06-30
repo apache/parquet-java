@@ -26,6 +26,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -650,31 +651,42 @@ public class ParquetRewriterTest {
     }
   }
 
-  @Test(expected = InvalidSchemaException.class)
+  @Test
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(true, null, null);
+    assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(true, null, null))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessageContaining("Input files have different schemas, current file:");
   }
 
-  @Test(expected = InvalidSchemaException.class)
+  @Test
   public void testMergeTwoFilesToJoinWithDifferentSchema() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(false, null, null);
+    assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(false, null, null))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessageContaining("Input files have different schemas, current file:");
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testMergeTwoFilesWithWrongDestinationRenamedColumn() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(
-        null, ImmutableMap.of("WrongColumnName", "WrongColumnNameRenamed"), null);
+    assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(
+            null, ImmutableMap.of("WrongColumnName", "WrongColumnNameRenamed"), null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Column to rename 'WrongColumnName' is not found in input files schema");
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testMergeTwoFilesWithWrongSourceRenamedColumn() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(null, ImmutableMap.of("Name", "DocId"), null);
+    assertThatThrownBy(
+            () -> testMergeTwoFilesWithDifferentSchemaSetup(null, ImmutableMap.of("Name", "DocId"), null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Renamed column target name 'DocId' is already present in a schema");
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testMergeTwoFilesNullifyAndRenamedSameColumn() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(
-        null, ImmutableMap.of("Name", "NameRenamed"), ImmutableMap.of("Name", MaskMode.NULLIFY));
+    assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(
+            null, ImmutableMap.of("Name", "NameRenamed"), ImmutableMap.of("Name", MaskMode.NULLIFY)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot nullify and rename the same column");
   }
 
   public void testMergeTwoFilesWithDifferentSchemaSetup(
@@ -842,12 +854,10 @@ public class ParquetRewriterTest {
         inputFilesToJoin.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
         true);
     RewriteOptions options = builder.build();
-    try {
-      rewriter =
-          new ParquetRewriter(options); // This should throw an exception because the row count is different
-    } catch (RuntimeException e) {
-      assertTrue(e.getMessage().contains("The number of rows in each block must match"));
-    }
+    // This should throw an exception because the row count is different
+    assertThatThrownBy(() -> new ParquetRewriter(options))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("The number of rows in each block must match");
   }
 
   @Test
