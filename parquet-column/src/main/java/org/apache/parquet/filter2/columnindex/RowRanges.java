@@ -96,7 +96,10 @@ public class RowRanges {
 
   private final List<Range> ranges;
 
-  private RowRanges() {
+  // Visible for the deprecated org.apache.parquet.internal.filter2.columnindex.RowRanges shim,
+  // which subclasses this type so the released ParquetFileReader#readFilteredRowGroup(int, RowRanges)
+  // signature keeps working. Remove once that shim is dropped (2.0).
+  protected RowRanges() {
     this(new ArrayList<>());
   }
 

@@ -1269,6 +1269,22 @@ public class ParquetFileReader implements Closeable {
   }
 
   /**
+   * @param blockIndex the index of the requested block
+   * @param rowRanges  the row ranges to be read from the requested block
+   * @return the PageReadStore which can provide PageReaders for each column or null if there are no rows in this block
+   * @throws IOException              if an error occurs while reading
+   * @throws IllegalArgumentException if the {@code blockIndex} is invalid or the {@code rowRanges} is null
+   * @deprecated use {@link #readFilteredRowGroup(int, RowRanges)} with
+   *     {@link org.apache.parquet.filter2.columnindex.RowRanges} instead. This overload is retained
+   *     for backward compatibility and will be removed in 2.0.
+   */
+  @Deprecated
+  public ColumnChunkPageReadStore readFilteredRowGroup(
+      int blockIndex, org.apache.parquet.internal.filter2.columnindex.RowRanges rowRanges) throws IOException {
+    return readFilteredRowGroup(blockIndex, (RowRanges) rowRanges);
+  }
+
+  /**
    * Read data in all parts via either vectored IO or serial IO.
    * @param allParts all parts to be read.
    * @param builder used to build chunk list to read the pages for the different columns.

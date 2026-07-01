@@ -611,18 +611,15 @@
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetFileReader#PARQUET_READ_PARALLELISM</exclude>
-              <!-- GH-3596: RowRanges moved out of the internal package to
-                org.apache.parquet.filter2.columnindex. The internal package carries no
-                backward-compatibility guarantee, so the relocation and the resulting
-                ColumnIndexFilter return-type changes are intentional. -->
+              <!-- GH-3596: RowRanges moved to org.apache.parquet.filter2.columnindex. A deprecated
+                subclass is kept at the old internal location so the released
+                ParquetFileReader#readFilteredRowGroup(int, RowRanges) signature stays compatible.
+                The internal package carries no backward-compatibility guarantee, so the removal of
+                the old RowRanges' own members (statics, Range) and the ColumnIndexFilter
+                return-type changes are intentional. -->
               <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges$Range</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter</exclude>
-              <!-- GH-3596: ParquetFileReader#readFilteredRowGroup previously took the internal
-                RowRanges; it now takes the relocated public type. The signature change is the
-                point of the relocation (external readers can construct RowRanges via its Builder). -->
-              <exclude>org.apache.parquet.hadoop.ParquetFileReader#readFilteredRowGroup(int,org.apache.parquet.internal.filter2.columnindex.RowRanges)</exclude>
-              <exclude>org.apache.parquet.hadoop.util.CompressionConverter$TransParquetFileReader#readFilteredRowGroup(int,org.apache.parquet.internal.filter2.columnindex.RowRanges)</exclude>
             </excludes>
           </parameter>
         </configuration>
