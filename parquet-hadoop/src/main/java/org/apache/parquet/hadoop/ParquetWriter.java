@@ -417,7 +417,14 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     this.writer = new InternalParquetRecordWriter<T>(
-        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, codecFactory, compressionCodecName, validating, encodingProps);
+        fileWriter,
+        writeSupport,
+        schema,
+        extraMetadata,
+        rowGroupSize,
+        ColumnChunkPageWriteStore.compressorProvider(codecFactory, compressionCodecName, encodingProps),
+        validating,
+        encodingProps);
   }
 
   public void write(T object) throws IOException {

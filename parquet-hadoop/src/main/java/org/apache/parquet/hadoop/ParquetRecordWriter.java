@@ -26,9 +26,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
-import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -107,7 +105,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(
         w, writeSupport, schema, extraMetaData, blockSize,
-        singleCompressorFactory(compressor), compressor.getCodecName(), validating, props);
+        col -> compressor, validating, props);
     this.memoryManager = null;
     this.codecFactory = null;
   }
@@ -177,7 +175,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(
         w, writeSupport, schema, extraMetaData, blockSize,
-        singleCompressorFactory(compressor), compressor.getCodecName(), validating, props);
+        col -> compressor, validating, props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
     this.codecFactory = null;
@@ -211,34 +209,11 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         schema,
         extraMetaData,
         blockSize,
-        codecFactory,
-        codec,
+        ColumnChunkPageWriteStore.compressorProvider(codecFactory, codec, props),
         validating,
         props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
-  }
-
-  private static CompressionCodecFactory singleCompressorFactory(BytesInputCompressor compressor) {
-    return new CompressionCodecFactory() {
-      @Override
-      public BytesInputCompressor getCompressor(CompressionCodecName codecName) {
-        if (codecName != compressor.getCodecName()) {
-          throw new IllegalArgumentException(
-              "Per-column codec overrides are not supported by this writer. "
-                  + "Requested: " + codecName + ", configured: " + compressor.getCodecName());
-        }
-        return compressor;
-      }
-
-      @Override
-      public BytesInputDecompressor getDecompressor(CompressionCodecName codecName) {
-        throw new UnsupportedOperationException("Decompression is not supported by this factory");
-      }
-
-      @Override
-      public void release() {}
-    };
   }
 
   /**

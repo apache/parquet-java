@@ -481,7 +481,11 @@ public class ParquetProperties {
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.valuesWriterFactory = toCopy.valuesWriterFactory;
       this.allocator = toCopy.allocator;
+      this.pageValueCountThreshold = toCopy.pageValueCountThreshold;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
+      this.rowGroupRowCountLimit = toCopy.rowGroupRowCountLimit;
+      this.columnIndexTruncateLength = toCopy.columnIndexTruncateLength;
+      this.statisticsTruncateLength = toCopy.statisticsTruncateLength;
       this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
       this.bloomFilterNDVs = ColumnProperty.builder(toCopy.bloomFilterNDVs);
       this.bloomFilterFPPs = ColumnProperty.builder(toCopy.bloomFilterFPPs);
@@ -492,7 +496,9 @@ public class ParquetProperties {
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
+      this.statisticsEnabled = toCopy.statisticsEnabled;
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
+      this.sizeStatisticsEnabled = toCopy.sizeStatisticsEnabled;
       this.columnCodecs = ColumnProperty.builder(toCopy.columnCodecs);
       this.columnCompressionLevels = ColumnProperty.builder(toCopy.columnCompressionLevels);
     }

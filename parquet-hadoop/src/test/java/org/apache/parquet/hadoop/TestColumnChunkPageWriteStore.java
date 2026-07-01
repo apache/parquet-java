@@ -432,14 +432,12 @@ public class TestColumnChunkPageWriteStore {
     writer.start();
     writer.startBlock(1);
 
-    try (ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        codecFactory,
-        defaultCodec,
-        props,
-        schema,
-        allocator,
-        Integer.MAX_VALUE,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED)) {
+    try (ColumnChunkPageWriteStore store = ColumnChunkPageWriteStore.builder()
+        .withCompressorProvider(ColumnChunkPageWriteStore.compressorProvider(codecFactory, defaultCodec, props))
+        .withSchema(schema)
+        .withAllocator(allocator)
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE)
+        .build()) {
       for (ColumnDescriptor col : schema.getColumns()) {
         Statistics<?> stats = Statistics.getBuilderForReading(col.getPrimitiveType()).build();
         store.getPageWriter(col).writePage(BytesInput.fromInt(42), 1, 1, stats, RLE, RLE, PLAIN);
