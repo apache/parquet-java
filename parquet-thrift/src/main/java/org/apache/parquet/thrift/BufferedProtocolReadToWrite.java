@@ -579,7 +579,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   class NullProtocol extends TProtocol {
 
     public NullProtocol() {
-      super(null);
+      super(StubTTransport.INSTANCE);
     }
 
     @Override

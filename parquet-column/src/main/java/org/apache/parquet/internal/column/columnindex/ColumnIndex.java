@@ -71,4 +71,12 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
   default List<Long> getDefinitionLevelHistogram() {
     throw new UnsupportedOperationException("Definition level histogram is not implemented");
   }
+
+  /**
+   * @return the unmodifiable list of NaN counts for each page, or {@code null} if NaN counts are not available;
+   * used for converting to the related thrift object
+   */
+  default List<Long> getNanCounts() {
+    return null;
+  }
 }

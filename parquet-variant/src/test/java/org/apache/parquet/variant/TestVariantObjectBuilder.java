@@ -19,6 +19,8 @@
 package org.apache.parquet.variant;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -27,6 +29,29 @@ import org.slf4j.LoggerFactory;
 
 public class TestVariantObjectBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TestVariantObjectBuilder.class);
+
+  @Test
+  public void testObjectBuilderWithUUIDBytes() {
+    byte[] uuid = new byte[] {0, 17, 34, 51, 68, 85, 102, 119, -120, -103, -86, -69, -52, -35, -18, -1};
+    long msb = ByteBuffer.wrap(uuid, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    long lsb = ByteBuffer.wrap(uuid, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    UUID expected = new UUID(msb, lsb);
+
+    VariantBuilder builder = new VariantBuilder();
+    VariantObjectBuilder object = builder.startObject();
+    object.appendKey("id");
+    // appendUUIDBytes must go through onAppend() so that numValues stays in sync with the
+    // appended keys. Otherwise endObject() throws because keys (1) != values (0).
+    object.appendUUIDBytes(ByteBuffer.wrap(uuid));
+    builder.endObject();
+
+    VariantTestUtil.testVariant(builder.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.numObjectElements());
+      VariantTestUtil.checkType(v.getFieldByKey("id"), VariantUtil.PRIMITIVE, Variant.Type.UUID);
+      Assert.assertEquals(expected, v.getFieldByKey("id").getUUID());
+    });
+  }
 
   @Test
   public void testEmptyObjectBuilder() {
@@ -275,6 +300,72 @@ public class TestVariantObjectBuilder {
     Assert.assertEquals(1, v.numObjectElements());
     VariantTestUtil.checkType(v.getFieldByKey("duplicate"), VariantUtil.PRIMITIVE, Variant.Type.LONG);
     Assert.assertEquals(1, v.getFieldByKey("duplicate").getLong());
+  }
+
+  @Test
+  public void testDuplicateKeysKeptValueLarger() {
+    // The retained (last-written) value is larger than the first occurrence. The data size must be
+    // computed from the retained value, otherwise the encoded object is truncated/corrupt.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendInt(1); // 5 bytes
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendString("hello"); // 6 bytes
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.numObjectElements());
+      Variant variant = v.getFieldByKey("duplicate");
+      VariantTestUtil.checkType(variant, VariantUtil.SHORT_STR, Variant.Type.STRING);
+      Assert.assertEquals("hello", variant.getString());
+    });
+  }
+
+  @Test
+  public void testDuplicateKeysKeptValueSmaller() {
+    // The retained (last-written) value is smaller than the first occurrence. The data size must be
+    // computed from the retained value, otherwise the encoded object reserves stale trailing bytes.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendString("hello"); // 6 bytes
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendInt(1); // 5 bytes
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.numObjectElements());
+      Variant variant = v.getFieldByKey("duplicate");
+      VariantTestUtil.checkType(variant, VariantUtil.PRIMITIVE, Variant.Type.INT);
+      Assert.assertEquals(1, variant.getInt());
+    });
+  }
+
+  @Test
+  public void testDuplicateKeysDifferentSizesAcrossMultipleKeys() {
+    // Exercises deduplication across several keys where the retained values differ in size from the
+    // first occurrence, ensuring offsets remain consistent for every field.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("a");
+    objBuilder.appendInt(1); // 5 bytes
+    objBuilder.appendKey("b");
+    objBuilder.appendBoolean(true); // 1 byte
+    objBuilder.appendKey("a");
+    objBuilder.appendString("a-final"); // larger, retained for "a"
+    objBuilder.appendKey("b");
+    objBuilder.appendLong(123456789L); // 9 bytes, retained for "b"
+    objBuilder.appendKey("c");
+    objBuilder.appendString("c-only");
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(3, v.numObjectElements());
+      Assert.assertEquals("a-final", v.getFieldByKey("a").getString());
+      Assert.assertEquals(123456789L, v.getFieldByKey("b").getLong());
+      Assert.assertEquals("c-only", v.getFieldByKey("c").getString());
+    });
   }
 
   @Test
