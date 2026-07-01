@@ -167,9 +167,10 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   private void addSlab(int minimumSize) {
     int nextSlabSize;
 
-    // check for overflow
+    // check for overflow using bytesAllocated which is always up to date (unlike bytesUsed which
+    // is updated after addSlab returns in write())
     try {
-      Math.addExact(bytesUsed, minimumSize);
+      Math.addExact(bytesAllocated, minimumSize);
     } catch (ArithmeticException e) {
       // This is interpreted as a request for a value greater than Integer.MAX_VALUE
       // We throw OOM because that is what java.io.ByteArrayOutputStream also does
@@ -189,6 +190,12 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     if (nextSlabSize < minimumSize) {
       LOG.debug("slab size {} too small for value of size {}. Bumping up slab size", nextSlabSize, minimumSize);
       nextSlabSize = minimumSize;
+    }
+
+    // Cap nextSlabSize to avoid integer overflow on bytesAllocated
+    int maxNextSlabSize = Integer.MAX_VALUE - bytesAllocated;
+    if (nextSlabSize > maxNextSlabSize) {
+      nextSlabSize = max(minimumSize, maxNextSlabSize);
     }
 
     LOG.debug("used {} slabs, adding new slab of size {}", slabs.size(), nextSlabSize);

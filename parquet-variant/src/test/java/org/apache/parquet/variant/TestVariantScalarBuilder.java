@@ -388,6 +388,17 @@ public class TestVariantScalarBuilder {
   }
 
   @Test
+  public void testBinaryBuilderDoesNotMutateCallerBuffer() {
+    ByteBuffer buf = ByteBuffer.wrap(new byte[] {0, 1, 2, 3});
+    int positionBefore = buf.position();
+    int remainingBefore = buf.remaining();
+    VariantBuilder vb = new VariantBuilder();
+    vb.appendBinary(buf);
+    Assert.assertEquals(positionBefore, buf.position());
+    Assert.assertEquals(remainingBefore, buf.remaining());
+  }
+
+  @Test
   public void testStringBuilder() {
     IntStream.range(VariantUtil.MAX_SHORT_STR_SIZE - 3, VariantUtil.MAX_SHORT_STR_SIZE + 3)
         .forEach(len -> {
@@ -496,6 +507,30 @@ public class TestVariantScalarBuilder {
 
     try {
       vb.appendUUID(expected);
+      Assert.fail("Expected Exception when appending multiple values");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testUUIDBytesBuilder() {
+    byte[] uuid = new byte[] {0, 17, 34, 51, 68, 85, 102, 119, -120, -103, -86, -69, -52, -35, -18, -1};
+    long msb = ByteBuffer.wrap(uuid, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    long lsb = ByteBuffer.wrap(uuid, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    UUID expected = new UUID(msb, lsb);
+
+    VariantBuilder vb = new VariantBuilder();
+    vb.appendUUIDBytes(ByteBuffer.wrap(uuid));
+    VariantTestUtil.testVariant(vb.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
+      Assert.assertEquals(expected, v.getUUID());
+    });
+
+    // appendUUIDBytes must go through onAppend(), so a second append on the root builder
+    // (which already holds a value) must be rejected instead of producing a multi-value buffer.
+    try {
+      vb.appendUUIDBytes(ByteBuffer.wrap(uuid));
       Assert.fail("Expected Exception when appending multiple values");
     } catch (Exception e) {
       // expected

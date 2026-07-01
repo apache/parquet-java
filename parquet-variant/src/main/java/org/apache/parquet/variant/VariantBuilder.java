@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * Builder for creating Variant value and metadata.
@@ -109,7 +110,14 @@ public class VariantBuilder {
    */
   public void appendString(String str) {
     onAppend();
-    byte[] data = str.getBytes(StandardCharsets.UTF_8);
+    writeUTF8bytes(str.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Write bytes as a UTF8 string.
+   * @param data data to write; this is not modified.
+   */
+  private void writeUTF8bytes(final byte[] data) {
     boolean longStr = data.length > VariantUtil.MAX_SHORT_STR_SIZE;
     checkCapacity((longStr ? 1 + VariantUtil.U32_SIZE : 1) + data.length);
     if (longStr) {
@@ -123,6 +131,16 @@ public class VariantBuilder {
     }
     System.arraycopy(data, 0, writeBuffer, writePos, data.length);
     writePos += data.length;
+  }
+
+  /**
+   * Given a Binary, append it to the variant as a string.
+   * Avoids intermediate String creation when unmarshalling from shredded string columns.
+   * @param binary source data.
+   */
+  void appendAsString(Binary binary) {
+    onAppend();
+    writeUTF8bytes(binary.getBytesUnsafe());
   }
 
   /**
@@ -374,7 +392,7 @@ public class VariantBuilder {
     writePos += 1;
     VariantUtil.writeLong(writeBuffer, writePos, binarySize, VariantUtil.U32_SIZE);
     writePos += VariantUtil.U32_SIZE;
-    ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary);
+    ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary.duplicate());
     writePos += binarySize;
   }
 
@@ -402,6 +420,7 @@ public class VariantBuilder {
    * @param bytes a 16-byte value.
    */
   void appendUUIDBytes(ByteBuffer bytes) {
+    onAppend();
     checkCapacity(1 + VariantUtil.UUID_SIZE);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
     if (bytes.remaining() < VariantUtil.UUID_SIZE) {
@@ -479,7 +498,6 @@ public class VariantBuilder {
     int numFields = fields.size();
     Collections.sort(fields);
     int maxId = numFields == 0 ? 0 : fields.get(0).id;
-    int dataSize = numFields == 0 ? 0 : fields.get(0).valueSize;
 
     int distinctPos = 0;
     // Maintain a list of distinct keys in-place.
@@ -494,7 +512,6 @@ public class VariantBuilder {
         // Found a distinct key. Add the field to the list.
         distinctPos++;
         fields.set(distinctPos, fields.get(i));
-        dataSize += fields.get(i).valueSize;
       }
     }
 
@@ -502,6 +519,13 @@ public class VariantBuilder {
       numFields = distinctPos + 1;
       // Resize `fields` to `size`.
       fields.subList(numFields, fields.size()).clear();
+    }
+
+    // Compute the data size from the retained fields. This must happen after deduplication, since a
+    // duplicate key keeps the last-written value, whose size may differ from the first occurrence.
+    int dataSize = 0;
+    for (int i = 0; i < numFields; ++i) {
+      dataSize += fields.get(i).valueSize;
     }
 
     boolean largeSize = numFields > VariantUtil.U8_MAX;

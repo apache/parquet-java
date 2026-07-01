@@ -187,15 +187,15 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @param v a <code>float</code> value to be written.
    * @throws IOException if an I/O error occurs.
    * @see java.io.FilterOutputStream#out
-   * @see java.lang.Float#floatToIntBits(float)
+   * @see java.lang.Float#floatToRawIntBits(float)
    */
   public final void writeFloat(float v) throws IOException {
-    writeInt(Float.floatToIntBits(v));
+    writeInt(Float.floatToRawIntBits(v));
   }
 
   /**
    * Converts the double argument to a <code>long</code> using the
-   * <code>doubleToLongBits</code> method in class <code>Double</code>,
+   * <code>doubleToRawLongBits</code> method in class <code>Double</code>,
    * and then writes that <code>long</code> value to the underlying
    * output stream as an 8-byte quantity, low byte first. If no
    * exception is thrown, the counter <code>written</code> is
@@ -204,10 +204,10 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @param v a <code>double</code> value to be written.
    * @throws IOException if an I/O error occurs.
    * @see java.io.FilterOutputStream#out
-   * @see java.lang.Double#doubleToLongBits(double)
+   * @see java.lang.Double#doubleToRawLongBits(double)
    */
   public final void writeDouble(double v) throws IOException {
-    writeLong(Double.doubleToLongBits(v));
+    writeLong(Double.doubleToRawLongBits(v));
   }
 
   public void close() {
