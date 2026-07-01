@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -287,33 +288,62 @@ public class TestDictionary {
 
   @Test
   public void testDictionaryWriterReusableAfterFallBack() throws IOException {
-    int COUNT = 1000;
+    int count = 1000;
     try (final FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> cw =
         newPlainBinaryDictionaryValuesWriter(1000, 10000)) {
 
       // --- Row group 1 ---
       // First page is dictionary encoded and committed, which keeps the dictionary alive for
       // the whole row group.
-      writeRepeated(COUNT, cw, "a");
+      writeRepeated(count, cw, "a");
       getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
 
       // Second page no longer fits the dictionary so it falls back to plain. The current writer
       // becomes the fallback writer, while the dictionary writer still buffers this page's ids.
-      writeDistinct(COUNT, cw, "b");
+      writeDistinct(count, cw, "b");
       getBytesAndCheckEncoding(cw, PLAIN);
 
       // End of row group 1: emit the dictionary page and reset the dictionary state for reuse.
-      Assert.assertNotNull(cw.toDictPageAndClose());
+      assertThat(cw.toDictPageAndClose()).isNotNull();
       cw.resetDictionary();
 
       // --- Row group 2 ---
       // The dictionary writer must be clean again
-      writeRepeated(COUNT, cw, "c");
+      writeRepeated(count, cw, "c");
       BytesInput rg2Bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
 
       // The page must decode back to exactly the values written in row group 2.
       DictionaryValuesReader cr = initDicReader(cw, BINARY);
-      checkRepeated(COUNT, rg2Bytes, cr, "c");
+      checkRepeated(count, rg2Bytes, cr, "c");
+    }
+  }
+
+  @Test
+  public void testDictionaryWriterReusableAfterFirstPageFallBack() throws IOException {
+    int count = 1000;
+    try (final FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainBinaryDictionaryValuesWriter(10000, 10000)) {
+
+      // --- Row group 1 ---
+      // The very first page falls back to plain because dictionary encoding is not efficient. Because the
+      // fallback happens on the first page, the dictionary was never committed as the page encoding, so
+      // initialUsedAndHadDictionary stays false and the current writer becomes the fallback writer. The
+      // dictionary writer, however, still holds this page's entries and byte size.
+      writeDistinct(count, cw, "a");
+      getBytesAndCheckEncoding(cw, PLAIN);
+
+      // End of row group 1: reset the dictionary state for reuse
+      cw.resetDictionary();
+
+      // --- Row group 2 ---
+      // The data is now dictionary friendly, so it must be dictionary encoded again. Without a clean initial
+      // dictionary writer, the stale entries/byte size from row group 1 would push this page back to plain.
+      writeRepeated(count, cw, "b");
+      BytesInput rg2Bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+
+      // The page must decode back to exactly the values written in row group 2.
+      DictionaryValuesReader cr = initDicReader(cw, BINARY);
+      checkRepeated(count, rg2Bytes, cr, "b");
     }
   }
 
@@ -859,7 +889,7 @@ public class TestDictionary {
   private void checkRepeated(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
     cr.initFromPage(COUNT, bytes.toInputStream());
     for (int i = 0; i < COUNT; i++) {
-      Assert.assertEquals(prefix + i % 10, cr.readBytes().toStringUsingUTF8());
+      assertThat(cr.readBytes().toStringUsingUTF8()).isEqualTo(prefix + i % 10);
     }
   }
 
@@ -886,7 +916,7 @@ public class TestDictionary {
 
   private BytesInput getBytesAndCheckEncoding(ValuesWriter cw, Encoding encoding) throws IOException {
     BytesInput bytes = BytesInput.copy(cw.getBytes());
-    assertEquals(encoding, cw.getEncoding());
+    assertThat(cw.getEncoding()).isEqualTo(encoding);
     cw.reset();
     return bytes;
   }
