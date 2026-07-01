@@ -21,9 +21,8 @@ package org.apache.parquet.internal.filter2.columnindex;
 /**
  * @deprecated moved to {@link org.apache.parquet.filter2.columnindex.RowRanges}. This type is
  *     retained only so that the released
- *     {@link org.apache.parquet.hadoop.ParquetFileReader#readFilteredRowGroup(int, RowRanges)}
- *     signature keeps linking; it will be removed in 2.0. Use
- *     {@link org.apache.parquet.filter2.columnindex.RowRanges} instead.
+ *     {@code ParquetFileReader#readFilteredRowGroup(int, RowRanges)} signature keeps linking; it
+ *     will be removed in 2.0. Use {@link org.apache.parquet.filter2.columnindex.RowRanges} instead.
  */
 @Deprecated
 public class RowRanges extends org.apache.parquet.filter2.columnindex.RowRanges {}
