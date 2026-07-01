@@ -43,19 +43,23 @@ Parquet-Java uses Maven to build and depends on the thrift compiler (protoc is n
 To build and install the thrift compiler, run:
 
 ```
-wget -nv https://archive.apache.org/dist/thrift/0.22.0/thrift-0.22.0.tar.gz
-tar xzf thrift-0.22.0.tar.gz
-cd thrift-0.22.0
+wget -nv https://archive.apache.org/dist/thrift/0.23.0/thrift-0.23.0.tar.gz
+tar xzf thrift-0.23.0.tar.gz
+cd thrift-0.23.0
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install -j
 ```
 
-If you're on OSX and use homebrew, you can instead install Thrift 0.22.0 with `brew` and ensure that it comes first in your `PATH`.
+Note: if you wish to verify the signature and checksum of a release:
+1. The GPG and sha checksums can be found under https://archive.apache.org/dist/thrift/0.23.0/
+2. Validate the signature of the artifact against the [Thrift committer KEYS](https://downloads.apache.org/thrift/KEYS).
+
+If you're on OSX and use homebrew, you can instead install Thrift 0.23.0 with `brew` and ensure that it comes first in your `PATH`.
 
 ```
 brew install thrift
-export PATH="/usr/local/opt/thrift@0.22.0/bin:$PATH"
+export PATH="/usr/local/opt/thrift@0.23.0/bin:$PATH"
 ```
 
 ### Build Parquet with Maven

@@ -1489,9 +1489,34 @@ public class ParquetFileReader implements Closeable {
     return ciStore;
   }
 
-  private RowRanges getRowRanges(int blockIndex) {
-    assert FilterCompat.isFilteringRequired(options.getRecordFilter())
-        : "Should not be invoked if filter is null or NOOP";
+  /**
+   * Computes the {@link RowRanges} within the given row group that may pass the configured filter
+   * (set via {@link ParquetReadOptions} or {@link ParquetInputFormat#setFilterPredicate}). If no
+   * filter is configured, returns a {@link RowRanges} covering all rows in the row group. If the
+   * row group has no rows, returns {@link RowRanges#EMPTY}.
+   *
+   * <p>This computation is metadata-only: it consults each filter-referenced column's column
+   * index from the file footer; no column data is read from disk. The result can be passed to
+   * {@link #readFilteredRowGroup(int, RowRanges)} (intersected with any caller-supplied row
+   * ranges if desired) to read only the matching pages.
+   *
+   * @param blockIndex the row group (block) index
+   * @return row ranges within the block that may pass the configured filter
+   * @throws IllegalArgumentException if {@code blockIndex} is out of range
+   */
+  public RowRanges getRowRanges(int blockIndex) {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      throw new IllegalArgumentException(String.format(
+          "Invalid block index %s, the valid block index range are: [%s, %s]",
+          blockIndex, 0, blocks.size() - 1));
+    }
+    long rowCount = blocks.get(blockIndex).getRowCount();
+    if (rowCount == 0L) {
+      return RowRanges.EMPTY;
+    }
+    if (!FilterCompat.isFilteringRequired(options.getRecordFilter())) {
+      return RowRanges.createSingle(rowCount);
+    }
     RowRanges rowRanges = blockRowRanges.get(blockIndex);
     if (rowRanges == null) {
       rowRanges = ColumnIndexFilter.calculateRowRanges(

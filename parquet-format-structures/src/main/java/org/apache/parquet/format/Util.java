@@ -417,8 +417,8 @@ public class Util {
       // Set to default 100 MB
       maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;
     }
-    if (configuredMaxMessageSize <= 0) {
-      throw new NumberFormatException("Max message size must be positive: " + configuredMaxMessageSize);
+    if (maxMessageSize <= 0) {
+      throw new NumberFormatException("Max message size must be positive: " + maxMessageSize);
     }
 
     TConfiguration config = t.getConfiguration();

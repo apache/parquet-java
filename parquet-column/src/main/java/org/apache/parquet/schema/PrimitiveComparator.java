@@ -293,4 +293,65 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       return "BINARY_AS_FLOAT16_COMPARATOR";
     }
   };
+
+  static final PrimitiveComparator<Float> FLOAT_IEEE_754_TOTAL_ORDER_COMPARATOR = new PrimitiveComparator<Float>() {
+    @Override
+    int compareNotNulls(Float o1, Float o2) {
+      return compare(o1.floatValue(), o2.floatValue());
+    }
+
+    @Override
+    public int compare(float f1, float f2) {
+      int f1Int = Float.floatToRawIntBits(f1);
+      int f2Int = Float.floatToRawIntBits(f2);
+      f1Int ^= ((f1Int >> 31) >>> 1);
+      f2Int ^= ((f2Int >> 31) >>> 1);
+      return Integer.compare(f1Int, f2Int);
+    }
+
+    @Override
+    public String toString() {
+      return "FLOAT_IEEE_754_TOTAL_ORDER_COMPARATOR";
+    }
+  };
+
+  static final PrimitiveComparator<Double> DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR =
+      new PrimitiveComparator<Double>() {
+        @Override
+        int compareNotNulls(Double o1, Double o2) {
+          return compare(o1.doubleValue(), o2.doubleValue());
+        }
+
+        @Override
+        public int compare(double d1, double d2) {
+          long d1Long = Double.doubleToRawLongBits(d1);
+          long d2Long = Double.doubleToRawLongBits(d2);
+          d1Long ^= ((d1Long >> 63) >>> 1);
+          d2Long ^= ((d2Long >> 63) >>> 1);
+          return Long.compare(d1Long, d2Long);
+        }
+
+        @Override
+        public String toString() {
+          return "DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR";
+        }
+      };
+
+  static final PrimitiveComparator<Binary> BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR =
+      new BinaryComparator() {
+
+        @Override
+        int compareBinary(Binary b1, Binary b2) {
+          int b1Short = b1.get2BytesLittleEndian();
+          int b2Short = b2.get2BytesLittleEndian();
+          b1Short ^= ((b1Short >> 15) >>> 1);
+          b2Short ^= ((b2Short >> 15) >>> 1);
+          return Integer.compare(b1Short, b2Short);
+        }
+
+        @Override
+        public String toString() {
+          return "BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR";
+        }
+      };
 }

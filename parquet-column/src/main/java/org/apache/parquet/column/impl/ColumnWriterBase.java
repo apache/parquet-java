@@ -51,6 +51,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
+  // track the required field DataPageHeaderV2.num_nulls
+  // https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift
+  protected int nullCount;
 
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
@@ -115,6 +118,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
       definitionLevel(definitionLevel);
       collector.writeNull(repetitionLevel, definitionLevel);
       ++valueCount;
+      ++nullCount;
     } catch (Throwable e) {
       statusManager.abort();
       throw e;
@@ -392,6 +396,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
       definitionLevelColumn.reset();
       dataColumn.reset();
       valueCount = 0;
+      nullCount = 0;
       collector.resetPageStatistics();
       pageRowCount = 0;
     } catch (Throwable t) {

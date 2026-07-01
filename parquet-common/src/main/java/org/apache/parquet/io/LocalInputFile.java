@@ -81,16 +81,18 @@ public class LocalInputFile implements InputFile {
       @Override
       public int read(ByteBuffer buf) throws IOException {
         byte[] buffer = new byte[buf.remaining()];
-        int code = read(buffer);
-        buf.put(buffer, buf.position() + buf.arrayOffset(), buf.remaining());
-        return code;
+        int bytesRead = randomAccessFile.read(buffer);
+        if (bytesRead > 0) {
+          buf.put(buffer, 0, bytesRead);
+        }
+        return bytesRead;
       }
 
       @Override
       public void readFully(ByteBuffer buf) throws IOException {
         byte[] buffer = new byte[buf.remaining()];
         readFully(buffer);
-        buf.put(buffer, buf.position() + buf.arrayOffset(), buf.remaining());
+        buf.put(buffer);
       }
 
       @Override

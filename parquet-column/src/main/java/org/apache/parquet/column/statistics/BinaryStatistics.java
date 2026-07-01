@@ -28,8 +28,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   private static final PrimitiveType DEFAULT_FAKE_TYPE =
       Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named("fake_binary_type");
 
-  private Binary max;
-  private Binary min;
+  protected Binary max;
+  protected Binary min;
 
   /**
    * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
@@ -43,7 +43,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     super(type);
   }
 
-  private BinaryStatistics(BinaryStatistics other) {
+  protected BinaryStatistics(BinaryStatistics other) {
     super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
@@ -57,10 +57,12 @@ public class BinaryStatistics extends Statistics<Binary> {
       min = value.copy();
       max = value.copy();
       this.markAsNotEmpty();
-    } else if (comparator().compare(min, value) > 0) {
-      min = value.copy();
-    } else if (comparator().compare(max, value) < 0) {
-      max = value.copy();
+    } else {
+      if (comparator().compare(min, value) > 0) {
+        min = value.copy();
+      } else if (comparator().compare(max, value) < 0) {
+        max = value.copy();
+      }
     }
   }
 

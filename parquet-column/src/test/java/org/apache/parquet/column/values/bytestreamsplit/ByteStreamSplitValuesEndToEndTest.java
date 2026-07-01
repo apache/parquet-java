@@ -70,6 +70,40 @@ public class ByteStreamSplitValuesEndToEndTest {
   }
 
   @Test
+  public void testFloatPipelinePreservesNaNBits() throws Exception {
+    float[] values = {
+      Float.intBitsToFloat(0xffffffff),
+      Float.intBitsToFloat(0xfff00001),
+      -0.0f,
+      0.0f,
+      Float.intBitsToFloat(0x7fc00001),
+      Float.intBitsToFloat(0x7fffffff)
+    };
+
+    ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter writer = null;
+    try {
+      writer = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
+          values.length * 4, values.length * 4, new DirectByteBufferAllocator());
+      for (float value : values) {
+        writer.writeFloat(value);
+      }
+
+      BytesInput input = writer.getBytes();
+      ByteStreamSplitValuesReaderForFloat reader = new ByteStreamSplitValuesReaderForFloat();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+
+      for (float expectedValue : values) {
+        assertEquals(Float.floatToRawIntBits(expectedValue), Float.floatToRawIntBits(reader.readFloat()));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  @Test
   public void testDoublePipeline() throws Exception {
     // Generate random data.
     Random rand = new Random(18990);
@@ -95,6 +129,36 @@ public class ByteStreamSplitValuesEndToEndTest {
     for (double expectedValue : values) {
       double newValue = reader.readDouble();
       assertEquals(expectedValue, newValue, 0.0);
+    }
+
+    writer.reset();
+    writer.close();
+  }
+
+  @Test
+  public void testDoublePipelinePreservesNaNBits() throws Exception {
+    double[] values = {
+      Double.longBitsToDouble(0xffffffffffffffffL),
+      Double.longBitsToDouble(0xfff0000000000001L),
+      -0.0d,
+      0.0d,
+      Double.longBitsToDouble(0x7ff0000000000001L),
+      Double.longBitsToDouble(0x7fffffffffffffffL)
+    };
+
+    ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter writer =
+        new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
+            values.length * 8, values.length * 8, new DirectByteBufferAllocator());
+    for (double value : values) {
+      writer.writeDouble(value);
+    }
+
+    BytesInput input = writer.getBytes();
+    ByteStreamSplitValuesReaderForDouble reader = new ByteStreamSplitValuesReaderForDouble();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+
+    for (double expectedValue : values) {
+      assertEquals(Double.doubleToRawLongBits(expectedValue), Double.doubleToRawLongBits(reader.readDouble()));
     }
 
     writer.reset();

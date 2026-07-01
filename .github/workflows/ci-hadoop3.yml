@@ -27,8 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         java: [ { setup: '11', maven: '11' }, { setup: '17', maven: '17' } ]
-        codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
-    name: Build Parquet with JDK ${{ matrix.java.setup }} and ${{ matrix.codes }}
+    name: Build Parquet with JDK ${{ matrix.java.setup }}
 
     steps:
       - uses: actions/checkout@master
@@ -49,7 +48,7 @@ jobs:
           ./mvnw install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java.maven }}
       - name: verify
         env:
-          TEST_CODECS: ${{ matrix.codes }}
+          TEST_CODECS: 'uncompressed,brotli,gzip,snappy,zstd'
           JAVA_VERSION: ${{ matrix.java.setup }}
         run: |
           EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
