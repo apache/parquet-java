@@ -305,6 +305,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       } else {
         if (values.contains(null)) return BLOCK_MIGHT_MATCH;
       }
+    } else if (values.contains(null)) {
+      // the number of nulls is unknown, so this chunk might contain nulls that match the null
+      // literal in the IN set. we cannot fall through to the min/max check (which only considers
+      // the non-null values) or we might incorrectly drop a chunk containing matching null rows.
+      return BLOCK_MIGHT_MATCH;
     }
 
     // If any value in the IN set is NaN, be conservative
