@@ -126,32 +126,35 @@ public class CorruptStatisticsTest {
   }
 
   @Test
-  public void testIsCorruptStatisticsColumnType() {
-    assertTrue(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.BINARY));
-    assertTrue(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY));
-    assertFalse(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.INT32));
-    assertFalse(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.INT64));
-    assertFalse(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.DOUBLE));
-    assertFalse(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.FLOAT));
-    assertFalse(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.BOOLEAN));
-    assertFalse(CorruptStatistics.isCorruptStatisticsColumnType(PrimitiveTypeName.INT96));
+  public void testCorruptStatisticsColumnType() {
+    // These column types are affected by the PARQUET-251 bug
+    String corruptVersion = "parquet-mr version 1.6.0 (build abcd)";
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY));
+    // These column types are NOT affected
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.INT32));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.INT64));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.DOUBLE));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.FLOAT));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.BOOLEAN));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.INT96));
   }
 
   @Test
-  public void testFileHasCorruptStatistics() {
+  public void testMayHaveCorruptStatistics() {
     // Corrupt versions
-    assertTrue(CorruptStatistics.fileHasCorruptStatistics("parquet-mr version 1.6.0 (build abcd)"));
-    assertTrue(CorruptStatistics.fileHasCorruptStatistics("parquet-mr version 1.4.2 (build abcd)"));
-    assertTrue(CorruptStatistics.fileHasCorruptStatistics("parquet-mr version 1.7.999 (build abcd)"));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.6.0 (build abcd)"));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.4.2 (build abcd)"));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.7.999 (build abcd)"));
     // Null/empty
-    assertTrue(CorruptStatistics.fileHasCorruptStatistics(null));
-    assertTrue(CorruptStatistics.fileHasCorruptStatistics(""));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics(null));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics(""));
     // Unparseable
-    assertTrue(CorruptStatistics.fileHasCorruptStatistics("unparseable string"));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("unparseable string"));
     // Fixed versions
-    assertFalse(CorruptStatistics.fileHasCorruptStatistics("parquet-mr version 1.8.0 (build abcd)"));
-    assertFalse(CorruptStatistics.fileHasCorruptStatistics("parquet-mr version 2.0.0 (build abcd)"));
+    assertFalse(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.8.0 (build abcd)"));
+    assertFalse(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 2.0.0 (build abcd)"));
     // Non-parquet-mr applications
-    assertFalse(CorruptStatistics.fileHasCorruptStatistics("impala version 1.6.0 (build abcd)"));
+    assertFalse(CorruptStatistics.mayHaveCorruptStatistics("impala version 1.6.0 (build abcd)"));
   }
 }

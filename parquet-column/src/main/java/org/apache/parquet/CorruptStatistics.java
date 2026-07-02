@@ -49,23 +49,20 @@ public class CorruptStatistics {
   /**
    * Returns whether the given column type is one of the types affected by the PARQUET-251 bug
    * (BINARY or FIXED_LEN_BYTE_ARRAY).
-   *
-   * @param columnType the primitive type of the column
-   * @return true if this column type could have corrupt statistics
    */
-  public static boolean isCorruptStatisticsColumnType(PrimitiveTypeName columnType) {
+  private static boolean isCorruptStatisticsColumnType(PrimitiveTypeName columnType) {
     return columnType == PrimitiveTypeName.BINARY || columnType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
   }
 
   /**
-   * Determines whether a file (identified by its created_by string) was written by a version of
-   * parquet-mr that had the PARQUET-251 statistics bug. This is a file-level check that does not
-   * consider column type.
+   * Determines whether a file (identified by its created_by string) may have been written by a
+   * version of parquet-mr that had the PARQUET-251 statistics bug. This is a file-level check
+   * that does not consider column type.
    *
    * @param createdBy the created-by string from a file footer
-   * @return true if the file was written by a version with the corrupt statistics bug
+   * @return true if the file may have been written by a version with the corrupt statistics bug
    */
-  public static boolean fileHasCorruptStatistics(String createdBy) {
+  public static boolean mayHaveCorruptStatistics(String createdBy) {
     if (Strings.isNullOrEmpty(createdBy)) {
       // created_by is not populated, which could have been caused by
       // parquet-mr during the same time as PARQUET-251, see PARQUET-297
@@ -121,7 +118,7 @@ public class CorruptStatistics {
       // the bug only applies to binary columns
       return false;
     }
-    return fileHasCorruptStatistics(createdBy);
+    return mayHaveCorruptStatistics(createdBy);
   }
 
   private static void warnParseErrorOnce(String createdBy, Throwable e) {

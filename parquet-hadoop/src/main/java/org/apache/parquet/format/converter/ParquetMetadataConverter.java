@@ -947,7 +947,7 @@ public class ParquetMetadataConverter {
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
       String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
-    boolean fileHasCorruptStats = CorruptStatistics.fileHasCorruptStatistics(createdBy);
+    boolean fileHasCorruptStats = CorruptStatistics.mayHaveCorruptStatistics(createdBy);
     return fromParquetStatisticsInternal(formatStats, type, typeSortOrder, fileHasCorruptStats);
   }
 
@@ -977,8 +977,9 @@ public class ParquetMetadataConverter {
         // aggregated using a signed byte-wise ordering, which isn't valid for all the
         // types (e.g. strings, decimals etc.).
         // The fileHasCorruptStats flag applies only to BINARY and FIXED_LEN_BYTE_ARRAY columns.
-        boolean ignoreForThisColumn =
-            fileHasCorruptStats && CorruptStatistics.isCorruptStatisticsColumnType(type.getPrimitiveTypeName());
+        boolean ignoreForThisColumn = fileHasCorruptStats
+            && (type.getPrimitiveTypeName() == PrimitiveTypeName.BINARY
+                || type.getPrimitiveTypeName() == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
         if (!ignoreForThisColumn && (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
             statsBuilder.withMin(formatStats.min.array());
@@ -1827,15 +1828,12 @@ public class ParquetMetadataConverter {
 
   public ColumnChunkMetaData buildColumnChunkMetaData(
       ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, String createdBy) {
-    boolean fileHasCorruptStats = CorruptStatistics.fileHasCorruptStatistics(createdBy);
+    boolean fileHasCorruptStats = CorruptStatistics.mayHaveCorruptStatistics(createdBy);
     return buildColumnChunkMetaData(metaData, columnPath, type, fileHasCorruptStats);
   }
 
   ColumnChunkMetaData buildColumnChunkMetaData(
-      ColumnMetaData metaData,
-      ColumnPath columnPath,
-      PrimitiveType type,
-      boolean fileHasCorruptStats) {
+      ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, boolean fileHasCorruptStats) {
     SortOrder typeSortOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
     return ColumnChunkMetaData.get(
         columnPath,
@@ -1876,7 +1874,7 @@ public class ParquetMetadataConverter {
     // Only parse created_by if the schema has columns affected by the bug (BINARY/FIXED_LEN_BYTE_ARRAY).
     // The per-column type check is applied later when statistics are actually read.
     boolean fileHasCorruptStats = schemaHasCorruptStatisticsColumnType(messageType)
-        && CorruptStatistics.fileHasCorruptStatistics(parquetMetadata.getCreated_by());
+        && CorruptStatistics.mayHaveCorruptStatistics(parquetMetadata.getCreated_by());
 
     if (row_groups != null) {
       for (RowGroup rowGroup : row_groups) {
@@ -2041,7 +2039,8 @@ public class ParquetMetadataConverter {
    */
   private static boolean schemaHasCorruptStatisticsColumnType(MessageType schema) {
     for (ColumnDescriptor column : schema.getColumns()) {
-      if (CorruptStatistics.isCorruptStatisticsColumnType(column.getPrimitiveType().getPrimitiveTypeName())) {
+      PrimitiveTypeName typeName = column.getPrimitiveType().getPrimitiveTypeName();
+      if (typeName == PrimitiveTypeName.BINARY || typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
         return true;
       }
     }

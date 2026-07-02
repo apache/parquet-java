@@ -2158,7 +2158,9 @@ public class TestParquetMetadataConverter {
     ColumnIndex roundTrip = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
     assertNotNull(roundTrip);
     assertEquals(List.of(1L, 0L, 0L), roundTrip.getNanCounts());
+  }
 
+  @Test
   public void testCorruptStatsPerColumnGate() {
     // A created_by string from a version known to have the PARQUET-251 bug
     String corruptCreatedBy = "parquet-mr version 1.6.0 (build abcd)";
@@ -2220,8 +2222,10 @@ public class TestParquetMetadataConverter {
     String corruptCreatedBy = "parquet-mr version 1.6.0 (build abcd)";
 
     MessageType intOnlySchema = Types.buildMessage()
-        .required(PrimitiveTypeName.INT32).named("id")
-        .required(PrimitiveTypeName.INT64).named("ts")
+        .required(PrimitiveTypeName.INT32)
+        .named("id")
+        .required(PrimitiveTypeName.INT64)
+        .named("ts")
         .named("msg");
 
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
@@ -2238,7 +2242,10 @@ public class TestParquetMetadataConverter {
         Collections.<org.apache.parquet.format.Encoding>emptyList(),
         Collections.singletonList("id"),
         UNCOMPRESSED,
-        100L, 200L, 100L, 0L);
+        100L,
+        200L,
+        100L,
+        0L);
     cmd.setStatistics(stats);
 
     ColumnChunk cc = new ColumnChunk(0L);
