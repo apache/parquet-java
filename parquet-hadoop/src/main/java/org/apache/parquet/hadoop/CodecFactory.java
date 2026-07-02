@@ -29,8 +29,6 @@ import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
@@ -46,6 +44,8 @@ import org.apache.parquet.hadoop.codec.Lz4RawCodec;
 import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CodecFactory implements CompressionCodecFactory {
 
@@ -299,7 +299,7 @@ public class CodecFactory implements CompressionCodecFactory {
     return codec == null ? NO_OP_DECOMPRESSOR : new HeapBytesDecompressor(codec);
   }
 
-  private BytesCompressor createCompressorAtLevel(CompressionCodecName codecName, int level) {
+  protected BytesCompressor createCompressorAtLevel(CompressionCodecName codecName, int level) {
     return compressorForCodec(codecName, getCodecAtLevel(codecName, level));
   }
 
@@ -307,7 +307,7 @@ public class CodecFactory implements CompressionCodecFactory {
     return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
   }
 
-  private static void validateZstdLevel(int level) {
+  static void validateZstdLevel(int level) {
     if (level < 1 || level > 22) {
       throw new BadConfigurationException("Unsupported ZSTD compression level: " + level
           + ". Valid range is 1 (fastest) to 22 (best compression).");
@@ -330,19 +330,31 @@ public class CodecFactory implements CompressionCodecFactory {
 
   private static ZlibCompressor.CompressionLevel zlibCompressionLevel(int level) {
     switch (level) {
-      case -1: return ZlibCompressor.CompressionLevel.DEFAULT_COMPRESSION;
-      case 0:  return ZlibCompressor.CompressionLevel.NO_COMPRESSION;
-      case 1:  return ZlibCompressor.CompressionLevel.BEST_SPEED;
-      case 2:  return ZlibCompressor.CompressionLevel.TWO;
-      case 3:  return ZlibCompressor.CompressionLevel.THREE;
-      case 4:  return ZlibCompressor.CompressionLevel.FOUR;
-      case 5:  return ZlibCompressor.CompressionLevel.FIVE;
-      case 6:  return ZlibCompressor.CompressionLevel.SIX;
-      case 7:  return ZlibCompressor.CompressionLevel.SEVEN;
-      case 8:  return ZlibCompressor.CompressionLevel.EIGHT;
-      case 9:  return ZlibCompressor.CompressionLevel.BEST_COMPRESSION;
-      default: throw new BadConfigurationException("Unsupported GZIP compression level: " + level
-          + ". Valid range is 0 (no compression) to 9 (best compression), or -1 for default.");
+      case -1:
+        return ZlibCompressor.CompressionLevel.DEFAULT_COMPRESSION;
+      case 0:
+        return ZlibCompressor.CompressionLevel.NO_COMPRESSION;
+      case 1:
+        return ZlibCompressor.CompressionLevel.BEST_SPEED;
+      case 2:
+        return ZlibCompressor.CompressionLevel.TWO;
+      case 3:
+        return ZlibCompressor.CompressionLevel.THREE;
+      case 4:
+        return ZlibCompressor.CompressionLevel.FOUR;
+      case 5:
+        return ZlibCompressor.CompressionLevel.FIVE;
+      case 6:
+        return ZlibCompressor.CompressionLevel.SIX;
+      case 7:
+        return ZlibCompressor.CompressionLevel.SEVEN;
+      case 8:
+        return ZlibCompressor.CompressionLevel.EIGHT;
+      case 9:
+        return ZlibCompressor.CompressionLevel.BEST_COMPRESSION;
+      default:
+        throw new BadConfigurationException("Unsupported GZIP compression level: " + level
+            + ". Valid range is 0 (no compression) to 9 (best compression), or -1 for default.");
     }
   }
 

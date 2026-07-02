@@ -60,9 +60,8 @@ public class TestParquetProperties {
 
   @Test
   public void columnCodec_setForColumn_returnsConfiguredCodec() {
-    ParquetProperties props = ParquetProperties.builder()
-        .withCompressionCodec("col_a", ZSTD)
-        .build();
+    ParquetProperties props =
+        ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
     assertEquals(ZSTD, props.getColumnCodec(colA));
   }
 
@@ -77,26 +76,23 @@ public class TestParquetProperties {
 
   @Test
   public void columnCodec_otherColumnsUnaffected() {
-    ParquetProperties props = ParquetProperties.builder()
-        .withCompressionCodec("col_a", ZSTD)
-        .build();
+    ParquetProperties props =
+        ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
     assertNull(props.getColumnCodec(colB));
     assertNull(props.getColumnCodec(colC));
   }
 
   @Test
   public void columnLevel_setForColumn_returnsConfiguredLevel() {
-    ParquetProperties props = ParquetProperties.builder()
-        .withCompressionLevel("col_a", 10)
-        .build();
+    ParquetProperties props =
+        ParquetProperties.builder().withCompressionLevel("col_a", 10).build();
     assertEquals(Integer.valueOf(10), props.getColumnCompressionLevel(colA));
   }
 
   @Test
   public void columnLevel_otherColumnsUnaffected() {
-    ParquetProperties props = ParquetProperties.builder()
-        .withCompressionLevel("col_a", 10)
-        .build();
+    ParquetProperties props =
+        ParquetProperties.builder().withCompressionLevel("col_a", 10).build();
     assertNull(props.getColumnCompressionLevel(colB));
   }
 
@@ -122,8 +118,8 @@ public class TestParquetProperties {
 
   @Test
   public void withCompressionCodec_nullCodec_throwsNullPointerException() {
-    assertThrows(NullPointerException.class,
-        () -> ParquetProperties.builder().withCompressionCodec("col_a", null));
+    assertThrows(
+        NullPointerException.class, () -> ParquetProperties.builder().withCompressionCodec("col_a", null));
   }
 
   @Test

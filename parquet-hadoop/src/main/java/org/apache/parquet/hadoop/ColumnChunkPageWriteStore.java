@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.function.Function;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.zip.CRC32;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
@@ -618,7 +618,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
     this.schema = schema;
-    initWriters(col -> compressor, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled, fileEncryptor, rowGroupOrdinal);
+    initWriters(
+        col -> compressor,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
   }
 
   private ColumnChunkPageWriteStore(
@@ -655,9 +661,12 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     CompressionCodecName codec = columnCodec != null ? columnCodec : defaultCodec;
     Integer level = parquetProperties.getColumnCompressionLevel(column);
     if (level != null && columnCodec == null) {
-      LOG.warn("Column '{}': compression level {} set without a per-column codec; "
-          + "applying level to the default codec ({}).",
-          ColumnPath.get(column.getPath()), level, defaultCodec);
+      LOG.warn(
+          "Column '{}': compression level {} set without a per-column codec; "
+              + "applying level to the default codec ({}).",
+          ColumnPath.get(column.getPath()),
+          level,
+          defaultCodec);
     }
     return level != null ? codecFactory.getCompressor(codec, level) : codecFactory.getCompressor(codec);
   }

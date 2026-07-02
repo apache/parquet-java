@@ -68,7 +68,6 @@ import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
-import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -328,8 +327,8 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void perColumnCodec_defaultUsedWhenNotSet() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message test { required binary col_a; required int32 col_b; }");
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props = ParquetProperties.builder().build();
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
@@ -340,11 +339,10 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void perColumnCodec_overridesDefaultForOneColumn() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message test { required binary col_a; required int32 col_b; }");
-    ParquetProperties props = ParquetProperties.builder()
-        .withCompressionCodec("col_a", ZSTD)
-        .build();
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
+    ParquetProperties props =
+        ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
 
@@ -354,8 +352,8 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void perColumnCodec_allColumnsOverridden() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message test { required binary col_a; required int32 col_b; }");
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec("col_a", ZSTD)
         .withCompressionCodec("col_b", GZIP)
@@ -369,8 +367,8 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void perColumnLevel_withCodec_roundTrip() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message test { required binary col_a; required int32 col_b; }");
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec("col_a", ZSTD)
         .withCompressionLevel("col_a", 10)
@@ -384,29 +382,27 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void perColumnLevel_invalidZstdLevel_throwsBadConfigurationException() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message test { required binary col_a; }");
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary col_a; }");
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec("col_a", ZSTD)
         .withCompressionLevel("col_a", 23)
         .build();
 
-    BadConfigurationException ex = assertThrows(BadConfigurationException.class,
-        () -> writeAndReadCodecs(schema, SNAPPY, props));
+    BadConfigurationException ex =
+        assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
     assertTrue(ex.getMessage().contains("23"));
   }
 
   @Test
   public void perColumnLevel_invalidGzipLevel_throwsBadConfigurationException() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message test { required binary col_a; }");
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary col_a; }");
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec("col_a", GZIP)
         .withCompressionLevel("col_a", 10)
         .build();
 
-    BadConfigurationException ex = assertThrows(BadConfigurationException.class,
-        () -> writeAndReadCodecs(schema, SNAPPY, props));
+    BadConfigurationException ex =
+        assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
     assertTrue(ex.getMessage().contains("10"));
   }
 
@@ -439,7 +435,8 @@ public class TestColumnChunkPageWriteStore {
         .withColumnIndexTruncateLength(Integer.MAX_VALUE)
         .build()) {
       for (ColumnDescriptor col : schema.getColumns()) {
-        Statistics<?> stats = Statistics.getBuilderForReading(col.getPrimitiveType()).build();
+        Statistics<?> stats =
+            Statistics.getBuilderForReading(col.getPrimitiveType()).build();
         store.getPageWriter(col).writePage(BytesInput.fromInt(42), 1, 1, stats, RLE, RLE, PLAIN);
       }
       store.flushToFileWriter(writer);

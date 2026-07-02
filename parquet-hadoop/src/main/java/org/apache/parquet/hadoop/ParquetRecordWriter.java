@@ -104,8 +104,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .withWriterVersion(writerVersion)
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(
-        w, writeSupport, schema, extraMetaData, blockSize,
-        col -> compressor, validating, props);
+        w, writeSupport, schema, extraMetaData, blockSize, col -> compressor, validating, props);
     this.memoryManager = null;
     this.codecFactory = null;
   }
@@ -174,8 +173,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .withWriterVersion(writerVersion)
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(
-        w, writeSupport, schema, extraMetaData, blockSize,
-        col -> compressor, validating, props);
+        w, writeSupport, schema, extraMetaData, blockSize, col -> compressor, validating, props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
     this.codecFactory = null;

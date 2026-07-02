@@ -18,9 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
@@ -30,7 +27,10 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -53,13 +53,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.RecordWriter;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -835,8 +835,11 @@ public class TestParquetWriter {
   @Test
   public void perColumnCodec_overridesDefaultForOneColumn() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -864,8 +867,11 @@ public class TestParquetWriter {
   @Test
   public void perColumnCodec_defaultUsedWhenNoOverride() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -882,18 +888,18 @@ public class TestParquetWriter {
 
     ParquetMetadata footer = readFooter(new Configuration(), path, NO_FILTER);
     for (ColumnChunkMetaData col : footer.getBlocks().get(0).getColumns()) {
-      assertEquals(
-          "Column " + col.getPath().toDotString() + " should use default codec",
-          GZIP,
-          col.getCodec());
+      assertEquals("Column " + col.getPath().toDotString() + " should use default codec", GZIP, col.getCodec());
     }
   }
 
   @Test
   public void perColumnLevel_dataRoundTrips() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -910,7 +916,8 @@ public class TestParquetWriter {
       writer.write(f.newGroup().append("col_a", "hello").append("col_b", 42));
     }
 
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
       Group group = reader.read();
       assertEquals("hello", group.getBinary("col_a", 0).toStringUsingUTF8());
       assertEquals(42, group.getInteger("col_b", 0));
@@ -929,7 +936,9 @@ public class TestParquetWriter {
   @Test
   public void perColumnLevel_invalidZstdLevel_throwsBadConfigurationException() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -951,7 +960,9 @@ public class TestParquetWriter {
   @Test
   public void perColumnLevel_invalidLevel_throwsBadConfigurationException() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -973,8 +984,12 @@ public class TestParquetWriter {
   @Test
   public void perColumnLevel_differentLevelsPerColumn_dataRoundTrips() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(BINARY).as(stringType()).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -996,14 +1011,12 @@ public class TestParquetWriter {
     // Both columns must report ZSTD in the footer
     ParquetMetadata footer = readFooter(new Configuration(), path, NO_FILTER);
     for (ColumnChunkMetaData col : footer.getBlocks().get(0).getColumns()) {
-      assertEquals(
-          "Column " + col.getPath().toDotString() + " should use ZSTD",
-          ZSTD,
-          col.getCodec());
+      assertEquals("Column " + col.getPath().toDotString() + " should use ZSTD", ZSTD, col.getCodec());
     }
 
     // Data must survive the round-trip at both levels
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
       Group group = reader.read();
       assertEquals("fast", group.getBinary("col_a", 0).toStringUsingUTF8());
       assertEquals("best", group.getBinary("col_b", 0).toStringUsingUTF8());
@@ -1014,8 +1027,11 @@ public class TestParquetWriter {
   @Test
   public void perColumnCodec_allColumnsOverridden() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -1082,8 +1098,11 @@ public class TestParquetWriter {
   @Test
   public void outputFormat_setColumnCompression_overridesDefaultForOneColumn() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -1100,8 +1119,11 @@ public class TestParquetWriter {
   @Test
   public void outputFormat_setColumnCompression_allColumnsOverridden() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -1119,8 +1141,11 @@ public class TestParquetWriter {
   @Test
   public void outputFormat_setColumnCompression_defaultUsedWhenNotSet() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -1136,8 +1161,11 @@ public class TestParquetWriter {
   @Test
   public void outputFormat_setColumnCompressionLevel_withCodec_dataRoundTrips() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(INT32).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(INT32)
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -1150,7 +1178,8 @@ public class TestParquetWriter {
     assertEquals(ZSTD, codecs.get("col_a"));
     assertEquals(SNAPPY, codecs.get("col_b"));
 
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
       Group group = reader.read();
       assertEquals("hello", group.getBinary("col_a", 0).toStringUsingUTF8());
       assertEquals(42, group.getInteger("col_b", 0));
@@ -1161,8 +1190,12 @@ public class TestParquetWriter {
   @Test
   public void outputFormat_setColumnCompressionLevel_differentLevelsPerColumn() throws Exception {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(BINARY).as(stringType()).named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_b")
         .named("test");
     File file = temp.newFile();
     file.delete();
@@ -1175,7 +1208,8 @@ public class TestParquetWriter {
     assertEquals(ZSTD, codecs.get("col_a"));
     assertEquals(ZSTD, codecs.get("col_b"));
 
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
       Group group = reader.read();
       assertEquals("hello", group.getBinary("col_a", 0).toStringUsingUTF8());
       assertEquals("fast", group.getBinary("col_b", 0).toStringUsingUTF8());
@@ -1185,8 +1219,7 @@ public class TestParquetWriter {
 
   @SuppressWarnings("unchecked")
   private Map<String, CompressionCodecName> writeAndReadCodecsViaOutputFormat(
-      MessageType schema, CompressionCodecName defaultCodec, Job job, Path file)
-      throws Exception {
+      MessageType schema, CompressionCodecName defaultCodec, Job job, Path file) throws Exception {
     Configuration conf = job.getConfiguration();
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
@@ -1195,9 +1228,14 @@ public class TestParquetWriter {
     for (int i = 0; i < schema.getFieldCount(); i++) {
       String name = schema.getFieldName(i);
       switch (schema.getType(i).asPrimitiveType().getPrimitiveTypeName()) {
-        case BINARY: group.append(name, name.equals("col_a") ? "hello" : "fast"); break;
-        case INT32:  group.append(name, 42); break;
-        default: break;
+        case BINARY:
+          group.append(name, name.equals("col_a") ? "hello" : "fast");
+          break;
+        case INT32:
+          group.append(name, 42);
+          break;
+        default:
+          break;
       }
     }
 

@@ -340,8 +340,8 @@ public class TestDirectCodecFactory {
   public void levelAwareCompressor_gzip_invalidLevel_throwsBadConfigurationException() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     try {
-      BadConfigurationException ex = Assert.assertThrows(BadConfigurationException.class,
-          () -> factory.getCompressor(GZIP, 99));
+      BadConfigurationException ex =
+          Assert.assertThrows(BadConfigurationException.class, () -> factory.getCompressor(GZIP, 99));
       Assert.assertTrue(ex.getMessage().contains("99"));
     } finally {
       factory.release();
@@ -383,5 +383,52 @@ public class TestDirectCodecFactory {
       Assert.assertArrayEquals("Round-trip failed at GZIP level " + level, original, result);
     }
     factory.release();
+  }
+
+  @Test
+  public void directFactory_levelAwareCompressor_usesDirectCompressorNotHeap() {
+    CodecFactory heap = new CodecFactory(new Configuration(), pageSize);
+    CodecFactory direct =
+        CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
+    try {
+      // Sanity: the heap factory's leveled path yields a HeapBytesCompressor.
+      Assert.assertTrue(
+          "heap factory should produce a HeapBytesCompressor",
+          heap.getCompressor(ZSTD, 3) instanceof CodecFactory.HeapBytesCompressor);
+
+      // The direct factory must not fall back to the heap/Hadoop path for leveled ZSTD/SNAPPY.
+      BytesInputCompressor directZstd = direct.getCompressor(ZSTD, 3);
+      Assert.assertFalse(
+          "direct factory ZSTD(level) should not fall back to HeapBytesCompressor",
+          directZstd instanceof CodecFactory.HeapBytesCompressor);
+      Assert.assertEquals(ZSTD, directZstd.getCodecName());
+      Assert.assertEquals(
+          "leveled ZSTD should use the same direct compressor type as the no-level path",
+          direct.getCompressor(ZSTD).getClass(),
+          directZstd.getClass());
+
+      BytesInputCompressor directSnappy = direct.getCompressor(SNAPPY, 5);
+      Assert.assertFalse(
+          "direct factory SNAPPY(level) should not fall back to HeapBytesCompressor",
+          directSnappy instanceof CodecFactory.HeapBytesCompressor);
+      Assert.assertEquals(
+          "leveled SNAPPY should use the same direct compressor type as the no-level path",
+          direct.getCompressor(SNAPPY).getClass(),
+          directSnappy.getClass());
+    } finally {
+      heap.release();
+      direct.release();
+    }
+  }
+
+  @Test
+  public void directFactory_levelAwareCompressor_invalidZstdLevel_throwsBadConfigurationException() {
+    CodecFactory direct =
+        CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
+    try {
+      Assert.assertThrows(BadConfigurationException.class, () -> direct.getCompressor(ZSTD, 23));
+    } finally {
+      direct.release();
+    }
   }
 }
