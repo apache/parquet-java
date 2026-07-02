@@ -386,7 +386,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void directFactory_levelAwareCompressor_usesDirectCompressorNotHeap() {
+  public void directFactory_levelAwareCompressor_usesDirectCompressorAndRoundTrips() throws IOException {
     CodecFactory heap = new CodecFactory(new Configuration(), pageSize);
     CodecFactory direct =
         CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
@@ -415,6 +415,19 @@ public class TestDirectCodecFactory {
           "leveled SNAPPY should use the same direct compressor type as the no-level path",
           direct.getCompressor(SNAPPY).getClass(),
           directSnappy.getClass());
+
+      // The direct ZSTD level path must compress/decompress correctly at each level.
+      byte[] original = "hello parquet per-column zstd direct compression".getBytes(StandardCharsets.UTF_8);
+      BytesInputDecompressor decompressor = heap.getDecompressor(ZSTD);
+      for (int level : new int[] {1, 3, 22}) {
+        byte[] compressed = direct.getCompressor(ZSTD, level)
+            .compress(BytesInput.from(original))
+            .toByteArray();
+        byte[] result = decompressor
+            .decompress(BytesInput.from(compressed), original.length)
+            .toByteArray();
+        Assert.assertArrayEquals("Direct ZSTD round-trip failed at level " + level, original, result);
+      }
     } finally {
       heap.release();
       direct.release();
