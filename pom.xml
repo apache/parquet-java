@@ -98,7 +98,7 @@
     <guava.version>33.6.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <assertj.version>3.27.7</assertj.version>
-    <junit.version>5.14.4</junit.version>
+    <junit.version>6.1.1</junit.version>
     <mockito.version>5.23.0</mockito.version>
     <net.openhft.version>0.27ea1</net.openhft.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
