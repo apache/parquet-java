@@ -346,4 +346,30 @@ public class AlpEncoderDecoderTest {
         "Preset result should be at least as good as full search",
         presetResult.numExceptions <= fullResult.numExceptions);
   }
+
+  @Test
+  public void findBestFloatParamsMixedSignUsesSignedDeltaRange() {
+    // Mixed-sign, non-integer values are losslessly encodable at some (e, f). A buggy estimator
+    // that computes the FOR range with unsigned subtraction inflates every mixed-sign combo to a
+    // 64-bit width, making it prefer combos that turn values into exceptions. With the correct
+    // signed range (max - min), the estimator finds the lossless encoding with zero exceptions.
+    float[] values = {-3.14f, 2.71f, 100.5f, -50.25f};
+    AlpEncoderDecoder.EncodingParams params =
+        AlpEncoderDecoder.findBestFloatParams(values, 0, values.length);
+    assertEquals(0, params.numExceptions);
+  }
+
+  @Test
+  public void findBestFloatParamsWithPresetsMixedSignUsesSignedDeltaRange() {
+    // Restricting to two presets removes the equivalent-scaling ties, so the chosen exponent is
+    // deterministic: e=0,f=0 has the smallest signed FOR span and wins. A buggy unsigned estimator
+    // would rate both presets at 64 bits, tie, and pick the higher exponent (e=1) instead.
+    float[] values = {-1.0f, 1.0f};
+    int[][] presets = {{0, 0}, {1, 0}}; // e=0,f=0 has the smallest signed FOR span
+    AlpEncoderDecoder.EncodingParams params =
+        AlpEncoderDecoder.findBestFloatParamsWithPresets(values, 0, values.length, presets);
+    assertEquals(0, params.exponent);
+    assertEquals(0, params.factor);
+    assertEquals(0, params.numExceptions);
+  }
 }

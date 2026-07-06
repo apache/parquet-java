@@ -174,9 +174,9 @@ final class AlpEncoderDecoder {
    * Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size.
    *
    * <p>Estimated size (in bits) = {@code length * bitWidth + exceptions * (Float.SIZE + Short.SIZE)},
-   * where bitWidth is the number of bits needed to represent the unsigned range of non-exception
-   * encoded values after frame-of-reference subtraction. This matches the C++ ALP cost model and
-   * produces better compression ratios than minimizing exception count alone.
+   * where bitWidth is the number of bits needed to represent the signed range (max - min) of
+   * non-exception encoded values after frame-of-reference subtraction, matching the writer's FOR
+   * packing. This produces better compression ratios than minimizing exception count alone.
    */
   static EncodingParams findBestFloatParams(float[] values, int offset, int length) {
     int bestExponent = 0;
@@ -201,8 +201,10 @@ final class AlpEncoderDecoder {
         }
         int nonExceptions = length - exceptions;
         if (nonExceptions == 0) continue;
-        long delta = (nonExceptions < 2) ? 0 :
-            Integer.toUnsignedLong(maxEncoded) - Integer.toUnsignedLong(minEncoded);
+        // Signed subtraction gives the true FOR span; Long.numberOfLeadingZeros yields the
+        // correct unsigned bit width, and an overflowing large range is penalized with 64 bits.
+        // This matches the writer's FOR packing and the double path below.
+        long delta = (nonExceptions < 2) ? 0 : ((long) maxEncoded - (long) minEncoded);
         int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
         long estimatedSize = (long) length * bitsPerValue
             + (long) exceptions * (Float.SIZE + Short.SIZE);
@@ -247,8 +249,10 @@ final class AlpEncoderDecoder {
       }
       int nonExceptions = length - exceptions;
       if (nonExceptions == 0) continue;
-      long delta = (nonExceptions < 2) ? 0 :
-          Integer.toUnsignedLong(maxEncoded) - Integer.toUnsignedLong(minEncoded);
+      // Signed subtraction gives the true FOR span; Long.numberOfLeadingZeros yields the
+      // correct unsigned bit width, and an overflowing large range is penalized with 64 bits.
+      // This matches the writer's FOR packing and the double path below.
+      long delta = (nonExceptions < 2) ? 0 : ((long) maxEncoded - (long) minEncoded);
       int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
       long estimatedSize = (long) length * bitsPerValue
           + (long) exceptions * (Float.SIZE + Short.SIZE);
