@@ -88,6 +88,10 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
 
     int frameOfReference = getIntLE(vectorsData, pos);
     int bitWidth = vectorsData.get(pos + 4) & 0xFF;
+    if (bitWidth > Integer.SIZE) {
+      throw new ParquetDecodingException(
+          "Invalid ALP float bitWidth " + bitWidth + " > 32 in vector " + vectorIdx);
+    }
     pos += FLOAT_FOR_INFO_SIZE;
 
     if (bitWidth > 0) {

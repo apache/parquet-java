@@ -236,6 +236,30 @@ public class AlpAdversarialTest {
     assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("numexceptions"));
   }
 
+  @Test
+  public void rejectsBitWidthTooLargeDouble() throws Exception {
+    byte[] page = validDoublePage(32, 16);
+    int v0 = firstVectorOffset(page);
+    // Layout: ALP_INFO(4) + frameOfReference(8) then bitWidth byte at v0+12. 99 > 64.
+    page[v0 + 12] = (byte) 99;
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
+    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("bitwidth"));
+  }
+
+  @Test
+  public void rejectsBitWidthTooLargeFloat() throws Exception {
+    byte[] page = validFloatPage(32, 16);
+    int v0 = firstVectorOffset(page);
+    // Layout: ALP_INFO(4) + frameOfReference(4) then bitWidth byte at v0+8. 99 > 32.
+    page[v0 + 8] = (byte) 99;
+    AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+    reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readFloat);
+    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("bitwidth"));
+  }
+
   // ---------------------------------------------------------------------------
   // Currently-unvalidated paths: truncation and corrupted offsets
   // These currently fail with low-level Throwables (BufferUnderflowException,

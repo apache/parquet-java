@@ -88,6 +88,10 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
     long frameOfReference = getLongLE(vectorsData, pos);
     int bitWidth = vectorsData.get(pos + 8) & 0xFF;
+    if (bitWidth > Long.SIZE) {
+      throw new ParquetDecodingException(
+          "Invalid ALP double bitWidth " + bitWidth + " > 64 in vector " + vectorIdx);
+    }
     pos += DOUBLE_FOR_INFO_SIZE;
 
     if (bitWidth > 0) {
