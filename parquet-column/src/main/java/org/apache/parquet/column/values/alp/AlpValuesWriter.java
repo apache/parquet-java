@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -198,7 +199,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
       }
 
-      int bitWidth = AlpEncoderDecoder.bitWidthForInt(maxDelta);
+      int bitWidth = BytesUtils.getWidthFromMaxInt(maxDelta);
 
       long startSize = encodedVectors.size();
 
@@ -261,7 +262,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
           packPadBuf[i] = 0;
         }
         packer.pack8Values(packPadBuf, 0, packBuf, 0);
-        int totalPackedBytes = (count * bitWidth + 7) / 8;
+        int totalPackedBytes = BytesUtils.paddedByteCountFromBits(count * bitWidth);
         int alreadyWritten = numFullGroups * bitWidth;
         encodedVectors.write(packBuf, 0, totalPackedBytes - alreadyWritten);
       }
@@ -535,7 +536,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
           packPadBuf[i] = 0;
         }
         packer.pack8Values(packPadBuf, 0, packBuf, 0);
-        int totalPackedBytes = (count * bitWidth + 7) / 8;
+        int totalPackedBytes = BytesUtils.paddedByteCountFromBits(count * bitWidth);
         int alreadyWritten = numFullGroups * bitWidth;
         encodedVectors.write(packBuf, 0, totalPackedBytes - alreadyWritten);
       }

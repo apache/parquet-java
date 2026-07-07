@@ -199,20 +199,7 @@ public class AlpEncoderDecoderTest {
     }
   }
 
-  // ========== Bit Width Tests (renamed methods) ==========
-
-  @Test
-  public void testBitWidthForInt() {
-    assertEquals(0, AlpEncoderDecoder.bitWidthForInt(0));
-    assertEquals(1, AlpEncoderDecoder.bitWidthForInt(1));
-    assertEquals(2, AlpEncoderDecoder.bitWidthForInt(2));
-    assertEquals(2, AlpEncoderDecoder.bitWidthForInt(3));
-    assertEquals(3, AlpEncoderDecoder.bitWidthForInt(4));
-    assertEquals(8, AlpEncoderDecoder.bitWidthForInt(255));
-    assertEquals(9, AlpEncoderDecoder.bitWidthForInt(256));
-    assertEquals(16, AlpEncoderDecoder.bitWidthForInt(65535));
-    assertEquals(31, AlpEncoderDecoder.bitWidthForInt(Integer.MAX_VALUE));
-  }
+  // ========== Bit Width Tests ==========
 
   @Test
   public void testBitWidthForLong() {
