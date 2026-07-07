@@ -53,6 +53,9 @@ abstract class AlpValuesReader extends ValuesReader {
   protected ByteBuffer vectorsData;
   protected int offsetArraySize;
 
+  // Scratch buffer for exception positions within a vector; shared by both readers (int[] in each).
+  protected int[] excPositionsBuffer;
+
   AlpValuesReader() {
     this.currentIndex = 0;
     this.totalCount = 0;
@@ -109,6 +112,7 @@ abstract class AlpValuesReader extends ValuesReader {
     this.vectorsData = rawSlice.slice().order(ByteOrder.LITTLE_ENDIAN);
 
     allocateDecodedBuffer(vectorSize);
+    this.excPositionsBuffer = new int[vectorSize];
   }
 
   protected int getVectorLength(int vectorIdx) {
@@ -149,7 +153,72 @@ abstract class AlpValuesReader extends ValuesReader {
     }
   }
 
+  /**
+   * Decodes one vector: parses and validates the shared ALP/FOR header fields, delegates the
+   * type-specific numeric work (FOR read, bit-unpacking, decode loop, exception values) to hooks,
+   * and reads the shared exception-position list in between. Runs once per vector, so the virtual
+   * hook calls are off the per-value hot path.
+   */
+  protected final void decodeVector(int vectorIdx) {
+    int vectorLen = getVectorLength(vectorIdx);
+    int pos = getVectorDataPosition(vectorIdx);
+
+    int exponent = vectorsData.get(pos) & 0xFF;
+    int factor = vectorsData.get(pos + 1) & 0xFF;
+    int numExceptions = vectorsData.getShort(pos + 2) & 0xFFFF;
+    pos += ALP_INFO_SIZE;
+
+    if (exponent > maxExponent()) {
+      throw new ParquetDecodingException("Invalid ALP " + typeName() + " exponent " + exponent + " in vector "
+          + vectorIdx + ", max is " + maxExponent());
+    }
+    if (factor > exponent) {
+      throw new ParquetDecodingException("Invalid ALP " + typeName() + " factor " + factor + " > exponent "
+          + exponent + " in vector " + vectorIdx);
+    }
+    if (numExceptions > vectorLen) {
+      throw new ParquetDecodingException("Invalid ALP numExceptions " + numExceptions + " > vectorLen "
+          + vectorLen + " in vector " + vectorIdx);
+    }
+
+    pos = decodeBody(pos, vectorIdx, vectorLen, exponent, factor);
+
+    if (numExceptions > 0) {
+      pos = readExceptionPositions(pos, numExceptions, vectorLen);
+      applyExceptionValues(pos, numExceptions);
+    }
+  }
+
+  /** Reads {@code numExceptions} little-endian uint16 positions into {@link #excPositionsBuffer}. */
+  private int readExceptionPositions(int pos, int numExceptions, int vectorLen) {
+    for (int e = 0; e < numExceptions; e++) {
+      excPositionsBuffer[e] = vectorsData.getShort(pos) & 0xFFFF;
+      if (excPositionsBuffer[e] >= vectorLen) {
+        throw new ParquetDecodingException("ALP exception position " + excPositionsBuffer[e]
+            + " out of bounds for vectorLen " + vectorLen);
+      }
+      pos += Short.BYTES;
+    }
+    return pos;
+  }
+
   protected abstract void allocateDecodedBuffer(int capacity);
 
-  protected abstract void decodeVector(int vectorIdx);
+  /** The maximum exponent for this value type (used to validate the header). */
+  protected abstract int maxExponent();
+
+  /** The value type name ("float" / "double") used in decoding error messages. */
+  protected abstract String typeName();
+
+  /**
+   * Reads the FOR header and bit-packed body starting at {@code pos}, decodes every slot into the
+   * type-specific decoded buffer, and returns the position just past the packed body.
+   */
+  protected abstract int decodeBody(int pos, int vectorIdx, int vectorLen, int exponent, int factor);
+
+  /**
+   * Reads {@code numExceptions} original values starting at {@code pos} and writes them into the
+   * decoded buffer at the positions previously read into {@link #excPositionsBuffer}.
+   */
+  protected abstract void applyExceptionValues(int pos, int numExceptions);
 }
