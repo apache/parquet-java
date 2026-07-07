@@ -166,70 +166,54 @@ final class AlpEncoderDecoder {
     }
   }
 
-  /**
-   * Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size.
-   *
-   * <p>Estimated size (in bits) = {@code length * bitWidth + exceptions * (Float.SIZE + Short.SIZE)},
-   * where bitWidth is the number of bits needed to represent the signed range (max - min) of
-   * non-exception encoded values after frame-of-reference subtraction, matching the writer's FOR
-   * packing. This produces better compression ratios than minimizing exception count alone.
-   */
-  static EncodingParams findBestFloatParams(float[] values, int offset, int length) {
-    int bestExponent = 0;
-    int bestFactor = 0;
-    int bestExceptions = length;
-    long bestEstimatedSize = Long.MAX_VALUE;
+  // All valid (exponent, factor) pairs for the full search, precomputed in nested-loop order
+  // (e ascending, then f ascending) so the tie-break and early-exit behave exactly like an inline
+  // double loop. Reused across every vector to avoid per-call allocation.
+  private static final int[][] ALL_VALID_FLOAT_PAIRS = buildAllPairs(FLOAT_MAX_EXPONENT);
+  private static final int[][] ALL_VALID_DOUBLE_PAIRS = buildAllPairs(DOUBLE_MAX_EXPONENT);
 
-    for (int e = 0; e <= FLOAT_MAX_EXPONENT; e++) {
+  private static int[][] buildAllPairs(int maxExponent) {
+    int count = (maxExponent + 1) * (maxExponent + 2) / 2;
+    int[][] pairs = new int[count][];
+    int idx = 0;
+    for (int e = 0; e <= maxExponent; e++) {
       for (int f = 0; f <= e; f++) {
-        int exceptions = 0;
-        int minEncoded = Integer.MAX_VALUE;
-        int maxEncoded = Integer.MIN_VALUE;
-        for (int i = 0; i < length; i++) {
-          float value = values[offset + i];
-          if (isFloatException(value, e, f)) {
-            exceptions++;
-          } else {
-            int encoded = encodeFloat(value, e, f);
-            if (encoded < minEncoded) minEncoded = encoded;
-            if (encoded > maxEncoded) maxEncoded = encoded;
-          }
-        }
-        int nonExceptions = length - exceptions;
-        if (nonExceptions == 0) continue;
-        // Signed subtraction gives the true FOR span; Long.numberOfLeadingZeros yields the
-        // correct unsigned bit width, and an overflowing large range is penalized with 64 bits.
-        // This matches the writer's FOR packing and the double path below.
-        long delta = (nonExceptions < 2) ? 0 : ((long) maxEncoded - (long) minEncoded);
-        int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
-        long estimatedSize = (long) length * bitsPerValue
-            + (long) exceptions * (Float.SIZE + Short.SIZE);
-        if (estimatedSize < bestEstimatedSize
-            || (estimatedSize == bestEstimatedSize
-                && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
-          bestEstimatedSize = estimatedSize;
-          bestExponent = e;
-          bestFactor = f;
-          bestExceptions = exceptions;
-          if (bestExceptions == 0 && bitsPerValue == 0) {
-            return new EncodingParams(bestExponent, bestFactor, 0);
-          }
-        }
+        pairs[idx++] = new int[] {e, f};
       }
     }
-    return new EncodingParams(bestExponent, bestFactor, bestExceptions);
+    return pairs;
+  }
+
+  /** Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size. */
+  static EncodingParams findBestFloatParams(float[] values, int offset, int length) {
+    return pickBestFloat(values, offset, length, ALL_VALID_FLOAT_PAIRS);
   }
 
   /** Same as findBestFloatParams but only tries the cached preset combos. */
   static EncodingParams findBestFloatParamsWithPresets(float[] values, int offset, int length, int[][] presets) {
-    int bestExponent = presets[0][0];
-    int bestFactor = presets[0][1];
+    return pickBestFloat(values, offset, length, presets);
+  }
+
+  /**
+   * Scores each (exponent, factor) pair by estimated compressed size and returns the best.
+   *
+   * <p>Estimated size (in bits) = {@code length * bitWidth + exceptions * (Float.SIZE + Short.SIZE)},
+   * where bitWidth is the number of bits needed to represent the signed range (max - min) of
+   * non-exception encoded values after frame-of-reference subtraction, matching the writer's FOR
+   * packing. This produces better compression ratios than minimizing exception count alone. Ties in
+   * size are broken toward the higher exponent, then the higher factor. The first pair (in {@code
+   * pairs} order) that encodes every value into a single FOR value with zero exceptions wins
+   * outright. When no pair yields any non-exception values, {@code pairs[0]} is returned.
+   */
+  private static EncodingParams pickBestFloat(float[] values, int offset, int length, int[][] pairs) {
+    int bestExponent = pairs[0][0];
+    int bestFactor = pairs[0][1];
     int bestExceptions = length;
     long bestEstimatedSize = Long.MAX_VALUE;
 
-    for (int[] preset : presets) {
-      int e = preset[0];
-      int f = preset[1];
+    for (int[] pair : pairs) {
+      int e = pair[0];
+      int f = pair[1];
       int exceptions = 0;
       int minEncoded = Integer.MAX_VALUE;
       int maxEncoded = Integer.MIN_VALUE;
@@ -245,13 +229,12 @@ final class AlpEncoderDecoder {
       }
       int nonExceptions = length - exceptions;
       if (nonExceptions == 0) continue;
-      // Signed subtraction gives the true FOR span; Long.numberOfLeadingZeros yields the
-      // correct unsigned bit width, and an overflowing large range is penalized with 64 bits.
-      // This matches the writer's FOR packing and the double path below.
+      // Signed subtraction gives the true FOR span; Long.numberOfLeadingZeros yields the correct
+      // unsigned bit width, and an overflowing large range is penalized with 64 bits. This matches
+      // the writer's FOR packing.
       long delta = (nonExceptions < 2) ? 0 : ((long) maxEncoded - (long) minEncoded);
       int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
-      long estimatedSize = (long) length * bitsPerValue
-          + (long) exceptions * (Float.SIZE + Short.SIZE);
+      long estimatedSize = (long) length * bitsPerValue + (long) exceptions * (Float.SIZE + Short.SIZE);
       if (estimatedSize < bestEstimatedSize
           || (estimatedSize == bestEstimatedSize
               && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
@@ -269,60 +252,24 @@ final class AlpEncoderDecoder {
 
   /** Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size. */
   static EncodingParams findBestDoubleParams(double[] values, int offset, int length) {
-    int bestExponent = 0;
-    int bestFactor = 0;
-    int bestExceptions = length;
-    long bestEstimatedSize = Long.MAX_VALUE;
-
-    for (int e = 0; e <= DOUBLE_MAX_EXPONENT; e++) {
-      for (int f = 0; f <= e; f++) {
-        int exceptions = 0;
-        long minEncoded = Long.MAX_VALUE;
-        long maxEncoded = Long.MIN_VALUE;
-        for (int i = 0; i < length; i++) {
-          double value = values[offset + i];
-          if (isDoubleException(value, e, f)) {
-            exceptions++;
-          } else {
-            long encoded = encodeDouble(value, e, f);
-            if (encoded < minEncoded) minEncoded = encoded;
-            if (encoded > maxEncoded) maxEncoded = encoded;
-          }
-        }
-        int nonExceptions = length - exceptions;
-        if (nonExceptions == 0) continue;
-        // delta as signed subtraction; Long.numberOfLeadingZeros handles the unsigned bit width
-        // correctly even when the subtraction overflows (large range → penalized with 64 bits).
-        long delta = (nonExceptions < 2) ? 0 : (maxEncoded - minEncoded);
-        int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
-        long estimatedSize = (long) length * bitsPerValue
-            + (long) exceptions * (Double.SIZE + Short.SIZE);
-        if (estimatedSize < bestEstimatedSize
-            || (estimatedSize == bestEstimatedSize
-                && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
-          bestEstimatedSize = estimatedSize;
-          bestExponent = e;
-          bestFactor = f;
-          bestExceptions = exceptions;
-          if (bestExceptions == 0 && bitsPerValue == 0) {
-            return new EncodingParams(bestExponent, bestFactor, 0);
-          }
-        }
-      }
-    }
-    return new EncodingParams(bestExponent, bestFactor, bestExceptions);
+    return pickBestDouble(values, offset, length, ALL_VALID_DOUBLE_PAIRS);
   }
 
   /** Same as findBestDoubleParams but only tries the cached preset combos. */
   static EncodingParams findBestDoubleParamsWithPresets(double[] values, int offset, int length, int[][] presets) {
-    int bestExponent = presets[0][0];
-    int bestFactor = presets[0][1];
+    return pickBestDouble(values, offset, length, presets);
+  }
+
+  /** Double counterpart to {@link #pickBestFloat}; see it for the scoring and tie-break rules. */
+  private static EncodingParams pickBestDouble(double[] values, int offset, int length, int[][] pairs) {
+    int bestExponent = pairs[0][0];
+    int bestFactor = pairs[0][1];
     int bestExceptions = length;
     long bestEstimatedSize = Long.MAX_VALUE;
 
-    for (int[] preset : presets) {
-      int e = preset[0];
-      int f = preset[1];
+    for (int[] pair : pairs) {
+      int e = pair[0];
+      int f = pair[1];
       int exceptions = 0;
       long minEncoded = Long.MAX_VALUE;
       long maxEncoded = Long.MIN_VALUE;
@@ -340,8 +287,7 @@ final class AlpEncoderDecoder {
       if (nonExceptions == 0) continue;
       long delta = (nonExceptions < 2) ? 0 : (maxEncoded - minEncoded);
       int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
-      long estimatedSize = (long) length * bitsPerValue
-          + (long) exceptions * (Double.SIZE + Short.SIZE);
+      long estimatedSize = (long) length * bitsPerValue + (long) exceptions * (Double.SIZE + Short.SIZE);
       if (estimatedSize < bestEstimatedSize
           || (estimatedSize == bestEstimatedSize
               && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
