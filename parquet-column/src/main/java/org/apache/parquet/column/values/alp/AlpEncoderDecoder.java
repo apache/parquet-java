@@ -144,13 +144,6 @@ final class AlpEncoderDecoder {
   }
 
   /** Number of bits needed to represent maxDelta as an unsigned value. */
-  static int bitWidthForInt(int maxDelta) {
-    if (maxDelta == 0) {
-      return 0;
-    }
-    return Integer.SIZE - Integer.numberOfLeadingZeros(maxDelta);
-  }
-
   static int bitWidthForLong(long maxDelta) {
     if (maxDelta == 0) {
       return 0;

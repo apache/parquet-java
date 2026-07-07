@@ -22,6 +22,7 @@ import static org.apache.parquet.column.values.alp.AlpConstants.*;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -134,7 +135,7 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
     }
 
     if (remaining > 0) {
-      int totalPackedBytes = (count * bitWidth + 7) / 8;
+      int totalPackedBytes = BytesUtils.paddedByteCountFromBits(count * bitWidth);
       int alreadyRead = numFullGroups * bitWidth;
       int partialBytes = totalPackedBytes - alreadyRead;
 
