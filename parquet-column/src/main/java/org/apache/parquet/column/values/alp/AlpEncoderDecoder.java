@@ -143,7 +143,10 @@ final class AlpEncoderDecoder {
     return encoded * DOUBLE_POW10[factor] * DOUBLE_POW10_NEGATIVE[exponent];
   }
 
-  /** Number of bits needed to represent maxDelta as an unsigned value. */
+  /**
+   * Number of bits needed to represent maxDelta as an unsigned value. This is the long counterpart
+   * to {@link org.apache.parquet.bytes.BytesUtils#getWidthFromMaxInt}, which only handles ints.
+   */
   static int bitWidthForLong(long maxDelta) {
     if (maxDelta == 0) {
       return 0;
