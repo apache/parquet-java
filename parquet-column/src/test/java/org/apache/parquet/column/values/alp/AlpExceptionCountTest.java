@@ -115,8 +115,7 @@ public class AlpExceptionCountTest {
     int totalExceptions = 0;
     for (int offset = 0; offset < values.length; offset += VECTOR_SIZE) {
       int len = Math.min(VECTOR_SIZE, values.length - offset);
-      AlpEncoderDecoder.EncodingParams params =
-          AlpEncoderDecoder.findBestDoubleParams(values, offset, len);
+      AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, offset, len);
       totalExceptions += params.numExceptions;
     }
     return totalExceptions;
@@ -128,8 +127,7 @@ public class AlpExceptionCountTest {
     int rows = columns.isEmpty() ? 0 : columns.get(0).length;
     int numVectors = (int) Math.ceil((double) rows / VECTOR_SIZE);
 
-    System.out.printf("%n=== %s (%d rows, %d cols, %d vectors/col) ===%n",
-        label, rows, columns.size(), numVectors);
+    System.out.printf("%n=== %s (%d rows, %d cols, %d vectors/col) ===%n", label, rows, columns.size(), numVectors);
     System.out.printf("  %-20s  %6s  %6s  %7s%n", "column", "rows", "exc", "exc%");
     System.out.printf("  %-20s  %6s  %6s  %7s%n", "------", "----", "---", "----");
 
@@ -141,11 +139,9 @@ public class AlpExceptionCountTest {
       totalExc += exc;
       totalRows += col.length;
       String name = (i < headers.length) ? headers[i].trim() : "col" + i;
-      System.out.printf("  %-20s  %6d  %6d  %6.2f%%%n",
-          name, col.length, exc, 100.0 * exc / col.length);
+      System.out.printf("  %-20s  %6d  %6d  %6.2f%%%n", name, col.length, exc, 100.0 * exc / col.length);
     }
-    System.out.printf("  %-20s  %6d  %6d  %6.2f%%%n",
-        "TOTAL", totalRows, totalExc, 100.0 * totalExc / totalRows);
+    System.out.printf("  %-20s  %6d  %6d  %6.2f%%%n", "TOTAL", totalRows, totalExc, 100.0 * totalExc / totalRows);
   }
 
   @Test
@@ -195,8 +191,7 @@ public class AlpExceptionCountTest {
     assumeTrue("alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR", dir != null);
 
     File[] csvFiles = dir.listFiles((d, name) -> name.startsWith("floatingpoint_") && name.endsWith(".csv"));
-    assumeTrue("No floatingpoint_*.csv files found in " + dir,
-        csvFiles != null && csvFiles.length > 0);
+    assumeTrue("No floatingpoint_*.csv files found in " + dir, csvFiles != null && csvFiles.length > 0);
 
     System.out.printf("%n=== All Datasets Summary ===%n");
     System.out.printf("  %-30s  %6s  %6s  %7s%n", "dataset", "rows", "exc", "exc%");
@@ -210,8 +205,7 @@ public class AlpExceptionCountTest {
         totalRows += col.length;
       }
       String name = file.getName().replace("floatingpoint_", "").replace(".csv", "");
-      System.out.printf("  %-30s  %6d  %6d  %6.2f%%%n",
-          name, totalRows, totalExc, 100.0 * totalExc / totalRows);
+      System.out.printf("  %-30s  %6d  %6d  %6.2f%%%n", name, totalRows, totalExc, 100.0 * totalExc / totalRows);
     }
   }
 }

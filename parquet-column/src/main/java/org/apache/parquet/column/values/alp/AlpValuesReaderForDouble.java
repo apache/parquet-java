@@ -75,16 +75,16 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     pos += ALP_INFO_SIZE;
 
     if (exponent > DOUBLE_MAX_EXPONENT) {
-      throw new ParquetDecodingException(
-          "Invalid ALP double exponent " + exponent + " in vector " + vectorIdx + ", max is " + DOUBLE_MAX_EXPONENT);
+      throw new ParquetDecodingException("Invalid ALP double exponent " + exponent + " in vector " + vectorIdx
+          + ", max is " + DOUBLE_MAX_EXPONENT);
     }
     if (factor > exponent) {
       throw new ParquetDecodingException(
           "Invalid ALP double factor " + factor + " > exponent " + exponent + " in vector " + vectorIdx);
     }
     if (numExceptions > vectorLen) {
-      throw new ParquetDecodingException(
-          "Invalid ALP numExceptions " + numExceptions + " > vectorLen " + vectorLen + " in vector " + vectorIdx);
+      throw new ParquetDecodingException("Invalid ALP numExceptions " + numExceptions + " > vectorLen "
+          + vectorLen + " in vector " + vectorIdx);
     }
 
     long frameOfReference = vectorsData.getLong(pos);
@@ -110,8 +110,8 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
       for (int e = 0; e < numExceptions; e++) {
         excPositionsBuffer[e] = vectorsData.getShort(pos) & 0xFFFF;
         if (excPositionsBuffer[e] >= vectorLen) {
-          throw new ParquetDecodingException(
-              "ALP exception position " + excPositionsBuffer[e] + " out of bounds for vectorLen " + vectorLen);
+          throw new ParquetDecodingException("ALP exception position " + excPositionsBuffer[e]
+              + " out of bounds for vectorLen " + vectorLen);
         }
         pos += Short.BYTES;
       }

@@ -59,8 +59,7 @@ public class AlpAdversarialTest {
     AlpValuesWriter.DoubleAlpValuesWriter writer = null;
     try {
       int cap = Math.max(512, valueCount * 16);
-      writer = new AlpValuesWriter.DoubleAlpValuesWriter(
-          cap, cap, new DirectByteBufferAllocator(), vectorSize);
+      writer = new AlpValuesWriter.DoubleAlpValuesWriter(cap, cap, new DirectByteBufferAllocator(), vectorSize);
       // 2-decimal values — the ALP sweet spot, ensures no exceptions
       for (int i = 0; i < valueCount; i++) {
         writer.writeDouble((i % 1000) / 100.0);
@@ -83,8 +82,7 @@ public class AlpAdversarialTest {
     AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
       int cap = Math.max(256, valueCount * 8);
-      writer = new AlpValuesWriter.FloatAlpValuesWriter(
-          cap, cap, new DirectByteBufferAllocator(), vectorSize);
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(cap, cap, new DirectByteBufferAllocator(), vectorSize);
       for (int i = 0; i < valueCount; i++) {
         writer.writeFloat((i % 1000) / 100.0f);
       }
@@ -184,7 +182,8 @@ public class AlpAdversarialTest {
   /** Helper: find the byte position where the first vector's metadata starts. */
   private static int firstVectorOffset(byte[] page) {
     // header (7) + first 4 bytes of offset array = the offset value itself
-    int firstVectorOff = ByteBuffer.wrap(page, 7, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    int firstVectorOff =
+        ByteBuffer.wrap(page, 7, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
     // offsets are measured from the start of the compression body (after the 7B header)
     return 7 + firstVectorOff;
   }
@@ -270,7 +269,7 @@ public class AlpAdversarialTest {
   /** Page with only the 7-byte header — nothing else. */
   @Test
   public void rejectsHeaderOnlyPage() {
-    byte[] tiny = new byte[]{0x00, 0x00, 0x0A, 0x20, 0x00, 0x00, 0x00}; // 32 elements, log_vec=10
+    byte[] tiny = new byte[] {0x00, 0x00, 0x0A, 0x20, 0x00, 0x00, 0x00}; // 32 elements, log_vec=10
     Throwable t = catchAny(() -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(tiny)));
     });

@@ -21,8 +21,7 @@ package org.apache.parquet.benchmarks;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
@@ -47,8 +46,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  * JMH benchmarks for ALP (Adaptive Lossless floating-Point) encoding.
@@ -156,13 +153,13 @@ public class AlpEncodingBenchmarks {
   // ---------------------------------------------------------------------------
 
   private static void writeParquetFile(Path path, boolean alp) throws IOException {
-    try (org.apache.parquet.hadoop.ParquetWriter<Group> writer =
-        ExampleParquetWriter.builder(new LocalOutputFile(path))
-            .withType(SCHEMA)
-            .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
-            .withAlpEncoding(alp)
-            .withDictionaryEncoding(false)
-            .build()) {
+    try (org.apache.parquet.hadoop.ParquetWriter<Group> writer = ExampleParquetWriter.builder(
+            new LocalOutputFile(path))
+        .withType(SCHEMA)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withAlpEncoding(alp)
+        .withDictionaryEncoding(false)
+        .build()) {
       for (int i = 0; i < N_ROWS; i++) {
         SimpleGroup row = new SimpleGroup(SCHEMA);
         row.add("double_col", DOUBLES[i]);
@@ -177,8 +174,7 @@ public class AlpEncodingBenchmarks {
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(SCHEMA);
       PageReadStore pages;
       while ((pages = reader.readNextRowGroup()) != null) {
-        RecordReader<Group> records =
-            columnIO.getRecordReader(pages, new GroupRecordConverter(SCHEMA));
+        RecordReader<Group> records = columnIO.getRecordReader(pages, new GroupRecordConverter(SCHEMA));
         long rowCount = pages.getRowCount();
         for (long i = 0; i < rowCount; i++) {
           Group row = records.read();

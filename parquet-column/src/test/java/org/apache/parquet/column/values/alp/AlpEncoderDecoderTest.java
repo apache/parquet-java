@@ -341,8 +341,7 @@ public class AlpEncoderDecoderTest {
     // 64-bit width, making it prefer combos that turn values into exceptions. With the correct
     // signed range (max - min), the estimator finds the lossless encoding with zero exceptions.
     float[] values = {-3.14f, 2.71f, 100.5f, -50.25f};
-    AlpEncoderDecoder.EncodingParams params =
-        AlpEncoderDecoder.findBestFloatParams(values, 0, values.length);
+    AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestFloatParams(values, 0, values.length);
     assertEquals(0, params.numExceptions);
   }
 
