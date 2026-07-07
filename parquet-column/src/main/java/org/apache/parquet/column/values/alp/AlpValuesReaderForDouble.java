@@ -71,7 +71,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
     int exponent = vectorsData.get(pos) & 0xFF;
     int factor = vectorsData.get(pos + 1) & 0xFF;
-    int numExceptions = getShortLE(vectorsData, pos + 2) & 0xFFFF;
+    int numExceptions = vectorsData.getShort(pos + 2) & 0xFFFF;
     pos += ALP_INFO_SIZE;
 
     if (exponent > DOUBLE_MAX_EXPONENT) {
@@ -87,7 +87,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
           "Invalid ALP numExceptions " + numExceptions + " > vectorLen " + vectorLen + " in vector " + vectorIdx);
     }
 
-    long frameOfReference = getLongLE(vectorsData, pos);
+    long frameOfReference = vectorsData.getLong(pos);
     int bitWidth = vectorsData.get(pos + 8) & 0xFF;
     if (bitWidth > Long.SIZE) {
       throw new ParquetDecodingException(
@@ -108,7 +108,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
     if (numExceptions > 0) {
       for (int e = 0; e < numExceptions; e++) {
-        excPositionsBuffer[e] = getShortLE(vectorsData, pos) & 0xFFFF;
+        excPositionsBuffer[e] = vectorsData.getShort(pos) & 0xFFFF;
         if (excPositionsBuffer[e] >= vectorLen) {
           throw new ParquetDecodingException(
               "ALP exception position " + excPositionsBuffer[e] + " out of bounds for vectorLen " + vectorLen);
@@ -116,7 +116,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
         pos += Short.BYTES;
       }
       for (int e = 0; e < numExceptions; e++) {
-        decodedValues[excPositionsBuffer[e]] = getDoubleLE(vectorsData, pos);
+        decodedValues[excPositionsBuffer[e]] = vectorsData.getDouble(pos);
         pos += Double.BYTES;
       }
     }
@@ -152,9 +152,5 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     }
 
     return pos;
-  }
-
-  private static double getDoubleLE(ByteBuffer buf, int pos) {
-    return Double.longBitsToDouble(getLongLE(buf, pos));
   }
 }
