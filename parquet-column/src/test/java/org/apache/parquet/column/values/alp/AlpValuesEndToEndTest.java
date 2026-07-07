@@ -1442,9 +1442,8 @@ public class AlpValuesEndToEndTest {
     int v1DataSize = 4 + 5 + v1PackedSize; // 10
     int offsetArraySize = numVectors * 4; // 8
 
-    ByteBuffer page =
-        ByteBuffer.allocate(7 + offsetArraySize + v0DataSize + v1DataSize)
-            .order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer page = ByteBuffer.allocate(7 + offsetArraySize + v0DataSize + v1DataSize)
+        .order(ByteOrder.LITTLE_ENDIAN);
 
     // Header (7 bytes)
     page.put((byte) 0); // compression_mode
@@ -1481,9 +1480,7 @@ public class AlpValuesEndToEndTest {
       float expected = (float) (i + 1);
       float actual = reader.readFloat();
       assertEquals(
-          "Value mismatch at index " + i,
-          Float.floatToRawIntBits(expected),
-          Float.floatToRawIntBits(actual));
+          "Value mismatch at index " + i, Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
     }
   }
 
@@ -1514,9 +1511,8 @@ public class AlpValuesEndToEndTest {
     int v1DataSize = 4 + 5 + 1;
     int offsetArraySize = numVectors * 4;
 
-    ByteBuffer page =
-        ByteBuffer.allocate(7 + offsetArraySize + v0DataSize + v1DataSize)
-            .order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer page = ByteBuffer.allocate(7 + offsetArraySize + v0DataSize + v1DataSize)
+        .order(ByteOrder.LITTLE_ENDIAN);
 
     page.put((byte) 0).put((byte) 0).put((byte) 3);
     page.putInt(numElements);
@@ -1576,9 +1572,7 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(10, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       for (int i = 0; i < 10; i++) {
-        assertEquals(
-            Float.floatToRawIntBits(i * 1.0f),
-            Float.floatToRawIntBits(reader.readFloat()));
+        assertEquals(Float.floatToRawIntBits(i * 1.0f), Float.floatToRawIntBits(reader.readFloat()));
       }
     } finally {
       if (writer != null) {
@@ -1605,8 +1599,7 @@ public class AlpValuesEndToEndTest {
     }
 
     // Verify the best params actually have f > 0 or f == 0 with low exceptions
-    AlpEncoderDecoder.EncodingParams params =
-        AlpEncoderDecoder.findBestDoubleParams(values, 0, values.length);
+    AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, 0, values.length);
     // Regardless of the chosen f, the roundtrip must be lossless
     roundTripDouble(values);
   }
@@ -1630,15 +1623,15 @@ public class AlpValuesEndToEndTest {
   @Test
   public void testDoubleNearOverflowBoundary() throws Exception {
     double[] values = {
-        9.2e18,         // near Long.MAX_VALUE
-        -9.2e18,        // near Long.MIN_VALUE
-        1.7e308,        // near Double.MAX_VALUE
-        -1.7e308,       // near -Double.MAX_VALUE
-        4.9e-324,       // Double.MIN_VALUE (subnormal)
-        1.0e18,         // large but in range
-        -1.0e18,        // large negative but in range
-        0.0,            // normal
-        1.23,           // normal
+      9.2e18, // near Long.MAX_VALUE
+      -9.2e18, // near Long.MIN_VALUE
+      1.7e308, // near Double.MAX_VALUE
+      -1.7e308, // near -Double.MAX_VALUE
+      4.9e-324, // Double.MIN_VALUE (subnormal)
+      1.0e18, // large but in range
+      -1.0e18, // large negative but in range
+      0.0, // normal
+      1.23, // normal
     };
     roundTripDouble(values);
   }
@@ -1646,14 +1639,14 @@ public class AlpValuesEndToEndTest {
   @Test
   public void testFloatNearOverflowBoundary() throws Exception {
     float[] values = {
-        2.1e9f,          // near Integer.MAX_VALUE
-        -2.1e9f,         // near Integer.MIN_VALUE
-        3.4e38f,         // near Float.MAX_VALUE
-        -3.4e38f,        // near -Float.MAX_VALUE
-        1.4e-45f,        // Float.MIN_VALUE (subnormal)
-        1.0e9f,          // large but in range
-        0.0f,            // normal
-        1.23f,           // normal
+      2.1e9f, // near Integer.MAX_VALUE
+      -2.1e9f, // near Integer.MIN_VALUE
+      3.4e38f, // near Float.MAX_VALUE
+      -3.4e38f, // near -Float.MAX_VALUE
+      1.4e-45f, // Float.MIN_VALUE (subnormal)
+      1.0e9f, // large but in range
+      0.0f, // normal
+      1.23f, // normal
     };
     roundTripFloat(values);
   }
@@ -1691,10 +1684,18 @@ public class AlpValuesEndToEndTest {
     float[] values = new float[DEFAULT_VECTOR_SIZE + 5]; // partial second vector
     for (int i = 0; i < values.length; i++) {
       switch (i % 4) {
-        case 0: values[i] = Float.NaN; break;
-        case 1: values[i] = Float.POSITIVE_INFINITY; break;
-        case 2: values[i] = Float.NEGATIVE_INFINITY; break;
-        case 3: values[i] = -0.0f; break;
+        case 0:
+          values[i] = Float.NaN;
+          break;
+        case 1:
+          values[i] = Float.POSITIVE_INFINITY;
+          break;
+        case 2:
+          values[i] = Float.NEGATIVE_INFINITY;
+          break;
+        case 3:
+          values[i] = -0.0f;
+          break;
       }
     }
     roundTripFloat(values);
@@ -1705,10 +1706,18 @@ public class AlpValuesEndToEndTest {
     double[] values = new double[DEFAULT_VECTOR_SIZE + 5];
     for (int i = 0; i < values.length; i++) {
       switch (i % 4) {
-        case 0: values[i] = Double.NaN; break;
-        case 1: values[i] = Double.POSITIVE_INFINITY; break;
-        case 2: values[i] = Double.NEGATIVE_INFINITY; break;
-        case 3: values[i] = -0.0; break;
+        case 0:
+          values[i] = Double.NaN;
+          break;
+        case 1:
+          values[i] = Double.POSITIVE_INFINITY;
+          break;
+        case 2:
+          values[i] = Double.NEGATIVE_INFINITY;
+          break;
+        case 3:
+          values[i] = -0.0;
+          break;
       }
     }
     roundTripDouble(values);

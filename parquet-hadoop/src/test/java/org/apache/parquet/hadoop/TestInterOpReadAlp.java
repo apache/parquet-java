@@ -71,17 +71,14 @@ public class TestInterOpReadAlp {
   public TemporaryFolder temp = new TemporaryFolder();
 
   private static final String[] CPP_DOUBLE_FILES = {"alp_spotify1.parquet", "alp_arade.parquet"};
-  private static final String[] CPP_FLOAT_FILES = {
-    "alp_float_spotify1.parquet", "alp_float_arade.parquet"
-  };
+  private static final String[] CPP_FLOAT_FILES = {"alp_float_spotify1.parquet", "alp_float_arade.parquet"};
 
   private java.nio.file.Path getTestDataDir() {
     String dir = System.getProperty("ALP_TEST_DATA_DIR");
     if (dir == null) dir = System.getenv("ALP_TEST_DATA_DIR");
     if (dir != null && new File(dir).isDirectory()) return Paths.get(dir);
     // Default: alp-test-data/ relative to project root (two levels up from target/test-classes)
-    java.nio.file.Path candidate =
-        Paths.get(System.getProperty("user.dir")).resolve("alp-test-data");
+    java.nio.file.Path candidate = Paths.get(System.getProperty("user.dir")).resolve("alp-test-data");
     return candidate.toFile().isDirectory() ? candidate : null;
   }
 
@@ -102,8 +99,7 @@ public class TestInterOpReadAlp {
       PageReadStore pages;
       while ((pages = reader.readNextRowGroup()) != null) {
         long rowCount = pages.getRowCount();
-        RecordReader<Group> recordReader =
-            columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
+        RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
         for (long i = 0; i < rowCount; i++) {
           rows.add(recordReader.read());
         }
@@ -153,10 +149,7 @@ public class TestInterOpReadAlp {
     java.nio.file.Path dir = getTestDataDir();
     assumeTrue("alp-test-data/ directory not found, skipping", dir != null);
     String[] allFiles = {
-      "alp_spotify1.parquet",
-      "alp_arade.parquet",
-      "alp_float_spotify1.parquet",
-      "alp_float_arade.parquet"
+      "alp_spotify1.parquet", "alp_arade.parquet", "alp_float_spotify1.parquet", "alp_float_arade.parquet"
     };
     for (String filename : allFiles) {
       java.nio.file.Path file = dir.resolve(filename);
@@ -194,8 +187,7 @@ public class TestInterOpReadAlp {
           }
         }
       }
-      LOG.info(
-          "{}: {} values, {} NaN, {} Inf", filename, totalValues, nanCount, infCount);
+      LOG.info("{}: {} values, {} NaN, {} Inf", filename, totalValues, nanCount, infCount);
       assertEquals("Unexpected NaN in " + filename, 0, nanCount);
       assertEquals("Unexpected Inf in " + filename, 0, infCount);
     }
@@ -207,10 +199,7 @@ public class TestInterOpReadAlp {
     java.nio.file.Path dir = getTestDataDir();
     assumeTrue("alp-test-data/ directory not found, skipping", dir != null);
     String[] allFiles = {
-      "alp_spotify1.parquet",
-      "alp_arade.parquet",
-      "alp_float_spotify1.parquet",
-      "alp_float_arade.parquet"
+      "alp_spotify1.parquet", "alp_arade.parquet", "alp_float_spotify1.parquet", "alp_float_arade.parquet"
     };
     for (String filename : allFiles) {
       java.nio.file.Path file = dir.resolve(filename);
@@ -239,10 +228,7 @@ public class TestInterOpReadAlp {
   }
 
   private static final String ALP_SCHEMA =
-      "message alp_interop { "
-          + "required double double_col; "
-          + "required float float_col; "
-          + "}";
+      "message alp_interop { " + "required double double_col; " + "required float float_col; " + "}";
 
   private static final double[] DOUBLE_VALUES = {
     1.23, 4.56, 7.89, 0.001, 1000.0, -3.14, 2.718281828, 9.99999, 0.123456789, 100.5
@@ -290,7 +276,11 @@ public class TestInterOpReadAlp {
           rows.get(i).getFloat("float_col", 0),
           0.0f);
     }
-    LOG.info("writeAndVerifyAlpFile [{}]: wrote and read back {} rows from {}", version, rows.size(), outPath.getFileName());
+    LOG.info(
+        "writeAndVerifyAlpFile [{}]: wrote and read back {} rows from {}",
+        version,
+        rows.size(),
+        outPath.getFileName());
   }
 
   /**
@@ -320,8 +310,7 @@ public class TestInterOpReadAlp {
       floats[i] = (float) ((i * 7L % 10000) / 100.0);
     }
 
-    java.nio.file.Path outPath =
-        temp.newFolder().toPath().resolve("alp_java_vs4096.parquet");
+    java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_java_vs4096.parquet");
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
         .withType(schema)
@@ -377,8 +366,9 @@ public class TestInterOpReadAlp {
 
     for (WriterVersion version : new WriterVersion[] {WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0}) {
       MessageType schema = MessageTypeParser.parseMessageType(ALP_SCHEMA);
-      java.nio.file.Path outPath =
-          temp.newFolder().toPath().resolve("alp_java_xcompat_" + version.name().toLowerCase() + ".parquet");
+      java.nio.file.Path outPath = temp.newFolder()
+          .toPath()
+          .resolve("alp_java_xcompat_" + version.name().toLowerCase() + ".parquet");
 
       try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
           .withType(schema)
@@ -399,17 +389,36 @@ public class TestInterOpReadAlp {
       // Build a python snippet that reads the file and asserts row count and values
       StringBuilder pyScript = new StringBuilder();
       pyScript.append("import pyarrow.parquet as pq, sys\n");
-      pyScript.append("t = pq.read_table('").append(outPath.toAbsolutePath()).append("')\n");
-      pyScript.append("assert len(t) == ").append(DOUBLE_VALUES.length).append(", f'row count mismatch: {len(t)}'\n");
+      pyScript.append("t = pq.read_table('")
+          .append(outPath.toAbsolutePath())
+          .append("')\n");
+      pyScript.append("assert len(t) == ")
+          .append(DOUBLE_VALUES.length)
+          .append(", f'row count mismatch: {len(t)}'\n");
       pyScript.append("dc = t.column('double_col').to_pylist()\n");
       pyScript.append("fc = t.column('float_col').to_pylist()\n");
       for (int i = 0; i < DOUBLE_VALUES.length; i++) {
-        pyScript.append("assert abs(dc[").append(i).append("] - ").append(DOUBLE_VALUES[i])
-            .append(") < 1e-9, f'double mismatch at ").append(i).append(": {dc[").append(i).append("]}'\n");
-        pyScript.append("assert abs(fc[").append(i).append("] - ").append(FLOAT_VALUES[i])
-            .append(") < 1e-4, f'float mismatch at ").append(i).append(": {fc[").append(i).append("]}'\n");
+        pyScript.append("assert abs(dc[")
+            .append(i)
+            .append("] - ")
+            .append(DOUBLE_VALUES[i])
+            .append(") < 1e-9, f'double mismatch at ")
+            .append(i)
+            .append(": {dc[")
+            .append(i)
+            .append("]}'\n");
+        pyScript.append("assert abs(fc[")
+            .append(i)
+            .append("] - ")
+            .append(FLOAT_VALUES[i])
+            .append(") < 1e-4, f'float mismatch at ")
+            .append(i)
+            .append(": {fc[")
+            .append(i)
+            .append("]}'\n");
       }
-      pyScript.append("print('OK: " + version.name() + " " + DOUBLE_VALUES.length + " rows verified by pyarrow')\n");
+      pyScript.append(
+          "print('OK: " + version.name() + " " + DOUBLE_VALUES.length + " rows verified by pyarrow')\n");
 
       Process proc = new ProcessBuilder("python3", "-c", pyScript.toString())
           .redirectErrorStream(true)
@@ -420,11 +429,9 @@ public class TestInterOpReadAlp {
       // pyarrow may not yet support reading ALP (Arrow C++ PR #48345 in progress).
       // Skip rather than fail so the test becomes a passing signal once pyarrow adds ALP support.
       assumeTrue(
-          "pyarrow does not yet support reading ALP encoding (Arrow C++ PR #48345 pending): "
-              + output,
+          "pyarrow does not yet support reading ALP encoding (Arrow C++ PR #48345 pending): " + output,
           !output.contains("Unknown encoding type"));
-      assertEquals(
-          "pyarrow failed to read Java-written ALP file (" + version + "): " + output, 0, exitCode);
+      assertEquals("pyarrow failed to read Java-written ALP file (" + version + "): " + output, 0, exitCode);
     }
   }
 
@@ -432,7 +439,7 @@ public class TestInterOpReadAlp {
   /*
   @Test
   public void testReadAlpFromParquetTesting() throws IOException {
-    // InterOpTester will auto-download from parquet-testing
+  // InterOpTester will auto-download from parquet-testing
   }
   */
 
@@ -449,8 +456,7 @@ public class TestInterOpReadAlp {
     "alp_spotify1.parquet", "alp_arade.parquet", "alp_float_spotify1.parquet", "alp_float_arade.parquet"
   };
   private static final int[] GENERATOR_VECTOR_SIZES = {1024, 4096};
-  private static final WriterVersion[] GENERATOR_PAGE_VERSIONS = {
-    WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0
+  private static final WriterVersion[] GENERATOR_PAGE_VERSIONS = {WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0
   };
 
   /**
@@ -482,8 +488,7 @@ public class TestInterOpReadAlp {
       PageReadStore pages;
       while ((pages = reader.readNextRowGroup()) != null) {
         long rowCount = pages.getRowCount();
-        RecordReader<Group> recordReader =
-            columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
+        RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
         for (long i = 0; i < rowCount; i++) {
           rows.add(recordReader.read());
         }
@@ -516,8 +521,7 @@ public class TestInterOpReadAlp {
     assumeTrue("ALP_OUTPUT_DIR not set, skipping fixture generator", outDir != null);
     LOG.info("Generating ALP fixtures to {}", outDir);
 
-    int expectedFiles =
-        SOURCE_FILES.length * GENERATOR_PAGE_VERSIONS.length * GENERATOR_VECTOR_SIZES.length;
+    int expectedFiles = SOURCE_FILES.length * GENERATOR_PAGE_VERSIONS.length * GENERATOR_VECTOR_SIZES.length;
     int generated = 0;
     for (String sourceFile : SOURCE_FILES) {
       java.nio.file.Path source = sourceDir.resolve(sourceFile);
@@ -533,8 +537,7 @@ public class TestInterOpReadAlp {
         String pageTag = (pageVersion == WriterVersion.PARQUET_1_0) ? "v1" : "v2";
         for (int vectorSize : GENERATOR_VECTOR_SIZES) {
           java.nio.file.Path outPath =
-              outDir.resolve(
-                  "alp_java_" + stem + "_" + pageTag + "_vs" + vectorSize + ".parquet");
+              outDir.resolve("alp_java_" + stem + "_" + pageTag + "_vs" + vectorSize + ".parquet");
           java.nio.file.Files.deleteIfExists(outPath);
 
           try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
@@ -554,9 +557,7 @@ public class TestInterOpReadAlp {
           // Verify: read back and compare against the source row-by-row
           List<Group> roundTrip = readGroupsWithSchema(outPath, new MessageType[1]);
           assertEquals(
-              "Row count mismatch for " + outPath.getFileName(),
-              sourceRows.size(),
-              roundTrip.size());
+              "Row count mismatch for " + outPath.getFileName(), sourceRows.size(), roundTrip.size());
           int fieldCount = schema.getFieldCount();
           for (int i = 0; i < sourceRows.size(); i++) {
             for (int f = 0; f < fieldCount; f++) {
@@ -569,7 +570,8 @@ public class TestInterOpReadAlp {
                 long eb = Double.doubleToRawLongBits(expected);
                 long ab = Double.doubleToRawLongBits(actual);
                 assertEquals(
-                    "double bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
+                    "double bit mismatch in " + outPath.getFileName() + " row " + i + " field "
+                        + fieldName,
                     eb,
                     ab);
               } else if (type == PrimitiveType.PrimitiveTypeName.FLOAT) {
@@ -578,7 +580,8 @@ public class TestInterOpReadAlp {
                 int eb = Float.floatToRawIntBits(expected);
                 int ab = Float.floatToRawIntBits(actual);
                 assertEquals(
-                    "float bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
+                    "float bit mismatch in " + outPath.getFileName() + " row " + i + " field "
+                        + fieldName,
                     eb,
                     ab);
               }
@@ -596,8 +599,7 @@ public class TestInterOpReadAlp {
         }
       }
     }
-    assertEquals(
-        "Expected to generate " + expectedFiles + " fixture files", expectedFiles, generated);
+    assertEquals("Expected to generate " + expectedFiles + " fixture files", expectedFiles, generated);
     LOG.info("Generated {} ALP fixture files to {}", generated, outDir);
   }
 
@@ -613,8 +615,7 @@ public class TestInterOpReadAlp {
   public void readAllFixtureFilesIndependently() throws IOException {
     java.nio.file.Path outDir = getOutputDir();
     assumeTrue("ALP_OUTPUT_DIR not set, skipping reader-only test", outDir != null);
-    File[] files =
-        outDir.toFile().listFiles((f, n) -> n.startsWith("alp_java_") && n.endsWith(".parquet"));
+    File[] files = outDir.toFile().listFiles((f, n) -> n.startsWith("alp_java_") && n.endsWith(".parquet"));
     assumeTrue("No fixture files in " + outDir, files != null && files.length > 0);
     java.util.Arrays.sort(files, (a, b) -> a.getName().compareTo(b.getName()));
 
@@ -665,7 +666,10 @@ public class TestInterOpReadAlp {
     assertEquals("Every column chunk should declare ALP", totalChunks, alpChunks);
     LOG.info(
         "readAllFixtureFilesIndependently: {} files, {} chunks ({} ALP), {} rows decoded",
-        filesRead, totalChunks, alpChunks, totalRows);
+        filesRead,
+        totalChunks,
+        alpChunks,
+        totalRows);
   }
 
   // ---------------------------------------------------------------------------
@@ -884,7 +888,8 @@ public class TestInterOpReadAlp {
     // Build the schema
     StringBuilder schemaText = new StringBuilder("message alp_corner_cases {\n");
     for (CornerCaseData c : cols) {
-      schemaText.append("  ")
+      schemaText
+          .append("  ")
           .append(c.isOptional ? "optional " : "required ")
           .append(c.isFloat ? "float " : "double ")
           .append(c.name)
@@ -927,8 +932,7 @@ public class TestInterOpReadAlp {
       int rowIdx = 0;
       while ((pages = reader.readNextRowGroup()) != null) {
         long rc = pages.getRowCount();
-        RecordReader<Group> rr =
-            columnIO.getRecordReader(pages, new GroupRecordConverter(readSchema));
+        RecordReader<Group> rr = columnIO.getRecordReader(pages, new GroupRecordConverter(readSchema));
         for (long i = 0; i < rc; i++) {
           Group row = rr.read();
           for (int fi = 0; fi < cols.size(); fi++) {
@@ -1023,7 +1027,8 @@ public class TestInterOpReadAlp {
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(outPath))) {
       ParquetMetadata footer = reader.getFooter();
       assertEquals("expected one row group", 1, footer.getBlocks().size());
-      org.apache.parquet.hadoop.metadata.BlockMetaData block = footer.getBlocks().get(0);
+      org.apache.parquet.hadoop.metadata.BlockMetaData block =
+          footer.getBlocks().get(0);
 
       org.apache.parquet.hadoop.metadata.ColumnChunkMetaData doubleChunk = null;
       org.apache.parquet.hadoop.metadata.ColumnChunkMetaData floatChunk = null;
@@ -1032,8 +1037,10 @@ public class TestInterOpReadAlp {
         if (path.equals("double_col")) doubleChunk = c;
         if (path.equals("float_col")) floatChunk = c;
       }
-      assertTrue("double_col must be ALP-encoded", doubleChunk.getEncodings().contains(Encoding.ALP));
-      assertTrue("float_col must be ALP-encoded", floatChunk.getEncodings().contains(Encoding.ALP));
+      assertTrue(
+          "double_col must be ALP-encoded", doubleChunk.getEncodings().contains(Encoding.ALP));
+      assertTrue(
+          "float_col must be ALP-encoded", floatChunk.getEncodings().contains(Encoding.ALP));
 
       org.apache.parquet.column.statistics.Statistics<?> dStats = doubleChunk.getStatistics();
       org.apache.parquet.column.statistics.Statistics<?> fStats = floatChunk.getStatistics();
@@ -1052,13 +1059,11 @@ public class TestInterOpReadAlp {
           Double.doubleToRawLongBits(expectedDoubleMax),
           Double.doubleToRawLongBits((Double) dStats.genericGetMax()));
       assertEquals(
-          "float min mismatch",
-          Float.floatToRawIntBits(expectedFloatMin),
-          Float.floatToRawIntBits((Float) fStats.genericGetMin()));
+          "float min mismatch", Float.floatToRawIntBits(expectedFloatMin), Float.floatToRawIntBits((Float)
+              fStats.genericGetMin()));
       assertEquals(
-          "float max mismatch",
-          Float.floatToRawIntBits(expectedFloatMax),
-          Float.floatToRawIntBits((Float) fStats.genericGetMax()));
+          "float max mismatch", Float.floatToRawIntBits(expectedFloatMax), Float.floatToRawIntBits((Float)
+              fStats.genericGetMax()));
       assertEquals("double null count must be 0", 0L, dStats.getNumNulls());
       assertEquals("float null count must be 0", 0L, fStats.getNumNulls());
     }
