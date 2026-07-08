@@ -18,11 +18,14 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
+
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
 import java.math.BigDecimal;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestVariantParseJson {
@@ -30,73 +33,71 @@ public class TestVariantParseJson {
   @Test
   public void testParseNull() throws IOException {
     Variant v = VariantJsonParser.parseJson("null");
-    Assert.assertEquals(Variant.Type.NULL, v.getType());
+    assertThat(v.getType()).isEqualTo(Variant.Type.NULL);
   }
 
   @Test
   public void testParseTrue() throws IOException {
     Variant v = VariantJsonParser.parseJson("true");
-    Assert.assertEquals(Variant.Type.BOOLEAN, v.getType());
-    Assert.assertTrue(v.getBoolean());
+    assertThat(v.getType()).isEqualTo(Variant.Type.BOOLEAN);
+    assertThat(v.getBoolean()).isTrue();
   }
 
   @Test
   public void testParseFalse() throws IOException {
     Variant v = VariantJsonParser.parseJson("false");
-    Assert.assertEquals(Variant.Type.BOOLEAN, v.getType());
-    Assert.assertFalse(v.getBoolean());
+    assertThat(v.getType()).isEqualTo(Variant.Type.BOOLEAN);
+    assertThat(v.getBoolean()).isFalse();
   }
 
   @Test
   public void testParseString() throws IOException {
     Variant v = VariantJsonParser.parseJson("\"hello world\"");
-    Assert.assertEquals(Variant.Type.STRING, v.getType());
-    Assert.assertEquals("hello world", v.getString());
+    assertThat(v.getType()).isEqualTo(Variant.Type.STRING);
+    assertThat(v.getString()).isEqualTo("hello world");
   }
 
   @Test
   public void testParseSmallInteger() throws IOException {
     Variant v = VariantJsonParser.parseJson("42");
-    Assert.assertEquals(Variant.Type.BYTE, v.getType());
-    Assert.assertEquals(42, v.getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.BYTE);
+    assertThat(v.getLong()).isEqualTo(42);
   }
 
   @Test
   public void testParseShortInteger() throws IOException {
     Variant v = VariantJsonParser.parseJson("1000");
-    Assert.assertEquals(Variant.Type.SHORT, v.getType());
-    Assert.assertEquals(1000, v.getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.SHORT);
+    assertThat(v.getLong()).isEqualTo(1000);
   }
 
   @Test
   public void testParseIntInteger() throws IOException {
     Variant v = VariantJsonParser.parseJson("100000");
-    Assert.assertEquals(Variant.Type.INT, v.getType());
-    Assert.assertEquals(100000, v.getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.INT);
+    assertThat(v.getLong()).isEqualTo(100000);
   }
 
   @Test
   public void testParseLongInteger() throws IOException {
     Variant v = VariantJsonParser.parseJson("9999999999");
-    Assert.assertEquals(Variant.Type.LONG, v.getType());
-    Assert.assertEquals(9999999999L, v.getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.LONG);
+    assertThat(v.getLong()).isEqualTo(9999999999L);
   }
 
   @Test
   public void testParseDecimalFloat() throws IOException {
     Variant v = VariantJsonParser.parseJson("3.14");
     Variant.Type type = v.getType();
-    Assert.assertTrue(
-        "Expected decimal type, got " + type,
-        type == Variant.Type.DECIMAL4 || type == Variant.Type.DECIMAL8 || type == Variant.Type.DECIMAL16);
-    Assert.assertEquals(0, new BigDecimal("3.14").compareTo(v.getDecimal()));
+    assertThat(type).isIn(Variant.Type.DECIMAL4, Variant.Type.DECIMAL8, Variant.Type.DECIMAL16);
+    assertThat(v.getDecimal()).isEqualByComparingTo(new BigDecimal("3.14"));
   }
 
   @Test
   public void testParseScientificNotationDouble() throws IOException {
     Variant v = VariantJsonParser.parseJson("1.5e10");
-    Assert.assertEquals(Variant.Type.DOUBLE, v.getType());
-    Assert.assertEquals(1.5e10, v.getDouble(), 0.001);
+    assertThat(v.getType()).isEqualTo(Variant.Type.DOUBLE);
+    assertThat(v.getDouble()).isCloseTo(1.5e10, within(0.001));
   }
 
   @Test
@@ -104,105 +105,102 @@ public class TestVariantParseJson {
     String bigNum = "99999999999999999999";
     Variant v = VariantJsonParser.parseJson(bigNum);
     Variant.Type type = v.getType();
-    Assert.assertTrue(
-        "Expected decimal type for big integer, got " + type,
-        type == Variant.Type.DECIMAL4 || type == Variant.Type.DECIMAL8 || type == Variant.Type.DECIMAL16);
-    Assert.assertEquals(0, new BigDecimal(bigNum).compareTo(v.getDecimal()));
+    assertThat(type).isIn(Variant.Type.DECIMAL4, Variant.Type.DECIMAL8, Variant.Type.DECIMAL16);
+    assertThat(v.getDecimal()).isEqualByComparingTo(new BigDecimal(bigNum));
   }
 
   @Test
   public void testParseNegativeInteger() throws IOException {
     Variant v = VariantJsonParser.parseJson("-100");
-    Assert.assertEquals(-100, v.getLong());
+    assertThat(v.getLong()).isEqualTo(-100);
   }
 
   @Test
   public void testParseNegativeDecimal() throws IOException {
     Variant v = VariantJsonParser.parseJson("-99.99");
-    Assert.assertEquals(0, new BigDecimal("-99.99").compareTo(v.getDecimal()));
+    assertThat(v.getDecimal()).isEqualByComparingTo(new BigDecimal("-99.99"));
   }
 
   @Test
   public void testParseZero() throws IOException {
     Variant v = VariantJsonParser.parseJson("0");
-    Assert.assertEquals(Variant.Type.BYTE, v.getType());
-    Assert.assertEquals(0, v.getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.BYTE);
+    assertThat(v.getLong()).isEqualTo(0);
   }
 
   @Test
   public void testParseEmptyObject() throws IOException {
     Variant v = VariantJsonParser.parseJson("{}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(0, v.numObjectElements());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.numObjectElements()).isEqualTo(0);
   }
 
   @Test
   public void testParseSimpleObject() throws IOException {
     Variant v = VariantJsonParser.parseJson("{\"name\":\"John\",\"age\":30}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(2, v.numObjectElements());
-    Assert.assertEquals("John", v.getFieldByKey("name").getString());
-    Assert.assertEquals(30, v.getFieldByKey("age").getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.numObjectElements()).isEqualTo(2);
+    assertThat(v.getFieldByKey("name").getString()).isEqualTo("John");
+    assertThat(v.getFieldByKey("age").getLong()).isEqualTo(30);
   }
 
   @Test
   public void testParseNestedObject() throws IOException {
     Variant v = VariantJsonParser.parseJson("{\"user\":{\"id\":100,\"country\":\"US\"},\"active\":true}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
     Variant user = v.getFieldByKey("user");
-    Assert.assertEquals(Variant.Type.OBJECT, user.getType());
-    Assert.assertEquals(100, user.getFieldByKey("id").getLong());
-    Assert.assertEquals("US", user.getFieldByKey("country").getString());
-    Assert.assertTrue(v.getFieldByKey("active").getBoolean());
+    assertThat(user.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(user.getFieldByKey("id").getLong()).isEqualTo(100);
+    assertThat(user.getFieldByKey("country").getString()).isEqualTo("US");
+    assertThat(v.getFieldByKey("active").getBoolean()).isTrue();
   }
 
   @Test
   public void testParseEmptyArray() throws IOException {
     Variant v = VariantJsonParser.parseJson("[]");
-    Assert.assertEquals(Variant.Type.ARRAY, v.getType());
-    Assert.assertEquals(0, v.numArrayElements());
+    assertThat(v.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(v.numArrayElements()).isEqualTo(0);
   }
 
   @Test
   public void testParseSimpleArray() throws IOException {
     Variant v = VariantJsonParser.parseJson("[1,2,3,\"four\"]");
-    Assert.assertEquals(Variant.Type.ARRAY, v.getType());
-    Assert.assertEquals(4, v.numArrayElements());
-    Assert.assertEquals(1, v.getElementAtIndex(0).getLong());
-    Assert.assertEquals(2, v.getElementAtIndex(1).getLong());
-    Assert.assertEquals(3, v.getElementAtIndex(2).getLong());
-    Assert.assertEquals("four", v.getElementAtIndex(3).getString());
+    assertThat(v.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(v.numArrayElements()).isEqualTo(4);
+    assertThat(v.getElementAtIndex(0).getLong()).isEqualTo(1);
+    assertThat(v.getElementAtIndex(1).getLong()).isEqualTo(2);
+    assertThat(v.getElementAtIndex(2).getLong()).isEqualTo(3);
+    assertThat(v.getElementAtIndex(3).getString()).isEqualTo("four");
   }
 
   @Test
   public void testParseNestedArray() throws IOException {
     Variant v = VariantJsonParser.parseJson("[[1,2],[3,4]]");
-    Assert.assertEquals(Variant.Type.ARRAY, v.getType());
-    Assert.assertEquals(2, v.numArrayElements());
+    assertThat(v.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(v.numArrayElements()).isEqualTo(2);
     Variant inner = v.getElementAtIndex(0);
-    Assert.assertEquals(Variant.Type.ARRAY, inner.getType());
-    Assert.assertEquals(1, inner.getElementAtIndex(0).getLong());
-    Assert.assertEquals(2, inner.getElementAtIndex(1).getLong());
+    assertThat(inner.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(inner.getElementAtIndex(0).getLong()).isEqualTo(1);
+    assertThat(inner.getElementAtIndex(1).getLong()).isEqualTo(2);
   }
 
   @Test
   public void testParseMixedArray() throws IOException {
     Variant v = VariantJsonParser.parseJson("[1,\"two\",true,null,3.14]");
-    Assert.assertEquals(Variant.Type.ARRAY, v.getType());
-    Assert.assertEquals(5, v.numArrayElements());
-    Assert.assertEquals(1, v.getElementAtIndex(0).getLong());
-    Assert.assertEquals("two", v.getElementAtIndex(1).getString());
-    Assert.assertTrue(v.getElementAtIndex(2).getBoolean());
-    Assert.assertEquals(Variant.Type.NULL, v.getElementAtIndex(3).getType());
-    Assert.assertEquals(
-        0, new BigDecimal("3.14").compareTo(v.getElementAtIndex(4).getDecimal()));
+    assertThat(v.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(v.numArrayElements()).isEqualTo(5);
+    assertThat(v.getElementAtIndex(0).getLong()).isEqualTo(1);
+    assertThat(v.getElementAtIndex(1).getString()).isEqualTo("two");
+    assertThat(v.getElementAtIndex(2).getBoolean()).isTrue();
+    assertThat(v.getElementAtIndex(3).getType()).isEqualTo(Variant.Type.NULL);
+    assertThat(v.getElementAtIndex(4).getDecimal()).isEqualByComparingTo(new BigDecimal("3.14"));
   }
 
   @Test
   public void testParseObjectWithNullValue() throws IOException {
     Variant v = VariantJsonParser.parseJson("{\"key\":null}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(Variant.Type.NULL, v.getFieldByKey("key").getType());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.getFieldByKey("key").getType()).isEqualTo(Variant.Type.NULL);
   }
 
   @Test
@@ -212,59 +210,59 @@ public class TestVariantParseJson {
         + "{\"eType\":\"purchase\",\"amount\":99.99}"
         + "]}";
     Variant v = VariantJsonParser.parseJson(json);
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(12345, v.getFieldByKey("userId").getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.getFieldByKey("userId").getLong()).isEqualTo(12345);
     Variant events = v.getFieldByKey("events");
-    Assert.assertEquals(Variant.Type.ARRAY, events.getType());
-    Assert.assertEquals(2, events.numArrayElements());
-    Assert.assertEquals(
-        "login", events.getElementAtIndex(0).getFieldByKey("eType").getString());
-    Assert.assertEquals(
-        0,
-        new BigDecimal("99.99")
-            .compareTo(events.getElementAtIndex(1)
-                .getFieldByKey("amount")
-                .getDecimal()));
+    assertThat(events.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(events.numArrayElements()).isEqualTo(2);
+    assertThat(events.getElementAtIndex(0).getFieldByKey("eType").getString())
+        .isEqualTo("login");
+    assertThat(events.getElementAtIndex(1).getFieldByKey("amount").getDecimal())
+        .isEqualByComparingTo(new BigDecimal("99.99"));
   }
 
   @Test
   public void testParseEmptyString() throws IOException {
     Variant v = VariantJsonParser.parseJson("\"\"");
-    Assert.assertEquals(Variant.Type.STRING, v.getType());
-    Assert.assertEquals("", v.getString());
+    assertThat(v.getType()).isEqualTo(Variant.Type.STRING);
+    assertThat(v.getString()).isEqualTo("");
   }
 
   @Test
   public void testParseUnicodeString() throws IOException {
     Variant v = VariantJsonParser.parseJson("\"\\u00e9l\\u00e8ve\"");
-    Assert.assertEquals(Variant.Type.STRING, v.getType());
-    Assert.assertEquals("\u00e9l\u00e8ve", v.getString());
+    assertThat(v.getType()).isEqualTo(Variant.Type.STRING);
+    assertThat(v.getString()).isEqualTo("\u00e9l\u00e8ve");
   }
 
   @Test
   public void testParseUnicodeKey() throws IOException {
     Variant v = VariantJsonParser.parseJson("{\"\\u00e9l\\u00e8ve\": 42}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
     Variant value = v.getFieldByKey("élève");
-    Assert.assertNotNull(value);
-    Assert.assertEquals(42, value.getInt());
+    assertThat(value).isNotNull();
+    assertThat(value.getInt()).isEqualTo(42);
   }
 
   @Test
   public void testParseEscapedString() throws IOException {
     Variant v = VariantJsonParser.parseJson("\"hello\\nworld\"");
-    Assert.assertEquals(Variant.Type.STRING, v.getType());
-    Assert.assertEquals("hello\nworld", v.getString());
+    assertThat(v.getType()).isEqualTo(Variant.Type.STRING);
+    assertThat(v.getString()).isEqualTo("hello\nworld");
   }
 
-  @Test(expected = IOException.class)
-  public void testParseMalformedJson() throws IOException {
-    VariantJsonParser.parseJson("{invalid");
+  @Test
+  public void testParseMalformedJson() {
+    assertThatThrownBy(() -> VariantJsonParser.parseJson("{invalid"))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("was expecting double-quote to start field name");
   }
 
-  @Test(expected = IOException.class)
-  public void testParseIncompleteObject() throws IOException {
-    VariantJsonParser.parseJson("{\"key\":");
+  @Test
+  public void testParseIncompleteObject() {
+    assertThatThrownBy(() -> VariantJsonParser.parseJson("{\"key\":"))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Unexpected end-of-input within/between Object entries");
   }
 
   @Test
@@ -273,17 +271,17 @@ public class TestVariantParseJson {
     try (JsonParser parser = factory.createParser("{\"a\":1}")) {
       parser.nextToken();
       Variant v = VariantJsonParser.parseJson(parser);
-      Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-      Assert.assertEquals(1, v.getFieldByKey("a").getLong());
+      assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+      assertThat(v.getFieldByKey("a").getLong()).isEqualTo(1);
     }
   }
 
   @Test
   public void testParseDuplicateKeysLastWins() throws IOException {
     Variant v = VariantJsonParser.parseJson("{\"k\":1,\"k\":2}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(1, v.numObjectElements());
-    Assert.assertEquals(2, v.getFieldByKey("k").getLong());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.numObjectElements()).isEqualTo(1);
+    assertThat(v.getFieldByKey("k").getLong()).isEqualTo(2);
   }
 
   @Test
@@ -298,35 +296,41 @@ public class TestVariantParseJson {
     }
     Variant v = VariantJsonParser.parseJson(sb.toString());
     for (int i = 0; i < 20; i++) {
-      Assert.assertEquals(Variant.Type.OBJECT, v.getType());
+      assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
       v = v.getFieldByKey("n");
     }
-    Assert.assertEquals(42, v.getLong());
+    assertThat(v.getLong()).isEqualTo(42);
   }
 
   @Test
   public void testObjectKeysSorted() throws IOException {
     Variant v = VariantJsonParser.parseJson("{\"c\":3,\"a\":1,\"b\":2}");
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(3, v.numObjectElements());
-    Assert.assertEquals("a", v.getFieldAtIndex(0).key);
-    Assert.assertEquals("b", v.getFieldAtIndex(1).key);
-    Assert.assertEquals("c", v.getFieldAtIndex(2).key);
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.numObjectElements()).isEqualTo(3);
+    assertThat(v.getFieldAtIndex(0).key).isEqualTo("a");
+    assertThat(v.getFieldAtIndex(1).key).isEqualTo("b");
+    assertThat(v.getFieldAtIndex(2).key).isEqualTo("c");
   }
 
-  @Test(expected = IOException.class)
-  public void testParseEmptyInput() throws IOException {
-    VariantJsonParser.parseJson("");
+  @Test
+  public void testParseEmptyInput() {
+    assertThatThrownBy(() -> VariantJsonParser.parseJson(""))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Unexpected null token");
   }
 
-  @Test(expected = IOException.class)
-  public void testParseNotJson() throws IOException {
-    VariantJsonParser.parseJson("not json at all");
+  @Test
+  public void testParseNotJson() {
+    assertThatThrownBy(() -> VariantJsonParser.parseJson("not json at all"))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Unrecognized token 'not'");
   }
 
-  @Test(expected = IOException.class)
-  public void testParseIncompleteArray() throws IOException {
-    VariantJsonParser.parseJson("[1, 2,");
+  @Test
+  public void testParseIncompleteArray() {
+    assertThatThrownBy(() -> VariantJsonParser.parseJson("[1, 2,"))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Unexpected end-of-input within/between Array entries");
   }
 
   @Test
@@ -342,11 +346,11 @@ public class TestVariantParseJson {
     sb.append("}");
 
     Variant v = VariantJsonParser.parseJson(sb.toString());
-    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
-    Assert.assertEquals(numKeys, v.numObjectElements());
+    assertThat(v.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(v.numObjectElements()).isEqualTo(numKeys);
     // Spot-check a few values
-    Assert.assertEquals(0, v.getFieldByKey("key0").getLong());
-    Assert.assertEquals(500, v.getFieldByKey("key500").getLong());
-    Assert.assertEquals(999, v.getFieldByKey("key999").getLong());
+    assertThat(v.getFieldByKey("key0").getLong()).isEqualTo(0);
+    assertThat(v.getFieldByKey("key500").getLong()).isEqualTo(500);
+    assertThat(v.getFieldByKey("key999").getLong()).isEqualTo(999);
   }
 }
