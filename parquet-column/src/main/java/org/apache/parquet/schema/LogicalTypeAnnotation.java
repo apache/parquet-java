@@ -1260,7 +1260,14 @@ public abstract class LogicalTypeAnnotation {
    *       of the form {@code <algorithm>:base64(<digest>)}.</li>
    *   <li>{@code inline} (BYTE_ARRAY): the referenced bytes stored inline in the value.</li>
    * </ul>
-   * No fields with names other than the above are permitted.
+   * No fields with names other than the above are permitted. The schema builder additionally
+   * rejects group definitions that could never produce a valid value: a group that declares
+   * {@code offset} must also declare {@code size}, and a group must declare at least one of
+   * {@code inline}, {@code path}, or {@code size} (a group without {@code path} or {@code inline}
+   * holds only self-references, which require {@code size}). Per-value rules that depend on the
+   * data in each row — {@code size} being present for a self-reference (null {@code path}) and
+   * {@code offset}/{@code size} being non-negative — cannot be enforced here and are the
+   * responsibility of writers and consumers.
    */
   public static class FileLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final FileLogicalTypeAnnotation INSTANCE = new FileLogicalTypeAnnotation();
