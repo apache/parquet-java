@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,10 +49,10 @@ public class TestParquetReadRouter {
 
       ParquetReadRouter.read(bitWidth, inputStream, 0, output);
       ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
-      assertArrayEquals(output, outputBatch);
+      assertThat(outputBatch).isEqualTo(output);
       Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
       ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
-      assertArrayEquals(output, outputBatchVector);
+      assertThat(outputBatchVector).isEqualTo(output);
     }
   }
 }

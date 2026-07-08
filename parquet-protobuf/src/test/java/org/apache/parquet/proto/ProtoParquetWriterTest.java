@@ -20,7 +20,7 @@ package org.apache.parquet.proto;
 
 import static org.apache.parquet.proto.TestUtils.readMessages;
 import static org.apache.parquet.proto.TestUtils.someTemporaryFilePath;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
@@ -54,8 +54,8 @@ public class ProtoParquetWriterTest {
     List<TestProto3.InnerMessage> gotBack = TestUtils.readMessages(file, TestProto3.InnerMessage.class);
 
     TestProto3.InnerMessage getFirst = gotBack.get(0);
-    assertEquals(getFirst.getOne(), "oneValue");
-    assertEquals(getFirst.getTwo(), "");
-    assertEquals(getFirst.getThree(), "");
+    assertThat(getFirst.getOne()).isEqualTo("oneValue");
+    assertThat(getFirst.getTwo()).isEqualTo("");
+    assertThat(getFirst.getThree()).isEqualTo("");
   }
 }
