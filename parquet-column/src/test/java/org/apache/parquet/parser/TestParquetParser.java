@@ -52,7 +52,7 @@ import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.apache.parquet.schema.Types.buildMessage;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -95,11 +95,11 @@ public class TestParquetParser {
                 new PrimitiveType(REQUIRED, BINARY, "Code"),
                 new PrimitiveType(REQUIRED, BINARY, "Country")),
             new PrimitiveType(OPTIONAL, BINARY, "Url")));
-    assertEquals(manuallyMade, parsed);
+    assertThat(parsed).isEqualTo(manuallyMade);
 
     MessageType parsedThenReparsed = parseMessageType(parsed.toString());
 
-    assertEquals(manuallyMade, parsedThenReparsed);
+    assertThat(parsedThenReparsed).isEqualTo(manuallyMade);
 
     parsed = parseMessageType(
         "message m { required group a {required binary b;} required group c { required int64 d; }}");
@@ -108,11 +108,11 @@ public class TestParquetParser {
         new GroupType(REQUIRED, "a", new PrimitiveType(REQUIRED, BINARY, "b")),
         new GroupType(REQUIRED, "c", new PrimitiveType(REQUIRED, INT64, "d")));
 
-    assertEquals(manuallyMade, parsed);
+    assertThat(parsed).isEqualTo(manuallyMade);
 
     parsedThenReparsed = parseMessageType(parsed.toString());
 
-    assertEquals(manuallyMade, parsedThenReparsed);
+    assertThat(parsedThenReparsed).isEqualTo(manuallyMade);
   }
 
   @Test
@@ -139,9 +139,9 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(schema.toString());
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -152,9 +152,9 @@ public class TestParquetParser {
     MessageType expected =
         buildMessage().required(BINARY).as(stringType()).named("string").named("StringMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -165,9 +165,9 @@ public class TestParquetParser {
     MessageType expected =
         buildMessage().required(BINARY).as(UTF8).named("string").named("StringMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -195,9 +195,9 @@ public class TestParquetParser {
         .named("s3")
         .named("Message");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -226,9 +226,9 @@ public class TestParquetParser {
         .named("aMap")
         .named("Message");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -249,9 +249,9 @@ public class TestParquetParser {
         .named("aList")
         .named("Message");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -269,9 +269,9 @@ public class TestParquetParser {
         .named("aDecimal")
         .named("DecimalMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -287,9 +287,9 @@ public class TestParquetParser {
         .named("aDecimal")
         .named("DecimalMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -333,9 +333,9 @@ public class TestParquetParser {
         .named("nanoTimestamp")
         .named("TimeMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -378,9 +378,9 @@ public class TestParquetParser {
         .named("u64")
         .named("IntMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -423,9 +423,9 @@ public class TestParquetParser {
         .named("u64")
         .named("IntMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -444,9 +444,9 @@ public class TestParquetParser {
         .named("bson")
         .named("EmbeddedMessage");
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 
   @Test
@@ -470,8 +470,8 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(message);
 
-    assertEquals(expected, parsed);
+    assertThat(parsed).isEqualTo(expected);
     MessageType reparsed = parseMessageType(parsed.toString());
-    assertEquals(expected, reparsed);
+    assertThat(reparsed).isEqualTo(expected);
   }
 }

@@ -20,8 +20,7 @@ package org.apache.parquet.column.mem;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
@@ -47,7 +46,7 @@ public class TestMemColumn {
   private static final Logger LOG = LoggerFactory.getLogger(TestMemColumn.class);
 
   @Test
-  public void testMemColumn() throws Exception {
+  public void testMemColumn() {
     MessageType schema =
         MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     ColumnDescriptor path = schema.getColumnDescription(new String[] {"foo", "bar"});
@@ -60,17 +59,11 @@ public class TestMemColumn {
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, schema);
     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
-      assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
-      assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      assertEquals(columnReader.getLong(), 42);
+      assertThat(columnReader.getCurrentRepetitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getCurrentDefinitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getLong()).isEqualTo(42);
       columnReader.consume();
     }
-  }
-
-  private ColumnWriter getColumnWriter(ColumnDescriptor path, MemPageStore memPageStore) {
-    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
-    ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
-    return columnWriter;
   }
 
   private ColumnReader getColumnReader(MemPageStore memPageStore, ColumnDescriptor path, MessageType schema) {
@@ -79,7 +72,7 @@ public class TestMemColumn {
   }
 
   @Test
-  public void testMemColumnBinary() throws Exception {
+  public void testMemColumnBinary() {
     MessageType mt =
         MessageTypeParser.parseMessageType("message msg { required group foo { required binary bar; } }");
     String[] col = new String[] {"foo", "bar"};
@@ -96,15 +89,15 @@ public class TestMemColumn {
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
-      assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
-      assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      assertEquals(columnReader.getBinary().toStringUsingUTF8(), "42");
+      assertThat(columnReader.getCurrentRepetitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getCurrentDefinitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getBinary().toStringUsingUTF8()).isEqualTo("42");
       columnReader.consume();
     }
   }
 
   @Test
-  public void testMemColumnBinaryExceedIntMaxValue() throws Exception {
+  public void testMemColumnBinaryExceedIntMaxValue() {
     MessageType mt = MessageTypeParser.parseMessageType(
         "message msg { required group v (LIST) { repeated group list { optional binary element; } } }");
     String[] col = new String[] {"v", "list", "element"};
@@ -124,14 +117,13 @@ public class TestMemColumn {
     memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
-    assertEquals(
-        "parquet page value-count should fit on the signed-int range",
-        columnReader.getTotalValueCount(),
-        (long) numRows * numEntries);
+    assertThat(columnReader.getTotalValueCount())
+        .as("parquet page value-count should fit on the signed-int range")
+        .isEqualTo((long) numRows * numEntries);
   }
 
   @Test
-  public void testMemColumnSeveralPages() throws Exception {
+  public void testMemColumnSeveralPages() {
     MessageType mt =
         MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     String[] col = new String[] {"foo", "bar"};
@@ -149,15 +141,15 @@ public class TestMemColumn {
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
-      assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
-      assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      assertEquals(columnReader.getLong(), 42);
+      assertThat(columnReader.getCurrentRepetitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getCurrentDefinitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getLong()).isEqualTo(42);
       columnReader.consume();
     }
   }
 
   @Test
-  public void testMemColumnSeveralPagesRepeated() throws Exception {
+  public void testMemColumnSeveralPagesRepeated() {
     MessageType mt =
         MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
     String[] col = new String[] {"foo", "bar"};
@@ -191,10 +183,10 @@ public class TestMemColumn {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
       LOG.debug("read i: {}", i);
-      assertEquals("r row " + i, r, columnReader.getCurrentRepetitionLevel());
-      assertEquals("d row " + i, d, columnReader.getCurrentDefinitionLevel());
+      assertThat(columnReader.getCurrentRepetitionLevel()).isEqualTo(r);
+      assertThat(columnReader.getCurrentDefinitionLevel()).isEqualTo(d);
       if (d == 2) {
-        assertEquals("data row " + i, i, columnReader.getLong());
+        assertThat(columnReader.getLong()).isEqualTo(i);
       }
       columnReader.consume();
       ++i;
@@ -245,7 +237,7 @@ public class TestMemColumn {
     // Check that all the binary_col pages are <= 1024 bytes
     {
       PageReader binaryColPageReader = memPageStore.getPageReader(binaryCol);
-      assertEquals(1230, binaryColPageReader.getTotalValueCount());
+      assertThat(binaryColPageReader.getTotalValueCount()).isEqualTo(1230);
       int pageCnt = 0;
       int valueCnt = 0;
       while (valueCnt < binaryColPageReader.getTotalValueCount()) {
@@ -257,14 +249,16 @@ public class TestMemColumn {
             pageCnt,
             page.getCompressedSize(),
             page.getIndexRowCount().get());
-        assertTrue("Compressed size should be less than 1024", page.getCompressedSize() <= 1024);
+        assertThat(page.getCompressedSize())
+            .as("Compressed size should be less than 1024")
+            .isLessThanOrEqualTo(1024);
       }
     }
 
     // Check that all the int32_col pages contain <= 10 rows
     {
       PageReader int32ColPageReader = memPageStore.getPageReader(int32Col);
-      assertEquals(1230, int32ColPageReader.getTotalValueCount());
+      assertThat(int32ColPageReader.getTotalValueCount()).isEqualTo(1230);
       int pageCnt = 0;
       int valueCnt = 0;
       while (valueCnt < int32ColPageReader.getTotalValueCount()) {
@@ -276,9 +270,9 @@ public class TestMemColumn {
             pageCnt,
             page.getCompressedSize(),
             page.getIndexRowCount().get());
-        assertTrue(
-            "Row count should be less than 10",
-            page.getIndexRowCount().get() <= 10);
+        assertThat(page.getIndexRowCount().get())
+            .as("Row count should be less than 10")
+            .isLessThanOrEqualTo(10);
       }
     }
   }

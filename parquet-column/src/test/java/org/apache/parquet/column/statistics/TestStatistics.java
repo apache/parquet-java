@@ -31,11 +31,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.data.Offset.offset;
 
 import java.nio.ByteBuffer;
 import java.util.Locale;
@@ -57,20 +55,20 @@ public class TestStatistics {
   @Test
   public void testNumNulls() {
     IntStatistics stats = new IntStatistics();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(stats.getNumNulls(), 0);
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(0);
 
     stats.incrementNumNulls();
     stats.incrementNumNulls();
     stats.incrementNumNulls();
     stats.incrementNumNulls();
-    assertEquals(stats.getNumNulls(), 4);
+    assertThat(stats.getNumNulls()).isEqualTo(4);
 
     stats.incrementNumNulls(5);
-    assertEquals(stats.getNumNulls(), 9);
+    assertThat(stats.getNumNulls()).isEqualTo(9);
 
     stats.setNumNulls(22);
-    assertEquals(stats.getNumNulls(), 22);
+    assertThat(stats.getNumNulls()).isEqualTo(22);
   }
 
   @Test
@@ -82,8 +80,8 @@ public class TestStatistics {
     for (int i : integerArray) {
       stats.updateStats(i);
     }
-    assertEquals(stats.getMax(), 66);
-    assertEquals(stats.getMin(), 0);
+    assertThat(stats.getMax()).isEqualTo(66);
+    assertThat(stats.getMin()).isEqualTo(0);
 
     // Test negative values
     integerArray = new int[] {-11, 3, -14, 54, -66, 8, 0, -23, 54};
@@ -92,36 +90,34 @@ public class TestStatistics {
     for (int i : integerArray) {
       statsNeg.updateStats(i);
     }
-    assertEquals(statsNeg.getMax(), 54);
-    assertEquals(statsNeg.getMin(), -66);
+    assertThat(statsNeg.getMax()).isEqualTo(54);
+    assertThat(statsNeg.getMin()).isEqualTo(-66);
 
-    assertTrue(statsNeg.compareMaxToValue(55) < 0);
-    assertTrue(statsNeg.compareMaxToValue(54) == 0);
-    assertTrue(statsNeg.compareMaxToValue(5) > 0);
-    assertTrue(statsNeg.compareMinToValue(0) < 0);
-    assertTrue(statsNeg.compareMinToValue(-66) == 0);
-    assertTrue(statsNeg.compareMinToValue(-67) > 0);
+    assertThat(statsNeg.compareMaxToValue(55)).isNegative();
+    assertThat(statsNeg.compareMaxToValue(54)).isZero();
+    assertThat(statsNeg.compareMaxToValue(5)).isPositive();
+    assertThat(statsNeg.compareMinToValue(0)).isNegative();
+    assertThat(statsNeg.compareMinToValue(-66)).isZero();
+    assertThat(statsNeg.compareMinToValue(-67)).isPositive();
 
     // Test converting to and from byte[]
     byte[] intMaxBytes = statsNeg.getMaxBytes();
     byte[] intMinBytes = statsNeg.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(intMaxBytes)
+    assertThat(ByteBuffer.wrap(intMaxBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getInt(),
-        54);
-    assertEquals(
-        ByteBuffer.wrap(intMinBytes)
+            .getInt())
+        .isEqualTo(54);
+    assertThat(ByteBuffer.wrap(intMinBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getInt(),
-        -66);
+            .getInt())
+        .isEqualTo(-66);
 
     IntStatistics statsFromBytes = new IntStatistics();
     statsFromBytes.setMinMaxFromBytes(intMinBytes, intMaxBytes);
 
-    assertEquals(statsFromBytes.getMax(), 54);
-    assertEquals(statsFromBytes.getMin(), -66);
+    assertThat(statsFromBytes.getMax()).isEqualTo(54);
+    assertThat(statsFromBytes.getMin()).isEqualTo(-66);
 
     integerArray = new int[] {Integer.MAX_VALUE, Integer.MIN_VALUE};
     IntStatistics minMaxValues = new IntStatistics();
@@ -129,32 +125,30 @@ public class TestStatistics {
     for (int i : integerArray) {
       minMaxValues.updateStats(i);
     }
-    assertEquals(minMaxValues.getMax(), Integer.MAX_VALUE);
-    assertEquals(minMaxValues.getMin(), Integer.MIN_VALUE);
+    assertThat(minMaxValues.getMax()).isEqualTo(Integer.MAX_VALUE);
+    assertThat(minMaxValues.getMin()).isEqualTo(Integer.MIN_VALUE);
 
     // Test converting to and from byte[] for large and small values
     byte[] intMaxBytesMinMax = minMaxValues.getMaxBytes();
     byte[] intMinBytesMinMax = minMaxValues.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(intMaxBytesMinMax)
+    assertThat(ByteBuffer.wrap(intMaxBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getInt(),
-        Integer.MAX_VALUE);
-    assertEquals(
-        ByteBuffer.wrap(intMinBytesMinMax)
+            .getInt())
+        .isEqualTo(Integer.MAX_VALUE);
+    assertThat(ByteBuffer.wrap(intMinBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getInt(),
-        Integer.MIN_VALUE);
+            .getInt())
+        .isEqualTo(Integer.MIN_VALUE);
 
     IntStatistics statsFromBytesMinMax = new IntStatistics();
     statsFromBytesMinMax.setMinMaxFromBytes(intMinBytesMinMax, intMaxBytesMinMax);
 
-    assertEquals(statsFromBytesMinMax.getMax(), Integer.MAX_VALUE);
-    assertEquals(statsFromBytesMinMax.getMin(), Integer.MIN_VALUE);
+    assertThat(statsFromBytesMinMax.getMax()).isEqualTo(Integer.MAX_VALUE);
+    assertThat(statsFromBytesMinMax.getMin()).isEqualTo(Integer.MIN_VALUE);
 
     // Test print formatting
-    assertEquals(stats.toString(), "min: 0, max: 66, num_nulls: 0");
+    assertThat(stats).asString().isEqualTo("min: 0, max: 66, num_nulls: 0");
   }
 
   @Test
@@ -166,8 +160,8 @@ public class TestStatistics {
     for (long l : longArray) {
       stats.updateStats(l);
     }
-    assertEquals(stats.getMax(), 1000);
-    assertEquals(stats.getMin(), 0);
+    assertThat(stats.getMax()).isEqualTo(1000);
+    assertThat(stats.getMin()).isEqualTo(0);
 
     // Test negative values
     longArray = new long[] {-101, 993, -9914, 54, -9, 89, 0, -23, 90};
@@ -176,36 +170,34 @@ public class TestStatistics {
     for (long l : longArray) {
       statsNeg.updateStats(l);
     }
-    assertEquals(statsNeg.getMax(), 993);
-    assertEquals(statsNeg.getMin(), -9914);
+    assertThat(statsNeg.getMax()).isEqualTo(993);
+    assertThat(statsNeg.getMin()).isEqualTo(-9914);
 
-    assertTrue(statsNeg.compareMaxToValue(994) < 0);
-    assertTrue(statsNeg.compareMaxToValue(993) == 0);
-    assertTrue(statsNeg.compareMaxToValue(-1000) > 0);
-    assertTrue(statsNeg.compareMinToValue(10000) < 0);
-    assertTrue(statsNeg.compareMinToValue(-9914) == 0);
-    assertTrue(statsNeg.compareMinToValue(-9915) > 0);
+    assertThat(statsNeg.compareMaxToValue(994)).isNegative();
+    assertThat(statsNeg.compareMaxToValue(993)).isZero();
+    assertThat(statsNeg.compareMaxToValue(-1000)).isPositive();
+    assertThat(statsNeg.compareMinToValue(10000)).isNegative();
+    assertThat(statsNeg.compareMinToValue(-9914)).isZero();
+    assertThat(statsNeg.compareMinToValue(-9915)).isPositive();
 
     // Test converting to and from byte[]
     byte[] longMaxBytes = statsNeg.getMaxBytes();
     byte[] longMinBytes = statsNeg.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(longMaxBytes)
+    assertThat(ByteBuffer.wrap(longMaxBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getLong(),
-        993);
-    assertEquals(
-        ByteBuffer.wrap(longMinBytes)
+            .getLong())
+        .isEqualTo(993);
+    assertThat(ByteBuffer.wrap(longMinBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getLong(),
-        -9914);
+            .getLong())
+        .isEqualTo(-9914);
 
     LongStatistics statsFromBytes = new LongStatistics();
     statsFromBytes.setMinMaxFromBytes(longMinBytes, longMaxBytes);
 
-    assertEquals(statsFromBytes.getMax(), 993);
-    assertEquals(statsFromBytes.getMin(), -9914);
+    assertThat(statsFromBytes.getMax()).isEqualTo(993);
+    assertThat(statsFromBytes.getMin()).isEqualTo(-9914);
 
     longArray = new long[] {Long.MAX_VALUE, Long.MIN_VALUE};
     LongStatistics minMaxValues = new LongStatistics();
@@ -213,32 +205,30 @@ public class TestStatistics {
     for (long l : longArray) {
       minMaxValues.updateStats(l);
     }
-    assertEquals(minMaxValues.getMax(), Long.MAX_VALUE);
-    assertEquals(minMaxValues.getMin(), Long.MIN_VALUE);
+    assertThat(minMaxValues.getMax()).isEqualTo(Long.MAX_VALUE);
+    assertThat(minMaxValues.getMin()).isEqualTo(Long.MIN_VALUE);
 
     // Test converting to and from byte[] for large and small values
     byte[] longMaxBytesMinMax = minMaxValues.getMaxBytes();
     byte[] longMinBytesMinMax = minMaxValues.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(longMaxBytesMinMax)
+    assertThat(ByteBuffer.wrap(longMaxBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getLong(),
-        Long.MAX_VALUE);
-    assertEquals(
-        ByteBuffer.wrap(longMinBytesMinMax)
+            .getLong())
+        .isEqualTo(Long.MAX_VALUE);
+    assertThat(ByteBuffer.wrap(longMinBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getLong(),
-        Long.MIN_VALUE);
+            .getLong())
+        .isEqualTo(Long.MIN_VALUE);
 
     LongStatistics statsFromBytesMinMax = new LongStatistics();
     statsFromBytesMinMax.setMinMaxFromBytes(longMinBytesMinMax, longMaxBytesMinMax);
 
-    assertEquals(statsFromBytesMinMax.getMax(), Long.MAX_VALUE);
-    assertEquals(statsFromBytesMinMax.getMin(), Long.MIN_VALUE);
+    assertThat(statsFromBytesMinMax.getMax()).isEqualTo(Long.MAX_VALUE);
+    assertThat(statsFromBytesMinMax.getMin()).isEqualTo(Long.MIN_VALUE);
 
     // Test print formatting
-    assertEquals(stats.toString(), "min: 0, max: 1000, num_nulls: 0");
+    assertThat(stats).asString().isEqualTo("min: 0, max: 1000, num_nulls: 0");
   }
 
   @Test
@@ -250,8 +240,8 @@ public class TestStatistics {
     for (float f : floatArray) {
       stats.updateStats(f);
     }
-    assertEquals(stats.getMax(), 553.6f, 1e-10);
-    assertEquals(stats.getMin(), 0.0001f, 1e-10);
+    assertThat(stats.getMax()).isCloseTo(553.6f, offset(1e-10f));
+    assertThat(stats.getMin()).isCloseTo(0.0001f, offset(1e-10f));
 
     // Test negative values
     floatArray = new float[] {-1.5f, -44.5f, -412.99f, 0.65f, -5.6f, -100.6f, 0.0001f, -23.0f, -3.6f};
@@ -260,38 +250,34 @@ public class TestStatistics {
     for (float f : floatArray) {
       statsNeg.updateStats(f);
     }
-    assertEquals(statsNeg.getMax(), 0.65f, 1e-10);
-    assertEquals(statsNeg.getMin(), -412.99f, 1e-10);
+    assertThat(statsNeg.getMax()).isCloseTo(0.65f, offset(1e-10f));
+    assertThat(statsNeg.getMin()).isCloseTo(-412.99f, offset(1e-10f));
 
-    assertTrue(statsNeg.compareMaxToValue(1) < 0);
-    assertTrue(statsNeg.compareMaxToValue(0.65F) == 0);
-    assertTrue(statsNeg.compareMaxToValue(0.649F) > 0);
-    assertTrue(statsNeg.compareMinToValue(-412.98F) < 0);
-    assertTrue(statsNeg.compareMinToValue(-412.99F) == 0);
-    assertTrue(statsNeg.compareMinToValue(-450) > 0);
+    assertThat(statsNeg.compareMaxToValue(1)).isNegative();
+    assertThat(statsNeg.compareMaxToValue(0.65F)).isZero();
+    assertThat(statsNeg.compareMaxToValue(0.649F)).isPositive();
+    assertThat(statsNeg.compareMinToValue(-412.98F)).isNegative();
+    assertThat(statsNeg.compareMinToValue(-412.99F)).isZero();
+    assertThat(statsNeg.compareMinToValue(-450)).isPositive();
 
     // Test converting to and from byte[]
     byte[] floatMaxBytes = statsNeg.getMaxBytes();
     byte[] floatMinBytes = statsNeg.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(floatMaxBytes)
+    assertThat(ByteBuffer.wrap(floatMaxBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getFloat(),
-        0.65f,
-        1e-10);
-    assertEquals(
-        ByteBuffer.wrap(floatMinBytes)
+            .getFloat())
+        .isCloseTo(0.65f, offset(1e-10f));
+    assertThat(ByteBuffer.wrap(floatMinBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getFloat(),
-        -412.99f,
-        1e-10);
+            .getFloat())
+        .isCloseTo(-412.99f, offset(1e-10f));
 
     FloatStatistics statsFromBytes = new FloatStatistics();
     statsFromBytes.setMinMaxFromBytes(floatMinBytes, floatMaxBytes);
 
-    assertEquals(statsFromBytes.getMax(), 0.65f, 1e-10);
-    assertEquals(statsFromBytes.getMin(), -412.99f, 1e-10);
+    assertThat(statsFromBytes.getMax()).isCloseTo(0.65f, offset(1e-10f));
+    assertThat(statsFromBytes.getMin()).isCloseTo(-412.99f, offset(1e-10f));
 
     floatArray = new float[] {Float.MAX_VALUE, Float.MIN_VALUE};
     FloatStatistics minMaxValues = new FloatStatistics();
@@ -299,34 +285,30 @@ public class TestStatistics {
     for (float f : floatArray) {
       minMaxValues.updateStats(f);
     }
-    assertEquals(minMaxValues.getMax(), Float.MAX_VALUE, 1e-10);
-    assertEquals(minMaxValues.getMin(), Float.MIN_VALUE, 1e-10);
+    assertThat(minMaxValues.getMax()).isCloseTo(Float.MAX_VALUE, offset(1e-10f));
+    assertThat(minMaxValues.getMin()).isCloseTo(Float.MIN_VALUE, offset(1e-10f));
 
     // Test converting to and from byte[] for large and small values
     byte[] floatMaxBytesMinMax = minMaxValues.getMaxBytes();
     byte[] floatMinBytesMinMax = minMaxValues.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(floatMaxBytesMinMax)
+    assertThat(ByteBuffer.wrap(floatMaxBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getFloat(),
-        Float.MAX_VALUE,
-        1e-10);
-    assertEquals(
-        ByteBuffer.wrap(floatMinBytesMinMax)
+            .getFloat())
+        .isCloseTo(Float.MAX_VALUE, offset(1e-10f));
+    assertThat(ByteBuffer.wrap(floatMinBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getFloat(),
-        Float.MIN_VALUE,
-        1e-10);
+            .getFloat())
+        .isCloseTo(Float.MIN_VALUE, offset(1e-10f));
 
     FloatStatistics statsFromBytesMinMax = new FloatStatistics();
     statsFromBytesMinMax.setMinMaxFromBytes(floatMinBytesMinMax, floatMaxBytesMinMax);
 
-    assertEquals(statsFromBytesMinMax.getMax(), Float.MAX_VALUE, 1e-10);
-    assertEquals(statsFromBytesMinMax.getMin(), Float.MIN_VALUE, 1e-10);
+    assertThat(statsFromBytesMinMax.getMax()).isCloseTo(Float.MAX_VALUE, offset(1e-10f));
+    assertThat(statsFromBytesMinMax.getMin()).isCloseTo(Float.MIN_VALUE, offset(1e-10f));
 
     // Test print formatting
-    assertEquals("min: 1.0E-4, max: 553.6, num_nulls: 0", stats.toString());
+    assertThat(stats).asString().isEqualTo("min: 1.0E-4, max: 553.6, num_nulls: 0");
   }
 
   @Test
@@ -338,8 +320,8 @@ public class TestStatistics {
     for (double d : doubleArray) {
       stats.updateStats(d);
     }
-    assertEquals(stats.getMax(), 944.5d, 1e-10);
-    assertEquals(stats.getMin(), 0.00001d, 1e-10);
+    assertThat(stats.getMax()).isCloseTo(944.5d, offset(1e-10));
+    assertThat(stats.getMin()).isCloseTo(0.00001d, offset(1e-10));
 
     // Test negative values
     doubleArray = new double[] {-81.5d, -944.5d, 2.002d, -334.5d, -5.6d, -0.001d, -0.00001d, 23.0d, -3.6d};
@@ -348,38 +330,34 @@ public class TestStatistics {
     for (double d : doubleArray) {
       statsNeg.updateStats(d);
     }
-    assertEquals(statsNeg.getMax(), 23.0d, 1e-10);
-    assertEquals(statsNeg.getMin(), -944.5d, 1e-10);
+    assertThat(statsNeg.getMax()).isCloseTo(23.0d, offset(1e-10));
+    assertThat(statsNeg.getMin()).isCloseTo(-944.5d, offset(1e-10));
 
-    assertTrue(statsNeg.compareMaxToValue(23.0001D) < 0);
-    assertTrue(statsNeg.compareMaxToValue(23D) == 0);
-    assertTrue(statsNeg.compareMaxToValue(0D) > 0);
-    assertTrue(statsNeg.compareMinToValue(-400D) < 0);
-    assertTrue(statsNeg.compareMinToValue(-944.5D) == 0);
-    assertTrue(statsNeg.compareMinToValue(-944.500001D) > 0);
+    assertThat(statsNeg.compareMaxToValue(23.0001D)).isNegative();
+    assertThat(statsNeg.compareMaxToValue(23D)).isZero();
+    assertThat(statsNeg.compareMaxToValue(0D)).isPositive();
+    assertThat(statsNeg.compareMinToValue(-400D)).isNegative();
+    assertThat(statsNeg.compareMinToValue(-944.5D)).isZero();
+    assertThat(statsNeg.compareMinToValue(-944.500001D)).isPositive();
 
     // Test converting to and from byte[]
     byte[] doubleMaxBytes = statsNeg.getMaxBytes();
     byte[] doubleMinBytes = statsNeg.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(doubleMaxBytes)
+    assertThat(ByteBuffer.wrap(doubleMaxBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getDouble(),
-        23.0d,
-        1e-10);
-    assertEquals(
-        ByteBuffer.wrap(doubleMinBytes)
+            .getDouble())
+        .isCloseTo(23.0d, offset(1e-10));
+    assertThat(ByteBuffer.wrap(doubleMinBytes)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getDouble(),
-        -944.5d,
-        1e-10);
+            .getDouble())
+        .isCloseTo(-944.5d, offset(1e-10));
 
     DoubleStatistics statsFromBytes = new DoubleStatistics();
     statsFromBytes.setMinMaxFromBytes(doubleMinBytes, doubleMaxBytes);
 
-    assertEquals(statsFromBytes.getMax(), 23.0d, 1e-10);
-    assertEquals(statsFromBytes.getMin(), -944.5d, 1e-10);
+    assertThat(statsFromBytes.getMax()).isCloseTo(23.0d, offset(1e-10));
+    assertThat(statsFromBytes.getMin()).isCloseTo(-944.5d, offset(1e-10));
 
     doubleArray = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
     DoubleStatistics minMaxValues = new DoubleStatistics();
@@ -387,34 +365,30 @@ public class TestStatistics {
     for (double d : doubleArray) {
       minMaxValues.updateStats(d);
     }
-    assertEquals(minMaxValues.getMax(), Double.MAX_VALUE, 1e-10);
-    assertEquals(minMaxValues.getMin(), Double.MIN_VALUE, 1e-10);
+    assertThat(minMaxValues.getMax()).isCloseTo(Double.MAX_VALUE, offset(1e-10));
+    assertThat(minMaxValues.getMin()).isCloseTo(Double.MIN_VALUE, offset(1e-10));
 
     // Test converting to and from byte[] for large and small values
     byte[] doubleMaxBytesMinMax = minMaxValues.getMaxBytes();
     byte[] doubleMinBytesMinMax = minMaxValues.getMinBytes();
 
-    assertEquals(
-        ByteBuffer.wrap(doubleMaxBytesMinMax)
+    assertThat(ByteBuffer.wrap(doubleMaxBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getDouble(),
-        Double.MAX_VALUE,
-        1e-10);
-    assertEquals(
-        ByteBuffer.wrap(doubleMinBytesMinMax)
+            .getDouble())
+        .isCloseTo(Double.MAX_VALUE, offset(1e-10));
+    assertThat(ByteBuffer.wrap(doubleMinBytesMinMax)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            .getDouble(),
-        Double.MIN_VALUE,
-        1e-10);
+            .getDouble())
+        .isCloseTo(Double.MIN_VALUE, offset(1e-10));
 
     DoubleStatistics statsFromBytesMinMax = new DoubleStatistics();
     statsFromBytesMinMax.setMinMaxFromBytes(doubleMinBytesMinMax, doubleMaxBytesMinMax);
 
-    assertEquals(statsFromBytesMinMax.getMax(), Double.MAX_VALUE, 1e-10);
-    assertEquals(statsFromBytesMinMax.getMin(), Double.MIN_VALUE, 1e-10);
+    assertThat(statsFromBytesMinMax.getMax()).isCloseTo(Double.MAX_VALUE, offset(1e-10));
+    assertThat(statsFromBytesMinMax.getMin()).isCloseTo(Double.MIN_VALUE, offset(1e-10));
 
     // Test print formatting
-    assertEquals("min: 1.0E-5, max: 944.5, num_nulls: 0", stats.toString());
+    assertThat(stats).asString().isEqualTo("min: 1.0E-5, max: 944.5, num_nulls: 0");
   }
 
   @Test
@@ -430,8 +404,8 @@ public class TestStatistics {
     try {
       // Set the locale to French where the decimal separator would be ',' instead of '.'
       Locale.setDefault(Locale.FRENCH);
-      assertEquals("min: 123.456, max: 123.456, num_nulls: 0", floatStats.toString());
-      assertEquals("min: 12345.6789, max: 12345.6789, num_nulls: 0", doubleStats.toString());
+      assertThat(floatStats).asString().isEqualTo("min: 123.456, max: 123.456, num_nulls: 0");
+      assertThat(doubleStats).asString().isEqualTo("min: 12345.6789, max: 12345.6789, num_nulls: 0");
     } finally {
       Locale.setDefault(defaultLocale);
     }
@@ -446,8 +420,8 @@ public class TestStatistics {
     for (boolean i : booleanArray) {
       statsTrue.updateStats(i);
     }
-    assertTrue(statsTrue.getMax());
-    assertTrue(statsTrue.getMin());
+    assertThat(statsTrue.getMax()).isTrue();
+    assertThat(statsTrue.getMin()).isTrue();
 
     // Test all false
     booleanArray = new boolean[] {false, false, false};
@@ -456,8 +430,8 @@ public class TestStatistics {
     for (boolean i : booleanArray) {
       statsFalse.updateStats(i);
     }
-    assertFalse(statsFalse.getMax());
-    assertFalse(statsFalse.getMin());
+    assertThat(statsFalse.getMax()).isFalse();
+    assertThat(statsFalse.getMin()).isFalse();
 
     booleanArray = new boolean[] {false, true, false};
     BooleanStatistics statsBoth = new BooleanStatistics();
@@ -465,24 +439,24 @@ public class TestStatistics {
     for (boolean i : booleanArray) {
       statsBoth.updateStats(i);
     }
-    assertTrue(statsBoth.getMax());
-    assertFalse(statsBoth.getMin());
+    assertThat(statsBoth.getMax()).isTrue();
+    assertThat(statsBoth.getMin()).isFalse();
 
     // Test converting to and from byte[]
     byte[] boolMaxBytes = statsBoth.getMaxBytes();
     byte[] boolMinBytes = statsBoth.getMinBytes();
 
-    assertEquals(boolMaxBytes[0] & 255, 1);
-    assertEquals(boolMinBytes[0] & 255, 0);
+    assertThat(boolMaxBytes[0] & 255).isEqualTo(1);
+    assertThat(boolMinBytes[0] & 255).isEqualTo(0);
 
     BooleanStatistics statsFromBytes = new BooleanStatistics();
     statsFromBytes.setMinMaxFromBytes(boolMinBytes, boolMaxBytes);
 
-    assertTrue(statsFromBytes.getMax());
-    assertFalse(statsFromBytes.getMin());
+    assertThat(statsFromBytes.getMax()).isTrue();
+    assertThat(statsFromBytes.getMin()).isFalse();
 
     // Test print formatting
-    assertEquals(statsBoth.toString(), "min: false, max: true, num_nulls: 0");
+    assertThat(statsBoth).asString().isEqualTo("min: false, max: true, num_nulls: 0");
   }
 
   @Test
@@ -496,8 +470,8 @@ public class TestStatistics {
     for (String s : stringArray) {
       stats.updateStats(Binary.fromString(s));
     }
-    assertEquals(stats.genericGetMax(), Binary.fromString("world"));
-    assertEquals(stats.genericGetMin(), Binary.fromString("a"));
+    assertThat(stats.genericGetMax()).isEqualTo(Binary.fromString("world"));
+    assertThat(stats.genericGetMin()).isEqualTo(Binary.fromString("a"));
 
     // Test empty string
     stringArray = new String[] {"", "", "", "", ""};
@@ -506,24 +480,24 @@ public class TestStatistics {
     for (String s : stringArray) {
       statsEmpty.updateStats(Binary.fromString(s));
     }
-    assertEquals(statsEmpty.genericGetMax(), Binary.fromString(""));
-    assertEquals(statsEmpty.genericGetMin(), Binary.fromString(""));
+    assertThat(statsEmpty.genericGetMax()).isEqualTo(Binary.fromString(""));
+    assertThat(statsEmpty.genericGetMin()).isEqualTo(Binary.fromString(""));
 
     // Test converting to and from byte[]
     byte[] stringMaxBytes = stats.getMaxBytes();
     byte[] stringMinBytes = stats.getMinBytes();
 
-    assertEquals(new String(stringMaxBytes), "world");
-    assertEquals(new String(stringMinBytes), "a");
+    assertThat(new String(stringMaxBytes)).isEqualTo("world");
+    assertThat(new String(stringMinBytes)).isEqualTo("a");
 
     BinaryStatistics statsFromBytes = (BinaryStatistics) Statistics.createStats(type);
     statsFromBytes.setMinMaxFromBytes(stringMinBytes, stringMaxBytes);
 
-    assertEquals(statsFromBytes.genericGetMax(), Binary.fromString("world"));
-    assertEquals(statsFromBytes.genericGetMin(), Binary.fromString("a"));
+    assertThat(statsFromBytes.genericGetMax()).isEqualTo(Binary.fromString("world"));
+    assertThat(statsFromBytes.genericGetMin()).isEqualTo(Binary.fromString("a"));
 
     // Test print formatting
-    assertEquals(stats.toString(), "min: a, max: world, num_nulls: 0");
+    assertThat(stats).asString().isEqualTo("min: a, max: world, num_nulls: 0");
   }
 
   @Test
@@ -540,8 +514,8 @@ public class TestStatistics {
     bytes[0] = 15;
     stats.updateStats(value);
 
-    assertArrayEquals(new byte[] {20}, stats.getMaxBytes());
-    assertArrayEquals(new byte[] {10}, stats.getMinBytes());
+    assertThat(stats.getMaxBytes()).isEqualTo(new byte[] {20});
+    assertThat(stats.getMinBytes()).isEqualTo(new byte[] {10});
   }
 
   @Test
@@ -569,8 +543,8 @@ public class TestStatistics {
       intStats2.updateStats(s);
     }
     intStats.mergeStatistics(intStats2);
-    assertEquals(intStats.getMax(), 5);
-    assertEquals(intStats.getMin(), 0);
+    assertThat(intStats.getMax()).isEqualTo(5);
+    assertThat(intStats.getMin()).isEqualTo(0);
 
     integerArray = new int[] {-1, -100, 100};
     IntStatistics intStats3 = new IntStatistics();
@@ -579,8 +553,8 @@ public class TestStatistics {
     }
     intStats.mergeStatistics(intStats3);
 
-    assertEquals(intStats.getMax(), 100);
-    assertEquals(intStats.getMin(), -100);
+    assertThat(intStats.getMax()).isEqualTo(100);
+    assertThat(intStats.getMin()).isEqualTo(-100);
   }
 
   private void testMergingLongStats() {
@@ -598,8 +572,8 @@ public class TestStatistics {
       longStats2.updateStats(s);
     }
     longStats.mergeStatistics(longStats2);
-    assertEquals(longStats.getMax(), 5l);
-    assertEquals(longStats.getMin(), 0l);
+    assertThat(longStats.getMax()).isEqualTo(5l);
+    assertThat(longStats.getMin()).isEqualTo(0l);
 
     longArray = new long[] {-1l, -100l, 100l};
     LongStatistics longStats3 = new LongStatistics();
@@ -608,8 +582,8 @@ public class TestStatistics {
     }
     longStats.mergeStatistics(longStats3);
 
-    assertEquals(longStats.getMax(), 100l);
-    assertEquals(longStats.getMin(), -100l);
+    assertThat(longStats.getMax()).isEqualTo(100l);
+    assertThat(longStats.getMin()).isEqualTo(-100l);
   }
 
   private void testMergingFloatStats() {
@@ -627,8 +601,8 @@ public class TestStatistics {
       floatStats2.updateStats(s);
     }
     floatStats.mergeStatistics(floatStats2);
-    assertEquals(floatStats.getMax(), 98.3f, 1e-10);
-    assertEquals(floatStats.getMin(), 0.0001f, 1e-10);
+    assertThat(floatStats.getMax()).isCloseTo(98.3f, offset(1e-10f));
+    assertThat(floatStats.getMin()).isCloseTo(0.0001f, offset(1e-10f));
 
     floatArray = new float[] {-1.91f, -100.9f, 100.54f};
     FloatStatistics floatStats3 = new FloatStatistics();
@@ -637,8 +611,8 @@ public class TestStatistics {
     }
     floatStats.mergeStatistics(floatStats3);
 
-    assertEquals(floatStats.getMax(), 100.54f, 1e-10);
-    assertEquals(floatStats.getMin(), -100.9f, 1e-10);
+    assertThat(floatStats.getMax()).isCloseTo(100.54f, offset(1e-10f));
+    assertThat(floatStats.getMin()).isCloseTo(-100.9f, offset(1e-10f));
   }
 
   private void testMergingDoubleStats() {
@@ -656,8 +630,8 @@ public class TestStatistics {
       doubleStats2.updateStats(s);
     }
     doubleStats.mergeStatistics(doubleStats2);
-    assertEquals(doubleStats.getMax(), 98.3d, 1e-10);
-    assertEquals(doubleStats.getMin(), 0.0001d, 1e-10);
+    assertThat(doubleStats.getMax()).isCloseTo(98.3d, offset(1e-10));
+    assertThat(doubleStats.getMin()).isCloseTo(0.0001d, offset(1e-10));
 
     doubleArray = new double[] {-1.91d, -100.9d, 100.54d};
     DoubleStatistics doubleStats3 = new DoubleStatistics();
@@ -666,8 +640,8 @@ public class TestStatistics {
     }
     doubleStats.mergeStatistics(doubleStats3);
 
-    assertEquals(doubleStats.getMax(), 100.54d, 1e-10);
-    assertEquals(doubleStats.getMin(), -100.9d, 1e-10);
+    assertThat(doubleStats.getMax()).isCloseTo(100.54d, offset(1e-10));
+    assertThat(doubleStats.getMin()).isCloseTo(-100.9d, offset(1e-10));
   }
 
   private void testMergingBooleanStats() {
@@ -685,8 +659,8 @@ public class TestStatistics {
       booleanStats2.updateStats(s);
     }
     booleanStats.mergeStatistics(booleanStats2);
-    assertEquals(booleanStats.getMax(), true);
-    assertEquals(booleanStats.getMin(), false);
+    assertThat(booleanStats.getMax()).isTrue();
+    assertThat(booleanStats.getMin()).isFalse();
 
     booleanArray = new boolean[] {false, false, false, false};
     BooleanStatistics booleanStats3 = new BooleanStatistics();
@@ -695,8 +669,8 @@ public class TestStatistics {
     }
     booleanStats.mergeStatistics(booleanStats3);
 
-    assertEquals(booleanStats.getMax(), true);
-    assertEquals(booleanStats.getMin(), false);
+    assertThat(booleanStats.getMax()).isTrue();
+    assertThat(booleanStats.getMin()).isFalse();
   }
 
   private void testMergingStringStats() {
@@ -714,8 +688,8 @@ public class TestStatistics {
       stats2.updateStats(Binary.fromString(s));
     }
     stats.mergeStatistics(stats2);
-    assertEquals(stats.getMax(), Binary.fromString("zzzz"));
-    assertEquals(stats.getMin(), Binary.fromString("a"));
+    assertThat(stats.getMax()).isEqualTo(Binary.fromString("zzzz"));
+    assertThat(stats.getMin()).isEqualTo(Binary.fromString("a"));
 
     stringArray = new String[] {"", "good", "testing"};
     BinaryStatistics stats3 = new BinaryStatistics();
@@ -724,8 +698,8 @@ public class TestStatistics {
     }
     stats.mergeStatistics(stats3);
 
-    assertEquals(stats.getMax(), Binary.fromString("zzzz"));
-    assertEquals(stats.getMin(), Binary.fromString(""));
+    assertThat(stats.getMax()).isEqualTo(Binary.fromString("zzzz"));
+    assertThat(stats.getMin()).isEqualTo(Binary.fromString(""));
   }
 
   @Test
@@ -771,32 +745,32 @@ public class TestStatistics {
   private void testBuilder(PrimitiveType type, Object min, byte[] minBytes, Object max, byte[] maxBytes) {
     Statistics.Builder builder = Statistics.getBuilderForReading(type);
     Statistics<?> stats = builder.build();
-    assertTrue(stats.isEmpty());
-    assertFalse(stats.isNumNullsSet());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isEmpty()).isTrue();
+    assertThat(stats.isNumNullsSet()).isFalse();
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withNumNulls(0).withMin(minBytes).build();
-    assertFalse(stats.isEmpty());
-    assertTrue(stats.isNumNullsSet());
-    assertFalse(stats.hasNonNullValue());
-    assertEquals(0, stats.getNumNulls());
+    assertThat(stats.isEmpty()).isFalse();
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(stats.getNumNulls()).isEqualTo(0);
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withNumNulls(11).withMax(maxBytes).build();
-    assertFalse(stats.isEmpty());
-    assertTrue(stats.isNumNullsSet());
-    assertFalse(stats.hasNonNullValue());
-    assertEquals(11, stats.getNumNulls());
+    assertThat(stats.isEmpty()).isFalse();
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(stats.getNumNulls()).isEqualTo(11);
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withNumNulls(42).withMin(minBytes).withMax(maxBytes).build();
-    assertFalse(stats.isEmpty());
-    assertTrue(stats.isNumNullsSet());
-    assertTrue(stats.hasNonNullValue());
-    assertEquals(42, stats.getNumNulls());
-    assertEquals(min, stats.genericGetMin());
-    assertEquals(max, stats.genericGetMax());
+    assertThat(stats.isEmpty()).isFalse();
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(42);
+    assertThat(stats.genericGetMin()).isEqualTo(min);
+    assertThat(stats.genericGetMax()).isEqualTo(max);
   }
 
   @Test
@@ -807,48 +781,60 @@ public class TestStatistics {
         .withMax(intToBytes(floatToIntBits(42.0f)))
         .withNumNulls(0)
         .build();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(0, stats.getNumNulls());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(0);
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(intToBytes(floatToIntBits(-42.0f)))
         .withMax(intToBytes(floatToIntBits(Float.NaN)))
         .withNumNulls(11)
         .build();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(11, stats.getNumNulls());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(11);
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(intToBytes(floatToIntBits(Float.NaN)))
         .withMax(intToBytes(floatToIntBits(Float.NaN)))
         .withNumNulls(42)
         .build();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(42, stats.getNumNulls());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(42);
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(intToBytes(floatToIntBits(0.0f)))
         .withMax(intToBytes(floatToIntBits(42.0f)))
         .build();
-    assertEquals(0, Float.compare(-0.0f, (Float) stats.genericGetMin()));
-    assertEquals(0, Float.compare(42.0f, (Float) stats.genericGetMax()));
+    assertThat((Float) stats.genericGetMin())
+        .usingComparator(Float::compare)
+        .isEqualByComparingTo(-0.0f);
+    assertThat((Float) stats.genericGetMax())
+        .usingComparator(Float::compare)
+        .isEqualByComparingTo(42.0f);
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(intToBytes(floatToIntBits(-42.0f)))
         .withMax(intToBytes(floatToIntBits(-0.0f)))
         .build();
-    assertEquals(0, Float.compare(-42.0f, (Float) stats.genericGetMin()));
-    assertEquals(0, Float.compare(0.0f, (Float) stats.genericGetMax()));
+    assertThat((Float) stats.genericGetMin())
+        .usingComparator(Float::compare)
+        .isEqualByComparingTo(-42.0f);
+    assertThat((Float) stats.genericGetMax())
+        .usingComparator(Float::compare)
+        .isEqualByComparingTo(0.0f);
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(intToBytes(floatToIntBits(0.0f)))
         .withMax(intToBytes(floatToIntBits(-0.0f)))
         .build();
-    assertEquals(0, Float.compare(-0.0f, (Float) stats.genericGetMin()));
-    assertEquals(0, Float.compare(0.0f, (Float) stats.genericGetMax()));
+    assertThat((Float) stats.genericGetMin())
+        .usingComparator(Float::compare)
+        .isEqualByComparingTo(-0.0f);
+    assertThat((Float) stats.genericGetMax())
+        .usingComparator(Float::compare)
+        .isEqualByComparingTo(0.0f);
   }
 
   @Test
@@ -859,48 +845,60 @@ public class TestStatistics {
         .withMax(longToBytes(doubleToLongBits(42.0)))
         .withNumNulls(0)
         .build();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(0, stats.getNumNulls());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(0);
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(longToBytes(doubleToLongBits(-42.0)))
         .withMax(longToBytes(doubleToLongBits(Double.NaN)))
         .withNumNulls(11)
         .build();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(11, stats.getNumNulls());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(11);
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(longToBytes(doubleToLongBits(Double.NaN)))
         .withMax(longToBytes(doubleToLongBits(Double.NaN)))
         .withNumNulls(42)
         .build();
-    assertTrue(stats.isNumNullsSet());
-    assertEquals(42, stats.getNumNulls());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNumNullsSet()).isTrue();
+    assertThat(stats.getNumNulls()).isEqualTo(42);
+    assertThat(stats.hasNonNullValue()).isFalse();
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(longToBytes(doubleToLongBits(0.0)))
         .withMax(longToBytes(doubleToLongBits(42.0)))
         .build();
-    assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
-    assertEquals(0, Double.compare(42.0, (Double) stats.genericGetMax()));
+    assertThat((Double) stats.genericGetMin())
+        .usingComparator(Double::compare)
+        .isEqualByComparingTo(-0.0);
+    assertThat((Double) stats.genericGetMax())
+        .usingComparator(Double::compare)
+        .isEqualByComparingTo(42.0);
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(longToBytes(doubleToLongBits(-42.0)))
         .withMax(longToBytes(doubleToLongBits(-0.0)))
         .build();
-    assertEquals(0, Double.compare(-42.0, (Double) stats.genericGetMin()));
-    assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
+    assertThat((Double) stats.genericGetMin())
+        .usingComparator(Double::compare)
+        .isEqualByComparingTo(-42.0);
+    assertThat((Double) stats.genericGetMax())
+        .usingComparator(Double::compare)
+        .isEqualByComparingTo(0.0);
 
     builder = Statistics.getBuilderForReading(type);
     stats = builder.withMin(longToBytes(doubleToLongBits(0.0)))
         .withMax(longToBytes(doubleToLongBits(-0.0)))
         .build();
-    assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
-    assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
+    assertThat((Double) stats.genericGetMin())
+        .usingComparator(Double::compare)
+        .isEqualByComparingTo(-0.0);
+    assertThat((Double) stats.genericGetMax())
+        .usingComparator(Double::compare)
+        .isEqualByComparingTo(0.0);
   }
 
   @Test
@@ -908,24 +906,38 @@ public class TestStatistics {
     // Test basic max/min
     integerArray = new int[] {1, 3, 14, 54, 66, 8, 0, 23, 54};
     Statistics<?> stats = Statistics.noopStats(new PrimitiveType(REQUIRED, INT32, "int32"));
-    assertTrue(stats.isEmpty());
+    assertThat(stats.isEmpty()).isTrue();
 
     for (int i : integerArray) {
       stats.updateStats(i);
     }
 
-    assertEquals(stats.getNumNulls(), -1);
-    assertFalse(stats.hasNonNullValue());
-    assertFalse(stats.isNumNullsSet());
-    assertTrue(stats.isEmpty());
+    assertThat(stats.getNumNulls()).isEqualTo(-1);
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(stats.isNumNullsSet()).isFalse();
+    assertThat(stats.isEmpty()).isTrue();
 
-    assertThrows(UnsupportedOperationException.class, stats::genericGetMax);
-    assertThrows(UnsupportedOperationException.class, stats::genericGetMin);
-    assertThrows(UnsupportedOperationException.class, stats::getMaxBytes);
-    assertThrows(UnsupportedOperationException.class, stats::getMinBytes);
-    assertThrows(UnsupportedOperationException.class, stats::maxAsString);
-    assertThrows(UnsupportedOperationException.class, stats::minAsString);
-    assertThrows(UnsupportedOperationException.class, () -> stats.isSmallerThan(0));
+    assertThatThrownBy(stats::genericGetMax)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("genericGetMax is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+    assertThatThrownBy(stats::genericGetMin)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("genericGetMin is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+    assertThatThrownBy(stats::getMaxBytes)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("getMaxBytes is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+    assertThatThrownBy(stats::getMinBytes)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("getMinBytes is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+    assertThatThrownBy(stats::maxAsString)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("genericGetMax is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+    assertThatThrownBy(stats::minAsString)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("genericGetMin is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+    assertThatThrownBy(() -> stats.isSmallerThan(0))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("isSmallerThan is not supported by org.apache.parquet.column.statistics.NoopStatistics");
   }
 
   @Test
@@ -936,6 +948,6 @@ public class TestStatistics {
     stats.updateStats(fakeLarge);
 
     // min.length() + max.length() = 2^31, must not overflow int to negative
-    assertFalse(stats.isSmallerThan(4096));
+    assertThat(stats.isSmallerThan(4096)).isFalse();
   }
 }

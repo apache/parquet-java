@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -54,21 +55,21 @@ public class ByteStreamSplitValuesWriterTest {
         writer.writeFloat(value);
 
         // Check that the buffer size is exactly the size of one float in bytes.
-        assertEquals(4, writer.getBufferedSize());
+        assertThat(writer.getBufferedSize()).isEqualTo(4);
 
         // Get bytes and check that this doesn't modify the internal state.
         BytesInput bytesInput = writer.getBytes();
-        assertEquals(4, writer.getBufferedSize());
-        assertEquals(4, bytesInput.size());
+        assertThat(writer.getBufferedSize()).isEqualTo(4);
+        assertThat(bytesInput.size()).isEqualTo(4);
 
         // Check that the bytes are as expected.
         final float newValue = convertType(bytesInput.toByteArray());
-        assertEquals(value, newValue, 0.0f);
+        assertThat(newValue).isCloseTo(value, offset(0.0f));
 
         // Check that reseting the writer clears the buffered data.
         writer.reset();
-        assertEquals(0, writer.getBufferedSize());
-        assertEquals(0, writer.getBytes().size());
+        assertThat(writer.getBufferedSize()).isEqualTo(0);
+        assertThat(writer.getBytes().size()).isEqualTo(0);
       } finally {
         if (writer != null) {
           writer.reset();
@@ -86,9 +87,8 @@ public class ByteStreamSplitValuesWriterTest {
         writer.writeFloat(1024.921875f);
         writer.writeFloat(2024.5f);
 
-        assertEquals(12, writer.getBufferedSize());
+        assertThat(writer.getBufferedSize()).isEqualTo(12);
         byte[] rawBytes = writer.getBytes().toByteArray();
-        assertEquals(12, rawBytes.length);
 
         final byte[] expectedBytes = {
           (byte) 0x00, (byte) 0x80, (byte) 0x00,
@@ -96,9 +96,7 @@ public class ByteStreamSplitValuesWriterTest {
           (byte) 0x4a, (byte) 0x80, (byte) 0xfd,
           (byte) 0x43, (byte) 0x44, (byte) 0x44
         };
-        for (int i = 0; i < 12; ++i) {
-          assertEquals(expectedBytes[i], rawBytes[i]);
-        }
+        assertThat(rawBytes).hasSize(12).isEqualTo(expectedBytes);
       } finally {
         if (writer != null) {
           writer.reset();
@@ -132,21 +130,21 @@ public class ByteStreamSplitValuesWriterTest {
         writer.writeDouble(value);
 
         // Check that the buffer size is exactly the size of one double in bytes.
-        assertEquals(8, writer.getBufferedSize());
+        assertThat(writer.getBufferedSize()).isEqualTo(8);
 
         // Get bytes and check that this doesn't modify the internal state.
         BytesInput bytesInput = writer.getBytes();
-        assertEquals(8, writer.getBufferedSize());
-        assertEquals(8, bytesInput.size());
+        assertThat(writer.getBufferedSize()).isEqualTo(8);
+        assertThat(bytesInput.size()).isEqualTo(8);
 
         // Check that the bytes are as expected.
         final double newValue = convertType(bytesInput.toByteArray());
-        assertEquals(value, newValue, 0.0);
+        assertThat(newValue).isCloseTo(value, offset(0.0));
 
         // Check that reseting the writer clears the buffered data.
         writer.reset();
-        assertEquals(0, writer.getBufferedSize());
-        assertEquals(0, writer.getBytes().size());
+        assertThat(writer.getBufferedSize()).isEqualTo(0);
+        assertThat(writer.getBytes().size()).isEqualTo(0);
       } finally {
         if (writer != null) {
           writer.reset();
@@ -164,9 +162,8 @@ public class ByteStreamSplitValuesWriterTest {
         writer.writeDouble(671.99901111);
         writer.writeDouble(3500199909.3019013);
 
-        assertEquals(24, writer.getBufferedSize());
+        assertThat(writer.getBufferedSize()).isEqualTo(24);
         byte[] rawBytes = writer.getBytes().toByteArray();
-        assertEquals(24, rawBytes.length);
 
         final byte[] expectedBytes = {
           (byte) 0x0c, (byte) 0x53, (byte) 0x2D,
@@ -178,10 +175,7 @@ public class ByteStreamSplitValuesWriterTest {
           (byte) 0x2b, (byte) 0x84, (byte) 0xEA,
           (byte) 0x40, (byte) 0x40, (byte) 0x41
         };
-
-        for (int i = 0; i < 24; ++i) {
-          assertEquals(expectedBytes[i], rawBytes[i]);
-        }
+        assertThat(rawBytes).hasSize(24).isEqualTo(expectedBytes);
       } finally {
         if (writer != null) {
           writer.reset();
@@ -204,9 +198,8 @@ public class ByteStreamSplitValuesWriterTest {
       writer.writeInteger(0xFFEEDDCC);
       writer.writeInteger(0x66778899);
 
-      assertEquals(12, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(12);
       byte[] rawBytes = writer.getBytes().toByteArray();
-      assertEquals(12, rawBytes.length);
 
       final byte[] expectedBytes = {
         (byte) 0x44, (byte) 0xCC, (byte) 0x99,
@@ -214,9 +207,7 @@ public class ByteStreamSplitValuesWriterTest {
         (byte) 0x22, (byte) 0xEE, (byte) 0x77,
         (byte) 0x11, (byte) 0xFF, (byte) 0x66
       };
-      for (int i = 0; i < expectedBytes.length; ++i) {
-        assertEquals(expectedBytes[i], rawBytes[i]);
-      }
+      assertThat(rawBytes).hasSize(12).isEqualTo(expectedBytes);
       writer.reset();
       writer.close();
     }
@@ -234,9 +225,8 @@ public class ByteStreamSplitValuesWriterTest {
       writer.writeLong(0x1122334455667700L);
       writer.writeLong(0xFFEEDDCCBBAA9988L);
 
-      assertEquals(16, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(16);
       byte[] rawBytes = writer.getBytes().toByteArray();
-      assertEquals(16, rawBytes.length);
 
       final byte[] expectedBytes = {
         (byte) 0x00, (byte) 0x88,
@@ -248,9 +238,7 @@ public class ByteStreamSplitValuesWriterTest {
         (byte) 0x22, (byte) 0xEE,
         (byte) 0x11, (byte) 0xFF,
       };
-      for (int i = 0; i < expectedBytes.length; ++i) {
-        assertEquals(expectedBytes[i], rawBytes[i]);
-      }
+      assertThat(rawBytes).hasSize(16).isEqualTo(expectedBytes);
       writer.reset();
       writer.close();
     }
@@ -269,16 +257,13 @@ public class ByteStreamSplitValuesWriterTest {
       writer.writeBytes(Binary.fromString("abc"));
       writer.writeBytes(Binary.fromString("ghi"));
 
-      assertEquals(6, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(6);
       byte[] rawBytes = writer.getBytes().toByteArray();
-      assertEquals(6, rawBytes.length);
 
       final byte[] expectedBytes = {
         'a', 'g', 'b', 'h', 'c', 'i',
       };
-      for (int i = 0; i < expectedBytes.length; ++i) {
-        assertEquals(expectedBytes[i], rawBytes[i]);
-      }
+      assertThat(rawBytes).hasSize(6).isEqualTo(expectedBytes);
       writer.reset();
       writer.close();
     }

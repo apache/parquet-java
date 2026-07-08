@@ -27,10 +27,7 @@ import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
@@ -72,12 +69,10 @@ public class TestBinaryTruncator {
   public void testNonStringTruncate() {
     BinaryTruncator truncator = BinaryTruncator.getTruncator(
         Types.required(BINARY).as(DECIMAL).precision(10).scale(2).named("test_binary_decimal"));
-    assertEquals(
-        binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA),
-        truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 2));
-    assertEquals(
-        binary(0x01, 0x02, 0x03, 0x04, 0x05, 0x06),
-        truncator.truncateMax(binary(0x01, 0x02, 0x03, 0x04, 0x05, 0x06), 2));
+    assertThat(truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 2))
+        .isEqualTo(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA));
+    assertThat(truncator.truncateMax(binary(0x01, 0x02, 0x03, 0x04, 0x05, 0x06), 2))
+        .isEqualTo(binary(0x01, 0x02, 0x03, 0x04, 0x05, 0x06));
   }
 
   @Test
@@ -102,49 +97,47 @@ public class TestBinaryTruncator {
         BinaryTruncator.getTruncator(Types.required(BINARY).as(UTF8).named("test_utf8"));
 
     // Truncate 1 byte characters
-    assertEquals(Binary.fromString("abc"), truncator.truncateMin(Binary.fromString("abcdef"), 3));
-    assertEquals(Binary.fromString("abd"), truncator.truncateMax(Binary.fromString("abcdef"), 3));
+    assertThat(truncator.truncateMin(Binary.fromString("abcdef"), 3)).isEqualTo(Binary.fromString("abc"));
+    assertThat(truncator.truncateMax(Binary.fromString("abcdef"), 3)).isEqualTo(Binary.fromString("abd"));
 
     // Truncate 1-2 bytes characters; the target length is "inside" a UTF-8 character
-    assertEquals(Binary.fromString("árvízt"), truncator.truncateMin(Binary.fromString("árvíztűrő"), 9));
-    assertEquals(Binary.fromString("árvízu"), truncator.truncateMax(Binary.fromString("árvíztűrő"), 9));
+    assertThat(truncator.truncateMin(Binary.fromString("árvíztűrő"), 9)).isEqualTo(Binary.fromString("árvízt"));
+    assertThat(truncator.truncateMax(Binary.fromString("árvíztűrő"), 9)).isEqualTo(Binary.fromString("árvízu"));
 
     // Truncate highest UTF-8 values -> unable to increment
-    assertEquals(
-        Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR),
-        truncator.truncateMin(
+    assertThat(truncator.truncateMin(
             Binary.fromString(UTF8_1BYTE_MAX_CHAR
                 + UTF8_2BYTES_MAX_CHAR
                 + UTF8_3BYTES_MAX_CHAR
                 + UTF8_4BYTES_MAX_CHAR),
-            5));
-    assertEquals(
-        Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR),
-        truncator.truncateMax(
+            5))
+        .isEqualTo(Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR));
+    assertThat(truncator.truncateMax(
             Binary.fromString(UTF8_1BYTE_MAX_CHAR
                 + UTF8_2BYTES_MAX_CHAR
                 + UTF8_3BYTES_MAX_CHAR
                 + UTF8_4BYTES_MAX_CHAR),
-            5));
+            5))
+        .isEqualTo(Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR));
 
     // Truncate highest UTF-8 values at the end -> increment the first possible character
-    assertEquals(
-        Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + "b" + UTF8_3BYTES_MAX_CHAR),
-        truncator.truncateMax(
+    assertThat(truncator.truncateMax(
             Binary.fromString(UTF8_1BYTE_MAX_CHAR
                 + UTF8_2BYTES_MAX_CHAR
                 + "a"
                 + UTF8_3BYTES_MAX_CHAR
                 + UTF8_4BYTES_MAX_CHAR),
-            10));
+            10))
+        .isEqualTo(Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + "b" + UTF8_3BYTES_MAX_CHAR));
 
     // Truncate invalid UTF-8 values -> truncate without validity check
-    assertEquals(binary(0xFF, 0xFE, 0xFD), truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
-    assertEquals(binary(0xFF, 0xFE, 0xFE), truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
-    assertEquals(
-        binary(0xFF, 0xFE, 0xFE, 0x00, 0x00),
-        truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFF, 0xFF, 0xFF), 5));
+    assertThat(truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3))
+        .isEqualTo(binary(0xFF, 0xFE, 0xFD));
+    assertThat(truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3))
+        .isEqualTo(binary(0xFF, 0xFE, 0xFE));
+    assertThat(truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFF, 0xFF, 0xFF), 5))
+        .isEqualTo(binary(0xFF, 0xFE, 0xFE, 0x00, 0x00));
   }
 
   @Test
@@ -217,10 +210,12 @@ public class TestBinaryTruncator {
     int length = value.length();
 
     // Edge cases: returning the original value if no truncation is required
-    assertSame(value, truncator.truncateMin(value, length));
-    assertSame(value, truncator.truncateMax(value, length));
-    assertSame(value, truncator.truncateMin(value, random(length + 1, length * 2 + 1)));
-    assertSame(value, truncator.truncateMax(value, random(length + 1, length * 2 + 1)));
+    assertThat(truncator.truncateMin(value, length)).isSameAs(value);
+    assertThat(truncator.truncateMax(value, length)).isSameAs(value);
+    assertThat(truncator.truncateMin(value, random(length + 1, length * 2 + 1)))
+        .isSameAs(value);
+    assertThat(truncator.truncateMax(value, random(length + 1, length * 2 + 1)))
+        .isSameAs(value);
 
     if (length > 1) {
       checkMinContract(truncator, comparator, value, length - 1, strictMin);
@@ -232,7 +227,7 @@ public class TestBinaryTruncator {
     // Edge case: possible to truncate min value to 0 length if original value is not empty
     checkMinContract(truncator, comparator, value, 0, strictMin);
     // Edge case: impossible to truncate max value to 0 length -> returning the original value
-    assertSame(value, truncator.truncateMax(value, 0));
+    assertThat(truncator.truncateMax(value, 0)).isSameAs(value);
   }
 
   private void checkMinContract(
@@ -244,17 +239,20 @@ public class TestBinaryTruncator {
         length,
         truncated.toStringUsingUTF8(),
         HEXA_STRINGIFIER.stringify(truncated));
-    assertTrue("truncatedMin(value) should be <= than value", comparator.compare(truncated, value) <= 0);
-    assertFalse(
-        "length of truncateMin(value) should not be > than the length of value",
-        truncated.length() > value.length());
+    assertThat(truncated)
+        .as("truncatedMin(value) should be <= than value")
+        .usingComparator(comparator)
+        .isLessThanOrEqualTo(value);
+    assertThat(truncated.length())
+        .as("length of truncateMin(value) should not be > than the length of value")
+        .isLessThanOrEqualTo(value.length());
     if (isValidUtf8(value)) {
       checkValidUtf8(truncated);
     }
     if (strict) {
-      assertTrue(
-          "length of truncateMin(value) ahould be < than the length of value",
-          truncated.length() < value.length());
+      assertThat(truncated.length())
+          .as("length of truncateMin(value) ahould be < than the length of value")
+          .isLessThan(value.length());
     }
   }
 
@@ -267,17 +265,20 @@ public class TestBinaryTruncator {
         length,
         truncated.toStringUsingUTF8(),
         HEXA_STRINGIFIER.stringify(truncated));
-    assertTrue("truncatedMax(value) should be >= than value", comparator.compare(truncated, value) >= 0);
-    assertFalse(
-        "length of truncateMax(value) should not be > than the length of value",
-        truncated.length() > value.length());
+    assertThat(truncated)
+        .as("truncatedMax(value) should be >= than value")
+        .usingComparator(comparator)
+        .isGreaterThanOrEqualTo(value);
+    assertThat(truncated.length())
+        .as("length of truncateMax(value) should not be > than the length of value")
+        .isLessThanOrEqualTo(value.length());
     if (isValidUtf8(value)) {
       checkValidUtf8(truncated);
     }
     if (strict) {
-      assertTrue(
-          "length of truncateMax(value) ahould be < than the length of value",
-          truncated.length() < value.length());
+      assertThat(truncated.length())
+          .as("length of truncateMax(value) ahould be < than the length of value")
+          .isLessThan(value.length());
     }
   }
 

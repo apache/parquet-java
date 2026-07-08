@@ -40,15 +40,11 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
-import java.util.concurrent.Callable;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestTypeBuildersWithLogicalTypes {
@@ -66,7 +62,7 @@ public class TestTypeBuildersWithLogicalTypes {
           .addFields(f2, f3)
           .named("g1")
           .named(name);
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
 
       switch (repetition) {
         case REQUIRED:
@@ -94,7 +90,7 @@ public class TestTypeBuildersWithLogicalTypes {
               .named(name);
           break;
       }
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
     }
   }
 
@@ -108,7 +104,7 @@ public class TestTypeBuildersWithLogicalTypes {
         .as(decimalType(2, 9))
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
     // int64 primitive type
     expected = new MessageType(
         "DecimalMessage", new PrimitiveType(REQUIRED, INT64, 0, "aDecimal", decimalType(2, 18), null));
@@ -119,7 +115,7 @@ public class TestTypeBuildersWithLogicalTypes {
         .scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
     // binary primitive type
     expected = new MessageType(
         "DecimalMessage", new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal", decimalType(2, 9), null));
@@ -128,7 +124,7 @@ public class TestTypeBuildersWithLogicalTypes {
         .as(decimalType(2, 9))
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
     // fixed primitive type
     expected = new MessageType(
         "DecimalMessage",
@@ -139,70 +135,75 @@ public class TestTypeBuildersWithLogicalTypes {
         .as(decimalType(2, 9))
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
   }
 
   @Test
   public void testDecimalAnnotationPrecisionScaleBound() {
-    assertThrows(
-        "Should reject scale greater than precision", IllegalArgumentException.class, () -> Types.buildMessage()
+    String expectedMessage = "Invalid DECIMAL scale: 4 cannot be greater than precision: 3";
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(INT32)
             .as(decimalType(4, 3))
             .named("aDecimal")
-            .named("DecimalMessage"));
-    assertThrows(
-        "Should reject scale greater than precision", IllegalArgumentException.class, () -> Types.buildMessage()
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(expectedMessage);
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(INT64)
             .as(decimalType(4, 3))
             .named("aDecimal")
-            .named("DecimalMessage"));
-    assertThrows(
-        "Should reject scale greater than precision", IllegalArgumentException.class, () -> Types.buildMessage()
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(expectedMessage);
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(BINARY)
             .as(decimalType(4, 3))
             .named("aDecimal")
-            .named("DecimalMessage"));
-    assertThrows(
-        "Should reject scale greater than precision", IllegalArgumentException.class, () -> Types.buildMessage()
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(expectedMessage);
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(FIXED_LEN_BYTE_ARRAY)
             .length(7)
             .as(decimalType(4, 3))
             .named("aDecimal")
-            .named("DecimalMessage"));
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(expectedMessage);
   }
 
   @Test
   public void testDecimalAnnotationLengthCheck() {
     // maximum precision for 4 bytes is 9
-    assertThrows("should reject precision 10 with length 4", IllegalStateException.class, () -> Types.required(
-            FIXED_LEN_BYTE_ARRAY)
-        .length(4)
-        .as(decimalType(2, 10))
-        .named("aDecimal"));
-    assertThrows(
-        "should reject precision 10 with length 4",
-        IllegalStateException.class,
-        () -> Types.required(INT32).as(decimalType(2, 10)).named("aDecimal"));
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(4)
+            .as(decimalType(2, 10))
+            .named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FIXED(4) cannot store 10 digits (max 9)");
+    assertThatThrownBy(() -> Types.required(INT32).as(decimalType(2, 10)).named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INT32 cannot store 10 digits (max 9)");
     // maximum precision for 8 bytes is 19
-    assertThrows("should reject precision 19 with length 8", IllegalStateException.class, () -> Types.required(
-            FIXED_LEN_BYTE_ARRAY)
-        .length(8)
-        .as(decimalType(4, 19))
-        .named("aDecimal"));
-    assertThrows(
-        "should reject precision 19 with length 8",
-        IllegalStateException.class,
-        () -> Types.required(INT64).length(8).as(decimalType(4, 19)).named("aDecimal"));
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(8)
+            .as(decimalType(4, 19))
+            .named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FIXED(8) cannot store 19 digits (max 18)");
+    assertThatThrownBy(() ->
+            Types.required(INT64).length(8).as(decimalType(4, 19)).named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INT64 cannot store 19 digits (max 18)");
   }
 
   @Test
   public void testDECIMALAnnotationRejectsUnsupportedTypes() {
     PrimitiveTypeName[] unsupported = new PrimitiveTypeName[] {BOOLEAN, INT96, DOUBLE, FLOAT};
     for (final PrimitiveTypeName type : unsupported) {
-      assertThrows(
-          "Should reject non-binary type: " + type,
-          IllegalStateException.class,
-          () -> Types.required(type).as(decimalType(2, 9)).named("d"));
+      assertThatThrownBy(() -> Types.required(type).as(decimalType(2, 9)).named("d"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("DECIMAL can only annotate INT32, INT64, BINARY, and FIXED");
     }
   }
 
@@ -212,7 +213,7 @@ public class TestTypeBuildersWithLogicalTypes {
     for (final LogicalTypeAnnotation logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "col", logicalType);
       PrimitiveType string = Types.required(BINARY).as(logicalType).named("col");
-      Assert.assertEquals(expected, string);
+      assertThat(string).isEqualTo(expected);
     }
   }
 
@@ -222,7 +223,7 @@ public class TestTypeBuildersWithLogicalTypes {
     PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 2, "col", type, null);
     PrimitiveType string =
         Types.required(FIXED_LEN_BYTE_ARRAY).as(type).length(2).named("col");
-    Assert.assertEquals(expected, string);
+    assertThat(string).isEqualTo(expected);
   }
 
   @Test
@@ -232,18 +233,22 @@ public class TestTypeBuildersWithLogicalTypes {
     for (final LogicalTypeAnnotation logicalType : types) {
       PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT};
       for (final PrimitiveTypeName type : nonBinary) {
-        assertThrows(
-            "Should reject non-binary type: " + type,
-            IllegalStateException.class,
-            () -> Types.required(type).as(logicalType).named("col"));
+        String expectedMessage = logicalType.equals(float16Type())
+            ? "FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)"
+            : logicalType + " can only annotate BINARY";
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(expectedMessage);
       }
-      assertThrows(
-          "Should reject non-binary type: FIXED_LEN_BYTE_ARRAY",
-          IllegalStateException.class,
-          () -> Types.required(FIXED_LEN_BYTE_ARRAY)
+      String fixedMessage = logicalType.equals(float16Type())
+          ? "FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)"
+          : logicalType + " can only annotate BINARY";
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
-              .named("col"));
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(fixedMessage);
     }
   }
 
@@ -257,7 +262,7 @@ public class TestTypeBuildersWithLogicalTypes {
     for (LogicalTypeAnnotation logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, INT32, "col", logicalType);
       PrimitiveType date = Types.required(INT32).as(logicalType).named("col");
-      Assert.assertEquals(expected, date);
+      assertThat(date).isEqualTo(expected);
     }
   }
 
@@ -271,18 +276,16 @@ public class TestTypeBuildersWithLogicalTypes {
     for (final LogicalTypeAnnotation logicalType : types) {
       PrimitiveTypeName[] nonInt32 = new PrimitiveTypeName[] {BOOLEAN, INT64, INT96, DOUBLE, FLOAT, BINARY};
       for (final PrimitiveTypeName type : nonInt32) {
-        assertThrows(
-            "Should reject non-int32 type: " + type,
-            IllegalStateException.class,
-            () -> Types.required(type).as(logicalType).named("col"));
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(logicalType + " can only annotate INT32");
       }
-      assertThrows(
-          "Should reject non-int32 type: FIXED_LEN_BYTE_ARRAY",
-          IllegalStateException.class,
-          () -> Types.required(FIXED_LEN_BYTE_ARRAY)
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
-              .named("col"));
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(logicalType + " can only annotate INT32");
     }
   }
 
@@ -299,7 +302,7 @@ public class TestTypeBuildersWithLogicalTypes {
     for (LogicalTypeAnnotation logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
       PrimitiveType date = Types.required(INT64).as(logicalType).named("col");
-      Assert.assertEquals(expected, date);
+      assertThat(date).isEqualTo(expected);
     }
   }
 
@@ -316,15 +319,16 @@ public class TestTypeBuildersWithLogicalTypes {
     for (final LogicalTypeAnnotation logicalType : types) {
       PrimitiveTypeName[] nonInt64 = new PrimitiveTypeName[] {BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY};
       for (final PrimitiveTypeName type : nonInt64) {
-        assertThrows("Should reject non-int64 type: " + type, IllegalStateException.class, (Callable<Type>)
-            () -> Types.required(type).as(logicalType).named("col"));
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(logicalType + " can only annotate INT64");
       }
-      assertThrows(
-          "Should reject non-int64 type: FIXED_LEN_BYTE_ARRAY", IllegalStateException.class, (Callable<Type>)
-              () -> Types.required(FIXED_LEN_BYTE_ARRAY)
-                  .length(1)
-                  .as(logicalType)
-                  .named("col"));
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(1)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(logicalType + " can only annotate INT64");
     }
   }
 
@@ -332,32 +336,38 @@ public class TestTypeBuildersWithLogicalTypes {
   public void testIntervalAnnotationRejectsNonFixed() {
     PrimitiveTypeName[] nonFixed = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT, BINARY};
     for (final PrimitiveTypeName type : nonFixed) {
-      assertThrows(
-          "Should reject non-fixed type: " + type, IllegalStateException.class, () -> Types.required(type)
+      assertThatThrownBy(() -> Types.required(type)
               .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
-              .named("interval"));
+              .named("interval"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
     }
   }
 
   @Test
   public void testIntervalAnnotationRejectsNonFixed12() {
-    assertThrows("Should reject fixed with length != 12: " + 11, IllegalStateException.class, () -> Types.required(
-            FIXED_LEN_BYTE_ARRAY)
-        .length(11)
-        .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
-        .named("interval"));
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(11)
+            .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
+            .named("interval"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
   }
 
   @Test
   public void testTypeConstructionWithUnsupportedColumnOrder() {
-    assertThrows(null, IllegalArgumentException.class, () -> Types.optional(INT96)
-        .columnOrder(ColumnOrder.typeDefined())
-        .named("int96_unsupported"));
-    assertThrows(null, IllegalArgumentException.class, () -> Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
-        .length(12)
-        .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
-        .columnOrder(ColumnOrder.typeDefined())
-        .named("interval_unsupported"));
+    assertThatThrownBy(() -> Types.optional(INT96)
+            .columnOrder(ColumnOrder.typeDefined())
+            .named("int96_unsupported"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("The column order TYPE_DEFINED_ORDER is not supported by INT96");
+    assertThatThrownBy(() -> Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+            .length(12)
+            .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
+            .columnOrder(ColumnOrder.typeDefined())
+            .named("interval_unsupported"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("The column order TYPE_DEFINED_ORDER is not supported by FIXED_LEN_BYTE_ARRAY (INTERVAL)");
   }
 
   @Test
@@ -367,7 +377,7 @@ public class TestTypeBuildersWithLogicalTypes {
     PrimitiveType actual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .named("aDecimal");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -378,7 +388,7 @@ public class TestTypeBuildersWithLogicalTypes {
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .scale(3)
         .named("aDecimal");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -389,7 +399,7 @@ public class TestTypeBuildersWithLogicalTypes {
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .precision(4)
         .named("aDecimal");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -410,10 +420,10 @@ public class TestTypeBuildersWithLogicalTypes {
     PrimitiveType nonUtcMicrosActual =
         Types.required(INT64).as(timestampType(false, MICROS)).named("aTimestamp");
 
-    Assert.assertEquals(utcMillisExpected, utcMillisActual);
-    Assert.assertEquals(nonUtcMillisExpected, nonUtcMillisActual);
-    Assert.assertEquals(utcMicrosExpected, utcMicrosActual);
-    Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
+    assertThat(utcMillisActual).isEqualTo(utcMillisExpected);
+    assertThat(nonUtcMillisActual).isEqualTo(nonUtcMillisExpected);
+    assertThat(utcMicrosActual).isEqualTo(utcMicrosExpected);
+    assertThat(nonUtcMicrosActual).isEqualTo(nonUtcMicrosExpected);
   }
 
   @Test
@@ -439,46 +449,50 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testUUIDLogicalType() {
-    assertEquals(
-        "required fixed_len_byte_array(16) uuid_field (UUID)",
-        Types.required(FIXED_LEN_BYTE_ARRAY)
+    assertThat(Types.required(FIXED_LEN_BYTE_ARRAY)
             .length(16)
             .as(uuidType())
-            .named("uuid_field")
-            .toString());
+            .named("uuid_field"))
+        .asString()
+        .isEqualTo("required fixed_len_byte_array(16) uuid_field (UUID)");
 
-    assertThrows("Should fail with invalid length", IllegalStateException.class, () -> Types.required(
-            FIXED_LEN_BYTE_ARRAY)
-        .length(10)
-        .as(uuidType())
-        .named("uuid_field")
-        .toString());
-    assertThrows(
-        "Should fail with invalid type",
-        IllegalStateException.class,
-        () -> Types.required(BINARY).as(uuidType()).named("uuid_field").toString());
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(10)
+            .as(uuidType())
+            .named("uuid_field")
+            .toString())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("UUID can only annotate FIXED_LEN_BYTE_ARRAY(16)");
+    assertThatThrownBy(() -> Types.required(BINARY)
+            .as(uuidType())
+            .named("uuid_field")
+            .toString())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("UUID can only annotate FIXED_LEN_BYTE_ARRAY(16)");
   }
 
   @Test
   public void testFloat16LogicalType() {
-    assertEquals(
-        "required fixed_len_byte_array(2) float16_field (FLOAT16)",
-        Types.required(FIXED_LEN_BYTE_ARRAY)
+    assertThat(Types.required(FIXED_LEN_BYTE_ARRAY)
             .length(2)
             .as(float16Type())
-            .named("float16_field")
-            .toString());
+            .named("float16_field"))
+        .asString()
+        .isEqualTo("required fixed_len_byte_array(2) float16_field (FLOAT16)");
 
-    assertThrows("Should fail with invalid length", IllegalStateException.class, () -> Types.required(
-            FIXED_LEN_BYTE_ARRAY)
-        .length(10)
-        .as(float16Type())
-        .named("float16_field")
-        .toString());
-    assertThrows("Should fail with invalid type", IllegalStateException.class, () -> Types.required(BINARY)
-        .as(float16Type())
-        .named("float16_field")
-        .toString());
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(10)
+            .as(float16Type())
+            .named("float16_field")
+            .toString())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)");
+    assertThatThrownBy(() -> Types.required(BINARY)
+            .as(float16Type())
+            .named("float16_field")
+            .toString())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)");
   }
 
   @Test
@@ -492,18 +506,19 @@ public class TestTypeBuildersWithLogicalTypes {
         Types.required(BINARY).named("metadata"),
         Types.required(BINARY).named("value"));
 
-    assertEquals(
-        "required group variant_field (VARIANT(1)) {\n"
+    assertThat(variant)
+        .asString()
+        .isEqualTo("required group variant_field (VARIANT(1)) {\n"
             + "  required binary metadata;\n"
             + "  required binary value;\n"
-            + "}",
-        variant.toString());
+            + "}");
 
     LogicalTypeAnnotation annotation = variant.getLogicalTypeAnnotation();
-    assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
-    assertNull(annotation.toOriginalType());
-    assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
-    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion());
+    assertThat(annotation.getType()).isEqualTo(LogicalTypeAnnotation.LogicalTypeToken.VARIANT);
+    assertThat(annotation.toOriginalType()).isNull();
+    assertThat(annotation).isInstanceOf(LogicalTypeAnnotation.VariantLogicalTypeAnnotation.class);
+    assertThat(((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion())
+        .isEqualTo(specVersion);
   }
 
   @Test
@@ -519,34 +534,19 @@ public class TestTypeBuildersWithLogicalTypes {
         Types.optional(BINARY).named("value"),
         Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("typed_value"));
 
-    assertEquals(
-        "required group variant_field (VARIANT(1)) {\n"
+    assertThat(variant)
+        .asString()
+        .isEqualTo("required group variant_field (VARIANT(1)) {\n"
             + "  required binary metadata;\n"
             + "  optional binary value;\n"
             + "  optional binary typed_value (STRING);\n"
-            + "}",
-        variant.toString());
+            + "}");
 
     LogicalTypeAnnotation annotation = variant.getLogicalTypeAnnotation();
-    assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
-    assertNull(annotation.toOriginalType());
-    assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
-    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion());
-  }
-
-  /**
-   * A convenience method to avoid a large number of @Test(expected=...) tests
-   *
-   * @param message  A String message to describe this assertion
-   * @param expected An Exception class that the Runnable should throw
-   * @param callable A Callable that is expected to throw the exception
-   */
-  public static void assertThrows(String message, Class<? extends Exception> expected, Callable callable) {
-    try {
-      callable.call();
-      Assert.fail("No exception was thrown (" + message + "), expected: " + expected.getName());
-    } catch (Exception actual) {
-      Assert.assertEquals(message, expected, actual.getClass());
-    }
+    assertThat(annotation.getType()).isEqualTo(LogicalTypeAnnotation.LogicalTypeToken.VARIANT);
+    assertThat(annotation.toOriginalType()).isNull();
+    assertThat(annotation).isInstanceOf(LogicalTypeAnnotation.VariantLogicalTypeAnnotation.class);
+    assertThat(((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion())
+        .isEqualTo(specVersion);
   }
 }

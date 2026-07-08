@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.column.statistics;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
@@ -73,10 +72,10 @@ public class TestStatisticsNanCount {
     stats.updateStats(Float.NaN);
     stats.updateStats(3.0f);
 
-    assertTrue(stats.isNanCountSet());
-    assertEquals(2, stats.getNanCount());
-    assertEquals(1.0f, stats.getMin(), 0.0f);
-    assertEquals(3.0f, stats.getMax(), 0.0f);
+    assertThat(stats.isNanCountSet()).isTrue();
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(stats.getMin()).isCloseTo(1.0f, offset(0.0f));
+    assertThat(stats.getMax()).isCloseTo(3.0f, offset(0.0f));
   }
 
   @Test
@@ -85,9 +84,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(Float.NaN);
     stats.updateStats(Float.NaN);
 
-    assertTrue(stats.isNanCountSet());
-    assertEquals(2, stats.getNanCount());
-    assertFalse(stats.hasNonNullValue());
+    assertThat(stats.isNanCountSet()).isTrue();
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(stats.hasNonNullValue()).isFalse();
   }
 
   @Test
@@ -96,8 +95,8 @@ public class TestStatisticsNanCount {
     stats.updateStats(1.0f);
     stats.updateStats(2.0f);
 
-    assertTrue(stats.isNanCountSet());
-    assertEquals(0, stats.getNanCount());
+    assertThat(stats.isNanCountSet()).isTrue();
+    assertThat(stats.getNanCount()).isEqualTo(0);
   }
 
   @Test
@@ -107,10 +106,10 @@ public class TestStatisticsNanCount {
     stats.updateStats(Double.NaN);
     stats.updateStats(2.0);
 
-    assertTrue(stats.isNanCountSet());
-    assertEquals(1, stats.getNanCount());
-    assertEquals(1.0, stats.getMin(), 0.0);
-    assertEquals(2.0, stats.getMax(), 0.0);
+    assertThat(stats.isNanCountSet()).isTrue();
+    assertThat(stats.getNanCount()).isEqualTo(1);
+    assertThat(stats.getMin()).isCloseTo(1.0, offset(0.0));
+    assertThat(stats.getMax()).isCloseTo(2.0, offset(0.0));
   }
 
   @Test
@@ -120,11 +119,11 @@ public class TestStatisticsNanCount {
     stats.updateStats(FLOAT16_NAN);
     stats.updateStats(FLOAT16_TWO);
 
-    assertTrue(stats.isNanCountSet());
-    assertEquals(1, stats.getNanCount());
-    assertTrue(stats.hasNonNullValue());
-    assertEquals(FLOAT16_ONE, stats.genericGetMin());
-    assertEquals(FLOAT16_TWO, stats.genericGetMax());
+    assertThat(stats.isNanCountSet()).isTrue();
+    assertThat(stats.getNanCount()).isEqualTo(1);
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(stats.genericGetMin()).isEqualTo(FLOAT16_ONE);
+    assertThat(stats.genericGetMax()).isEqualTo(FLOAT16_TWO);
   }
 
   @Test
@@ -132,8 +131,8 @@ public class TestStatisticsNanCount {
     Float16Statistics stats = (Float16Statistics) Statistics.createStats(FLOAT16_TYPE);
     stats.updateStats(FLOAT16_ONE);
 
-    assertTrue(stats.isNanCountSet());
-    assertEquals(0, stats.getNanCount());
+    assertThat(stats.isNanCountSet()).isTrue();
+    assertThat(stats.getNanCount()).isEqualTo(0);
   }
 
   @Test
@@ -148,7 +147,7 @@ public class TestStatisticsNanCount {
     stats2.updateStats(Float.NaN);
 
     stats1.mergeStatistics(stats2);
-    assertEquals(3, stats1.getNanCount());
+    assertThat(stats1.getNanCount()).isEqualTo(3);
   }
 
   @Test
@@ -159,9 +158,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(Float.NaN);
 
     FloatStatistics copy = stats.copy();
-    assertEquals(stats.getNanCount(), copy.getNanCount());
-    assertTrue(copy.isNanCountSet());
-    assertEquals(2, copy.getNanCount());
+    assertThat(copy.getNanCount()).isEqualTo(stats.getNanCount());
+    assertThat(copy.isNanCountSet()).isTrue();
+    assertThat(copy.getNanCount()).isEqualTo(2);
   }
 
   @Test
@@ -174,10 +173,10 @@ public class TestStatisticsNanCount {
         .withNumNulls(0)
         .build();
 
-    assertTrue(stats.hasNonNullValue());
-    assertTrue(Float.isNaN(((FloatStatistics) stats).getMin()));
-    assertTrue(Float.isNaN(((FloatStatistics) stats).getMax()));
-    assertEquals(10, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(((FloatStatistics) stats).getMin()).isNaN();
+    assertThat(((FloatStatistics) stats).getMax()).isNaN();
+    assertThat(stats.getNanCount()).isEqualTo(10);
   }
 
   @Test
@@ -187,9 +186,9 @@ public class TestStatisticsNanCount {
     Statistics<?> stats =
         builder.withMin(nanBytes).withMax(nanBytes).withNumNulls(0).build();
 
-    assertFalse(stats.hasNonNullValue());
-    assertFalse(Float.isNaN(((FloatStatistics) stats).getMin()));
-    assertFalse(Float.isNaN(((FloatStatistics) stats).getMax()));
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(((FloatStatistics) stats).getMin()).isNotNaN();
+    assertThat(((FloatStatistics) stats).getMax()).isNotNaN();
   }
 
   @Test
@@ -202,10 +201,10 @@ public class TestStatisticsNanCount {
         .withNumNulls(0)
         .build();
 
-    assertTrue(stats.hasNonNullValue());
-    assertTrue(Double.isNaN(((DoubleStatistics) stats).getMin()));
-    assertTrue(Double.isNaN(((DoubleStatistics) stats).getMax()));
-    assertEquals(10, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(((DoubleStatistics) stats).getMin()).isNaN();
+    assertThat(((DoubleStatistics) stats).getMax()).isNaN();
+    assertThat(stats.getNanCount()).isEqualTo(10);
   }
 
   @Test
@@ -214,10 +213,10 @@ public class TestStatisticsNanCount {
     stats.updateStats(Float.NaN);
     stats.updateStats(Float.NaN);
 
-    assertTrue(stats.hasNonNullValue());
-    assertTrue(Float.isNaN(stats.getMin()));
-    assertTrue(Float.isNaN(stats.getMax()));
-    assertEquals(2, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(stats.getMin()).isNaN();
+    assertThat(stats.getMax()).isNaN();
+    assertThat(stats.getNanCount()).isEqualTo(2);
   }
 
   @Test
@@ -225,10 +224,10 @@ public class TestStatisticsNanCount {
     DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(DOUBLE_IEEE754_TYPE);
     stats.updateStats(Double.NaN);
 
-    assertTrue(stats.hasNonNullValue());
-    assertTrue(Double.isNaN(stats.getMin()));
-    assertTrue(Double.isNaN(stats.getMax()));
-    assertEquals(1, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(stats.getMin()).isNaN();
+    assertThat(stats.getMax()).isNaN();
+    assertThat(stats.getNanCount()).isEqualTo(1);
   }
 
   @Test
@@ -236,10 +235,10 @@ public class TestStatisticsNanCount {
     IEEE754Float16Statistics stats = (IEEE754Float16Statistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
     stats.updateStats(FLOAT16_NAN);
 
-    assertTrue(stats.hasNonNullValue());
-    assertEquals(FLOAT16_NAN, stats.genericGetMin());
-    assertEquals(FLOAT16_NAN, stats.genericGetMax());
-    assertEquals(1, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(stats.genericGetMin()).isEqualTo(FLOAT16_NAN);
+    assertThat(stats.genericGetMax()).isEqualTo(FLOAT16_NAN);
+    assertThat(stats.getNanCount()).isEqualTo(1);
   }
 
   @Test
@@ -250,9 +249,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(maxNaN);
     stats.updateStats(minNaN);
 
-    assertEquals(2, stats.getNanCount());
-    assertEquals(0x7fc00001, Float.floatToRawIntBits(stats.getMin()));
-    assertEquals(0x7fffffff, Float.floatToRawIntBits(stats.getMax()));
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(Float.floatToRawIntBits(stats.getMin())).isEqualTo(0x7fc00001);
+    assertThat(Float.floatToRawIntBits(stats.getMax())).isEqualTo(0x7fffffff);
   }
 
   @Test
@@ -263,9 +262,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(maxNaN);
     stats.updateStats(minNaN);
 
-    assertEquals(2, stats.getNanCount());
-    assertEquals(0x7ff0000000000001L, Double.doubleToRawLongBits(stats.getMin()));
-    assertEquals(0x7fffffffffffffffL, Double.doubleToRawLongBits(stats.getMax()));
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(Double.doubleToRawLongBits(stats.getMin())).isEqualTo(0x7ff0000000000001L);
+    assertThat(Double.doubleToRawLongBits(stats.getMax())).isEqualTo(0x7fffffffffffffffL);
   }
 
   @Test
@@ -274,11 +273,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(FLOAT16_NAN_LARGE);
     stats.updateStats(FLOAT16_NAN_SMALL);
 
-    assertEquals(2, stats.getNanCount());
-    assertEquals(
-        FLOAT16_NAN_SMALL.get2BytesLittleEndian(), stats.genericGetMin().get2BytesLittleEndian());
-    assertEquals(
-        FLOAT16_NAN_LARGE.get2BytesLittleEndian(), stats.genericGetMax().get2BytesLittleEndian());
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(stats.genericGetMin().get2BytesLittleEndian()).isEqualTo(FLOAT16_NAN_SMALL.get2BytesLittleEndian());
+    assertThat(stats.genericGetMax().get2BytesLittleEndian()).isEqualTo(FLOAT16_NAN_LARGE.get2BytesLittleEndian());
   }
 
   @Test
@@ -289,9 +286,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(1.0f);
     stats.updateStats(2.0f);
 
-    assertEquals(2, stats.getNanCount());
-    assertEquals(1.0f, stats.getMin(), 0.0f);
-    assertEquals(2.0f, stats.getMax(), 0.0f);
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(stats.getMin()).isCloseTo(1.0f, offset(0.0f));
+    assertThat(stats.getMax()).isCloseTo(2.0f, offset(0.0f));
   }
 
   @Test
@@ -302,9 +299,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(1.0);
     stats.updateStats(2.0);
 
-    assertEquals(2, stats.getNanCount());
-    assertEquals(1.0, stats.getMin(), 0.0);
-    assertEquals(2.0, stats.getMax(), 0.0);
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(stats.getMin()).isCloseTo(1.0, offset(0.0));
+    assertThat(stats.getMax()).isCloseTo(2.0, offset(0.0));
   }
 
   @Test
@@ -315,9 +312,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(FLOAT16_ONE);
     stats.updateStats(FLOAT16_TWO);
 
-    assertEquals(2, stats.getNanCount());
-    assertEquals(FLOAT16_ONE, stats.genericGetMin());
-    assertEquals(FLOAT16_TWO, stats.genericGetMax());
+    assertThat(stats.getNanCount()).isEqualTo(2);
+    assertThat(stats.genericGetMin()).isEqualTo(FLOAT16_ONE);
+    assertThat(stats.genericGetMax()).isEqualTo(FLOAT16_TWO);
   }
 
   @Test
@@ -327,9 +324,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(Float.NaN);
     stats.updateStats(2.0f);
 
-    assertEquals(2.0f, stats.getMax(), 0.0f);
-    assertEquals(1.0f, stats.getMin(), 0.0f);
-    assertEquals(1, stats.getNanCount());
+    assertThat(stats.getMax()).isCloseTo(2.0f, offset(0.0f));
+    assertThat(stats.getMin()).isCloseTo(1.0f, offset(0.0f));
+    assertThat(stats.getNanCount()).isEqualTo(1);
   }
 
   @Test
@@ -339,9 +336,9 @@ public class TestStatisticsNanCount {
     stats.updateStats(Double.NaN);
     stats.updateStats(2.0);
 
-    assertEquals(2.0, stats.getMax(), 0.0);
-    assertEquals(1.0, stats.getMin(), 0.0);
-    assertEquals(1, stats.getNanCount());
+    assertThat(stats.getMax()).isCloseTo(2.0, offset(0.0));
+    assertThat(stats.getMin()).isCloseTo(1.0, offset(0.0));
+    assertThat(stats.getNanCount()).isEqualTo(1);
   }
 
   @Test
@@ -350,8 +347,8 @@ public class TestStatisticsNanCount {
     stats.updateStats(Float.NaN);
     stats.updateStats(Float.NaN);
 
-    assertFalse(stats.hasNonNullValue());
-    assertEquals(2, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(stats.getNanCount()).isEqualTo(2);
   }
 
   @Test
@@ -359,8 +356,8 @@ public class TestStatisticsNanCount {
     DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(DOUBLE_TYPE);
     stats.updateStats(Double.NaN);
 
-    assertFalse(stats.hasNonNullValue());
-    assertEquals(1, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(stats.getNanCount()).isEqualTo(1);
   }
 
   @Test
@@ -368,7 +365,7 @@ public class TestStatisticsNanCount {
     Float16Statistics stats = (Float16Statistics) Statistics.createStats(FLOAT16_TYPE);
     stats.updateStats(FLOAT16_NAN);
 
-    assertFalse(stats.hasNonNullValue());
-    assertEquals(1, stats.getNanCount());
+    assertThat(stats.hasNonNullValue()).isFalse();
+    assertThat(stats.getNanCount()).isEqualTo(1);
   }
 }

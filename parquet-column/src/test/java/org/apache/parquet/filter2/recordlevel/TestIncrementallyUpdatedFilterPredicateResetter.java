@@ -21,8 +21,7 @@ package org.apache.parquet.filter2.recordlevel;
 import static org.apache.parquet.filter2.recordlevel.TestIncrementallyUpdatedFilterPredicateEvaluator.doubleMoreThan10;
 import static org.apache.parquet.filter2.recordlevel.TestIncrementallyUpdatedFilterPredicateEvaluator.intIsEven;
 import static org.apache.parquet.filter2.recordlevel.TestIncrementallyUpdatedFilterPredicateEvaluator.intIsNull;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Or;
@@ -43,24 +42,24 @@ public class TestIncrementallyUpdatedFilterPredicateResetter {
     intIsEven.update(11);
     doubleMoreThan10.update(20.0D);
 
-    assertTrue(intIsNull.isKnown());
-    assertTrue(intIsEven.isKnown());
-    assertTrue(doubleMoreThan10.isKnown());
+    assertThat(intIsNull.isKnown()).isTrue();
+    assertThat(intIsEven.isKnown()).isTrue();
+    assertThat(doubleMoreThan10.isKnown()).isTrue();
 
     IncrementallyUpdatedFilterPredicateResetter.reset(pred);
 
-    assertFalse(intIsNull.isKnown());
-    assertFalse(intIsEven.isKnown());
-    assertFalse(doubleMoreThan10.isKnown());
+    assertThat(intIsNull.isKnown()).isFalse();
+    assertThat(intIsEven.isKnown()).isFalse();
+    assertThat(doubleMoreThan10.isKnown()).isFalse();
 
     intIsNull.updateNull();
-    assertTrue(intIsNull.isKnown());
-    assertFalse(intIsEven.isKnown());
-    assertFalse(doubleMoreThan10.isKnown());
+    assertThat(intIsNull.isKnown()).isTrue();
+    assertThat(intIsEven.isKnown()).isFalse();
+    assertThat(doubleMoreThan10.isKnown()).isFalse();
 
     IncrementallyUpdatedFilterPredicateResetter.reset(pred);
-    assertFalse(intIsNull.isKnown());
-    assertFalse(intIsEven.isKnown());
-    assertFalse(doubleMoreThan10.isKnown());
+    assertThat(intIsNull.isKnown()).isFalse();
+    assertThat(intIsEven.isKnown()).isFalse();
+    assertThat(doubleMoreThan10.isKnown()).isFalse();
   }
 }

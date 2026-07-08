@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.column.values.delta;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -164,19 +163,19 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
     stream.skipFully(contentOffsetInPage);
     reader.initFromPage(100, stream);
     long offset = stream.position();
-    assertEquals(valueContent.length + contentOffsetInPage, offset);
+    assertThat(offset).isEqualTo(valueContent.length + contentOffsetInPage);
 
     // should be able to read data correctly
     for (long i : data) {
-      assertEquals(i, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(i);
     }
 
     // Testing the deprecated behavior of using byte arrays directly
     reader = new DeltaBinaryPackingValuesReader();
     reader.initFromPage(100, pageContent, contentOffsetInPage);
-    assertEquals(valueContent.length + contentOffsetInPage, reader.getNextOffset());
+    assertThat(reader.getNextOffset()).isEqualTo(valueContent.length + contentOffsetInPage);
     for (long i : data) {
-      assertEquals(i, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(i);
     }
   }
 
@@ -187,11 +186,9 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
       data[i] = i * 32;
     }
     shouldWriteAndRead(data);
-    try {
-      reader.readLong();
-    } catch (ParquetDecodingException e) {
-      assertEquals("no more value to read, total value count is " + data.length, e.getMessage());
-    }
+    assertThatThrownBy(() -> reader.readLong())
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("no more value to read, total value count is " + data.length);
   }
 
   @Test
@@ -207,7 +204,7 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
       if (i % 3 == 0) {
         reader.skip();
       } else {
-        assertEquals(i * 32, reader.readLong());
+        assertThat(reader.readLong()).isEqualTo(i * 32);
       }
     }
   }
@@ -224,7 +221,7 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
     int skipCount;
     for (int i = 0; i < data.length; i += skipCount + 1) {
       skipCount = (data.length - i) / 2;
-      assertEquals(i * 32, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(i * 32);
       reader.skip(skipCount);
     }
   }
@@ -273,11 +270,11 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
         + 8 * miniBlockFlushed * miniBlockSize // data(aligned to miniBlock)
         + blockFlushed * miniBlockNum // bitWidth of mini blocks
         + (10.0 * blockFlushed); // min delta for each block
-    assertTrue(estimatedSize >= page.length);
+    assertThat(estimatedSize).isGreaterThanOrEqualTo(page.length);
     reader.initFromPage(100, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
 
     for (int i = 0; i < length; i++) {
-      assertEquals(data[i], reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(data[i]);
     }
   }
 

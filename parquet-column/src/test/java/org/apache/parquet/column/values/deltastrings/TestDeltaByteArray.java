@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.values.deltastrings;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -26,7 +28,6 @@ import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestDeltaByteArray {
@@ -73,16 +74,16 @@ public class TestDeltaByteArray {
     int[] bin = Utils.readInts(reader, data, values.length);
 
     // test prefix lengths
-    Assert.assertEquals(0, bin[0]);
-    Assert.assertEquals(7, bin[1]);
-    Assert.assertEquals(7, bin[2]);
+    assertThat(bin[0]).isEqualTo(0);
+    assertThat(bin[1]).isEqualTo(7);
+    assertThat(bin[2]).isEqualTo(7);
 
     reader = new DeltaBinaryPackingValuesReader();
     bin = Utils.readInts(reader, data, values.length);
     // test suffix lengths
-    Assert.assertEquals(10, bin[0]);
-    Assert.assertEquals(0, bin[1]);
-    Assert.assertEquals(7, bin[2]);
+    assertThat(bin[0]).isEqualTo(10);
+    assertThat(bin[1]).isEqualTo(0);
+    assertThat(bin[2]).isEqualTo(7);
   }
 
   private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
@@ -91,7 +92,7 @@ public class TestDeltaByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), vals.length);
 
     for (int i = 0; i < bin.length; i++) {
-      Assert.assertEquals(Binary.fromString(vals[i]), bin[i]);
+      assertThat(bin[i]).isEqualTo(Binary.fromString(vals[i]));
     }
   }
 
@@ -101,7 +102,7 @@ public class TestDeltaByteArray {
 
     reader.initFromPage(vals.length, writer.getBytes().toInputStream());
     for (int i = 0; i < vals.length; i += 2) {
-      Assert.assertEquals(Binary.fromString(vals[i]), reader.readBytes());
+      assertThat(reader.readBytes()).isEqualTo(Binary.fromString(vals[i]));
       reader.skip();
     }
   }
@@ -114,7 +115,7 @@ public class TestDeltaByteArray {
     int skipCount;
     for (int i = 0; i < vals.length; i += skipCount + 1) {
       skipCount = (vals.length - i) / 2;
-      Assert.assertEquals(Binary.fromString(vals[i]), reader.readBytes());
+      assertThat(reader.readBytes()).isEqualTo(Binary.fromString(vals[i]));
       reader.skip(skipCount);
     }
   }
@@ -145,8 +146,8 @@ public class TestDeltaByteArray {
     writer.writeBytes(Binary.fromReusedByteArray(buffer));
 
     Binary[] decoded = Utils.readData(reader, writer.getBytes().toInputStream(), 3);
-    Assert.assertEquals(Binary.fromString("parquet-000"), decoded[0]);
-    Assert.assertEquals(Binary.fromString("parquet-111"), decoded[1]);
-    Assert.assertEquals(Binary.fromString("parquet-222"), decoded[2]);
+    assertThat(decoded[0]).isEqualTo(Binary.fromString("parquet-000"));
+    assertThat(decoded[1]).isEqualTo(Binary.fromString("parquet-111"));
+    assertThat(decoded[2]).isEqualTo(Binary.fromString("parquet-222"));
   }
 }

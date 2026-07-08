@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.column.statistics;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestSizeStatistics {
@@ -46,9 +45,9 @@ public class TestSizeStatistics {
     builder.add(1, 0);
     builder.add(1, 1);
     SizeStatistics statistics = builder.build();
-    Assert.assertEquals(Optional.of(3L), statistics.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(List.of(3L, 3L, 1L), statistics.getRepetitionLevelHistogram());
-    Assert.assertEquals(List.of(2L, 2L, 3L), statistics.getDefinitionLevelHistogram());
+    assertThat(statistics.getUnencodedByteArrayDataBytes()).contains(3L);
+    assertThat(statistics.getRepetitionLevelHistogram()).containsExactly(3L, 3L, 1L);
+    assertThat(statistics.getDefinitionLevelHistogram()).containsExactly(2L, 2L, 3L);
   }
 
   @Test
@@ -66,9 +65,9 @@ public class TestSizeStatistics {
     builder.add(1, 0);
     builder.add(1, 0);
     SizeStatistics statistics = builder.build();
-    Assert.assertEquals(Optional.empty(), statistics.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(List.of(2L, 4L), statistics.getRepetitionLevelHistogram());
-    Assert.assertEquals(Collections.emptyList(), statistics.getDefinitionLevelHistogram());
+    assertThat(statistics.getUnencodedByteArrayDataBytes()).isEmpty();
+    assertThat(statistics.getRepetitionLevelHistogram()).containsExactly(2L, 4L);
+    assertThat(statistics.getDefinitionLevelHistogram()).isEmpty();
   }
 
   @Test
@@ -88,9 +87,9 @@ public class TestSizeStatistics {
     builder2.add(0, 1, Binary.fromString("e"));
     SizeStatistics statistics2 = builder2.build();
     statistics1.mergeStatistics(statistics2);
-    Assert.assertEquals(Optional.of(5L), statistics1.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(List.of(3L, 1L, 1L), statistics1.getRepetitionLevelHistogram());
-    Assert.assertEquals(List.of(1L, 3L, 1L), statistics1.getDefinitionLevelHistogram());
+    assertThat(statistics1.getUnencodedByteArrayDataBytes()).contains(5L);
+    assertThat(statistics1.getRepetitionLevelHistogram()).containsExactly(3L, 1L, 1L);
+    assertThat(statistics1.getDefinitionLevelHistogram()).containsExactly(1L, 3L, 1L);
   }
 
   @Test
@@ -105,7 +104,9 @@ public class TestSizeStatistics {
     SizeStatistics.Builder builder2 = SizeStatistics.newBuilder(type2, 1, 1);
     SizeStatistics statistics1 = builder1.build();
     SizeStatistics statistics2 = builder2.build();
-    Assert.assertThrows(IllegalArgumentException.class, () -> statistics1.mergeStatistics(statistics2));
+    assertThatThrownBy(() -> statistics1.mergeStatistics(statistics2))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot merge SizeStatistics of different types");
   }
 
   @Test
@@ -121,9 +122,9 @@ public class TestSizeStatistics {
     builder.add(2, 2, Binary.fromString("c"));
     SizeStatistics statistics = builder.build();
     SizeStatistics copy = statistics.copy();
-    Assert.assertEquals(Optional.of(3L), copy.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(List.of(1L, 1L, 1L), copy.getRepetitionLevelHistogram());
-    Assert.assertEquals(List.of(1L, 1L, 1L), copy.getDefinitionLevelHistogram());
+    assertThat(copy.getUnencodedByteArrayDataBytes()).contains(3L);
+    assertThat(copy.getRepetitionLevelHistogram()).containsExactly(1L, 1L, 1L);
+    assertThat(copy.getDefinitionLevelHistogram()).containsExactly(1L, 1L, 1L);
   }
 
   @Test
@@ -132,13 +133,13 @@ public class TestSizeStatistics {
         .as(LogicalTypeAnnotation.stringType())
         .named("a");
     SizeStatistics statistics = new SizeStatistics(type, 1024L, null, null);
-    Assert.assertEquals(Optional.of(1024L), statistics.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(Collections.emptyList(), statistics.getRepetitionLevelHistogram());
-    Assert.assertEquals(Collections.emptyList(), statistics.getDefinitionLevelHistogram());
+    assertThat(statistics.getUnencodedByteArrayDataBytes()).contains(1024L);
+    assertThat(statistics.getRepetitionLevelHistogram()).isEmpty();
+    assertThat(statistics.getDefinitionLevelHistogram()).isEmpty();
 
     SizeStatistics copy = statistics.copy();
-    Assert.assertEquals(Optional.of(1024L), copy.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(Collections.emptyList(), copy.getRepetitionLevelHistogram());
-    Assert.assertEquals(Collections.emptyList(), copy.getDefinitionLevelHistogram());
+    assertThat(copy.getUnencodedByteArrayDataBytes()).contains(1024L);
+    assertThat(copy.getRepetitionLevelHistogram()).isEmpty();
+    assertThat(copy.getDefinitionLevelHistogram()).isEmpty();
   }
 }

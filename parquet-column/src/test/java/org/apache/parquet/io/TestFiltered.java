@@ -29,7 +29,7 @@ import static org.apache.parquet.filter.ColumnRecordFilter.column;
 import static org.apache.parquet.filter.NotRecordFilter.not;
 import static org.apache.parquet.filter.OrRecordFilter.or;
 import static org.apache.parquet.filter.PagedRecordFilter.page;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,11 +75,11 @@ public class TestFiltered {
 
   private void readOne(RecordReader<Group> reader, String message, Group expected) {
     List<Group> result = readAll(reader);
-    assertEquals(message + ": " + result, 1, result.size());
-    assertEquals(
-        "filtering did not return the correct record",
-        expected.toString(),
-        result.get(0).toString());
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0))
+        .as("filtering did not return the correct record")
+        .asString()
+        .isEqualTo(expected.toString());
   }
 
   @Test
@@ -140,7 +140,7 @@ public class TestFiltered {
         memPageStore, recordConverter, FilterCompat.get(column("Name.Url", equalTo("http://B"))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("There should be no matching records: " + all, 0, all.size());
+    assertThat(all).isEmpty();
 
     // Finally try matching against the C url in record 2
     recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(
@@ -169,7 +169,7 @@ public class TestFiltered {
         memPageStore, recordConverter, FilterCompat.get(column("Name.Url", equalTo("http://B"))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("There should be no matching records: " + all, 0, all.size());
+    assertThat(all).isEmpty();
 
     // Finally try matching against the C url in record 2
     recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(
@@ -188,12 +188,9 @@ public class TestFiltered {
         columnIO.getRecordReader(memPageStore, recordConverter, FilterCompat.get(page(4, 4)));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("expecting records " + all, 4, all.size());
+    assertThat(all).hasSize(4);
     for (int i = 0; i < all.size(); i++) {
-      assertEquals(
-          "expecting record",
-          (i % 2 == 0 ? r2 : r1).toString(),
-          all.get(i).toString());
+      assertThat(all.get(i)).as("expecting record").asString().isEqualTo((i % 2 == 0 ? r2 : r1).toString());
     }
   }
 
@@ -207,9 +204,9 @@ public class TestFiltered {
         memPageStore, recordConverter, FilterCompat.get(and(column("DocId", equalTo(10l)), page(2, 4))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("expecting 4 records " + all, 4, all.size());
+    assertThat(all).hasSize(4);
     for (int i = 0; i < all.size(); i++) {
-      assertEquals("expecting record1", r1.toString(), all.get(i).toString());
+      assertThat(all.get(i)).as("expecting record1").asString().isEqualTo(r1.toString());
     }
   }
 
@@ -225,10 +222,10 @@ public class TestFiltered {
         FilterCompat.get(or(column("DocId", equalTo(10l)), column("DocId", equalTo(20l)))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("expecting 8 records " + all, 16, all.size());
+    assertThat(all).hasSize(16);
     for (int i = 0; i < all.size() / 2; i++) {
-      assertEquals("expecting record1", r1.toString(), all.get(2 * i).toString());
-      assertEquals("expecting record2", r2.toString(), all.get(2 * i + 1).toString());
+      assertThat(all.get(2 * i)).as("expecting record1").asString().isEqualTo(r1.toString());
+      assertThat(all.get(2 * i + 1)).as("expecting record2").asString().isEqualTo(r2.toString());
     }
   }
 
@@ -242,9 +239,9 @@ public class TestFiltered {
         memPageStore, recordConverter, FilterCompat.get(not(column("DocId", equalTo(10l)))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("expecting 8 records " + all, 8, all.size());
+    assertThat(all).hasSize(8);
     for (int i = 0; i < all.size(); i++) {
-      assertEquals("expecting record2", r2.toString(), all.get(i).toString());
+      assertThat(all.get(i)).as("expecting record2").asString().isEqualTo(r2.toString());
     }
   }
 

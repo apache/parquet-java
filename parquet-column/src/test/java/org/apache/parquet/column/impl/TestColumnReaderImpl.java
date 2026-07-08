@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.column.impl;
 
-import static junit.framework.Assert.assertEquals;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.apache.parquet.Version;
@@ -38,7 +38,6 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestColumnReaderImpl {
@@ -50,7 +49,7 @@ public class TestColumnReaderImpl {
 
     @Override
     public void addBinary(Binary value) {
-      assertEquals("bar" + count % 10, value.toStringUsingUTF8());
+      assertThat(value.toStringUsingUTF8()).isEqualTo("bar" + count % 10);
       ++count;
     }
   }
@@ -66,8 +65,8 @@ public class TestColumnReaderImpl {
       valueCount += dataPage.getValueCount();
       rowCount += ((DataPageV2) dataPage).getRowCount();
     }
-    assertEquals(rows, rowCount);
-    assertEquals(rows, valueCount);
+    assertThat(rowCount).isEqualTo(rows);
+    assertThat(valueCount).isEqualTo(rows);
     MemPageReader pageReader = toReader(pageWriter);
     validateExpectedValuesAndCount(col, pageReader);
   }
@@ -109,12 +108,12 @@ public class TestColumnReaderImpl {
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
-      assertEquals(0, columnReader.getCurrentRepetitionLevel());
-      assertEquals(0, columnReader.getCurrentDefinitionLevel());
+      assertThat(columnReader.getCurrentRepetitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getCurrentDefinitionLevel()).isEqualTo(0);
       columnReader.writeCurrentValueToConverter();
       columnReader.consume();
     }
-    assertEquals(rows, converter.count);
+    assertThat(converter.count).isEqualTo(rows);
   }
 
   @Test
@@ -145,18 +144,18 @@ public class TestColumnReaderImpl {
       valueCount += dataPage.getValueCount();
       rowCount += ((DataPageV2) dataPage).getRowCount();
     }
-    assertEquals(rows, rowCount);
-    assertEquals(rows, valueCount);
+    assertThat(rowCount).isEqualTo(rows);
+    assertThat(valueCount).isEqualTo(rows);
     MemPageReader pageReader = toReader(pageWriter);
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
-      assertEquals(0, columnReader.getCurrentRepetitionLevel());
-      assertEquals(0, columnReader.getCurrentDefinitionLevel());
+      assertThat(columnReader.getCurrentRepetitionLevel()).isEqualTo(0);
+      assertThat(columnReader.getCurrentDefinitionLevel()).isEqualTo(0);
       columnReader.consume();
     }
-    assertEquals(0, converter.count);
+    assertThat(converter.count).isEqualTo(0);
   }
 
   @Test
@@ -165,7 +164,7 @@ public class TestColumnReaderImpl {
     MemPageWriter pageWriter = writeBinaryDictColumn(col);
 
     DictionaryPage dictionaryPage = pageWriter.getDictionaryPage();
-    Assert.assertNotNull("Expected a dictionary", dictionaryPage);
+    assertThat(dictionaryPage).as("Expected a dictionary").isNotNull();
 
     Dictionary dict = dictionaryPage.decode(col);
 

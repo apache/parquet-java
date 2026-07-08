@@ -19,14 +19,13 @@
 
 package org.apache.parquet.column.values;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -48,10 +47,6 @@ public class TestValuesReaderImpl {
       ByteBuffer buffer = page.duplicate();
       buffer.position(offset);
       buffer.get(data);
-    }
-
-    public void assertPageEquals(String expected) {
-      Assert.assertEquals(expected, new String(data));
     }
 
     @Override
@@ -90,21 +85,18 @@ public class TestValuesReaderImpl {
   @Test
   public void testInvalidValuesReaderImpl() throws IOException {
     ValuesReader reader = new InvalidValuesReaderImpl();
-    try {
-      validateWithByteArray(reader);
-      fail("An UnsupportedOperationException should have been thrown");
-    } catch (UnsupportedOperationException e) {
-    }
-    try {
-      validateWithByteBuffer(reader);
-      fail("An UnsupportedOperationException should have been thrown");
-    } catch (UnsupportedOperationException e) {
-    }
-    try {
-      validateWithByteBufferInputStream(reader);
-      fail("An UnsupportedOperationException should have been thrown");
-    } catch (UnsupportedOperationException e) {
-    }
+    String expectedMessage =
+        "Either initFromPage(int, ByteBuffer, int) or initFromPage(int, ByteBufferInputStream) must be implemented in "
+            + InvalidValuesReaderImpl.class.getName();
+    assertThatThrownBy(() -> validateWithByteArray(reader))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(expectedMessage);
+    assertThatThrownBy(() -> validateWithByteBuffer(reader))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(expectedMessage);
+    assertThatThrownBy(() -> validateWithByteBufferInputStream(reader))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(expectedMessage);
   }
 
   @Test
@@ -125,12 +117,12 @@ public class TestValuesReaderImpl {
 
   private void validateWithByteArray(ValuesReader reader) throws IOException {
     reader.initFromPage(25, "==padding==The expected page content".getBytes(), 11);
-    assertEquals("The expected page content", reader.readBytes().toStringUsingUTF8());
+    assertThat(reader.readBytes().toStringUsingUTF8()).isEqualTo("The expected page content");
   }
 
   private void validateWithByteBuffer(ValuesReader reader) throws IOException {
     reader.initFromPage(25, ByteBuffer.wrap("==padding==The expected page content".getBytes()), 11);
-    assertEquals("The expected page content", reader.readBytes().toStringUsingUTF8());
+    assertThat(reader.readBytes().toStringUsingUTF8()).isEqualTo("The expected page content");
   }
 
   private void validateWithByteBufferInputStream(ValuesReader reader) throws IOException {
@@ -140,6 +132,6 @@ public class TestValuesReaderImpl {
         ByteBuffer.wrap("page content".getBytes()));
     bbis.skipFully(11);
     reader.initFromPage(25, bbis);
-    assertEquals("The expected page content", reader.readBytes().toStringUsingUTF8());
+    assertThat(reader.readBytes().toStringUsingUTF8()).isEqualTo("The expected page content");
   }
 }

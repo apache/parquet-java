@@ -19,10 +19,8 @@
 package org.apache.parquet.filter2.recordlevel;
 
 import static org.apache.parquet.filter2.recordlevel.TestIncrementallyUpdatedFilterPredicateEvaluator.intIsEven;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
@@ -35,49 +33,38 @@ public class TestValueInspector {
     ValueInspector v = intIsEven();
 
     // begins in unknown state
-    assertFalse(v.isKnown());
+    assertThat(v.isKnown()).isFalse();
     // calling getResult in unknown state throws
-    try {
-      v.getResult();
-      fail("this should throw");
-    } catch (IllegalStateException e) {
-      assertEquals("getResult() called on a ValueInspector whose result is not yet known!", e.getMessage());
-    }
+    assertThatThrownBy(() -> v.getResult())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("getResult() called on a ValueInspector whose result is not yet known!");
 
     // update state to known
     v.update(10);
 
     // v was updated with value 10, so result is known and should be true
-    assertTrue(v.isKnown());
-    assertTrue(v.getResult());
+    assertThat(v.isKnown()).isTrue();
+    assertThat(v.getResult()).isTrue();
 
     // calling update w/o resetting should throw
-    try {
-      v.update(11);
-      fail("this should throw");
-    } catch (IllegalStateException e) {
-      assertEquals(
-          "setResult() called on a ValueInspector whose result is already known!"
-              + " Did you forget to call reset()?",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> v.update(11))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("setResult() called on a ValueInspector whose result is already known!"
+            + " Did you forget to call reset()?");
 
     // back to unknown state
     v.reset();
 
-    assertFalse(v.isKnown());
+    assertThat(v.isKnown()).isFalse();
     // calling getResult in unknown state throws
-    try {
-      v.getResult();
-      fail("this should throw");
-    } catch (IllegalStateException e) {
-      assertEquals("getResult() called on a ValueInspector whose result is not yet known!", e.getMessage());
-    }
+    assertThatThrownBy(() -> v.getResult())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("getResult() called on a ValueInspector whose result is not yet known!");
 
     // v was updated with value 11, so result is known and should be false
     v.update(11);
-    assertTrue(v.isKnown());
-    assertFalse(v.getResult());
+    assertThat(v.isKnown()).isTrue();
+    assertThat(v.getResult()).isFalse();
   }
 
   @Test
@@ -87,7 +74,7 @@ public class TestValueInspector {
 
     for (Integer x : values) {
       v.update(x);
-      assertEquals(x % 2 == 0, v.getResult());
+      assertThat(v.getResult()).isEqualTo(x % 2 == 0);
       v.reset();
     }
   }

@@ -22,8 +22,8 @@ import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.concurrent.Callable;
 import org.junit.Test;
 
 public class TestTypeUtil {
@@ -37,11 +37,10 @@ public class TestTypeUtil {
         .named("b")
         .named("valid_schema"));
 
-    TestTypeBuilders.assertThrows(
-        "Should complain about empty MessageType", InvalidSchemaException.class, (Callable<Void>) () -> {
-          TypeUtil.checkValidWriteSchema(new MessageType("invalid_schema"));
-          return null;
-        });
+    MessageType invalidSchema = new MessageType("invalid_schema");
+    assertThatThrownBy(() -> TypeUtil.checkValidWriteSchema(invalidSchema))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessage("Cannot write a schema with an empty group: " + invalidSchema);
   }
 
   @Test
@@ -54,11 +53,10 @@ public class TestTypeUtil {
         .named("b")
         .named("valid_group"));
 
-    TestTypeBuilders.assertThrows(
-        "Should complain about empty GroupType", InvalidSchemaException.class, (Callable<Void>) () -> {
-          TypeUtil.checkValidWriteSchema(new GroupType(REPEATED, "invalid_group"));
-          return null;
-        });
+    GroupType invalidGroup = new GroupType(REPEATED, "invalid_group");
+    assertThatThrownBy(() -> TypeUtil.checkValidWriteSchema(invalidGroup))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessage("Cannot write a schema with an empty group: " + invalidGroup);
   }
 
   @Test
@@ -73,12 +71,11 @@ public class TestTypeUtil {
         .named("valid_group")
         .named("valid_message"));
 
-    TestTypeBuilders.assertThrows(
-        "Should complain about empty GroupType", InvalidSchemaException.class, (Callable<Void>) () -> {
-          TypeUtil.checkValidWriteSchema(Types.buildMessage()
-              .addField(new GroupType(REPEATED, "invalid_group"))
-              .named("invalid_message"));
-          return null;
-        });
+    MessageType invalidMessage = Types.buildMessage()
+        .addField(new GroupType(REPEATED, "invalid_group"))
+        .named("invalid_message");
+    assertThatThrownBy(() -> TypeUtil.checkValidWriteSchema(invalidMessage))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessage("Cannot write a schema with an empty group: " + invalidMessage.getType("invalid_group"));
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.plain;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -62,7 +62,7 @@ public class TestPlainValuesWriterReader {
   @Test
   public void testEncoding() {
     try (PlainValuesWriter writer = newWriter()) {
-      assertEquals(Encoding.PLAIN, writer.getEncoding());
+      assertThat(writer.getEncoding()).isEqualTo(Encoding.PLAIN);
     }
   }
 
@@ -80,7 +80,7 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertEquals("value at index " + i, expected[i], reader.readInteger());
+        assertThat(reader.readInteger()).as("value at index " + i).isEqualTo(expected[i]);
       }
     }
   }
@@ -99,7 +99,7 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertEquals("value at index " + i, expected[i], reader.readLong());
+        assertThat(reader.readLong()).as("value at index " + i).isEqualTo(expected[i]);
       }
     }
   }
@@ -127,10 +127,9 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertEquals(
-            "value at index " + i,
-            Float.floatToIntBits(expected[i]),
-            Float.floatToIntBits(reader.readFloat()));
+        assertThat(Float.floatToIntBits(reader.readFloat()))
+            .as("value at index " + i)
+            .isEqualTo(Float.floatToIntBits(expected[i]));
       }
     }
   }
@@ -158,10 +157,9 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertEquals(
-            "value at index " + i,
-            Double.doubleToLongBits(expected[i]),
-            Double.doubleToLongBits(reader.readDouble()));
+        assertThat(Double.doubleToLongBits(reader.readDouble()))
+            .as("value at index " + i)
+            .isEqualTo(Double.doubleToLongBits(expected[i]));
       }
     }
   }
@@ -180,9 +178,9 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(4, wrapForReading(writer));
 
       reader.skip(); // skip 1
-      assertEquals(2, reader.readInteger());
+      assertThat(reader.readInteger()).isEqualTo(2);
       reader.skip(1); // skip 3
-      assertEquals(4, reader.readInteger());
+      assertThat(reader.readInteger()).isEqualTo(4);
     }
   }
 
@@ -197,7 +195,7 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(3, wrapForReading(writer));
 
       reader.skip(2);
-      assertEquals(300L, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(300L);
     }
   }
 
@@ -212,7 +210,7 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(3, wrapForReading(writer));
 
       reader.skip();
-      assertEquals(Float.floatToIntBits(2.0f), Float.floatToIntBits(reader.readFloat()));
+      assertThat(Float.floatToIntBits(reader.readFloat())).isEqualTo(Float.floatToIntBits(2.0f));
     }
   }
 
@@ -227,7 +225,7 @@ public class TestPlainValuesWriterReader {
       reader.initFromPage(3, wrapForReading(writer));
 
       reader.skip();
-      assertEquals(Double.doubleToLongBits(2.0), Double.doubleToLongBits(reader.readDouble()));
+      assertThat(Double.doubleToLongBits(reader.readDouble())).isEqualTo(Double.doubleToLongBits(2.0));
     }
   }
 
@@ -238,14 +236,14 @@ public class TestPlainValuesWriterReader {
     try (PlainValuesWriter writer = newWriter()) {
       writer.writeInteger(999);
       writer.reset();
-      assertEquals(0, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isZero();
 
       writer.writeInteger(42);
 
       PlainValuesReader.IntegerPlainValuesReader reader = new PlainValuesReader.IntegerPlainValuesReader();
       reader.initFromPage(1, wrapForReading(writer));
 
-      assertEquals(42, reader.readInteger());
+      assertThat(reader.readInteger()).isEqualTo(42);
     }
   }
 
