@@ -18,216 +18,139 @@
  */
 package org.apache.parquet;
 
-import org.junit.Assert;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.Test;
 
 public class TestPreconditions {
 
   @Test
   public void testCheckArgumentWithoutParams() {
-    try {
-      Preconditions.checkArgument(true, "Test message");
-    } catch (IllegalArgumentException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkArgument(true, "Test message")).doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkArgument(false, "Test message");
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Should format message", "Test message", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkArgument(false, "Test message"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Test message");
   }
 
   @Test
   public void testCheckArgumentWithOneParam() {
-    try {
-      Preconditions.checkArgument(true, "Test message %s", 12);
-    } catch (IllegalArgumentException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkArgument(true, "Test message %s", 12))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkArgument(false, "Test message %s", 12);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Should format message", "Test message 12", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkArgument(false, "Test message %s", 12))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Test message 12");
   }
 
   @Test
   public void testCheckArgumentWithTwoParams() {
-    try {
-      Preconditions.checkArgument(true, "Test message %s %s", 12, null);
-    } catch (IllegalArgumentException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkArgument(true, "Test message %s %s", 12, null))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkArgument(false, "Test message %s %s", 12, null);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Should format message", "Test message 12 null", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkArgument(false, "Test message %s %s", 12, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Test message 12 null");
   }
 
   @Test
   public void testCheckArgumentWithThreeParams() {
-    try {
-      Preconditions.checkArgument(true, "Test message %s %s %s", 12, null, "column");
-    } catch (IllegalArgumentException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkArgument(true, "Test message %s %s %s", 12, null, "column"))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkArgument(false, "Test message %s %s %s", 12, null, "column");
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Should format message", "Test message 12 null column", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkArgument(false, "Test message %s %s %s", 12, null, "column"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Test message 12 null column");
   }
 
   @Test
   public void testCheckArgumentWithMoreThanThreeParams() {
-    try {
-      Preconditions.checkArgument(true, "Test message %s %s %s %s", 12, null, "column", true);
-    } catch (IllegalArgumentException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkArgument(true, "Test message %s %s %s %s", 12, null, "column", true))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkArgument(false, "Test message %s %s %s %s", 12, null, "column", true);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Should format message", "Test message 12 null column true", e.getMessage());
-    }
+    assertThatThrownBy(
+            () -> Preconditions.checkArgument(false, "Test message %s %s %s %s", 12, null, "column", true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Test message 12 null column true");
   }
 
   @Test
   public void checkArgumentMessageOnlySupportsStringTypeTemplate() {
-    try {
-      Preconditions.checkArgument(true, "Test message %d", 12);
-    } catch (IllegalArgumentException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkArgument(true, "Test message %d", 12))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkArgument(false, "Test message %d", 12);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("%d is not a valid format option", "d != java.lang.String", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkArgument(false, "Test message %d", 12))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("d != java.lang.String");
   }
 
   @Test
   public void testCheckState() {
-    try {
-      Preconditions.checkState(true, "Test message: %s %s", 12, null);
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message: %s %s", 12, null))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message: %s %s", 12, null);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message", "Test message: 12 null", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message: %s %s", 12, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Test message: 12 null");
   }
 
   @Test
   public void testCheckStateWithoutArguments() {
-    try {
-      Preconditions.checkState(true, "Test message");
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message")).doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message");
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message", "Test message", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Test message");
   }
 
   @Test
   public void testCheckStateWithOneArgument() {
-    try {
-      Preconditions.checkState(true, "Test message %s", 12);
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message %s", 12))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message %s", 12);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message", "Test message 12", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message %s", 12))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Test message 12");
   }
 
   @Test
   public void testCheckStateWithTwoArguments() {
-    try {
-      Preconditions.checkState(true, "Test message %s %s", 12, null);
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message %s %s", 12, null))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message %s %s", 12, null);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message", "Test message 12 null", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message %s %s", 12, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Test message 12 null");
   }
 
   @Test
   public void testCheckStateWithThreeArguments() {
-    try {
-      Preconditions.checkState(true, "Test message %s %s %s", 12, null, "column");
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message %s %s %s", 12, null, "column"))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message %s %s %s", 12, null, "column");
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message", "Test message 12 null column", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message %s %s %s", 12, null, "column"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Test message 12 null column");
   }
 
   @Test
   public void testCheckStateWithMoreThanThreeParams() {
-    try {
-      Preconditions.checkState(true, "Test message %s %s %s %s", 12, null, "column", true);
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message %s %s %s %s", 12, null, "column", true))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message %s %s %s %s", 12, null, "column", true);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message", "Test message 12 null column true", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message %s %s %s %s", 12, null, "column", true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Test message 12 null column true");
   }
 
   @Test
   public void checkStateMessageOnlySupportsStringTypeTemplate() {
-    try {
-      Preconditions.checkState(true, "Test message %d", 12);
-    } catch (IllegalStateException e) {
-      Assert.fail("Should not throw exception when isValid is true");
-    }
+    assertThatCode(() -> Preconditions.checkState(true, "Test message %d", 12))
+        .doesNotThrowAnyException();
 
-    try {
-      Preconditions.checkState(false, "Test message %d", 12);
-      Assert.fail("Should throw exception when isValid is false");
-    } catch (IllegalArgumentException e) {
-      Assert.assertEquals("%d is not a valid format option", "d != java.lang.String", e.getMessage());
-    }
+    assertThatThrownBy(() -> Preconditions.checkState(false, "Test message %d", 12))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("d != java.lang.String");
   }
 }
