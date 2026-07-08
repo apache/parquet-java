@@ -30,6 +30,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.List;
@@ -469,11 +470,13 @@ public class TestSchemaConverter {
     Assert.assertEquals("p, s<r<p>, r<p>>, r<s<r<s<p, p>>, p>>", toSummaryString(map));
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testArrowTimeSecondToParquet() {
-    converter
-        .fromArrow(new Schema(asList(field("a", new ArrowType.Time(TimeUnit.SECOND, 32)))))
-        .getParquetSchema();
+    assertThatThrownBy(() -> converter
+            .fromArrow(new Schema(asList(field("a", new ArrowType.Time(TimeUnit.SECOND, 32)))))
+            .getParquetSchema())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Unsupported type Time(SECOND, 32)");
   }
 
   @Test
@@ -580,29 +583,35 @@ public class TestSchemaConverter {
         expected, converterInt96ToTimestamp.fromParquet(parquet).getArrowSchema());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt64TimeMillisToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT64)
-            .as(LogicalTypeAnnotation.timeType(false, MILLIS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT64)
+                .as(LogicalTypeAnnotation.timeType(false, MILLIS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIME(MILLIS,false) can only annotate INT32");
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt32TimeMicrosToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT32)
-            .as(LogicalTypeAnnotation.timeType(false, MICROS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT32)
+                .as(LogicalTypeAnnotation.timeType(false, MICROS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIME(MICROS,false) can only annotate INT64");
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testArrowTimestampSecondToParquet() {
-    converter
-        .fromArrow(new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.SECOND, "UTC")))))
-        .getParquetSchema();
+    assertThatThrownBy(() -> converter
+            .fromArrow(new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.SECOND, "UTC")))))
+            .getParquetSchema())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Unsupported type Timestamp(SECOND, UTC)");
   }
 
   @Test
@@ -655,21 +664,25 @@ public class TestSchemaConverter {
     Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt32TimestampMillisToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT32)
-            .as(LogicalTypeAnnotation.timestampType(false, MILLIS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT32)
+                .as(LogicalTypeAnnotation.timestampType(false, MILLIS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIMESTAMP(MILLIS,false) can only annotate INT64");
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt32TimestampMicrosToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT32)
-            .as(LogicalTypeAnnotation.timestampType(false, MICROS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT32)
+                .as(LogicalTypeAnnotation.timestampType(false, MICROS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIMESTAMP(MICROS,false) can only annotate INT64");
   }
 }

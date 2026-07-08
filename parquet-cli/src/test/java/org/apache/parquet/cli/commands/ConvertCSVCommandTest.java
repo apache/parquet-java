@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -50,8 +52,8 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     Assert.assertTrue(output.exists());
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testConvertCSVCommandWithDifferentSchemas() throws IOException {
+  @Test
+  public void testConvertCSVCommandWithDifferentSchemas() {
     File file = csvFile();
     File fileWithDifferentSchema = csvFileWithDifferentSchema();
     ConvertCSVCommand command = new ConvertCSVCommand(createLogger());
@@ -59,7 +61,9 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    command.run();
+    assertThatThrownBy(command::run)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("seems to have a different schema from others");
   }
 
   @Test

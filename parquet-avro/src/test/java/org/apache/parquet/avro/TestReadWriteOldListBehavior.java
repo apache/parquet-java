@@ -23,6 +23,7 @@ import static org.apache.parquet.avro.AvroTestUtil.optional;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
 import static org.apache.parquet.avro.AvroTestUtil.record;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -161,7 +162,7 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testMapRequiredValueWithNull() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
     schema.setFields(Lists.newArrayList(
@@ -181,7 +182,9 @@ public class TestReadWriteOldListBehavior {
 
       GenericData.Record record =
           new GenericRecordBuilder(schema).set("mymap", map).build();
-      writer.write(record);
+      assertThatThrownBy(() -> writer.write(record))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Null map value for map");
     }
   }
 
