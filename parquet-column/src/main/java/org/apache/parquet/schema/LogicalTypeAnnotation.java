@@ -1240,25 +1240,52 @@ public abstract class LogicalTypeAnnotation {
   }
 
   /**
-   * File logical type annotation. Annotates a group (struct) that represents a reference to
-   * an external file. The group must contain the following fields by name:
+   * File logical type annotation. Annotates a group (struct) that represents a reference to a
+   * range of bytes, which may be stored inline in the value, elsewhere within the current file,
+   * or in an external file. Every field is optional, both in the schema (a writer may omit any
+   * field from the group definition) and in the data (any field that is present has a field
+   * repetition type of {@code OPTIONAL}). The group may contain the following fields, identified
+   * by name:
    * <ul>
-   *   <li>{@code path} (required): STRING - the path/URI of the file</li>
-   *   <li>{@code size} (optional): INT64 - size of the file content in bytes</li>
-   *   <li>{@code offset} (optional): INT64 - byte offset within the file; if present, size must be present</li>
-   *   <li>{@code etag} (optional): STRING - opaque identifier for the file version</li>
+   *   <li>{@code path} (STRING): an opaque path that identifies an external file, for example a
+   *       URI such as s3://bucket/key. If not set, the value refers to the current file (a
+   *       self-reference).</li>
+   *   <li>{@code offset} (INT64): start of the byte range within the referenced data; if not set,
+   *       treated as 0.</li>
+   *   <li>{@code size} (INT64): byte length of the referenced data. Must be set whenever
+   *       {@code offset} is set or {@code path} is not set; may be omitted only for a whole-file
+   *       external reference, in which case the range runs to the end of the referenced file.</li>
+   *   <li>{@code content_type} (STRING): the media (MIME) type of the resolved bytes.</li>
+   *   <li>{@code checksum} (STRING): an algorithm-tagged integrity token for the resolved bytes,
+   *       of the form {@code <algorithm>:base64(<digest>)}.</li>
+   *   <li>{@code inline} (BYTE_ARRAY): the referenced bytes stored inline in the value.</li>
    * </ul>
-   * No optional fields with names other than the above are permitted.
+   * No fields with names other than the above are permitted.
    */
   public static class FileLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final FileLogicalTypeAnnotation INSTANCE = new FileLogicalTypeAnnotation();
 
-    /** The only required field name in a FILE-annotated group. */
+    /** Field name holding the path/URI of an external file. */
     public static final String PATH_FIELD = "path";
 
-    /** Valid optional field names in a FILE-annotated group. */
-    public static final Set<String> OPTIONAL_FIELD_NAMES =
-        Set.of("size", "offset", "etag");
+    /** Field name holding the start of the byte range. */
+    public static final String OFFSET_FIELD = "offset";
+
+    /** Field name holding the byte length of the referenced data. */
+    public static final String SIZE_FIELD = "size";
+
+    /** Field name holding the media (MIME) type of the resolved bytes. */
+    public static final String CONTENT_TYPE_FIELD = "content_type";
+
+    /** Field name holding the integrity token for the resolved bytes. */
+    public static final String CHECKSUM_FIELD = "checksum";
+
+    /** Field name holding the referenced bytes stored inline. */
+    public static final String INLINE_FIELD = "inline";
+
+    /** All recognized field names in a FILE-annotated group. All fields are optional. */
+    public static final Set<String> FIELD_NAMES = Set.of(
+        PATH_FIELD, OFFSET_FIELD, SIZE_FIELD, CONTENT_TYPE_FIELD, CHECKSUM_FIELD, INLINE_FIELD);
 
     private FileLogicalTypeAnnotation() {}
 
