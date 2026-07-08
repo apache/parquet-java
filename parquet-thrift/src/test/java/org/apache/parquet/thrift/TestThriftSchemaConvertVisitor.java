@@ -20,7 +20,7 @@ package org.apache.parquet.thrift;
 
 import static org.apache.parquet.schema.Type.Repetition;
 import static org.apache.parquet.thrift.struct.ThriftField.Requirement;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +65,7 @@ public class TestThriftSchemaConvertVisitor {
         .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -86,7 +86,7 @@ public class TestThriftSchemaConvertVisitor {
         .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -104,7 +104,7 @@ public class TestThriftSchemaConvertVisitor {
         .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -125,7 +125,7 @@ public class TestThriftSchemaConvertVisitor {
         .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -145,7 +145,7 @@ public class TestThriftSchemaConvertVisitor {
         .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -167,6 +167,6 @@ public class TestThriftSchemaConvertVisitor {
         .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 }

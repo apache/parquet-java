@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.thrift;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
@@ -28,7 +30,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestThriftParquetReaderWriter {
@@ -66,14 +67,14 @@ public class TestThriftParquetReaderWriter {
       ThriftParquetReader<AddressBook> thriftParquetReader =
           new ThriftParquetReader<AddressBook>(f, AddressBook.class);
       AddressBook read = thriftParquetReader.read();
-      Assert.assertEquals(original, read);
+      assertThat(read).isEqualTo(original);
       thriftParquetReader.close();
     }
 
     { // read without providing a thrift class
       ThriftParquetReader<AddressBook> thriftParquetReader = new ThriftParquetReader<AddressBook>(f);
       AddressBook read = thriftParquetReader.read();
-      Assert.assertEquals(original, read);
+      assertThat(read).isEqualTo(original);
       thriftParquetReader.close();
     }
   }

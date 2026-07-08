@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -138,7 +137,7 @@ public class TestProtocolReadToWrite {
       TBase<?, ?> b = a.getClass().newInstance();
       b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
 
-      assertEquals(p.getClass().getSimpleName(), a, b);
+      assertThat(b).as(p.getClass().getSimpleName()).isEqualTo(a);
     }
   }
 
@@ -168,17 +167,15 @@ public class TestProtocolReadToWrite {
         new ArrayList<Short>(),
         new ArrayList<Long>());
     a.write(protocol(in));
-    try {
-      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-      fail("this should throw");
-    } catch (SkippableException e) {
-      Throwable cause = e.getCause();
-      assertTrue(cause instanceof DecodingSchemaMismatchException);
-      assertTrue(cause.getMessage().contains("the data type does not match the expected thrift structure"));
-      assertTrue(cause.getMessage().contains("got BOOL"));
-    }
-    assertEquals(0, countingHandler.recordCountOfMissingFields);
-    assertEquals(0, countingHandler.fieldIgnoredCount);
+    assertThatThrownBy(() -> p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out)))
+        .isInstanceOf(SkippableException.class)
+        .hasMessageContaining("Error while reading")
+        .cause()
+        .isInstanceOf(DecodingSchemaMismatchException.class)
+        .hasMessageContaining("the data type does not match the expected thrift structure")
+        .hasMessageContaining("got BOOL");
+    assertThat(countingHandler.recordCountOfMissingFields).isZero();
+    assertThat(countingHandler.fieldIgnoredCount).isZero();
   }
 
   @Test
@@ -200,16 +197,14 @@ public class TestProtocolReadToWrite {
     // first one should not throw
     p.readOne(protocol(baos), protocol(out));
 
-    try {
-      p.readOne(protocol(baos), protocol(out));
-      fail("this should throw");
-    } catch (SkippableException e) {
-      Throwable cause = e.getCause();
-      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
-      assertTrue(cause.getMessage().startsWith("Unrecognized union member with id: 3 for struct:"));
-    }
-    assertEquals(0, countingHandler.recordCountOfMissingFields);
-    assertEquals(0, countingHandler.fieldIgnoredCount);
+    assertThatThrownBy(() -> p.readOne(protocol(baos), protocol(out)))
+        .isInstanceOf(SkippableException.class)
+        .hasMessageContaining("Error while reading")
+        .cause()
+        .isInstanceOf(DecodingSchemaMismatchException.class)
+        .hasMessageStartingWith("Unrecognized union member with id: 3 for struct:");
+    assertThat(countingHandler.recordCountOfMissingFields).isZero();
+    assertThat(countingHandler.fieldIgnoredCount).isZero();
   }
 
   @Test
@@ -240,16 +235,15 @@ public class TestProtocolReadToWrite {
     // first one should not throw
     p.readOne(protocol(baos), protocol(out));
 
-    try {
-      p.readOne(protocol(baos), protocol(out));
-      fail("this should throw");
-    } catch (SkippableException e) {
-      Throwable cause = e.getCause();
-      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
-      assertTrue(cause.getMessage().startsWith("Cannot write a TUnion with no set value in"));
-    }
-    assertEquals(0, countingHandler.recordCountOfMissingFields);
-    assertEquals(0, countingHandler.fieldIgnoredCount);
+    final ByteArrayInputStream inputForMissingUnionRead = baos;
+    assertThatThrownBy(() -> p.readOne(protocol(inputForMissingUnionRead), protocol(out)))
+        .isInstanceOf(SkippableException.class)
+        .hasMessageContaining("Error while reading")
+        .cause()
+        .isInstanceOf(DecodingSchemaMismatchException.class)
+        .hasMessageStartingWith("Cannot write a TUnion with no set value in");
+    assertThat(countingHandler.recordCountOfMissingFields).isZero();
+    assertThat(countingHandler.fieldIgnoredCount).isZero();
 
     in = new ByteArrayOutputStream();
     validUnion.write(protocol(in));
@@ -260,16 +254,15 @@ public class TestProtocolReadToWrite {
     // first one should not throw
     p.readOne(protocol(baos), protocol(out));
 
-    try {
-      p.readOne(protocol(baos), protocol(out));
-      fail("this should throw");
-    } catch (SkippableException e) {
-      Throwable cause = e.getCause();
-      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
-      assertTrue(cause.getMessage().startsWith("Cannot write a TUnion with more than 1 set value in"));
-    }
-    assertEquals(0, countingHandler.recordCountOfMissingFields);
-    assertEquals(0, countingHandler.fieldIgnoredCount);
+    final ByteArrayInputStream inputForExtraUnionRead = baos;
+    assertThatThrownBy(() -> p.readOne(protocol(inputForExtraUnionRead), protocol(out)))
+        .isInstanceOf(SkippableException.class)
+        .hasMessageContaining("Error while reading")
+        .cause()
+        .isInstanceOf(DecodingSchemaMismatchException.class)
+        .hasMessageStartingWith("Cannot write a TUnion with more than 1 set value in");
+    assertThat(countingHandler.recordCountOfMissingFields).isZero();
+    assertThat(countingHandler.fieldIgnoredCount).isZero();
   }
 
   @Test
@@ -294,8 +287,8 @@ public class TestProtocolReadToWrite {
     p.readOne(protocol(baos), protocol(out));
     p.readOne(protocol(baos), protocol(out));
 
-    assertEquals(1, countingHandler.recordCountOfMissingFields);
-    assertEquals(1, countingHandler.fieldIgnoredCount);
+    assertThat(countingHandler.recordCountOfMissingFields).isEqualTo(1);
+    assertThat(countingHandler.fieldIgnoredCount).isEqualTo(1);
 
     in = new ByteArrayOutputStream();
     validUnion.write(protocol(in));
@@ -307,8 +300,8 @@ public class TestProtocolReadToWrite {
     p.readOne(protocol(baos), protocol(out));
     p.readOne(protocol(baos), protocol(out));
 
-    assertEquals(2, countingHandler.recordCountOfMissingFields);
-    assertEquals(2, countingHandler.fieldIgnoredCount);
+    assertThat(countingHandler.recordCountOfMissingFields).isEqualTo(2);
+    assertThat(countingHandler.fieldIgnoredCount).isEqualTo(2);
   }
 
   /**
@@ -333,16 +326,14 @@ public class TestProtocolReadToWrite {
     // first should not throw
     p.readOne(protocol(baos), protocol(out));
 
-    try {
-      p.readOne(protocol(baos), protocol(out));
-      fail("this should throw");
-    } catch (SkippableException e) {
-      Throwable cause = e.getCause();
-      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
-      assertTrue(cause.getMessage().contains("can not find index 4 in enum"));
-    }
-    assertEquals(0, countingHandler.recordCountOfMissingFields);
-    assertEquals(0, countingHandler.fieldIgnoredCount);
+    assertThatThrownBy(() -> p.readOne(protocol(baos), protocol(out)))
+        .isInstanceOf(SkippableException.class)
+        .hasMessageContaining("Error while reading")
+        .cause()
+        .isInstanceOf(DecodingSchemaMismatchException.class)
+        .hasMessageContaining("can not find index 4 in enum");
+    assertThat(countingHandler.recordCountOfMissingFields).isZero();
+    assertThat(countingHandler.fieldIgnoredCount).isZero();
   }
 
   /**
@@ -356,7 +347,7 @@ public class TestProtocolReadToWrite {
     CountingErrorHandler countingHandler = new CountingErrorHandler() {
       @Override
       public void handleFieldIgnored(TField field) {
-        assertEquals(field.id, 4);
+        assertThat(field.id).isEqualTo((short) 4);
         fieldIgnoredCount++;
       }
     };
@@ -378,15 +369,15 @@ public class TestProtocolReadToWrite {
     structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
 
     // record will be read without extra field
-    assertEquals(1, countingHandler.recordCountOfMissingFields);
-    assertEquals(1, countingHandler.fieldIgnoredCount);
+    assertThat(countingHandler.recordCountOfMissingFields).isEqualTo(1);
+    assertThat(countingHandler.fieldIgnoredCount).isEqualTo(1);
 
     StructV4WithExtracStructField b = StructV4WithExtracStructField.class.newInstance();
     b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
-    assertEquals(dataWithNewSchema.getName(), b.getName());
-    assertEquals(dataWithNewSchema.getAge(), b.getAge());
-    assertEquals(dataWithNewSchema.getGender(), b.getGender());
-    assertEquals(null, b.getAddedStruct());
+    assertThat(b.getName()).isEqualTo(dataWithNewSchema.getName());
+    assertThat(b.getAge()).isEqualTo(dataWithNewSchema.getAge());
+    assertThat(b.getGender()).isEqualTo(dataWithNewSchema.getGender());
+    assertThat(b.getAddedStruct()).isNull();
   }
 
   @Test
@@ -394,7 +385,7 @@ public class TestProtocolReadToWrite {
     CountingErrorHandler countingHandler = new CountingErrorHandler() {
       @Override
       public void handleFieldIgnored(TField field) {
-        assertEquals(3, field.id);
+        assertThat(field.id).isEqualTo((short) 3);
         fieldIgnoredCount++;
       }
     };
@@ -412,8 +403,8 @@ public class TestProtocolReadToWrite {
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
 
-    assertEquals(1, countingHandler.recordCountOfMissingFields);
-    assertEquals(1, countingHandler.fieldIgnoredCount);
+    assertThat(countingHandler.recordCountOfMissingFields).isEqualTo(1);
+    assertThat(countingHandler.fieldIgnoredCount).isEqualTo(1);
   }
 
   private TCompactProtocol protocol(OutputStream to) throws TTransportException {

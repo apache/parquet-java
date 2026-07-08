@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public class TestByteBitPacking {
       int[] values = generateValues(i);
       packUnpack(Packer.BIG_ENDIAN.newBytePacker(i), values, unpacked);
       LOG.debug("Output: {}", TestBitPacking.toString(unpacked));
-      Assert.assertArrayEquals("width " + i, values, unpacked);
+      assertThat(unpacked).as("width " + i).containsExactly(values);
     }
   }
 
@@ -58,10 +59,10 @@ public class TestByteBitPacking {
       long[] values = generateValuesLong(i);
       packUnpack32(Packer.BIG_ENDIAN.newBytePackerForLong(i), values, unpacked32);
       LOG.debug("Output 32: {}", TestBitPacking.toString(unpacked32));
-      Assert.assertArrayEquals("width " + i, values, unpacked32);
+      assertThat(unpacked32).as("width " + i).containsExactly(values);
       packUnpack8(Packer.BIG_ENDIAN.newBytePackerForLong(i), values, unpacked8);
       LOG.debug("Output 8: {}", TestBitPacking.toString(unpacked8));
-      Assert.assertArrayEquals("width " + i, values, unpacked8);
+      assertThat(unpacked8).as("width " + i).containsExactly(values);
     }
   }
 
@@ -141,7 +142,7 @@ public class TestByteBitPacking {
       }
 
       LOG.debug("Output: {}", TestBitPacking.toString(unpacked));
-      Assert.assertArrayEquals("width " + i, values, unpacked);
+      assertThat(unpacked).as("width " + i).containsExactly(values);
     }
   }
 
@@ -185,15 +186,14 @@ public class TestByteBitPacking {
         byte[] packedGenerated = new byte[i * 4];
         bytePacker.pack32Values(values, 0, packedGenerated, 0);
         LOG.debug("Gener. out: {}", TestBitPacking.toString(packedGenerated));
-        Assert.assertEquals(
-            pack.name() + " width " + i,
-            TestBitPacking.toString(packedByLemireAsBytes),
-            TestBitPacking.toString(packedGenerated));
+        assertThat(TestBitPacking.toString(packedGenerated))
+            .as(pack.name() + " width " + i)
+            .isEqualTo(TestBitPacking.toString(packedByLemireAsBytes));
 
         bytePacker.unpack32Values(ByteBuffer.wrap(packedByLemireAsBytes), 0, unpacked, 0);
         LOG.debug("Output: {}", TestBitPacking.toString(unpacked));
 
-        Assert.assertArrayEquals("width " + i, values, unpacked);
+        assertThat(unpacked).as("width " + i).containsExactly(values);
       }
     }
   }

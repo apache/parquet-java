@@ -18,13 +18,10 @@
  */
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,7 +46,7 @@ public class TestCapacityByteArrayOutputStream {
       final int expectedSize = 54;
       for (int i = 0; i < expectedSize; i++) {
         capacityByteArrayOutputStream.write(i);
-        assertEquals(i + 1, capacityByteArrayOutputStream.size());
+        assertThat(capacityByteArrayOutputStream.size()).isEqualTo(i + 1);
       }
       validate(capacityByteArrayOutputStream, expectedSize);
     }
@@ -67,31 +64,30 @@ public class TestCapacityByteArrayOutputStream {
   @Test
   public void testWriteArrayExpand() throws Throwable {
     try (CapacityByteArrayOutputStream capacityByteArrayOutputStream = newCapacityBAOS(2)) {
-      assertEquals(0, capacityByteArrayOutputStream.getCapacity());
+      assertThat(capacityByteArrayOutputStream.getCapacity()).isZero();
 
-      byte[] toWrite = {(byte) (1), (byte) (2), (byte) (3), (byte) (4)};
+      byte[] toWrite = bytes(1, 2, 3, 4);
       int toWriteOffset = 0;
       int writeLength = 2;
       // write 2 bytes array
       capacityByteArrayOutputStream.write(toWrite, toWriteOffset, writeLength);
       toWriteOffset += writeLength;
-      assertEquals(2, capacityByteArrayOutputStream.size());
-      assertEquals(2, capacityByteArrayOutputStream.getCapacity());
+      assertThat(capacityByteArrayOutputStream.size()).isEqualTo(2);
+      assertThat(capacityByteArrayOutputStream.getCapacity()).isEqualTo(2);
 
       // write 1 byte array, expand capacity to 4
       writeLength = 1;
       capacityByteArrayOutputStream.write(toWrite, toWriteOffset, writeLength);
       toWriteOffset += writeLength;
-      assertEquals(3, capacityByteArrayOutputStream.size());
-      assertEquals(4, capacityByteArrayOutputStream.getCapacity());
+      assertThat(capacityByteArrayOutputStream.size()).isEqualTo(3);
+      assertThat(capacityByteArrayOutputStream.getCapacity()).isEqualTo(4);
 
       // write 1 byte array, not expand
       capacityByteArrayOutputStream.write(toWrite, toWriteOffset, writeLength);
-      assertEquals(4, capacityByteArrayOutputStream.size());
-      assertEquals(4, capacityByteArrayOutputStream.getCapacity());
-      final byte[] byteArray =
-          BytesInput.from(capacityByteArrayOutputStream).toByteArray();
-      assertArrayEquals(toWrite, byteArray);
+      assertThat(capacityByteArrayOutputStream.size()).isEqualTo(4);
+      assertThat(capacityByteArrayOutputStream.getCapacity()).isEqualTo(4);
+      assertThat(BytesInput.from(capacityByteArrayOutputStream).toByteArray())
+          .containsExactly(toWrite);
     }
   }
 
@@ -99,10 +95,9 @@ public class TestCapacityByteArrayOutputStream {
   public void testWriteArrayAndInt() throws Throwable {
     try (CapacityByteArrayOutputStream capacityByteArrayOutputStream = newCapacityBAOS(10)) {
       for (int i = 0; i < 23; i++) {
-        byte[] toWrite = {(byte) (i * 3), (byte) (i * 3 + 1)};
-        capacityByteArrayOutputStream.write(toWrite);
-        capacityByteArrayOutputStream.write((byte) (i * 3 + 2));
-        assertEquals((i + 1) * 3, capacityByteArrayOutputStream.size());
+        capacityByteArrayOutputStream.write(bytes(i * 3, i * 3 + 1));
+        capacityByteArrayOutputStream.write(i * 3 + 2);
+        assertThat(capacityByteArrayOutputStream.size()).isEqualTo((i + 1) * 3);
       }
       validate(capacityByteArrayOutputStream, 23 * 3);
     }
@@ -117,19 +112,15 @@ public class TestCapacityByteArrayOutputStream {
     try (CapacityByteArrayOutputStream capacityByteArrayOutputStream = newCapacityBAOS(10)) {
       for (int i = 0; i < 54; i++) {
         capacityByteArrayOutputStream.write(i);
-        assertEquals(i + 1, capacityByteArrayOutputStream.size());
+        assertThat(capacityByteArrayOutputStream.size()).isEqualTo(i + 1);
       }
       capacityByteArrayOutputStream.reset();
       for (int i = 0; i < 54; i++) {
         capacityByteArrayOutputStream.write(54 + i);
-        assertEquals(i + 1, capacityByteArrayOutputStream.size());
+        assertThat(capacityByteArrayOutputStream.size()).isEqualTo(i + 1);
       }
-      final byte[] byteArray =
-          BytesInput.from(capacityByteArrayOutputStream).toByteArray();
-      assertEquals(54, byteArray.length);
-      for (int i = 0; i < 54; i++) {
-        assertEquals(i + " in " + Arrays.toString(byteArray), 54 + i, byteArray[i]);
-      }
+      assertThat(BytesInput.from(capacityByteArrayOutputStream).toByteArray())
+          .isEqualTo(byteRange(54, 54));
     }
   }
 
@@ -139,42 +130,17 @@ public class TestCapacityByteArrayOutputStream {
       int v = 23;
       writeArraysOf3(capacityByteArrayOutputStream, v);
       int n = v * 3;
-      byte[] toWrite = { // bigger than 2 slabs of size of 10
-        (byte) n,
-        (byte) (n + 1),
-        (byte) (n + 2),
-        (byte) (n + 3),
-        (byte) (n + 4),
-        (byte) (n + 5),
-        (byte) (n + 6),
-        (byte) (n + 7),
-        (byte) (n + 8),
-        (byte) (n + 9),
-        (byte) (n + 10),
-        (byte) (n + 11),
-        (byte) (n + 12),
-        (byte) (n + 13),
-        (byte) (n + 14),
-        (byte) (n + 15),
-        (byte) (n + 16),
-        (byte) (n + 17),
-        (byte) (n + 18),
-        (byte) (n + 19),
-        (byte) (n + 20)
-      };
+      byte[] toWrite = byteRange(n, 21);
       capacityByteArrayOutputStream.write(toWrite);
       n = n + toWrite.length;
-      assertEquals(n, capacityByteArrayOutputStream.size());
+      assertThat(capacityByteArrayOutputStream.size()).isEqualTo(n);
       validate(capacityByteArrayOutputStream, n);
       capacityByteArrayOutputStream.reset();
       // check it works after reset too
       capacityByteArrayOutputStream.write(toWrite);
-      assertEquals(toWrite.length, capacityByteArrayOutputStream.size());
-      byte[] byteArray = BytesInput.from(capacityByteArrayOutputStream).toByteArray();
-      assertEquals(toWrite.length, byteArray.length);
-      for (int i = 0; i < toWrite.length; i++) {
-        assertEquals(toWrite[i], byteArray[i]);
-      }
+      assertThat(capacityByteArrayOutputStream.size()).isEqualTo(toWrite.length);
+      assertThat(BytesInput.from(capacityByteArrayOutputStream).toByteArray())
+          .isEqualTo(toWrite);
     }
   }
 
@@ -185,27 +151,24 @@ public class TestCapacityByteArrayOutputStream {
       int v = 23;
       for (int j = 0; j < it; j++) {
         for (int i = 0; i < v; i++) {
-          byte[] toWrite = {(byte) (i * 3), (byte) (i * 3 + 1), (byte) (i * 3 + 2)};
-          capacityByteArrayOutputStream.write(toWrite);
-          assertEquals((i + 1) * 3 + v * 3 * j, capacityByteArrayOutputStream.size());
+          capacityByteArrayOutputStream.write(bytes(i * 3, i * 3 + 1, i * 3 + 2));
+          assertThat(capacityByteArrayOutputStream.size()).isEqualTo((i + 1) * 3 + v * 3 * j);
         }
       }
       byte[] byteArray = BytesInput.from(capacityByteArrayOutputStream).toByteArray();
-      assertEquals(v * 3 * it, byteArray.length);
-      for (int i = 0; i < v * 3 * it; i++) {
-        assertEquals(i % (v * 3), byteArray[i]);
-      }
+      assertThat(byteArray).hasSize(v * 3 * it);
+      assertThat(byteArray).isEqualTo(repeatedByteRange(0, v * 3, v * 3 * it));
       // verifying we have not created 500 * 23 / 10 slabs
-      assertTrue(
-          "slab count: " + capacityByteArrayOutputStream.getSlabCount(),
-          capacityByteArrayOutputStream.getSlabCount() <= 20);
+      assertThat(capacityByteArrayOutputStream.getSlabCount())
+          .as("slab count: " + capacityByteArrayOutputStream.getSlabCount())
+          .isLessThanOrEqualTo(20);
       capacityByteArrayOutputStream.reset();
       writeArraysOf3(capacityByteArrayOutputStream, v);
       validate(capacityByteArrayOutputStream, v * 3);
       // verifying we use less slabs now
-      assertTrue(
-          "slab count: " + capacityByteArrayOutputStream.getSlabCount(),
-          capacityByteArrayOutputStream.getSlabCount() <= 2);
+      assertThat(capacityByteArrayOutputStream.getSlabCount())
+          .as("slab count: " + capacityByteArrayOutputStream.getSlabCount())
+          .isLessThanOrEqualTo(2);
     }
   }
 
@@ -214,11 +177,11 @@ public class TestCapacityByteArrayOutputStream {
     // test replace the first value
     try (CapacityByteArrayOutputStream cbaos = newCapacityBAOS(5)) {
       cbaos.write(10);
-      assertEquals(0, cbaos.getCurrentIndex());
+      assertThat(cbaos.getCurrentIndex()).isZero();
       cbaos.setByte(0, (byte) 7);
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       cbaos.writeTo(baos);
-      assertEquals(7, baos.toByteArray()[0]);
+      assertThat(baos.toByteArray()).isEqualTo(bytes(7));
     }
 
     // test replace value in the first slab
@@ -227,77 +190,63 @@ public class TestCapacityByteArrayOutputStream {
       cbaos.write(13);
       cbaos.write(15);
       cbaos.write(17);
-      assertEquals(3, cbaos.getCurrentIndex());
+      assertThat(cbaos.getCurrentIndex()).isEqualTo(3);
       cbaos.write(19);
       cbaos.setByte(3, (byte) 7);
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       cbaos.writeTo(baos);
-      assertArrayEquals(new byte[] {10, 13, 15, 7, 19}, baos.toByteArray());
+      assertThat(baos.toByteArray()).isEqualTo(bytes(10, 13, 15, 7, 19));
     }
 
     // test replace in *not* the first slab
     try (CapacityByteArrayOutputStream cbaos = newCapacityBAOS(5)) {
-
-      // advance part way through the 3rd slab
-      for (int i = 0; i < 12; i++) {
-        cbaos.write(100 + i);
-      }
-      assertEquals(11, cbaos.getCurrentIndex());
+      writeRange(cbaos, 100, 12);
+      assertThat(cbaos.getCurrentIndex()).isEqualTo(11);
 
       cbaos.setByte(6, (byte) 7);
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       cbaos.writeTo(baos);
-      assertArrayEquals(
-          new byte[] {100, 101, 102, 103, 104, 105, 7, 107, 108, 109, 110, 111}, baos.toByteArray());
+      assertThat(baos.toByteArray()).isEqualTo(bytes(100, 101, 102, 103, 104, 105, 7, 107, 108, 109, 110, 111));
     }
 
     // test replace last value of a slab
     try (CapacityByteArrayOutputStream cbaos = newCapacityBAOS(5)) {
-
-      // advance part way through the 3rd slab
-      for (int i = 0; i < 12; i++) {
-        cbaos.write(100 + i);
-      }
-      assertEquals(11, cbaos.getCurrentIndex());
+      writeRange(cbaos, 100, 12);
+      assertThat(cbaos.getCurrentIndex()).isEqualTo(11);
 
       cbaos.setByte(9, (byte) 7);
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       cbaos.writeTo(baos);
-      assertArrayEquals(
-          new byte[] {100, 101, 102, 103, 104, 105, 106, 107, 108, 7, 110, 111}, baos.toByteArray());
+      assertThat(baos.toByteArray()).isEqualTo(bytes(100, 101, 102, 103, 104, 105, 106, 107, 108, 7, 110, 111));
     }
 
     // test replace last value
     try (CapacityByteArrayOutputStream cbaos = newCapacityBAOS(5)) {
-
-      // advance part way through the 3rd slab
-      for (int i = 0; i < 12; i++) {
-        cbaos.write(100 + i);
-      }
-      assertEquals(11, cbaos.getCurrentIndex());
+      writeRange(cbaos, 100, 12);
+      assertThat(cbaos.getCurrentIndex()).isEqualTo(11);
 
       cbaos.setByte(11, (byte) 7);
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       cbaos.writeTo(baos);
-      assertArrayEquals(
-          new byte[] {100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 7}, baos.toByteArray());
+      assertThat(baos.toByteArray()).isEqualTo(bytes(100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 7));
     }
   }
 
   private void writeArraysOf3(CapacityByteArrayOutputStream capacityByteArrayOutputStream, int n) throws IOException {
     for (int i = 0; i < n; i++) {
-      byte[] toWrite = {(byte) (i * 3), (byte) (i * 3 + 1), (byte) (i * 3 + 2)};
-      capacityByteArrayOutputStream.write(toWrite);
-      assertEquals((i + 1) * 3, capacityByteArrayOutputStream.size());
+      capacityByteArrayOutputStream.write(bytes(i * 3, i * 3 + 1, i * 3 + 2));
+      assertThat(capacityByteArrayOutputStream.size()).isEqualTo((i + 1) * 3);
     }
   }
 
   private void validate(CapacityByteArrayOutputStream capacityByteArrayOutputStream, final int expectedSize)
       throws IOException {
-    final byte[] byteArray = BytesInput.from(capacityByteArrayOutputStream).toByteArray();
-    assertEquals(expectedSize, byteArray.length);
-    for (int i = 0; i < expectedSize; i++) {
-      assertEquals(i, byteArray[i]);
+    assertThat(BytesInput.from(capacityByteArrayOutputStream).toByteArray()).isEqualTo(byteRange(0, expectedSize));
+  }
+
+  private static void writeRange(CapacityByteArrayOutputStream stream, int start, int count) {
+    for (int i = 0; i < count; i++) {
+      stream.write(start + i);
     }
   }
 
@@ -331,11 +280,11 @@ public class TestCapacityByteArrayOutputStream {
       for (int v : values) {
         cbaos.writeInt(v);
       }
-      assertEquals(values.length * 4, cbaos.size());
+      assertThat(cbaos.size()).isEqualTo(values.length * 4);
 
       byte[] bytes = BytesInput.from(cbaos).toByteArray();
       for (int i = 0; i < values.length; i++) {
-        assertEquals("value at index " + i, values[i], readIntLE(bytes, i * 4));
+        assertThat(readIntLE(bytes, i * 4)).as("value at index " + i).isEqualTo(values[i]);
       }
     }
   }
@@ -347,12 +296,40 @@ public class TestCapacityByteArrayOutputStream {
       for (long v : values) {
         cbaos.writeLong(v);
       }
-      assertEquals(values.length * 8, cbaos.size());
+      assertThat(cbaos.size()).isEqualTo(values.length * 8);
 
       byte[] bytes = BytesInput.from(cbaos).toByteArray();
       for (int i = 0; i < values.length; i++) {
-        assertEquals("value at index " + i, values[i], readLongLE(bytes, i * 8));
+        assertThat(readLongLE(bytes, i * 8)).as("value at index " + i).isEqualTo(values[i]);
       }
     }
+  }
+
+  private static byte[] bytes(int... values) {
+    byte[] result = new byte[values.length];
+    for (int i = 0; i < values.length; i++) {
+      result[i] = (byte) values[i];
+    }
+    return result;
+  }
+
+  private static byte[] byteRange(int start, int length) {
+    return bytes(range(start, start + length));
+  }
+
+  private static byte[] repeatedByteRange(int start, int period, int totalLength) {
+    int[] values = new int[totalLength];
+    for (int i = 0; i < totalLength; i++) {
+      values[i] = start + (i % period);
+    }
+    return bytes(values);
+  }
+
+  private static int[] range(int startInclusive, int endExclusive) {
+    int[] values = new int[endExclusive - startInclusive];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = startInclusive + i;
+    }
+    return values;
   }
 }

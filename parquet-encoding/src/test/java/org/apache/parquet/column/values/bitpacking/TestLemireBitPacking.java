@@ -18,13 +18,14 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +45,12 @@ public class TestLemireBitPacking {
         {
           packUnpack(packer.newIntPacker(i), values, unpacked);
           LOG.debug("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          Assert.assertArrayEquals(packer.name() + " width " + i, values, unpacked);
+          assertThat(unpacked).as(packer.name() + " width " + i).containsExactly(values);
         }
         {
           packUnpack(packer.newBytePacker(i), values, unpacked);
           LOG.debug("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          Assert.assertArrayEquals(packer.name() + " width " + i, values, unpacked);
+          assertThat(unpacked).as(packer.name() + " width " + i).containsExactly(values);
         }
       }
     }
@@ -117,7 +118,7 @@ public class TestLemireBitPacking {
       }
 
       LOG.debug("Output: {}", TestBitPacking.toString(unpacked));
-      Assert.assertArrayEquals("width " + i, values, unpacked);
+      assertThat(unpacked).as("width " + i).containsExactly(values);
     }
   }
 }

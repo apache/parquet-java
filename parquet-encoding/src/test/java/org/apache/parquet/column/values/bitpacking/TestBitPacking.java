@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,7 +164,7 @@ public class TestBitPacking {
     byte[] bytes = baos.toByteArray();
     LOG.debug("vals (" + bitLength + "): " + toString(vals));
     LOG.debug("bytes: {}", toString(bytes));
-    Assert.assertEquals(expected, toString(bytes));
+    assertThat(toString(bytes)).isEqualTo(expected);
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
     int[] result = new int[vals.length];
@@ -173,7 +172,7 @@ public class TestBitPacking {
       result[i] = r.read();
     }
     LOG.debug("result: {}", toString(result));
-    assertArrayEquals(vals, result);
+    assertThat(result).containsExactly(vals);
   }
 
   public static String toString(int[] vals) {

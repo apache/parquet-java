@@ -19,7 +19,7 @@
 package org.apache.parquet.thrift;
 
 import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -169,6 +169,6 @@ public class TestParquetReadProtocol {
 
     final T result = recordReader.read();
 
-    assertEquals(expected, result);
+    assertThat(result).isEqualTo(expected);
   }
 }

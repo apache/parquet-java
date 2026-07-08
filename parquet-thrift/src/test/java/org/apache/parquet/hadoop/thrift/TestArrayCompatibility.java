@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -40,7 +40,6 @@ import org.apache.parquet.thrift.test.compat.ListOfSingleElementGroups;
 import org.apache.parquet.thrift.test.compat.Location;
 import org.apache.parquet.thrift.test.compat.SingleElementGroup;
 import org.apache.thrift.TBase;
-import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -135,7 +134,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
     ListOfInts expected = new ListOfInts(Lists.newArrayList(34, 35, 36));
     ListOfInts actual = reader(test, ListOfInts.class).read();
-    Assert.assertEquals("Should read record correctly", expected, actual);
+    assertThat(actual).as("Should read record correctly").isEqualTo(expected);
   }
 
   @Test
@@ -320,13 +319,11 @@ public class TestArrayCompatibility extends DirectWriterTest {
     // expected.addToLocations(null);
     expected.addToLocations(new Location(0.0, 180.0));
 
-    try {
-      assertReaderContains(reader(test, ListOfLocations.class), expected);
-      fail("Should fail: locations are optional and not ignored");
-    } catch (RuntimeException e) {
-      // e is a RuntimeException wrapping the decoding exception
-      assertTrue(e.getCause().getCause().getMessage().contains("locations"));
-    }
+    assertThatThrownBy(() -> assertReaderContains(reader(test, ListOfLocations.class), expected))
+        .isInstanceOf(RuntimeException.class)
+        .cause()
+        .cause()
+        .hasMessageContaining("locations");
 
     assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
   }
@@ -722,13 +719,11 @@ public class TestArrayCompatibility extends DirectWriterTest {
     expected.addToLocations(new Location(0.0, 180.0));
     expected.addToLocations(new Location(0.0, 0.0));
 
-    try {
-      assertReaderContains(reader(test, ListOfLocations.class), expected);
-      fail("Should fail: locations are optional and not ignored");
-    } catch (RuntimeException e) {
-      // e is a RuntimeException wrapping the decoding exception
-      assertTrue(e.getCause().getCause().getMessage().contains("locations"));
-    }
+    assertThatThrownBy(() -> assertReaderContains(reader(test, ListOfLocations.class), expected))
+        .isInstanceOf(RuntimeException.class)
+        .cause()
+        .cause()
+        .hasMessageContaining("locations");
 
     assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
   }
@@ -753,6 +748,6 @@ public class TestArrayCompatibility extends DirectWriterTest {
     while ((record = reader.read()) != null) {
       actual.add(record);
     }
-    Assert.assertEquals("Should match exepected records", Lists.newArrayList(expected), actual);
+    assertThat(actual).as("Should match expected records").containsExactly(expected);
   }
 }
