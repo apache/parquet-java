@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -47,7 +49,7 @@ public class AvroFileTest extends ParquetFileTest {
     command.overwrite = overwrite;
     command.setConf(new Configuration());
     int exitCode = command.run();
-    assert (exitCode == 0);
+    assertThat(exitCode).isZero();
     return outputFile;
   }
 }
