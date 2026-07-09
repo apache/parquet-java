@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.avro;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -348,9 +348,9 @@ public class TestWriteVariant extends DirectWriterTest {
 
       GenericRecord actual = writeAndRead(testSchema, record);
 
-      assertEquals(record.get(0), actual.get(0));
-      assertEquals(((GenericRecord) record.get(1)).get(0), ((GenericRecord) actual.get(1)).get(0));
-      assertEquals(((GenericRecord) record.get(1)).get(1), ((GenericRecord) actual.get(1)).get(1));
+      assertThat(actual.get(0)).isEqualTo(record.get(0));
+      assertThat(((GenericRecord) actual.get(1)).get(0)).isEqualTo(((GenericRecord) record.get(1)).get(0));
+      assertThat(((GenericRecord) actual.get(1)).get(1)).isEqualTo(((GenericRecord) record.get(1)).get(1));
     }
   }
 
@@ -362,7 +362,7 @@ public class TestWriteVariant extends DirectWriterTest {
       TestSchema testSchema = new TestSchema(writeSchema, READ_SCHEMA);
 
       GenericRecord actual = writeAndRead(testSchema, record);
-      assertEquals(record.get(0), actual.get(0));
+      assertThat(actual.get(0)).isEqualTo(record.get(0));
       Variant actualV = new Variant((ByteBuffer) ((GenericRecord) actual.get(1)).get(1), (ByteBuffer)
           ((GenericRecord) actual.get(1)).get(0));
       AvroTestUtil.assertEquivalent(v, actualV);
@@ -381,7 +381,7 @@ public class TestWriteVariant extends DirectWriterTest {
       TestSchema testSchema = new TestSchema(writeSchema, READ_SCHEMA);
 
       List<GenericRecord> actual = writeAndRead(testSchema, expected);
-      assertEquals(actual.size(), expected.size());
+      assertThat(actual).hasSameSizeAs(expected);
       for (int i = 0; i < expected.size(); i++) {
         Variant actualV =
             new Variant((ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(1), (ByteBuffer)
@@ -431,7 +431,7 @@ public class TestWriteVariant extends DirectWriterTest {
 
   GenericRecord writeAndRead(TestSchema testSchema, GenericRecord record) throws IOException {
     List<GenericRecord> result = writeAndRead(testSchema, Arrays.asList(record));
-    assertEquals(result.size(), 1);
+    assertThat(result).hasSize(1);
     return result.get(0);
   }
 

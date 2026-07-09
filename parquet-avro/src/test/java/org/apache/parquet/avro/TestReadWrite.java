@@ -22,9 +22,8 @@ import static org.apache.parquet.avro.AvroTestUtil.optional;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -82,7 +81,6 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -197,8 +195,8 @@ public class TestReadWrite {
     try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(emptyArray, nextRecord.get("myarray"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("myarray")).isEqualTo(emptyArray);
     }
   }
 
@@ -221,8 +219,8 @@ public class TestReadWrite {
     try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(emptyMap, nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(emptyMap);
     }
   }
 
@@ -252,8 +250,8 @@ public class TestReadWrite {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(map, nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(map);
     }
   }
 
@@ -306,8 +304,8 @@ public class TestReadWrite {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
     }
   }
 
@@ -358,9 +356,10 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertTrue(
-        "dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records.get(0).get("dec"))
+        .as("dec field should be a BigDecimal instance")
+        .isInstanceOf(BigDecimal.class);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -407,9 +406,10 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertTrue(
-        "dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records.get(0).get("dec"))
+        .as("dec field should be a BigDecimal instance")
+        .isInstanceOf(BigDecimal.class);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -455,23 +455,27 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertEquals("Should read 2 records", 2, records.size());
+    assertThat(records).as("Should read 2 records").hasSize(2);
 
     // INT32 values
     Object firstAge = records.get(0).get("decimal_age");
     Object secondAge = records.get(1).get("decimal_age");
 
-    Assert.assertTrue("Should be BigDecimal, but is " + firstAge.getClass(), firstAge instanceof BigDecimal);
-    Assert.assertEquals("Should be 25.34, but is " + firstAge, new BigDecimal("25.34"), firstAge);
-    Assert.assertEquals("Should be 42.67, but is " + secondAge, new BigDecimal("42.67"), secondAge);
+    assertThat(firstAge)
+        .as("Should be BigDecimal, but is " + firstAge.getClass())
+        .isInstanceOf(BigDecimal.class);
+    assertThat(firstAge).as("Should be 25.34, but is " + firstAge).isEqualTo(new BigDecimal("25.34"));
+    assertThat(secondAge).as("Should be 42.67, but is " + secondAge).isEqualTo(new BigDecimal("42.67"));
 
     // INT64 values
     Object firstSalary = records.get(0).get("decimal_salary");
     Object secondSalary = records.get(1).get("decimal_salary");
 
-    Assert.assertTrue("Should be BigDecimal, but is " + firstSalary.getClass(), firstSalary instanceof BigDecimal);
-    Assert.assertEquals("Should be 23.4, but is " + firstSalary, new BigDecimal("23.4"), firstSalary);
-    Assert.assertEquals("Should be 120.3, but is " + secondSalary, new BigDecimal("120.3"), secondSalary);
+    assertThat(firstSalary)
+        .as("Should be BigDecimal, but is " + firstSalary.getClass())
+        .isInstanceOf(BigDecimal.class);
+    assertThat(firstSalary).as("Should be 23.4, but is " + firstSalary).isEqualTo(new BigDecimal("23.4"));
+    assertThat(secondSalary).as("Should be 120.3, but is " + secondSalary).isEqualTo(new BigDecimal("120.3"));
   }
 
   @Test
@@ -533,24 +537,24 @@ public class TestReadWrite {
         ? "a"
         : new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
-    assertNotNull(nextRecord);
-    assertEquals(null, nextRecord.get("mynull"));
-    assertEquals(true, nextRecord.get("myboolean"));
-    assertEquals(1, nextRecord.get("myint"));
-    assertEquals(2L, nextRecord.get("mylong"));
-    assertEquals(3.1f, nextRecord.get("myfloat"));
-    assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals(str("hello"), nextRecord.get("mystring"));
-    assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
-    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-    assertEquals(integerArray, nextRecord.get("myarray"));
-    assertEquals(emptyArray, nextRecord.get("myemptyarray"));
-    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-    assertEquals(genericIntegerArrayWithNulls, nextRecord.get("myarrayofoptional"));
-    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-    assertEquals(emptyMap, nextRecord.get("myemptymap"));
-    assertEquals(genericFixed, nextRecord.get("myfixed"));
+    assertThat(nextRecord).isNotNull();
+    assertThat(nextRecord.get("mynull")).isEqualTo(null);
+    assertThat(nextRecord.get("myboolean")).isEqualTo(true);
+    assertThat(nextRecord.get("myint")).isEqualTo(1);
+    assertThat(nextRecord.get("mylong")).isEqualTo(2L);
+    assertThat(nextRecord.get("myfloat")).isEqualTo(3.1f);
+    assertThat(nextRecord.get("mydouble")).isEqualTo(4.1);
+    assertThat(nextRecord.get("mybytes")).isEqualTo(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+    assertThat(nextRecord.get("mystring")).isEqualTo(str("hello"));
+    assertThat(nextRecord.get("myenum")).isEqualTo(expectedEnumSymbol);
+    assertThat(nextRecord.get("mynestedrecord")).isEqualTo(nestedRecord);
+    assertThat(nextRecord.get("myarray")).isEqualTo(integerArray);
+    assertThat(nextRecord.get("myemptyarray")).isEqualTo(emptyArray);
+    assertThat(nextRecord.get("myoptionalarray")).isEqualTo(integerArray);
+    assertThat(nextRecord.get("myarrayofoptional")).isEqualTo(genericIntegerArrayWithNulls);
+    assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
+    assertThat(nextRecord.get("myemptymap")).isEqualTo(emptyMap);
+    assertThat(nextRecord.get("myfixed")).isEqualTo(genericFixed);
   }
 
   @Test
@@ -755,22 +759,22 @@ public class TestReadWrite {
 
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
-      assertNotNull(nextRecord);
-      assertEquals(true, nextRecord.get("myboolean"));
-      assertEquals(1, nextRecord.get("myint"));
-      assertEquals(2L, nextRecord.get("mylong"));
-      assertEquals(3.1f, nextRecord.get("myfloat"));
-      assertEquals(4.1, nextRecord.get("mydouble"));
-      assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-      assertEquals(str("hello"), nextRecord.get("mystring"));
-      assertEquals(str("a"), nextRecord.get("myenum")); // enum symbols are unknown
-      assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-      assertEquals(integerArray, nextRecord.get("myarray"));
-      assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-      assertEquals(ingeterArrayWithNulls, nextRecord.get("myarrayofoptional"));
-      assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-      assertEquals(genericFixed, nextRecord.get("myfixed"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("myboolean")).isEqualTo(true);
+      assertThat(nextRecord.get("myint")).isEqualTo(1);
+      assertThat(nextRecord.get("mylong")).isEqualTo(2L);
+      assertThat(nextRecord.get("myfloat")).isEqualTo(3.1f);
+      assertThat(nextRecord.get("mydouble")).isEqualTo(4.1);
+      assertThat(nextRecord.get("mybytes")).isEqualTo(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+      assertThat(nextRecord.get("mystring")).isEqualTo(str("hello"));
+      assertThat(nextRecord.get("myenum")).isEqualTo(str("a")); // enum symbols are unknown
+      assertThat(nextRecord.get("mynestedrecord")).isEqualTo(nestedRecord);
+      assertThat(nextRecord.get("myarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myoptionalarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myarrayofoptional")).isEqualTo(ingeterArrayWithNulls);
+      assertThat(nextRecord.get("myrecordarray")).isEqualTo(genericRecordArray);
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
+      assertThat(nextRecord.get("myfixed")).isEqualTo(genericFixed);
     }
   }
 
@@ -798,8 +802,8 @@ public class TestReadWrite {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(str("theValue"), nextRecord.get("value"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("value")).isEqualTo(str("theValue"));
     }
   }
 
@@ -833,7 +837,7 @@ public class TestReadWrite {
         ByteBuffer buf = (ByteBuffer) rec.get("value");
         byte[] bytes = new byte[buf.remaining()];
         buf.get(bytes);
-        assertEquals(records[i++], new String(bytes));
+        assertThat(new String(bytes)).isEqualTo(records[i++]);
       }
     }
   }
@@ -869,12 +873,12 @@ public class TestReadWrite {
     ParquetReader<GenericRecord> reader = reader(file);
     GenericRecord nextRecord = reader.read();
 
-    assertNotNull(nextRecord);
-    assertNotNull(nextRecord.get("l1"));
+    assertThat(nextRecord).isNotNull();
+    assertThat(nextRecord.get("l1")).isNotNull();
     List l1List = (List) nextRecord.get("l1");
-    assertNotNull(l1List.get(0));
+    assertThat(l1List.get(0)).isNotNull();
     List l2List = (List) ((GenericRecord) l1List.get(0)).get("l2");
-    assertEquals(str("hello"), l2List.get(0));
+    assertThat(l2List.get(0)).isEqualTo(str("hello"));
   }
 
   /**
@@ -911,12 +915,12 @@ public class TestReadWrite {
     try (ParquetReader<GenericRecord> reader = AvroParquetReader.genericRecordReader(file)) {
 
       final GenericRecord r1 = reader.read();
-      assertEquals("foo", r1.get("name").toString());
-      assertEquals(123, r1.get("weight"));
+      assertThat(r1.get("name")).asString().isEqualTo("foo");
+      assertThat(r1.get("weight")).isEqualTo(123);
 
       final GenericRecord r2 = reader.read();
-      assertEquals("oof", r2.get("name").toString());
-      assertEquals(321, r2.get("weight"));
+      assertThat(r2.get("name")).asString().isEqualTo("oof");
+      assertThat(r2.get("weight")).isEqualTo(321);
     }
   }
 
@@ -992,9 +996,10 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertTrue(
-        "date field should be a LocalDate instance", records.get(0).get("date") instanceof LocalDate);
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records.get(0).get("date"))
+        .as("date field should be a LocalDate instance")
+        .isInstanceOf(LocalDate.class);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -1004,15 +1009,15 @@ public class TestReadWrite {
     InputFile inputFile = new LocalInputFile(Paths.get(testFile));
     ParquetReader<Group> reader =
         AvroParquetReader.<Group>builder(inputFile).build();
-    assertNotNull(reader);
+    assertThat(reader).isNotNull();
 
     reader = AvroParquetReader.<Group>builder(inputFile, new HadoopParquetConfiguration(new Configuration()))
         .build();
-    assertNotNull(reader);
+    assertThat(reader).isNotNull();
 
     reader = AvroParquetReader.builder(new GroupReadSupport(), new Path(testFile))
         .build();
-    assertNotNull(reader);
+    assertThat(reader).isNotNull();
   }
 
   private File createTempFile() throws IOException {

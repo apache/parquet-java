@@ -43,8 +43,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 import com.google.common.collect.ImmutableSet;
@@ -64,7 +64,6 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -130,6 +129,9 @@ public class TestAvroSchemaConverter {
       + "  required fixed_len_byte_array(1) myfixed;\n"
       + "}\n";
 
+  private static final String INT96_DEPRECATED_MESSAGE =
+      "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED flag to read as byte array.";
+
   private void testAvroToParquetConversion(Schema avroSchema, String schemaString) throws Exception {
     testAvroToParquetConversion(new Configuration(false), avroSchema, schemaString);
   }
@@ -139,7 +141,10 @@ public class TestAvroSchemaConverter {
     AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     MessageType schema = avroSchemaConverter.convert(avroSchema);
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
-    assertEquals("converting " + schema + " to " + schemaString, expectedMT.toString(), schema.toString());
+    assertThat(schema)
+        .as("converting " + schema + " to " + schemaString)
+        .asString()
+        .isEqualTo(expectedMT.toString());
   }
 
   private void testParquetToAvroConversion(Schema avroSchema, String schemaString) throws Exception {
@@ -150,7 +155,10 @@ public class TestAvroSchemaConverter {
       throws Exception {
     AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     Schema schema = avroSchemaConverter.convert(MessageTypeParser.parseMessageType(schemaString));
-    assertEquals("converting " + schemaString + " to " + avroSchema, avroSchema.toString(), schema.toString());
+    assertThat(schema)
+        .as("converting " + schemaString + " to " + avroSchema)
+        .asString()
+        .isEqualTo(avroSchema.toString());
   }
 
   private void testRoundTripConversion(Schema avroSchema, String schemaString) throws Exception {
@@ -161,12 +169,15 @@ public class TestAvroSchemaConverter {
     AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     MessageType schema = avroSchemaConverter.convert(avroSchema);
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
-    assertEquals("converting " + schema + " to " + schemaString, expectedMT.toString(), schema.toString());
+    assertThat(schema)
+        .as("converting " + schema + " to " + schemaString)
+        .asString()
+        .isEqualTo(expectedMT.toString());
     Schema convertedAvroSchema = avroSchemaConverter.convert(expectedMT);
-    assertEquals(
-        "converting " + expectedMT + " to " + avroSchema.toString(true),
-        avroSchema.toString(),
-        convertedAvroSchema.toString());
+    assertThat(convertedAvroSchema)
+        .as("converting " + expectedMT + " to " + avroSchema.toString(true))
+        .asString()
+        .isEqualTo(avroSchema.toString());
   }
 
   @Test
@@ -595,10 +606,9 @@ public class TestAvroSchemaConverter {
     MessageType parquetSchemaWithInt96 =
         MessageTypeParser.parseMessageType("message myrecord {\n  required int96 int96_field;\n}\n");
 
-    assertThrows(
-        "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED  flag to read as byte array.",
-        IllegalArgumentException.class,
-        () -> new AvroSchemaConverter().convert(parquetSchemaWithInt96));
+    assertThatThrownBy(() -> new AvroSchemaConverter().convert(parquetSchemaWithInt96))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(INT96_DEPRECATED_MESSAGE);
   }
 
   @Test
@@ -616,16 +626,16 @@ public class TestAvroSchemaConverter {
 
     String schemaString = avroSchema.toString(true);
 
-    Assert.assertTrue(
-        "First field should have full timestamp_1 definition",
-        schemaString.contains("\"name\" : \"timestamp_1\""));
-    Assert.assertTrue(
-        "Second field should have full timestamp_2 definition",
-        schemaString.contains("\"name\" : \"timestamp_2\""));
+    assertThat(schemaString)
+        .as("First field should have full timestamp_1 definition")
+        .contains("\"name\" : \"timestamp_1\"");
+    assertThat(schemaString)
+        .as("Second field should have full timestamp_2 definition")
+        .contains("\"name\" : \"timestamp_2\"");
 
-    Assert.assertFalse(
-        "Should not reference bare 'INT96' type anymore",
-        schemaString.contains("\"type\" : [ \"null\", \"INT96\" ]"));
+    assertThat(schemaString)
+        .as("Should not reference bare 'INT96' type anymore")
+        .doesNotContain("\"type\" : [ \"null\", \"INT96\" ]");
   }
 
   @Test
@@ -645,10 +655,11 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", DATE);
       }
 
-      assertThrows(
-          "Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage =
+          primitive == INT96 ? INT96_DEPRECATED_MESSAGE : "Date can only be used with an underlying int type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -670,10 +681,12 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", TIME_MILLIS);
       }
 
-      assertThrows(
-          "Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage = primitive == INT96
+          ? INT96_DEPRECATED_MESSAGE
+          : "Time (millis) can only be used with an underlying int type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -695,10 +708,12 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", TIME_MICROS);
       }
 
-      assertThrows(
-          "Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage = primitive == INT96
+          ? INT96_DEPRECATED_MESSAGE
+          : "Time (micros) can only be used with an underlying long type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -725,13 +740,12 @@ public class TestAvroSchemaConverter {
                   .named("timestamp_type"))
               .named("TestAvro"));
 
-      assertEquals(
-          avroVersion.matches("1\\.[789]\\.\\d+") ? "timestamp-millis" : "local-timestamp-millis",
-          converted
+      assertThat(converted
               .getField("timestamp_type")
               .schema()
               .getLogicalType()
-              .getName());
+              .getName())
+          .isEqualTo(avroVersion.matches("1\\.[789]\\.\\d+") ? "timestamp-millis" : "local-timestamp-millis");
     }
 
     for (PrimitiveTypeName primitive :
@@ -743,10 +757,12 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MILLIS);
       }
 
-      assertThrows(
-          "Should not allow TIMESTAMP_MILLIS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage = primitive == INT96
+          ? INT96_DEPRECATED_MESSAGE
+          : "Timestamp (millis) can only be used with an underlying long type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -768,10 +784,12 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MILLIS);
       }
 
-      assertThrows(
-          "Should not allow TIMESTAMP_MILLIS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage = primitive == INT96
+          ? INT96_DEPRECATED_MESSAGE
+          : "Timestamp (millis) can only be used with an underlying long type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -793,10 +811,12 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MICROS);
       }
 
-      assertThrows(
-          "Should not allow TIMESTAMP_MICROS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage = primitive == INT96
+          ? INT96_DEPRECATED_MESSAGE
+          : "Timestamp (micros) can only be used with an underlying long type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
 
     // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
@@ -813,13 +833,12 @@ public class TestAvroSchemaConverter {
                   .named("timestamp_type"))
               .named("TestAvro"));
 
-      assertEquals(
-          avroVersion.matches("1\\.[789]\\.\\d+") ? "timestamp-micros" : "local-timestamp-micros",
-          converted
+      assertThat(converted
               .getField("timestamp_type")
               .schema()
               .getLogicalType()
-              .getName());
+              .getName())
+          .isEqualTo(avroVersion.matches("1\\.[789]\\.\\d+") ? "timestamp-micros" : "local-timestamp-micros");
     }
   }
 
@@ -841,10 +860,12 @@ public class TestAvroSchemaConverter {
         type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MICROS);
       }
 
-      assertThrows(
-          "Should not allow TIMESTAMP_MICROS with " + primitive,
-          IllegalArgumentException.class,
-          () -> new AvroSchemaConverter().convert(message(type)));
+      final String expectedMessage = primitive == INT96
+          ? INT96_DEPRECATED_MESSAGE
+          : "Timestamp (micros) can only be used with an underlying long type";
+      assertThatThrownBy(() -> new AvroSchemaConverter().convert(message(type)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -942,8 +963,7 @@ public class TestAvroSchemaConverter {
     testAvroToParquetConversion(fromAvro, parquet);
     testParquetToAvroConversion(toAvro, parquet);
 
-    assertEquals(
-        COMPATIBLE, checkReaderWriterCompatibility(fromAvro, toAvro).getType());
+    assertThat(checkReaderWriterCompatibility(fromAvro, toAvro).getType()).isEqualTo(COMPATIBLE);
   }
 
   @Test
@@ -992,10 +1012,9 @@ public class TestAvroSchemaConverter {
             + "}");
 
     conf.setStrings(WRITE_FIXED_AS_INT96, "onebytefixed");
-    assertThrows(
-        "Exception should be thrown for fixed types to be converted to INT96 where the size is not 12 bytes",
-        IllegalArgumentException.class,
-        () -> new AvroSchemaConverter(conf).convert(schema));
+    assertThatThrownBy(() -> new AvroSchemaConverter(conf).convert(schema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("The size of the fixed type field onebytefixed must be 12 bytes for INT96 conversion");
   }
 
   @Test
@@ -1012,10 +1031,9 @@ public class TestAvroSchemaConverter {
 
     Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
 
-    assertThrows(
-        "Recursive Avro schema should throw UnsupportedOperationException for cycles",
-        UnsupportedOperationException.class,
-        () -> new AvroSchemaConverter().convert(recursiveSchema));
+    assertThatThrownBy(() -> new AvroSchemaConverter().convert(recursiveSchema))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Recursive Avro schemas are not supported by parquet-avro: Node");
   }
 
   @Test
@@ -1043,10 +1061,9 @@ public class TestAvroSchemaConverter {
 
     Schema issueSchema = new Schema.Parser().parse(issueSchemaJson);
 
-    assertThrows(
-        "Schema hould throw UnsupportedOperationException for cycles",
-        UnsupportedOperationException.class,
-        () -> new AvroSchemaConverter().convert(issueSchema));
+    assertThatThrownBy(() -> new AvroSchemaConverter().convert(issueSchema))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Recursive Avro schemas are not supported by parquet-avro: ObjStructAdd");
   }
 
   @Test
@@ -1059,10 +1076,9 @@ public class TestAvroSchemaConverter {
     Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
 
     // With our cycle detection fix, this should throw UnsupportedOperationException
-    assertThrows(
-        "Recursive schema should throw UnsupportedOperationException with clear error message",
-        UnsupportedOperationException.class,
-        () -> new AvroSchemaConverter().convert(recursiveSchema));
+    assertThatThrownBy(() -> new AvroSchemaConverter().convert(recursiveSchema))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Recursive Avro schemas are not supported by parquet-avro: TestRecord");
   }
 
   @Test
@@ -1074,8 +1090,10 @@ public class TestAvroSchemaConverter {
 
     AvroSchemaConverter converter = new AvroSchemaConverter();
     MessageType result = converter.convert(rootSchema);
-    Assert.assertNotNull("Non-recursive deep schema should convert successfully", result);
-    Assert.assertEquals("Root schema name should be preserved", "Root", result.getName());
+    assertThat(result)
+        .as("Non-recursive deep schema should convert successfully")
+        .isNotNull();
+    assertThat(result.getName()).as("Root schema name should be preserved").isEqualTo("Root");
   }
 
   public static Schema optional(Schema original) {
@@ -1084,26 +1102,5 @@ public class TestAvroSchemaConverter {
 
   public static MessageType message(PrimitiveType primitive) {
     return Types.buildMessage().addField(primitive).named("myrecord");
-  }
-
-  /**
-   * A convenience method to avoid a large number of @Test(expected=...) tests
-   *
-   * @param message  A String message to describe this assertion
-   * @param expected An Exception class that the Runnable should throw
-   * @param runnable A Runnable that is expected to throw the exception
-   */
-  public static void assertThrows(String message, Class<? extends Exception> expected, Runnable runnable) {
-    try {
-      runnable.run();
-      Assert.fail("No exception was thrown (" + message + "), expected: " + expected.getName());
-    } catch (Exception actual) {
-      try {
-        Assert.assertEquals(message, expected, actual.getClass());
-      } catch (AssertionError e) {
-        e.addSuppressed(actual);
-        throw e;
-      }
-    }
   }
 }
