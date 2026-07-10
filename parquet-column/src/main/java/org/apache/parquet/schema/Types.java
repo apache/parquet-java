@@ -326,10 +326,6 @@ public class Types {
         throw new IllegalStateException("[BUG] Parent and return type are null: must override named");
       }
     }
-
-    protected OriginalType getOriginalType() {
-      return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
-    }
   }
 
   public abstract static class BasePrimitiveBuilder<P, THIS extends BasePrimitiveBuilder<P, THIS>>
@@ -436,6 +432,9 @@ public class Types {
       }
 
       DecimalMetadata meta = decimalMetadata();
+      if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+        this.logicalTypeAnnotation = LogicalTypeAnnotation.fromOriginalType(OriginalType.DECIMAL, meta);
+      }
 
       // validate type annotations and required metadata
       if (logicalTypeAnnotation != null) {
@@ -631,13 +630,7 @@ public class Types {
                 logicalTypeAnnotation + " can not be applied to a primitive type"));
       }
 
-      if (newLogicalTypeSet) {
-        return new PrimitiveType(
-            repetition, primitiveType, length, name, logicalTypeAnnotation, id, columnOrder);
-      } else {
-        return new PrimitiveType(
-            repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
-      }
+      return new PrimitiveType(repetition, primitiveType, length, name, logicalTypeAnnotation, id, columnOrder);
     }
 
     private static long maxPrecision(int numBytes) {
@@ -649,7 +642,6 @@ public class Types {
     }
 
     protected DecimalMetadata decimalMetadata() {
-      DecimalMetadata meta = null;
       if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
         LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
             (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalTypeAnnotation;
@@ -671,16 +663,14 @@ public class Types {
           scale = decimalType.getScale();
           precision = decimalType.getPrecision();
         }
-        Preconditions.checkArgument(precision > 0, "Invalid DECIMAL precision: %s", precision);
-        Preconditions.checkArgument(this.scale >= 0, "Invalid DECIMAL scale: %s", this.scale);
-        Preconditions.checkArgument(
-            this.scale <= precision,
-            "Invalid DECIMAL scale: %s cannot be greater than precision: %s",
-            this.scale,
-            precision);
-        meta = new DecimalMetadata(precision, scale);
+        Preconditions.checkArgument(precision > 0,
+            "Invalid DECIMAL precision: %s", precision);
+        Preconditions.checkArgument(this.scale >= 0,
+            "Invalid DECIMAL scale: %s", this.scale);
+        Preconditions.checkArgument(this.scale <= precision,
+            "Invalid DECIMAL scale: cannot be greater than precision");
       }
-      return meta;
+      return new DecimalMetadata(precision, scale);
     }
   }
 
@@ -820,11 +810,7 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      if (newLogicalTypeSet) {
-        return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
-      } else {
-        return new GroupType(repetition, name, getOriginalType(), fields, id);
-      }
+      return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
     }
 
     public MapBuilder<THIS> map(Type.Repetition repetition) {
