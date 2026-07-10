@@ -192,7 +192,12 @@ class VariantUtil {
 
   /**
    * Maximum permitted nesting depth of a Variant value.
-   * same limit as in VariantJsonParser.
+   * same limit as in VariantJsonParser: {@value}.
+   * <p>This depth is not part of the specification and was chosen after discussion on the
+   * Parquet developer mailing list to be high enough to reduce the impact of parsing malicious files
+   * on a multi-tenant, multi-threaded system, while still supporting complex structurres.
+   *
+   * @see <a href="https://lists.apache.org/thread/q6wbom1q9pndv2nj6wcynxjcjxxkc1hm">how deep is a realistic variant depth?</a>
    */
   static final int MAX_VARIANT_DEPTH = 1000;
 
@@ -748,15 +753,23 @@ class VariantUtil {
     // b4 to determine whether the object uses a 1/4-byte size.
     boolean largeSize = ((typeInfo >> 4) & 0x1) != 0;
     int sizeBytes = (largeSize ? U32_SIZE : 1);
-    int numElements = readUnsigned(value, value.position() + 1, sizeBytes);
+    // store as a long to force all arithmetic to be on long numbers and avoid
+    // wrapping; it will be cast to an int later.
+    long numElements = readUnsigned(value, value.position() + 1, sizeBytes);
     // Extracts b3b2 to determine the integer size of the field id list.
     int idSize = ((typeInfo >> 2) & 0x3) + 1;
     // Extracts b1b0 to determine the integer size of the offset list.
     int offsetSize = (typeInfo & 0x3) + 1;
     int idStartOffset = 1 + sizeBytes;
-    int offsetStartOffset = idStartOffset + numElements * idSize;
-    int dataStartOffset = offsetStartOffset + (numElements + 1) * offsetSize;
-    return new ObjectInfo(numElements, idSize, offsetSize, idStartOffset, offsetStartOffset, dataStartOffset);
+    // Widen before multiplying/adding: the id list and offset table can each span more than
+    // Integer.MAX_VALUE bytes for a large numElements, which would wrap a plain int computation.
+    long offsetStart = idStartOffset + numElements * idSize;
+    long dataStart = offsetStart + (numElements + 1) * offsetSize;
+    Preconditions.checkArgument(
+        dataStart <= (long) value.limit() - value.position(),
+        "variant object offset table extends past buffer: numElements=%s",
+        numElements);
+    return new ObjectInfo((int) numElements, idSize, offsetSize, idStartOffset, (int) offsetStart, (int) dataStart);
   }
 
   /**
@@ -795,12 +808,19 @@ class VariantUtil {
     // b2 to determine whether the object uses a 1/4-byte size.
     boolean largeSize = ((typeInfo >> 2) & 0x1) != 0;
     int sizeBytes = (largeSize ? U32_SIZE : 1);
-    int numElements = readUnsigned(value, value.position() + 1, sizeBytes);
+    // keep as long until after validation
+    long numElements = readUnsigned(value, value.position() + 1, sizeBytes);
     // Extracts b1b0 to determine the integer size of the offset list.
     int offsetSize = (typeInfo & 0x3) + 1;
     int offsetStartOffset = 1 + sizeBytes;
-    int dataStartOffset = offsetStartOffset + (numElements + 1) * offsetSize;
-    return new ArrayInfo(numElements, offsetSize, offsetStartOffset, dataStartOffset);
+    // Widen before multiplying/adding: the offset table can span more than Integer.MAX_VALUE bytes
+    // for a large numElements, which would wrap a plain int computation.
+    long dataStart = offsetStartOffset + (numElements + 1) * offsetSize;
+    Preconditions.checkArgument(
+        dataStart <= (long) value.limit() - value.position(),
+        "variant array offset table extends past buffer: numElements=%s",
+        numElements);
+    return new ArrayInfo((int) numElements, offsetSize, offsetStartOffset, (int) dataStart);
   }
 
   /**
@@ -894,6 +914,9 @@ class VariantUtil {
    * Validation of nested structures is deferred so that opening a large well-formed Variant
    * is not penalized by sub-trees the caller never inspects.
    *
+   * <p>Note that as validation is against the total bytebuffer capacity, a variant can expand into
+   * the buffer space nominally allocated its siblings. This is not something checked
+   * for; it is memory safe.
    * @param valueBuffer the variant value buffer (position/limit define the extent of this node's slot)
    * @param dictSize the metadata dictionary size, used to bound object field ids
    * @throws IllegalArgumentException if the value header or container table does not fit within
@@ -901,8 +924,8 @@ class VariantUtil {
    */
   static void validateValueShallow(final ByteBuffer valueBuffer, final int dictSize) {
     int pos = valueBuffer.position();
-    Preconditions.checkArgument(pos >= 0 && pos < valueBuffer.limit(), "variant value is empty");
     long slot = (long) valueBuffer.limit() - pos;
+    Preconditions.checkArgument(slot > 0, "variant value is empty");
     int header = valueBuffer.get(pos) & 0xFF;
     int basicType = header & BASIC_TYPE_MASK;
     int typeInfo = (header >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
@@ -927,7 +950,7 @@ class VariantUtil {
    * @param valueBuffer buffer with the variant data
    * @param typeInfo type information from the metadata
    * @param pos buffer read position
-   * @param length length of slot for this primitive.
+   * @param length length of slot for this container.
    * @param dictSize dictionary size
    * @param isObject is this an object?
    */
@@ -950,11 +973,11 @@ class VariantUtil {
     int offsetSize = (typeInfo & 0x3) + 1;
     int sizeBytes = largeSize ? U32_SIZE : 1;
     Preconditions.checkArgument(1L + sizeBytes <= length, "variant container header truncated");
-    int numElements = readUnsignedLittleEndian(valueBuffer, pos + 1, sizeBytes);
+    long numElements = readUnsignedLittleEndian(valueBuffer, pos + 1, sizeBytes);
     long idStart = 1L + sizeBytes;
-    long idBytes = isObject ? (long) numElements * idSize : 0L;
+    long idBytes = isObject ? numElements * idSize : 0L;
     long offsetStart = idStart + idBytes;
-    long offsetBytes = (long) (numElements + 1) * offsetSize;
+    long offsetBytes = (numElements + 1) * offsetSize;
     long dataStart = offsetStart + offsetBytes;
     Preconditions.checkArgument(
         dataStart <= length, "variant container offset table extends past buffer: numElements=%s", numElements);

@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.variant;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -44,7 +43,6 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -88,9 +86,9 @@ public class TestHardenedReader {
     byte[] wellFormed = arrayOneNull();
     byte[][] roundTripped = roundTrip(EMPTY_METADATA, wellFormed);
     Variant v = new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0]));
-    assertEquals(Variant.Type.ARRAY, v.getType());
-    assertEquals(1, v.numArrayElements());
-    assertEquals(Variant.Type.NULL, v.getElementAtIndex(0).getType());
+    assertThat(v.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(v.numArrayElements()).isEqualTo(1);
+    assertThat(v.getElementAtIndex(0).getType()).isEqualTo(Variant.Type.NULL);
   }
 
   /**
@@ -132,11 +130,21 @@ public class TestHardenedReader {
   public void testOffsetArithmeticBoundsCheck() throws IOException {
     // Object header that claims numElements and offsetSize values whose product overflows int
     // unless validated with widened arithmetic.
-    // Layout: [objectHeader(large=1, idSize=1, offsetSize=4) = 0x4E,
-    //          numElements (4 bytes, little-endian) = 0x33333333,
-    //          three filler bytes]
-    byte[] value = new byte[] {0x4E, 0x33, 0x33, 0x33, 0x33, (byte) 0xFF, (byte) 0xFF, 0x3F};
-    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "");
+    byte[] value = new byte[] {0x13, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x7F};
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "offset table");
+  }
+
+  /**
+   * {@link VariantUtil#valueSize} decodes a raw value buffer directly, without going through the
+   * validating {@link Variant} constructor.
+   */
+  @Test
+  public void testValueSizeRejectsOffsetArithmeticOverflow() {
+    // Large array claiming numElements = 0x7FFFFFFF
+    byte[] value = new byte[] {0x13, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x7F};
+    assertThatThrownBy(() -> VariantUtil.valueSize(ByteBuffer.wrap(value)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("offset table");
   }
 
   /**
@@ -173,8 +181,8 @@ public class TestHardenedReader {
     // Baseline: well-formed outer + inner round-trip cleanly and descend without complaint.
     byte[][] baseline = roundTrip(EMPTY_METADATA, value.clone());
     Variant baseTop = new Variant(ByteBuffer.wrap(baseline[1]), ByteBuffer.wrap(baseline[0]));
-    assertEquals(1, baseTop.numArrayElements());
-    assertEquals(Variant.Type.ARRAY, baseTop.getElementAtIndex(0).getType());
+    assertThat(baseTop.numArrayElements()).isEqualTo(1);
+    assertThat(baseTop.getElementAtIndex(0).getType()).isEqualTo(Variant.Type.ARRAY);
 
     // Patch the inner numElements field to a value whose offset table cannot fit in the
     // 6-byte inner slot. The outer's own header table is unchanged.
@@ -187,12 +195,13 @@ public class TestHardenedReader {
     byte[][] rt = roundTrip(EMPTY_METADATA, value);
     Variant top = new Variant(ByteBuffer.wrap(rt[1]), ByteBuffer.wrap(rt[0]));
     // Top-level construction succeeds — the outer is well-formed.
-    assertEquals(Variant.Type.ARRAY, top.getType());
-    assertEquals(1, top.numArrayElements());
+    assertThat(top.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(top.numArrayElements()).isEqualTo(1);
 
     // Descending into the malformed inner is what trips the per-child shallow check.
-    IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> top.getElementAtIndex(0));
-    assertExceptionMessageContains(thrown, "offset table");
+    assertThatThrownBy(() -> top.getElementAtIndex(0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("offset table");
   }
 
   /**
@@ -208,7 +217,7 @@ public class TestHardenedReader {
     byte[] value = buildNestedArrayChain(arrayLevels);
     byte[][] rt = roundTrip(EMPTY_METADATA, value);
     Variant top = new Variant(ByteBuffer.wrap(rt[1]), ByteBuffer.wrap(rt[0]));
-    assertEquals(Variant.Type.ARRAY, top.getType());
+    assertThat(top.getType()).isEqualTo(Variant.Type.ARRAY);
 
     // Descend until the depth check fires. The cursor at depth d is the variant produced by
     // d successful getElementAtIndex(0) calls. The (MAX_VARIANT_DEPTH + 1)-th call attempts
@@ -224,11 +233,8 @@ public class TestHardenedReader {
         thrown = e;
       }
     }
-    assertEquals(VariantUtil.MAX_VARIANT_DEPTH, successfulDescents);
-    String msg = thrown.getMessage();
-    assertTrue(
-        "Expected message to mention nesting depth: " + msg,
-        msg != null && msg.toLowerCase().contains("nesting depth"));
+    assertThat(successfulDescents).isEqualTo(VariantUtil.MAX_VARIANT_DEPTH);
+    assertThat(thrown).hasMessageContaining("nesting depth");
   }
 
   /**
@@ -288,15 +294,15 @@ public class TestHardenedReader {
     byte[][] rt = roundTrip(metadata, value);
     Variant top = new Variant(ByteBuffer.wrap(rt[1]), ByteBuffer.wrap(rt[0]));
     // Top-level construction succeeds: metadata table fits, value is shallow-valid, id < dictSize.
-    assertEquals(Variant.Type.OBJECT, top.getType());
-    assertEquals(1, top.numObjectElements());
+    assertThat(top.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(top.numObjectElements()).isEqualTo(1);
 
     // The per-entry dict offset check fires only when the caller resolves a field name.
     // getMetadataKey throws IllegalStateException for non-monotonic offsets — both that and
     // IllegalArgumentException are subtypes of RuntimeException, neither is OOM or SOE.
-    RuntimeException thrown = assertThrows(RuntimeException.class, () -> top.getFieldAtIndex(0));
-    final String expected = "offset";
-    assertExceptionMessageContains(thrown, expected);
+    assertThatThrownBy(() -> top.getFieldAtIndex(0))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("offset");
   }
 
   /**
@@ -316,10 +322,9 @@ public class TestHardenedReader {
    */
   @Test
   public void testEmptyMetadataRejected() {
-    IllegalArgumentException thrown = assertThrows(
-        IllegalArgumentException.class,
-        () -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[0])));
-    assertExceptionMessageContains(thrown, "empty");
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[0])))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("empty");
   }
 
   /**
@@ -327,10 +332,9 @@ public class TestHardenedReader {
    */
   @Test
   public void testSingleByteMetadataRejected() {
-    IllegalArgumentException thrown = assertThrows(
-        IllegalArgumentException.class,
-        () -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[] {0x01})));
-    assertExceptionMessageContains(thrown, "truncated");
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(arrayOneNull()), ByteBuffer.wrap(new byte[] {0x01})))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("truncated");
   }
 
   /**
@@ -341,10 +345,9 @@ public class TestHardenedReader {
     // Header 0x02: version=2 in the low bits, offsetSize=1. A well-formed empty dictionary.
     final byte[] metadata = {0x02, 0x00, 0x00};
     byte[][] roundTripped = roundTrip(metadata, arrayOneNull());
-    UnsupportedOperationException thrown = assertThrows(
-        UnsupportedOperationException.class,
-        () -> new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0])));
-    assertExceptionMessageContains(thrown, "version");
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0])))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("version");
   }
 
   /**
@@ -445,21 +448,22 @@ public class TestHardenedReader {
     Variant top = new Variant(ByteBuffer.wrap(rt[1]), ByteBuffer.wrap(rt[0]));
 
     // construction succeeds and reports all three elements.
-    assertEquals(Variant.Type.ARRAY, top.getType());
-    assertEquals(3, top.numArrayElements());
+    assertThat(top.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(top.numArrayElements()).isEqualTo(3);
 
     // Get first and third elements, skip the unknown second one.
     Variant first = top.getElementAtIndex(0);
-    assertEquals(Variant.Type.BYTE, first.getType());
-    assertEquals((byte) 10, first.getByte());
+    assertThat(first.getType()).isEqualTo(Variant.Type.BYTE);
+    assertThat(first.getByte()).isEqualTo((byte) 10);
 
     Variant third = top.getElementAtIndex(2);
-    assertEquals(Variant.Type.BYTE, third.getType());
-    assertEquals((byte) 20, third.getByte());
+    assertThat(third.getType()).isEqualTo(Variant.Type.BYTE);
+    assertThat(third.getByte()).isEqualTo((byte) 20);
 
     // Asking for the unknown element fails.
-    IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> top.getElementAtIndex(1));
-    assertExceptionMessageContains(thrown, "unknown primitive type");
+    assertThatThrownBy(() -> top.getElementAtIndex(1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unknown primitive type");
   }
 
   /**
@@ -487,22 +491,22 @@ public class TestHardenedReader {
     byte[][] rt = roundTrip(metadata, value);
     Variant top = new Variant(ByteBuffer.wrap(rt[1]), ByteBuffer.wrap(rt[0]));
 
-    assertEquals(Variant.Type.OBJECT, top.getType());
-    assertEquals(2, top.numObjectElements());
+    assertThat(top.getType()).isEqualTo(Variant.Type.OBJECT);
+    assertThat(top.numObjectElements()).isEqualTo(2);
 
     // Both keys resolve to the shared value.
     Variant a = top.getFieldByKey("a");
     Variant b = top.getFieldByKey("b");
-    assertEquals(Variant.Type.BOOLEAN, a.getType());
-    assertEquals(Variant.Type.BOOLEAN, b.getType());
-    assertTrue(a.getBoolean());
-    assertTrue(b.getBoolean());
+    assertThat(a.getType()).isEqualTo(Variant.Type.BOOLEAN);
+    assertThat(b.getType()).isEqualTo(Variant.Type.BOOLEAN);
+    assertThat(a.getBoolean()).isTrue();
+    assertThat(b.getBoolean()).isTrue();
 
     // Index-ordered access agrees: both fields report their key and the same value.
-    assertEquals("a", top.getFieldAtIndex(0).key);
-    assertEquals("b", top.getFieldAtIndex(1).key);
-    assertTrue(top.getFieldAtIndex(0).value.getBoolean());
-    assertTrue(top.getFieldAtIndex(1).value.getBoolean());
+    assertThat(top.getFieldAtIndex(0).key).isEqualTo("a");
+    assertThat(top.getFieldAtIndex(1).key).isEqualTo("b");
+    assertThat(top.getFieldAtIndex(0).value.getBoolean()).isTrue();
+    assertThat(top.getFieldAtIndex(1).value.getBoolean()).isTrue();
   }
 
   // ------------------------------------------------------------------
@@ -525,27 +529,16 @@ public class TestHardenedReader {
   private void expectRoundTripRaisesIllegalArgument(byte[] metadata, byte[] value, String messageSubstring)
       throws IOException {
     byte[][] roundTripped = roundTrip(metadata, value);
-    Assert.assertArrayEquals("metadata changed during round-trip", metadata, roundTripped[0]);
-    Assert.assertArrayEquals("value changed during round-trip", value, roundTripped[1]);
-    IllegalArgumentException thrown = assertThrows(
-        IllegalArgumentException.class,
-        () -> new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0])));
-    assertExceptionMessageContains(thrown, messageSubstring);
-  }
 
-  /**
-   * Assert that an exception contains a specific message. If it doesn't, an assertion is raised that
-   * contains the thrown exception too.
-   * @param thrown exception to be analyzed.
-   * @param expected expected string, case-insensitive.
-   * @throws AssertionError is the text isn't found in the exception message.
-   */
-  private static void assertExceptionMessageContains(RuntimeException thrown, String expected) {
-
-    String msg = thrown.getMessage();
-    if (msg == null || !msg.toLowerCase().contains(expected)) {
-      throw new AssertionError("Did not find \"" + expected + "\" in: " + msg, thrown);
-    }
+    assertThat(roundTripped[0])
+        .describedAs("metadata changed during round-trip")
+        .isEqualTo(metadata);
+    assertThat(roundTripped[1])
+        .describedAs("value changed during round-trip")
+        .isEqualTo(value);
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0])))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(messageSubstring);
   }
 
   /**
@@ -582,10 +575,10 @@ public class TestHardenedReader {
     ByteArrayInputFile in = new ByteArrayInputFile(parquetBytes);
     try (ParquetReader<Group> reader = new GroupParquetReaderBuilder(in).build()) {
       Group g = reader.read();
-      Assert.assertNotNull("expected at least one row", g);
+      assertThat(g).describedAs("expected at least one row").isNotNull();
       byte[] readMetadata = g.getBinary("metadata", 0).getBytes();
       byte[] readValue = g.getBinary("value", 0).getBytes();
-      Assert.assertNull("expected exactly one row", reader.read());
+      assertThat(reader.read()).describedAs("expected exactly one row").isNull();
       return new byte[][] {readMetadata, readValue};
     }
   }
