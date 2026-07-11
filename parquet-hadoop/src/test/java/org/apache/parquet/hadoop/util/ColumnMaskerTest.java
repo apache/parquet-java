@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertArrayEquals;
 
 import com.google.common.collect.ImmutableMap;
@@ -83,24 +84,28 @@ public class ColumnMaskerTest {
     nullifyColumns(conf, inputFile, outputFile);
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testNullColumns() throws IOException {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
         .build();
     Group group = reader.read();
-    group.getLong("DocId", 0);
+    assertThatThrownBy(() -> group.getLong("DocId", 0))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("not found 0(DocId) element number 0 in group:\n%s", group);
     reader.close();
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testNullNestedColumns() throws IOException {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
         .build();
     Group group = reader.read();
     Group subGroup = group.getGroup("Links", 0);
-    subGroup.getBinary("Backward", 0).getBytes();
+    assertThatThrownBy(() -> subGroup.getBinary("Backward", 0).getBytes())
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("not found 0(Backward) element number 0 in group:\n%s", subGroup);
     reader.close();
   }
 

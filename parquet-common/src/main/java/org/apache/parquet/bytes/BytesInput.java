@@ -334,7 +334,12 @@ public abstract class BytesInput {
    * @return a new InputStream materializing the contents of this input
    * @throws IOException if there is an exception reading
    */
+  @SuppressWarnings("deprecation")
   public ByteBufferInputStream toInputStream() throws IOException {
+    ByteBuffer buf = getInternalByteBuffer();
+    if (buf != null) {
+      return ByteBufferInputStream.wrap(buf);
+    }
     return ByteBufferInputStream.wrap(toByteBuffer());
   }
 
@@ -608,12 +613,42 @@ public abstract class BytesInput {
 
     @Override
     void writeInto(ByteBuffer buffer) {
-      buffer.put(arrayOut.toByteArray());
+      // Use writeTo() which writes directly from the internal buf[] array,
+      // avoiding the toByteArray() copy that would allocate a full-size byte[]
+      try {
+        arrayOut.writeTo(new ByteBufferBackedOutputStream(buffer));
+      } catch (IOException e) {
+        // ByteBufferBackedOutputStream does not throw IOException
+        throw new RuntimeException("Unexpected IOException writing to ByteBuffer", e);
+      }
     }
 
     @Override
     public long size() {
       return arrayOut.size();
+    }
+  }
+
+  /**
+   * Thin adapter that allows writing to a {@link ByteBuffer} via the {@link OutputStream} interface.
+   * Used by {@link BAOSBytesInput#writeInto(ByteBuffer)} to avoid the intermediate copy from
+   * {@link ByteArrayOutputStream#toByteArray()}.
+   */
+  private static class ByteBufferBackedOutputStream extends OutputStream {
+    private final ByteBuffer buffer;
+
+    ByteBufferBackedOutputStream(ByteBuffer buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public void write(int b) {
+      buffer.put((byte) b);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) {
+      buffer.put(b, off, len);
     }
   }
 
@@ -639,8 +674,35 @@ public abstract class BytesInput {
       buffer.put(in, offset, length);
     }
 
+    @Override
+    ByteBuffer getInternalByteBuffer() {
+      return java.nio.ByteBuffer.wrap(in, offset, length).slice();
+    }
+
+    @Override
+    public ByteBufferInputStream toInputStream() {
+      return ByteBufferInputStream.wrap(java.nio.ByteBuffer.wrap(in, offset, length));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
     public ByteBuffer toByteBuffer() throws IOException {
       return java.nio.ByteBuffer.wrap(in, offset, length);
+    }
+
+    /**
+     * Zero-copy override: returns the backing array directly when fully used,
+     * skipping the base-class BAOS allocation + copy on every decompressor call.
+     * Returning the mutable array is safe — the base class already exposes a
+     * mutable {@code BAOS.getBuf()}.
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    public byte[] toByteArray() {
+      if (offset == 0 && length == in.length) {
+        return in;
+      }
+      return Arrays.copyOfRange(in, offset, offset + length);
     }
 
     @Override

@@ -38,9 +38,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.inOrder;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -49,7 +48,6 @@ import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
-import org.apache.parquet.bytes.LittleEndianDataInputStream;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -249,12 +247,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   private int intValue(BytesInput in) throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    in.writeAllTo(baos);
-    LittleEndianDataInputStream os = new LittleEndianDataInputStream(new ByteArrayInputStream(baos.toByteArray()));
-    int i = os.readInt();
-    os.close();
-    return i;
+    return in.toByteBuffer().order(ByteOrder.LITTLE_ENDIAN).getInt();
   }
 
   @Test

@@ -40,6 +40,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -415,20 +416,25 @@ public class TestTypeBuildersWithLogicalTypes {
     Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
-    Types.required(BINARY)
-        .as(LogicalTypeAnnotation.decimalType(3, 4))
-        .scale(4)
-        .named("aDecimal");
+    assertThatThrownBy(() -> Types.required(BINARY)
+            .as(LogicalTypeAnnotation.decimalType(3, 4))
+            .scale(4)
+            .named("aDecimal"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Decimal scale should match with the scale of the logical type. Expected: 3, but was: 4");
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testDecimalLogicalTypeWithDeprecatedPrecisionMismatch() {
-    Types.required(BINARY)
-        .as(LogicalTypeAnnotation.decimalType(3, 4))
-        .precision(5)
-        .named("aDecimal");
+    assertThatThrownBy(() -> Types.required(BINARY)
+            .as(LogicalTypeAnnotation.decimalType(3, 4))
+            .precision(5)
+            .named("aDecimal"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Decimal precision should match with the precision of the logical type. Expected: 4, but was: 5");
   }
 
   @Test

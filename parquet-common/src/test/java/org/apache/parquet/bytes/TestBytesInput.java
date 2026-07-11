@@ -20,6 +20,7 @@ package org.apache.parquet.bytes;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -126,6 +127,28 @@ public class TestBytesInput {
     Supplier<BytesInput> factory = () -> BytesInput.from(input, 10, data.length);
 
     validate(data, factory);
+  }
+
+  @Test
+  public void testFromByteArrayToByteArrayZeroCopy() throws IOException {
+    // Full array (offset=0, length=array.length): toByteArray() returns the backing array directly
+    byte[] data = new byte[1000];
+    RANDOM.nextBytes(data);
+    BytesInput bi = BytesInput.from(data, 0, data.length);
+    byte[] result = bi.toByteArray();
+    assertSame("toByteArray() should return the backing array when offset=0 and length=full", data, result);
+  }
+
+  @Test
+  public void testFromByteArrayToByteArraySubRange() throws IOException {
+    // Sub-range (offset != 0): toByteArray() must return a copy of the specified range
+    byte[] input = new byte[1000];
+    RANDOM.nextBytes(input);
+    BytesInput bi = BytesInput.from(input, 10, 500);
+    byte[] result = bi.toByteArray();
+    byte[] expected = new byte[500];
+    System.arraycopy(input, 10, expected, 0, 500);
+    assertArrayEquals(expected, result);
   }
 
   @Test

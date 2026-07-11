@@ -18,8 +18,12 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.nio.ByteBuffer;
-import org.junit.Assert;
+import java.nio.ByteOrder;
+import java.util.UUID;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -29,13 +33,36 @@ public class TestVariantObjectBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TestVariantObjectBuilder.class);
 
   @Test
+  public void testObjectBuilderWithUUIDBytes() {
+    byte[] uuid = new byte[] {0, 17, 34, 51, 68, 85, 102, 119, -120, -103, -86, -69, -52, -35, -18, -1};
+    long msb = ByteBuffer.wrap(uuid, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    long lsb = ByteBuffer.wrap(uuid, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    UUID expected = new UUID(msb, lsb);
+
+    VariantBuilder builder = new VariantBuilder();
+    VariantObjectBuilder object = builder.startObject();
+    object.appendKey("id");
+    // appendUUIDBytes must go through onAppend() so that numValues stays in sync with the
+    // appended keys. Otherwise endObject() throws because keys (1) != values (0).
+    object.appendUUIDBytes(ByteBuffer.wrap(uuid));
+    builder.endObject();
+
+    VariantTestUtil.testVariant(builder.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      assertThat(v.numObjectElements()).isEqualTo(1);
+      VariantTestUtil.checkType(v.getFieldByKey("id"), VariantUtil.PRIMITIVE, Variant.Type.UUID);
+      assertThat(v.getFieldByKey("id").getUUID()).isEqualTo(expected);
+    });
+  }
+
+  @Test
   public void testEmptyObjectBuilder() {
     VariantBuilder b = new VariantBuilder();
     b.startObject();
     b.endObject();
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(0);
     });
   }
 
@@ -50,10 +77,10 @@ public class TestVariantObjectBuilder {
     b.endObject();
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(1234, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(1234);
       for (int i = 0; i < 1234; i++) {
         VariantTestUtil.checkType(v.getFieldByKey("a" + i), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-        Assert.assertEquals(i, v.getFieldByKey("a" + i).getLong());
+        assertThat(v.getFieldByKey("a" + i).getLong()).isEqualTo(i);
       }
     });
   }
@@ -91,28 +118,28 @@ public class TestVariantObjectBuilder {
 
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(4, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(4);
       VariantTestUtil.checkType(v.getFieldByKey("outer 1"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("outer 1").getBoolean());
+      assertThat(v.getFieldByKey("outer 1").getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getFieldByKey("outer 2"), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-      Assert.assertEquals(1234567890, v.getFieldByKey("outer 2").getLong());
+      assertThat(v.getFieldByKey("outer 2").getLong()).isEqualTo(1234567890);
       VariantTestUtil.checkType(v.getFieldByKey("outer 3"), VariantUtil.OBJECT, Variant.Type.OBJECT);
 
       Variant nested = v.getFieldByKey("outer 3");
-      Assert.assertEquals(3, nested.numObjectElements());
+      assertThat(nested.numObjectElements()).isEqualTo(3);
       VariantTestUtil.checkType(nested.getFieldByKey("nested 1"), VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, nested.getFieldByKey("nested 1").numObjectElements());
+      assertThat(nested.getFieldByKey("nested 1").numObjectElements()).isEqualTo(0);
       VariantTestUtil.checkType(nested.getFieldByKey("nested 2"), VariantUtil.SHORT_STR, Variant.Type.STRING);
-      Assert.assertEquals("variant", nested.getFieldByKey("nested 2").getString());
+      assertThat(nested.getFieldByKey("nested 2").getString()).isEqualTo("variant");
       VariantTestUtil.checkType(nested.getFieldByKey("nested 3"), VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(1, nested.getFieldByKey("nested 3").numArrayElements());
+      assertThat(nested.getFieldByKey("nested 3").numArrayElements()).isEqualTo(1);
       VariantTestUtil.checkType(
           nested.getFieldByKey("nested 3").getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(
-          321, nested.getFieldByKey("nested 3").getElementAtIndex(0).getInt());
+      assertThat(nested.getFieldByKey("nested 3").getElementAtIndex(0).getInt())
+          .isEqualTo(321);
 
       VariantTestUtil.checkType(v.getFieldByKey("outer 4"), VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, v.getFieldByKey("outer 4").numArrayElements());
+      assertThat(v.getFieldByKey("outer 4").numArrayElements()).isEqualTo(0);
     });
   }
 
@@ -132,22 +159,16 @@ public class TestVariantObjectBuilder {
 
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(2, v.numObjectElements());
-      Assert.assertEquals(
-          ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}),
-          v.getFieldByKey("as_binary").getBinary());
+      assertThat(v.numObjectElements()).isEqualTo(2);
+      assertThat(v.getFieldByKey("as_binary").getBinary())
+          .isEqualTo(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
       Variant nestedArray = v.getFieldByKey("in_array");
       VariantTestUtil.checkType(nestedArray, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(3, nestedArray.numArrayElements());
-      Assert.assertEquals(
-          ByteBuffer.wrap(new byte[] {}),
-          nestedArray.getElementAtIndex(0).getBinary());
-      Assert.assertEquals(
-          ByteBuffer.wrap(new byte[] {10, 11, 12, 13, 14, 15, 16}),
-          nestedArray.getElementAtIndex(1).getBinary());
-      Assert.assertEquals(
-          ByteBuffer.wrap(new byte[] {17, 18}),
-          nestedArray.getElementAtIndex(2).getBinary());
+      assertThat(nestedArray.numArrayElements()).isEqualTo(3);
+      assertThat(nestedArray.getElementAtIndex(0).getBinary()).isEqualTo(ByteBuffer.wrap(new byte[] {}));
+      assertThat(nestedArray.getElementAtIndex(1).getBinary())
+          .isEqualTo(ByteBuffer.wrap(new byte[] {10, 11, 12, 13, 14, 15, 16}));
+      assertThat(nestedArray.getElementAtIndex(2).getBinary()).isEqualTo(ByteBuffer.wrap(new byte[] {17, 18}));
     });
   }
 
@@ -172,12 +193,12 @@ public class TestVariantObjectBuilder {
       for (int i = 1000; i >= 0; i--) {
         VariantTestUtil.checkType(curr, VariantUtil.OBJECT, Variant.Type.OBJECT);
         if (i == 0) {
-          Assert.assertEquals(0, curr.numObjectElements());
+          assertThat(curr.numObjectElements()).isEqualTo(0);
         } else {
-          Assert.assertEquals(2, curr.numObjectElements());
+          assertThat(curr.numObjectElements()).isEqualTo(2);
           VariantTestUtil.checkType(
               curr.getFieldByKey("key" + i), VariantUtil.SHORT_STR, Variant.Type.STRING);
-          Assert.assertEquals("str" + i, curr.getFieldByKey("key" + i).getString());
+          assertThat(curr.getFieldByKey("key" + i).getString()).isEqualTo("str" + i);
           curr = curr.getFieldByKey("duplicate");
         }
       }
@@ -197,13 +218,13 @@ public class TestVariantObjectBuilder {
 
     Variant v = b.build();
     VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-    Assert.assertEquals(3, v.numObjectElements());
+    assertThat(v.numObjectElements()).isEqualTo(3);
     VariantTestUtil.checkType(v.getFieldByKey("key1"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-    Assert.assertEquals(randomString, v.getFieldByKey("key1").getString());
+    assertThat(v.getFieldByKey("key1").getString()).isEqualTo(randomString);
     VariantTestUtil.checkType(v.getFieldByKey("key2"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-    Assert.assertTrue(v.getFieldByKey("key2").getBoolean());
+    assertThat(v.getFieldByKey("key2").getBoolean()).isTrue();
     VariantTestUtil.checkType(v.getFieldByKey("key3"), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-    Assert.assertEquals(1234567890, v.getFieldByKey("key3").getLong());
+    assertThat(v.getFieldByKey("key3").getLong()).isEqualTo(1234567890);
   }
 
   @Test
@@ -235,12 +256,12 @@ public class TestVariantObjectBuilder {
 
     Variant v = b.build();
     VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-    Assert.assertEquals(numKeys, v.numObjectElements());
+    assertThat(v.numObjectElements()).isEqualTo(numKeys);
     // Only check a few keys, to avoid slowing down the test
     VariantTestUtil.checkType(v.getFieldByKey("k" + 0), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-    Assert.assertEquals(0, v.getFieldByKey("k" + 0).getLong());
+    assertThat(v.getFieldByKey("k" + 0).getLong()).isEqualTo(0);
     VariantTestUtil.checkType(v.getFieldByKey("k" + (numKeys - 1)), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-    Assert.assertEquals(numKeys - 1, v.getFieldByKey("k" + (numKeys - 1)).getLong());
+    assertThat(v.getFieldByKey("k" + (numKeys - 1)).getLong()).isEqualTo(numKeys - 1);
   }
 
   @Test
@@ -272,9 +293,75 @@ public class TestVariantObjectBuilder {
     objBuilder.appendLong(1);
     b.endObject();
     Variant v = b.build();
-    Assert.assertEquals(1, v.numObjectElements());
+    assertThat(v.numObjectElements()).isEqualTo(1);
     VariantTestUtil.checkType(v.getFieldByKey("duplicate"), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-    Assert.assertEquals(1, v.getFieldByKey("duplicate").getLong());
+    assertThat(v.getFieldByKey("duplicate").getLong()).isEqualTo(1);
+  }
+
+  @Test
+  public void testDuplicateKeysKeptValueLarger() {
+    // The retained (last-written) value is larger than the first occurrence. The data size must be
+    // computed from the retained value, otherwise the encoded object is truncated/corrupt.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendInt(1); // 5 bytes
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendString("hello"); // 6 bytes
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      assertThat(v.numObjectElements()).isEqualTo(1);
+      Variant variant = v.getFieldByKey("duplicate");
+      VariantTestUtil.checkType(variant, VariantUtil.SHORT_STR, Variant.Type.STRING);
+      assertThat(variant.getString()).isEqualTo("hello");
+    });
+  }
+
+  @Test
+  public void testDuplicateKeysKeptValueSmaller() {
+    // The retained (last-written) value is smaller than the first occurrence. The data size must be
+    // computed from the retained value, otherwise the encoded object reserves stale trailing bytes.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendString("hello"); // 6 bytes
+    objBuilder.appendKey("duplicate");
+    objBuilder.appendInt(1); // 5 bytes
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      assertThat(v.numObjectElements()).isEqualTo(1);
+      Variant variant = v.getFieldByKey("duplicate");
+      VariantTestUtil.checkType(variant, VariantUtil.PRIMITIVE, Variant.Type.INT);
+      assertThat(variant.getInt()).isEqualTo(1);
+    });
+  }
+
+  @Test
+  public void testDuplicateKeysDifferentSizesAcrossMultipleKeys() {
+    // Exercises deduplication across several keys where the retained values differ in size from the
+    // first occurrence, ensuring offsets remain consistent for every field.
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("a");
+    objBuilder.appendInt(1); // 5 bytes
+    objBuilder.appendKey("b");
+    objBuilder.appendBoolean(true); // 1 byte
+    objBuilder.appendKey("a");
+    objBuilder.appendString("a-final"); // larger, retained for "a"
+    objBuilder.appendKey("b");
+    objBuilder.appendLong(123456789L); // 9 bytes, retained for "b"
+    objBuilder.appendKey("c");
+    objBuilder.appendString("c-only");
+    b.endObject();
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      assertThat(v.numObjectElements()).isEqualTo(3);
+      assertThat(v.getFieldByKey("a").getString()).isEqualTo("a-final");
+      assertThat(v.getFieldByKey("b").getLong()).isEqualTo(123456789L);
+      assertThat(v.getFieldByKey("c").getString()).isEqualTo("c-only");
+    });
   }
 
   @Test
@@ -291,38 +378,32 @@ public class TestVariantObjectBuilder {
     objBuilder.appendString("22");
     b.endObject();
     Variant v = b.build();
-    Assert.assertEquals(4, v.numObjectElements());
+    assertThat(v.numObjectElements()).isEqualTo(4);
     VariantTestUtil.checkType(v.getFieldByKey("0"), VariantUtil.SHORT_STR, Variant.Type.STRING);
-    Assert.assertEquals("", v.getFieldByKey("0").getString());
+    assertThat(v.getFieldByKey("0").getString()).isEqualTo("");
     VariantTestUtil.checkType(v.getFieldByKey("1"), VariantUtil.SHORT_STR, Variant.Type.STRING);
-    Assert.assertEquals("1", v.getFieldByKey("1").getString());
+    assertThat(v.getFieldByKey("1").getString()).isEqualTo("1");
     VariantTestUtil.checkType(v.getFieldByKey("2"), VariantUtil.SHORT_STR, Variant.Type.STRING);
-    Assert.assertEquals("22", v.getFieldByKey("2").getString());
+    assertThat(v.getFieldByKey("2").getString()).isEqualTo("22");
     VariantTestUtil.checkType(v.getFieldByKey("3"), VariantUtil.SHORT_STR, Variant.Type.STRING);
-    Assert.assertEquals("333", v.getFieldByKey("3").getString());
+    assertThat(v.getFieldByKey("3").getString()).isEqualTo("333");
   }
 
   @Test
   public void testMissingEndObject() {
     VariantBuilder b = new VariantBuilder();
     b.startObject();
-    try {
-      b.build();
-      Assert.fail("Expected Exception when calling build() without endObject()");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::build)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call build() while an object is being built. Must call endObject() first.");
   }
 
   @Test
   public void testMissingStartObject() {
     VariantBuilder b = new VariantBuilder();
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() without startObject()");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() without calling startObject() first.");
   }
 
   @Test
@@ -330,33 +411,25 @@ public class TestVariantObjectBuilder {
     VariantBuilder b = new VariantBuilder();
     VariantObjectBuilder obj = b.startObject();
     obj.appendKey("a");
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with mismatched keys and values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Number of object keys (1) do not match the number of values (0).");
 
     obj.appendInt(1);
     obj.appendKey("b");
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with mismatched keys and values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Number of object keys (2) do not match the number of values (1).");
   }
 
   @Test
   public void testInvalidAppendDuringObjectAppend() {
     VariantBuilder b = new VariantBuilder();
     b.startObject();
-    try {
-      b.appendInt(1);
-      Assert.fail("Expected Exception when calling append() before endObject()");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> b.appendInt(1))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(
+            "Cannot call append() methods while an object is being built. Must call endObject() first.");
   }
 
   @Test
@@ -364,24 +437,18 @@ public class TestVariantObjectBuilder {
     VariantBuilder b = new VariantBuilder();
     VariantObjectBuilder obj = b.startObject();
     obj.appendKey("a");
-    try {
-      obj.appendKey("a");
-      Assert.fail("Expected Exception when calling appendKey() multiple times without appending a value");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> obj.appendKey("a"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call appendKey() before appending a value for the previous key.");
   }
 
   @Test
   public void testNoAppendKey() {
     VariantBuilder b = new VariantBuilder();
     VariantObjectBuilder obj = b.startObject();
-    try {
-      obj.appendInt(1);
-      Assert.fail("Expected Exception when appending a value, before appending a key");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> obj.appendInt(1))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot append an object value before calling appendKey()");
   }
 
   @Test
@@ -390,24 +457,18 @@ public class TestVariantObjectBuilder {
     VariantObjectBuilder obj = b.startObject();
     obj.appendKey("a");
     obj.appendInt(1);
-    try {
-      obj.appendInt(1);
-      Assert.fail("Expected Exception when appending a value, before appending a key");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> obj.appendInt(1))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot append an object value before calling appendKey()");
   }
 
   @Test
   public void testStartObjectEndArray() {
     VariantBuilder b = new VariantBuilder();
     VariantObjectBuilder obj = b.startObject();
-    try {
-      obj.endArray();
-      Assert.fail("Expected Exception when calling endArray() while building object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(obj::endArray)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endArray() without calling startArray() first.");
   }
 
   @Test
@@ -416,12 +477,9 @@ public class TestVariantObjectBuilder {
     VariantObjectBuilder obj = b.startObject();
     obj.appendKey("outer");
     obj.startObject();
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with an open nested object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() while a nested object/array is still open.");
   }
 
   @Test
@@ -431,12 +489,9 @@ public class TestVariantObjectBuilder {
     obj.appendKey("outer");
     VariantObjectBuilder nested = obj.startObject();
     nested.appendKey("nested");
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with an open nested object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() while a nested object/array is still open.");
   }
 
   @Test
@@ -447,12 +502,9 @@ public class TestVariantObjectBuilder {
     VariantObjectBuilder nested = obj.startObject();
     nested.appendKey("nested");
     nested.appendInt(1);
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with an open nested object");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() while a nested object/array is still open.");
   }
 
   @Test
@@ -461,12 +513,9 @@ public class TestVariantObjectBuilder {
     VariantObjectBuilder obj = b.startObject();
     obj.appendKey("outer");
     obj.startArray();
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with an open nested array");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() while a nested object/array is still open.");
   }
 
   @Test
@@ -476,11 +525,8 @@ public class TestVariantObjectBuilder {
     obj.appendKey("outer");
     VariantArrayBuilder nested = obj.startArray();
     nested.appendInt(1);
-    try {
-      b.endObject();
-      Assert.fail("Expected Exception when calling endObject() with an open nested array");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(b::endObject)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call endObject() while a nested object/array is still open.");
   }
 }

@@ -18,10 +18,12 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.time.LocalDate;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +79,7 @@ public class TestVariantArray {
     Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b0011, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(0);
     });
   }
 
@@ -87,7 +89,7 @@ public class TestVariantArray {
         ByteBuffer.wrap(new byte[] {0b10011, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(0);
     });
   }
 
@@ -98,7 +100,7 @@ public class TestVariantArray {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(511, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(511);
     });
   }
 
@@ -111,26 +113,24 @@ public class TestVariantArray {
 
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(5, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(5);
       VariantTestUtil.checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.DATE);
-      Assert.assertEquals(
-          LocalDate.parse("2025-04-17"),
-          LocalDate.ofEpochDay(v.getElementAtIndex(0).getInt()));
+      assertThat(LocalDate.ofEpochDay(v.getElementAtIndex(0).getInt())).isEqualTo(LocalDate.parse("2025-04-17"));
       VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
+      assertThat(v.getElementAtIndex(1).getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getInt());
+      assertThat(v.getElementAtIndex(2).getInt()).isEqualTo(1234567890);
       VariantTestUtil.checkType(v.getElementAtIndex(3), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals("variant", v.getElementAtIndex(3).getString());
+      assertThat(v.getElementAtIndex(3).getString()).isEqualTo("variant");
       VariantTestUtil.checkType(v.getElementAtIndex(4), VariantUtil.ARRAY, Variant.Type.ARRAY);
 
       Variant nestedV = v.getElementAtIndex(4);
-      Assert.assertEquals(3, nestedV.numArrayElements());
+      assertThat(nestedV.numArrayElements()).isEqualTo(3);
       VariantTestUtil.checkType(nestedV.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, nestedV.getElementAtIndex(0).getInt());
+      assertThat(nestedV.getElementAtIndex(0).getInt()).isEqualTo(1234567890);
       VariantTestUtil.checkType(nestedV.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.NULL);
       VariantTestUtil.checkType(nestedV.getElementAtIndex(2), VariantUtil.SHORT_STR, Variant.Type.STRING);
-      Assert.assertEquals("c", nestedV.getElementAtIndex(2).getString());
+      assertThat(nestedV.getElementAtIndex(2).getString()).isEqualTo("c");
     });
   }
 
@@ -141,13 +141,13 @@ public class TestVariantArray {
 
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(3, v.numArrayElements());
+      assertThat(v.numArrayElements()).isEqualTo(3);
       VariantTestUtil.checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals(randomString, v.getElementAtIndex(0).getString());
+      assertThat(v.getElementAtIndex(0).getString()).isEqualTo(randomString);
       VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
+      assertThat(v.getElementAtIndex(1).getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getInt());
+      assertThat(v.getElementAtIndex(2).getInt()).isEqualTo(1234567890);
     });
   }
 
@@ -171,13 +171,10 @@ public class TestVariantArray {
 
   @Test
   public void testInvalidArray() {
-    try {
-      // An object header
-      Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b1000010}), VariantTestUtil.EMPTY_METADATA);
-      value.numArrayElements();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read OBJECT value as ARRAY", e.getMessage());
-    }
+    // An object header
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b1000010}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::numArrayElements)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read OBJECT value as ARRAY");
   }
 }
