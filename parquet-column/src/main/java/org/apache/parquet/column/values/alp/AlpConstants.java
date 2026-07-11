@@ -45,6 +45,9 @@ public final class AlpConstants {
   public static final int DEFAULT_VECTOR_SIZE = 1024;
   public static final int DEFAULT_VECTOR_SIZE_LOG = 10;
 
+  // BytePacker packs/unpacks 8 values at a time (pack8Values/unpack8Values).
+  static final int PACK_GROUP_SIZE = 8;
+
   // Capped at 15 (vectorSize=32768) because num_exceptions is uint16,
   // so vectorSize must not exceed 65535 to avoid overflow when all values are exceptions.
   static final int MAX_LOG_VECTOR_SIZE = 15;
