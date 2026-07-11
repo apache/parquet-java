@@ -268,6 +268,21 @@ public class TestRowRanges {
   }
 
   @Test
+  public void testBuilderRejectsFollowUpAfterMaxValue() {
+    // After Long.MAX_VALUE, runEnd + 1 would overflow; the strictly-increasing guard must still
+    // reject any follow-up index rather than silently starting a new run.
+    RowRanges.Builder builder = RowRanges.builder().addSelectedRow(Long.MAX_VALUE);
+    try {
+      builder.addSelectedRow(5);
+      org.junit.Assert.fail("expected IllegalArgumentException for index after Long.MAX_VALUE");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
+    // Long.MAX_VALUE alone is a valid single-row selection.
+    assertAllRowsEqual(builder.build().iterator(), Long.MAX_VALUE);
+  }
+
+  @Test
   public void testBuilderBuildReturnsSnapshot() {
     // build() must return a snapshot: continuing to use the builder afterwards must not
     // mutate a previously built result.

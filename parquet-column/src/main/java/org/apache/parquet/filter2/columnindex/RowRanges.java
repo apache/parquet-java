@@ -366,15 +366,16 @@ public class RowRanges {
       if (runStart < 0) {
         runStart = rowIndex;
         runEnd = rowIndex;
+      } else if (rowIndex <= runEnd) {
+        throw new IllegalArgumentException("addSelectedRow requires strictly increasing row indices; got "
+            + rowIndex + " after " + runEnd);
       } else if (rowIndex == runEnd + 1) {
+        // rowIndex > runEnd is guaranteed here, so runEnd < Long.MAX_VALUE and runEnd + 1 cannot overflow.
         runEnd = rowIndex;
-      } else if (rowIndex > runEnd + 1) {
+      } else {
         ranges.add(new Range(runStart, runEnd));
         runStart = rowIndex;
         runEnd = rowIndex;
-      } else {
-        throw new IllegalArgumentException("addSelectedRow requires strictly increasing row indices; got "
-            + rowIndex + " after " + runEnd);
       }
       return this;
     }
