@@ -21,8 +21,10 @@ package org.apache.parquet.hadoop.util;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.hadoop.util.wrapped.io.VectorIoBridge;
@@ -30,8 +32,10 @@ import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.ParquetFileRange;
 
 /**
- * SeekableInputStream implementation for FSDataInputStream that implements
- * ByteBufferReadable in Hadoop 2.
+ * SeekableInputStream implementation for FSDataInputStream.
+ * Uses the underlying stream's native {@code read(ByteBuffer)} when the
+ * stream advertises {@link ByteBufferReadable} support; otherwise falls back
+ * to the byte-array based reads inherited from {@link DelegatingSeekableInputStream}.
  * It implements {@link #readVectored(List, ByteBufferAllocator)}) by
  * handing off to VectorIoBridge which uses reflection to offer the API if it is found.
  * The return value of {@link #readVectoredAvailable(ByteBufferAllocator)}
@@ -46,10 +50,12 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   private final FSDataInputStream stream;
   private final Reader reader;
+  private final boolean byteBufferReadable;
 
   public H2SeekableInputStream(FSDataInputStream stream) {
     super(stream);
     this.stream = stream;
+    this.byteBufferReadable = isByteBufferReadable(stream);
     this.reader = new H2Reader();
   }
 
@@ -75,12 +81,19 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   @Override
   public int read(ByteBuffer buf) throws IOException {
-    return stream.read(buf);
+    if (byteBufferReadable) {
+      return stream.read(buf);
+    }
+    return super.read(buf);
   }
 
   @Override
   public void readFully(ByteBuffer buf) throws IOException {
-    readFully(reader, buf);
+    if (byteBufferReadable) {
+      readFully(reader, buf);
+    } else {
+      super.readFully(buf);
+    }
   }
 
   private class H2Reader implements Reader {
@@ -88,6 +101,23 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
     public int read(ByteBuffer buf) throws IOException {
       return stream.read(buf);
     }
+  }
+
+  /**
+   * Whether the given FSDataInputStream supports {@code read(ByteBuffer)}.
+   * Uses {@code hasCapability("in:readbytebuffer")} when available
+   * (Hadoop 3.3.0+, HDFS-14111) and falls back to walking the wrapped-stream
+   * chain looking for a non-FSDataInputStream that implements {@link ByteBufferReadable}.
+   */
+  private static boolean isByteBufferReadable(FSDataInputStream stream) {
+    if (stream.hasCapability("in:readbytebuffer")) {
+      return true;
+    }
+    InputStream wrapped = stream.getWrappedStream();
+    if (wrapped instanceof FSDataInputStream) {
+      return isByteBufferReadable((FSDataInputStream) wrapped);
+    }
+    return wrapped instanceof ByteBufferReadable;
   }
 
   @Override
