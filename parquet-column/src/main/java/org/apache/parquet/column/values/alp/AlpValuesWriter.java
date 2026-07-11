@@ -144,11 +144,10 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     private void encodeAndFlushVector(int vectorLen) {
-      // Use cached presets after the sampling phase, full search before
+      // Sampling phase first (full search + collect evenly-spaced samples, then build the preset
+      // cache once enough are gathered); after the cache is built, later vectors take the else branch.
       AlpEncoderDecoder.EncodingParams params;
-      if (cachedPresets != null) {
-        params = AlpEncoderDecoder.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
-      } else {
+      if (cachedPresets == null) {
         params = AlpEncoderDecoder.findBestFloatParams(vectorBuffer, 0, vectorLen);
         // Collect one sample every rowgroupSampleJump vectors so that samples are
         // evenly distributed across the rowgroup (matching C++ AlpSampler spacing).
@@ -156,12 +155,13 @@ public abstract class AlpValuesWriter extends ValuesWriter {
             && rowgroupSamples.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
           rowgroupSamples.add(Arrays.copyOf(vectorBuffer, vectorLen));
         }
+        if (rowgroupSamples.size() >= SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
+          buildPresetCache();
+        }
+      } else {
+        params = AlpEncoderDecoder.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       }
-
       vectorsProcessed++;
-      if (cachedPresets == null && rowgroupSamples.size() >= SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
-        buildPresetCache();
-      }
 
       int excIdx = 0;
 
@@ -421,21 +421,22 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     private void encodeAndFlushVector(int vectorLen) {
+      // Sampling phase first (full search + collect evenly-spaced samples, then build the preset
+      // cache once enough are gathered); after the cache is built, later vectors take the else branch.
       AlpEncoderDecoder.EncodingParams params;
-      if (cachedPresets != null) {
-        params = AlpEncoderDecoder.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
-      } else {
+      if (cachedPresets == null) {
         params = AlpEncoderDecoder.findBestDoubleParams(vectorBuffer, 0, vectorLen);
         if (vectorsProcessed % rowgroupSampleJump == 0
             && rowgroupSamples.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
           rowgroupSamples.add(Arrays.copyOf(vectorBuffer, vectorLen));
         }
+        if (rowgroupSamples.size() >= SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
+          buildPresetCache();
+        }
+      } else {
+        params = AlpEncoderDecoder.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       }
-
       vectorsProcessed++;
-      if (cachedPresets == null && rowgroupSamples.size() >= SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
-        buildPresetCache();
-      }
 
       int excIdx = 0;
       long placeholder = 0;
