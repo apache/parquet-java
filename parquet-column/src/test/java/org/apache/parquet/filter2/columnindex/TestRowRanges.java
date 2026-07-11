@@ -36,6 +36,7 @@ import org.junit.Test;
  * Unit test for {@link RowRanges}
  */
 public class TestRowRanges {
+  @SuppressWarnings("deprecation")
   private static RowRanges buildRanges(long... rowIndexes) {
     if (rowIndexes.length == 0) {
       return RowRanges.EMPTY;
@@ -62,7 +63,8 @@ public class TestRowRanges {
         return ret;
       }
     };
-    return RowRanges.create(rowIndexes[rowIndexes.length - 1], pageIndexes, builder.build());
+    return org.apache.parquet.internal.filter2.columnindex.RowRanges.create(
+        rowIndexes[rowIndexes.length - 1], pageIndexes, builder.build());
   }
 
   private static void assertAllRowsEqual(PrimitiveIterator.OfLong actualIt, long... expectedValues) {
@@ -74,11 +76,13 @@ public class TestRowRanges {
 
   @Test
   public void testCreate() {
+    // Offset-index pages never overlap; consecutive pages are at most adjacent ([6, 7] then [8, 10]),
+    // which the builder coalesces into [6, 10].
     RowRanges ranges = buildRanges(
         1, 2,
         3, 4,
         6, 7,
-        7, 10,
+        8, 10,
         15, 17);
     assertAllRowsEqual(ranges.iterator(), 1, 2, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17);
     assertEquals(12, ranges.rowCount());
@@ -280,6 +284,39 @@ public class TestRowRanges {
     }
     // Long.MAX_VALUE alone is a valid single-row selection.
     assertAllRowsEqual(builder.build().iterator(), Long.MAX_VALUE);
+  }
+
+  @Test
+  public void testBuilderAddSelectedRangeCoalescesAndSeparates() {
+    RowRanges ranges = RowRanges.builder()
+        .addSelectedRange(0, 2)
+        .addSelectedRange(3, 5) // adjacent to the previous run -> coalesced into [0, 5]
+        .addSelectedRange(8, 9) // gap -> separate run
+        .build();
+    assertAllRowsEqual(ranges.iterator(), 0, 1, 2, 3, 4, 5, 8, 9);
+    assertEquals(8, ranges.rowCount());
+  }
+
+  @Test
+  public void testBuilderAddSelectedRangeRejectsOverlap() {
+    RowRanges.Builder builder = RowRanges.builder().addSelectedRange(0, 10);
+    try {
+      builder.addSelectedRange(5, 15);
+      org.junit.Assert.fail("expected IllegalArgumentException for overlapping range");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testBuilderAddSelectedRangeRejectsFromGreaterThanTo() {
+    RowRanges.Builder builder = RowRanges.builder();
+    try {
+      builder.addSelectedRange(5, 3);
+      org.junit.Assert.fail("expected IllegalArgumentException for from > to");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
   }
 
   @Test

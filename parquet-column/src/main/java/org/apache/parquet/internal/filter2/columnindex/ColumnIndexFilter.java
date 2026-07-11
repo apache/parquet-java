@@ -198,7 +198,12 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
     }
 
     PrimitiveIterator.OfInt pageIndexes = func.apply(ci);
-    return RowRanges.create(rowCount, pageIndexes, oi);
+    RowRanges.Builder rangesBuilder = RowRanges.builder();
+    while (pageIndexes.hasNext()) {
+      int pageIndex = pageIndexes.nextInt();
+      rangesBuilder.addSelectedRange(oi.getFirstRowIndex(pageIndex), oi.getLastRowIndex(pageIndex, rowCount));
+    }
+    return rangesBuilder.build();
   }
 
   @Override

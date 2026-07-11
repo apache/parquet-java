@@ -26,7 +26,6 @@ import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 
 /**
  * Class representing row ranges in a row-group. These row ranges are calculated as a result of the column index based
@@ -120,34 +119,6 @@ public class RowRanges {
    */
   public static RowRanges createSingle(long rowCount) {
     return new RowRanges(new Range(0L, rowCount - 1L));
-  }
-
-  /**
-   * Creates a mutable RowRanges object with the following ranges:
-   * <pre>
-   * [firstRowIndex[0], lastRowIndex[0]],
-   * [firstRowIndex[1], lastRowIndex[1]],
-   * ...,
-   * [firstRowIndex[n], lastRowIndex[n]]
-   * </pre>
-   * (See OffsetIndex.getFirstRowIndex and OffsetIndex.getLastRowIndex for details.)
-   * <p>
-   * The union of the ranges are calculated so the result ranges always contain the disjunct ranges. See union for
-   * details.
-   *
-   * @param rowCount    row count
-   * @param pageIndexes pageIndexes
-   * @param offsetIndex offsetIndex
-   * @return a mutable RowRanges
-   */
-  public static RowRanges create(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
-    RowRanges ranges = new RowRanges();
-    while (pageIndexes.hasNext()) {
-      int pageIndex = pageIndexes.nextInt();
-      ranges.add(new Range(
-          offsetIndex.getFirstRowIndex(pageIndex), offsetIndex.getLastRowIndex(pageIndex, rowCount)));
-    }
-    return ranges;
   }
 
   /**
@@ -360,22 +331,41 @@ public class RowRanges {
      * @return this builder for chaining
      */
     public Builder addSelectedRow(long rowIndex) {
-      if (rowIndex < 0) {
-        throw new IllegalArgumentException("addSelectedRow requires a non-negative row index; got " + rowIndex);
+      return addSelectedRange(rowIndex, rowIndex);
+    }
+
+    /**
+     * Marks the inclusive range {@code [from, to]} of 0-based row indices as selected. Ranges must be
+     * appended in strictly increasing order: {@code from} must be greater than the last selected row index.
+     * A range directly adjacent to the current run (where {@code from} is exactly one past the previous
+     * {@code to}) is coalesced into a single {@link Range}; a gap closes the current run and starts a new one.
+     *
+     * @param from the first 0-based row index of the range (inclusive; must be {@code >} the last selected
+     *     row index and non-negative)
+     * @param to the last 0-based row index of the range (inclusive; must be {@code >=} {@code from})
+     * @return this builder for chaining
+     */
+    public Builder addSelectedRange(long from, long to) {
+      if (from < 0) {
+        throw new IllegalArgumentException("addSelectedRange requires a non-negative row index; got " + from);
+      }
+      if (from > to) {
+        throw new IllegalArgumentException(
+            "addSelectedRange requires from <= to; got [" + from + ", " + to + "]");
       }
       if (runStart < 0) {
-        runStart = rowIndex;
-        runEnd = rowIndex;
-      } else if (rowIndex <= runEnd) {
-        throw new IllegalArgumentException("addSelectedRow requires strictly increasing row indices; got "
-            + rowIndex + " after " + runEnd);
-      } else if (rowIndex == runEnd + 1) {
-        // rowIndex > runEnd is guaranteed here, so runEnd < Long.MAX_VALUE and runEnd + 1 cannot overflow.
-        runEnd = rowIndex;
+        runStart = from;
+        runEnd = to;
+      } else if (from <= runEnd) {
+        throw new IllegalArgumentException("addSelectedRange requires strictly increasing ranges; got [" + from
+            + ", " + to + "] after " + runEnd);
+      } else if (from == runEnd + 1) {
+        // from > runEnd is guaranteed here, so runEnd < Long.MAX_VALUE and runEnd + 1 cannot overflow.
+        runEnd = to;
       } else {
         ranges.add(new Range(runStart, runEnd));
-        runStart = rowIndex;
-        runEnd = rowIndex;
+        runStart = from;
+        runEnd = to;
       }
       return this;
     }
