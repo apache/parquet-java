@@ -33,7 +33,11 @@ import static org.apache.parquet.column.values.alp.AlpConstants.*;
  * <p>The order of operations is critical for IEEE 754 correctness. Both formulas must
  * be evaluated as single expressions — storing the intermediate multiplication result
  * in a variable before the second multiply changes IEEE 754 rounding and produces extra
- * exceptions. Uses multiply-by-reciprocal (via POW10_NEGATIVE) for C++ wire compatibility.
+ * exceptions. Likewise, scaling uses multiply-by-reciprocal (via POW10_NEGATIVE) rather than
+ * division: this reproduces the exact IEEE 754 rounding of the ALP reference algorithm, so the
+ * encoded integers — and therefore which values become exceptions and the resulting bytes — are
+ * identical across implementations. It is about cross-implementation determinism, not any one
+ * language.
  *
  * <p>Exception conditions:
  * <ul>
@@ -56,7 +60,7 @@ final class AlpEncoderDecoder {
   }
 
   /** NaN, Inf, and -0.0 can never be encoded regardless of exponent/factor. */
-  static boolean isFloatException(float value) {
+  static boolean isIntrinsicFloatException(float value) {
     if (Float.isNaN(value)) {
       return true;
     }
@@ -66,9 +70,9 @@ final class AlpEncoderDecoder {
     return Float.floatToRawIntBits(value) == FLOAT_NEGATIVE_ZERO_BITS;
   }
 
-  /** Check round-trip: encode then decode, and see if we get the same bits back. */
+  /** Full exception check for a given (exponent, factor): intrinsic cases plus round-trip failure. */
   static boolean isFloatException(float value, int exponent, int factor) {
-    if (isFloatException(value)) {
+    if (isIntrinsicFloatException(value)) {
       return true;
     }
     // Check before rounding: overflow or non-finite after scaling
@@ -100,7 +104,8 @@ final class AlpEncoderDecoder {
     return encoded * FLOAT_POW10[factor] * FLOAT_POW10_NEGATIVE[exponent];
   }
 
-  static boolean isDoubleException(double value) {
+  /** NaN, Inf, and -0.0 can never be encoded regardless of exponent/factor. */
+  static boolean isIntrinsicDoubleException(double value) {
     if (Double.isNaN(value)) {
       return true;
     }
@@ -110,8 +115,9 @@ final class AlpEncoderDecoder {
     return Double.doubleToRawLongBits(value) == DOUBLE_NEGATIVE_ZERO_BITS;
   }
 
+  /** Full exception check for a given (exponent, factor): intrinsic cases plus round-trip failure. */
   static boolean isDoubleException(double value, int exponent, int factor) {
-    if (isDoubleException(value)) {
+    if (isIntrinsicDoubleException(value)) {
       return true;
     }
     // Check before rounding: overflow or non-finite after scaling
@@ -166,6 +172,10 @@ final class AlpEncoderDecoder {
     }
   }
 
+  // Index positions within an (exponent, factor) pair array.
+  private static final int E = 0;
+  private static final int F = 1;
+
   // All valid (exponent, factor) pairs for the full search, precomputed in nested-loop order
   // (e ascending, then f ascending) so the tie-break and early-exit behave exactly like an inline
   // double loop. Reused across every vector to avoid per-call allocation.
@@ -206,14 +216,14 @@ final class AlpEncoderDecoder {
    * outright. When no pair yields any non-exception values, {@code pairs[0]} is returned.
    */
   private static EncodingParams pickBestFloat(float[] values, int offset, int length, int[][] pairs) {
-    int bestExponent = pairs[0][0];
-    int bestFactor = pairs[0][1];
+    int bestExponent = pairs[0][E];
+    int bestFactor = pairs[0][F];
     int bestExceptions = length;
     long bestEstimatedSize = Long.MAX_VALUE;
 
     for (int[] pair : pairs) {
-      int e = pair[0];
-      int f = pair[1];
+      int e = pair[E];
+      int f = pair[F];
       int exceptions = 0;
       int minEncoded = Integer.MAX_VALUE;
       int maxEncoded = Integer.MIN_VALUE;
@@ -262,14 +272,14 @@ final class AlpEncoderDecoder {
 
   /** Double counterpart to {@link #pickBestFloat}; see it for the scoring and tie-break rules. */
   private static EncodingParams pickBestDouble(double[] values, int offset, int length, int[][] pairs) {
-    int bestExponent = pairs[0][0];
-    int bestFactor = pairs[0][1];
+    int bestExponent = pairs[0][E];
+    int bestFactor = pairs[0][F];
     int bestExceptions = length;
     long bestEstimatedSize = Long.MAX_VALUE;
 
     for (int[] pair : pairs) {
-      int e = pair[0];
-      int f = pair[1];
+      int e = pair[E];
+      int f = pair[F];
       int exceptions = 0;
       long minEncoded = Long.MAX_VALUE;
       long maxEncoded = Long.MIN_VALUE;

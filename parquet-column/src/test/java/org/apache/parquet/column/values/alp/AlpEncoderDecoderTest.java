@@ -52,17 +52,17 @@ public class AlpEncoderDecoderTest {
 
   @Test
   public void testFloatExceptionDetection() {
-    assertTrue("NaN should be an exception", AlpEncoderDecoder.isFloatException(Float.NaN));
+    assertTrue("NaN should be an exception", AlpEncoderDecoder.isIntrinsicFloatException(Float.NaN));
     assertTrue(
         "Positive infinity should be an exception",
-        AlpEncoderDecoder.isFloatException(Float.POSITIVE_INFINITY));
+        AlpEncoderDecoder.isIntrinsicFloatException(Float.POSITIVE_INFINITY));
     assertTrue(
         "Negative infinity should be an exception",
-        AlpEncoderDecoder.isFloatException(Float.NEGATIVE_INFINITY));
-    assertTrue("Negative zero should be an exception", AlpEncoderDecoder.isFloatException(-0.0f));
+        AlpEncoderDecoder.isIntrinsicFloatException(Float.NEGATIVE_INFINITY));
+    assertTrue("Negative zero should be an exception", AlpEncoderDecoder.isIntrinsicFloatException(-0.0f));
 
-    assertFalse("1.0f should not be a basic exception", AlpEncoderDecoder.isFloatException(1.0f));
-    assertFalse("0.0f should not be a basic exception", AlpEncoderDecoder.isFloatException(0.0f));
+    assertFalse("1.0f should not be a basic exception", AlpEncoderDecoder.isIntrinsicFloatException(1.0f));
+    assertFalse("0.0f should not be a basic exception", AlpEncoderDecoder.isIntrinsicFloatException(0.0f));
   }
 
   @Test
@@ -126,17 +126,17 @@ public class AlpEncoderDecoderTest {
 
   @Test
   public void testDoubleExceptionDetection() {
-    assertTrue("NaN should be an exception", AlpEncoderDecoder.isDoubleException(Double.NaN));
+    assertTrue("NaN should be an exception", AlpEncoderDecoder.isIntrinsicDoubleException(Double.NaN));
     assertTrue(
         "Positive infinity should be an exception",
-        AlpEncoderDecoder.isDoubleException(Double.POSITIVE_INFINITY));
+        AlpEncoderDecoder.isIntrinsicDoubleException(Double.POSITIVE_INFINITY));
     assertTrue(
         "Negative infinity should be an exception",
-        AlpEncoderDecoder.isDoubleException(Double.NEGATIVE_INFINITY));
-    assertTrue("Negative zero should be an exception", AlpEncoderDecoder.isDoubleException(-0.0));
+        AlpEncoderDecoder.isIntrinsicDoubleException(Double.NEGATIVE_INFINITY));
+    assertTrue("Negative zero should be an exception", AlpEncoderDecoder.isIntrinsicDoubleException(-0.0));
 
-    assertFalse("1.0 should not be a basic exception", AlpEncoderDecoder.isDoubleException(1.0));
-    assertFalse("0.0 should not be a basic exception", AlpEncoderDecoder.isDoubleException(0.0));
+    assertFalse("1.0 should not be a basic exception", AlpEncoderDecoder.isIntrinsicDoubleException(1.0));
+    assertFalse("0.0 should not be a basic exception", AlpEncoderDecoder.isIntrinsicDoubleException(0.0));
   }
 
   @Test

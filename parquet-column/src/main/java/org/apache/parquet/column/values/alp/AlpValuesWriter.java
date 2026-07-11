@@ -130,7 +130,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       this.excValBuffer = new float[vectorSize];
       this.metadataBuf = new byte[Math.max(ALP_INFO_SIZE, FLOAT_FOR_INFO_SIZE)];
       this.packBuf = new byte[Integer.SIZE]; // max bit width for int
-      this.packPadBuf = new int[8];
+      this.packPadBuf = new int[PACK_GROUP_SIZE];
     }
 
     @Override
@@ -165,8 +165,12 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int excIdx = 0;
 
-      // We need a valid encoded value to fill exception slots (placeholder).
-      // Any non-exception value works; it gets overwritten on decode.
+      // Exception slots still occupy one position each in the packed integer array, but their real
+      // value lives in the exception block. Fill those slots with a placeholder encoding: the first
+      // non-exception value's encoding if one exists, otherwise 0 when the whole vector is exceptions.
+      // Reusing an encoding already present in the vector avoids introducing a spurious minimum
+      // (e.g. 0) that would distort the FOR base and bit width. The reader overwrites exception slots
+      // from the exception payload, so the placeholder only affects FOR/bit width, not decoded values.
       int placeholder = 0;
       for (int i = 0; i < vectorLen; i++) {
         if (!AlpEncoderDecoder.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
@@ -247,19 +251,19 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
     private void packIntsWithBytePacker(int[] values, int count, int bitWidth) {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-      int numFullGroups = count / 8;
-      int remaining = count % 8;
+      int numFullGroups = count / PACK_GROUP_SIZE;
+      int remaining = count % PACK_GROUP_SIZE;
 
       for (int g = 0; g < numFullGroups; g++) {
-        packer.pack8Values(values, g * 8, packBuf, 0);
+        packer.pack8Values(values, g * PACK_GROUP_SIZE, packBuf, 0);
         encodedVectors.write(packBuf, 0, bitWidth);
       }
 
       // Partial last group: pack 8 values (zero-padded), but only write
       // ceil(count * bitWidth / 8) - alreadyWritten bytes per spec.
       if (remaining > 0) {
-        System.arraycopy(values, numFullGroups * 8, packPadBuf, 0, remaining);
-        for (int i = remaining; i < 8; i++) {
+        System.arraycopy(values, numFullGroups * PACK_GROUP_SIZE, packPadBuf, 0, remaining);
+        for (int i = remaining; i < PACK_GROUP_SIZE; i++) {
           packPadBuf[i] = 0;
         }
         packer.pack8Values(packPadBuf, 0, packBuf, 0);
@@ -407,7 +411,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       this.excValBuffer = new double[vectorSize];
       this.metadataBuf = new byte[Math.max(ALP_INFO_SIZE, DOUBLE_FOR_INFO_SIZE)];
       this.packBuf = new byte[Long.SIZE]; // max bit width for long
-      this.packPadBuf = new long[8];
+      this.packPadBuf = new long[PACK_GROUP_SIZE];
     }
 
     @Override
@@ -439,6 +443,13 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       vectorsProcessed++;
 
       int excIdx = 0;
+
+      // Exception slots still occupy one position each in the packed long array, but their real
+      // value lives in the exception block. Fill those slots with a placeholder encoding: the first
+      // non-exception value's encoding if one exists, otherwise 0 when the whole vector is exceptions.
+      // Reusing an encoding already present in the vector avoids introducing a spurious minimum
+      // (e.g. 0) that would distort the FOR base and bit width. The reader overwrites exception slots
+      // from the exception payload, so the placeholder only affects FOR/bit width, not decoded values.
       long placeholder = 0;
       for (int i = 0; i < vectorLen; i++) {
         if (!AlpEncoderDecoder.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
@@ -524,17 +535,17 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
     private void packLongsWithBytePacker(long[] values, int count, int bitWidth) {
       BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
-      int numFullGroups = count / 8;
-      int remaining = count % 8;
+      int numFullGroups = count / PACK_GROUP_SIZE;
+      int remaining = count % PACK_GROUP_SIZE;
 
       for (int g = 0; g < numFullGroups; g++) {
-        packer.pack8Values(values, g * 8, packBuf, 0);
+        packer.pack8Values(values, g * PACK_GROUP_SIZE, packBuf, 0);
         encodedVectors.write(packBuf, 0, bitWidth);
       }
 
       if (remaining > 0) {
-        System.arraycopy(values, numFullGroups * 8, packPadBuf, 0, remaining);
-        for (int i = remaining; i < 8; i++) {
+        System.arraycopy(values, numFullGroups * PACK_GROUP_SIZE, packPadBuf, 0, remaining);
+        for (int i = remaining; i < PACK_GROUP_SIZE; i++) {
           packPadBuf[i] = 0;
         }
         packer.pack8Values(packPadBuf, 0, packBuf, 0);

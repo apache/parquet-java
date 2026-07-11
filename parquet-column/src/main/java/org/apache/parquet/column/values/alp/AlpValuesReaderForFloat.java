@@ -37,7 +37,7 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
 
   private float[] decodedValues;
   private int[] deltasBuffer;
-  private final int[] unpackPadBuf = new int[8];
+  private final int[] unpackPadBuf = new int[PACK_GROUP_SIZE];
   private byte[] unpackByteBuf;
 
   public AlpValuesReaderForFloat() {
@@ -63,22 +63,22 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
 
   @Override
   public float readFloat() {
-    if (currentIndex >= totalCount) {
+    if (pageValueIndex >= totalCount) {
       throw new ParquetDecodingException("ALP float data was already exhausted.");
     }
     ensureVectorDecoded();
-    int indexInVector = currentIndex % vectorSize;
-    currentIndex++;
-    return decodedValues[indexInVector];
+    int vectorSlot = pageValueIndex % vectorSize;
+    pageValueIndex++;
+    return decodedValues[vectorSlot];
   }
 
   @Override
-  protected int decodeBody(int pos, int vectorIdx, int vectorLen, int exponent, int factor) {
+  protected int decodeBody(int pos, int vectorNumber, int vectorLen, int exponent, int factor) {
     int frameOfReference = vectorsData.getInt(pos);
-    int bitWidth = vectorsData.get(pos + 4) & 0xFF;
+    int bitWidth = vectorsData.get(pos + Integer.BYTES) & 0xFF;
     if (bitWidth > Integer.SIZE) {
       throw new ParquetDecodingException(
-          "Invalid ALP float bitWidth " + bitWidth + " > 32 in vector " + vectorIdx);
+          "Invalid ALP float bitWidth " + bitWidth + " > 32 in vector " + vectorNumber);
     }
     pos += FLOAT_FOR_INFO_SIZE;
 
@@ -107,11 +107,11 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
   /** Unpack bit-packed ints in groups of 8, returns position after packed data. */
   private int unpackIntsWithBytePacker(ByteBuffer buf, int pos, int[] output, int count, int bitWidth) {
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-    int numFullGroups = count / 8;
-    int remaining = count % 8;
+    int numFullGroups = count / PACK_GROUP_SIZE;
+    int remaining = count % PACK_GROUP_SIZE;
 
     for (int g = 0; g < numFullGroups; g++) {
-      packer.unpack8Values(buf, pos, output, g * 8);
+      packer.unpack8Values(buf, pos, output, g * PACK_GROUP_SIZE);
       pos += bitWidth;
     }
 
@@ -128,7 +128,7 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
       }
 
       packer.unpack8Values(unpackByteBuf, 0, unpackPadBuf, 0);
-      System.arraycopy(unpackPadBuf, 0, output, numFullGroups * 8, remaining);
+      System.arraycopy(unpackPadBuf, 0, output, numFullGroups * PACK_GROUP_SIZE, remaining);
       pos += partialBytes;
     }
 

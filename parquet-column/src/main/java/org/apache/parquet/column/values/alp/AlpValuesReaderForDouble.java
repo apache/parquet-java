@@ -37,7 +37,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   private double[] decodedValues;
   private long[] deltasBuffer;
-  private final long[] unpackPadBuf = new long[8];
+  private final long[] unpackPadBuf = new long[PACK_GROUP_SIZE];
   private byte[] unpackByteBuf;
 
   public AlpValuesReaderForDouble() {
@@ -63,22 +63,22 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   @Override
   public double readDouble() {
-    if (currentIndex >= totalCount) {
+    if (pageValueIndex >= totalCount) {
       throw new ParquetDecodingException("ALP double data was already exhausted.");
     }
     ensureVectorDecoded();
-    int indexInVector = currentIndex % vectorSize;
-    currentIndex++;
-    return decodedValues[indexInVector];
+    int vectorSlot = pageValueIndex % vectorSize;
+    pageValueIndex++;
+    return decodedValues[vectorSlot];
   }
 
   @Override
-  protected int decodeBody(int pos, int vectorIdx, int vectorLen, int exponent, int factor) {
+  protected int decodeBody(int pos, int vectorNumber, int vectorLen, int exponent, int factor) {
     long frameOfReference = vectorsData.getLong(pos);
-    int bitWidth = vectorsData.get(pos + 8) & 0xFF;
+    int bitWidth = vectorsData.get(pos + Long.BYTES) & 0xFF;
     if (bitWidth > Long.SIZE) {
       throw new ParquetDecodingException(
-          "Invalid ALP double bitWidth " + bitWidth + " > 64 in vector " + vectorIdx);
+          "Invalid ALP double bitWidth " + bitWidth + " > 64 in vector " + vectorNumber);
     }
     pos += DOUBLE_FOR_INFO_SIZE;
 
@@ -105,11 +105,11 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   private int unpackLongsWithBytePacker(ByteBuffer buf, int pos, long[] output, int count, int bitWidth) {
     BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
-    int numFullGroups = count / 8;
-    int remaining = count % 8;
+    int numFullGroups = count / PACK_GROUP_SIZE;
+    int remaining = count % PACK_GROUP_SIZE;
 
     for (int g = 0; g < numFullGroups; g++) {
-      packer.unpack8Values(buf, pos, output, g * 8);
+      packer.unpack8Values(buf, pos, output, g * PACK_GROUP_SIZE);
       pos += bitWidth;
     }
 
@@ -128,7 +128,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
       }
 
       packer.unpack8Values(unpackByteBuf, 0, unpackPadBuf, 0);
-      System.arraycopy(unpackPadBuf, 0, output, numFullGroups * 8, remaining);
+      System.arraycopy(unpackPadBuf, 0, output, numFullGroups * PACK_GROUP_SIZE, remaining);
       pos += partialBytes;
     }
 
