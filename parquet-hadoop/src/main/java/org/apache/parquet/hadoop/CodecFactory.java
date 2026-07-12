@@ -310,8 +310,9 @@ public class CodecFactory implements CompressionCodecFactory {
 
   static void validateZstdLevel(int level) {
     if (level < Zstd.minCompressionLevel() || level > Zstd.maxCompressionLevel()) {
-      throw new BadConfigurationException("Unsupported ZSTD compression level: " + level + ". Valid range is "
-          + Zstd.minCompressionLevel() + " (fastest) to " + Zstd.maxCompressionLevel() + " (best compression).");
+      throw new BadConfigurationException(
+          "Unsupported ZSTD compression level: " + level + ". Valid range is " + Zstd.minCompressionLevel()
+              + " (fastest) to " + Zstd.maxCompressionLevel() + " (best compression).");
     }
   }
 
