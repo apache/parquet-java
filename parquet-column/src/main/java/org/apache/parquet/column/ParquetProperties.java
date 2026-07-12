@@ -821,7 +821,7 @@ public class ParquetProperties {
 
     /**
      * Set the compression level for the specified column.
-     * The valid range is codec-specific (e.g. ZSTD: 1–22 (default 3), GZIP: 0–9 or -1 (default 6), BROTLI: 0–11 (default 1)).
+     * The valid range is codec-specific (e.g. ZSTD: negative levels trade ratio for speed, up to 22 for best compression (default 3), GZIP: 0–9 or -1 (default 6), BROTLI: 0–11 (default 1)).
      * Pass {@code null} to unset a previously configured level for that column.
      *
      * @param columnPath the path of the column (dot-string)

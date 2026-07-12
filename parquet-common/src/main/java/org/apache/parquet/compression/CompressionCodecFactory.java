@@ -52,7 +52,7 @@ public interface CompressionCodecFactory {
    * The compression level controls the trade-off between compression speed and ratio. The valid range
    * and meaning of the level is codec-specific:
    * <ul>
-   *   <li>ZSTD: 1 (fastest) to 22 (best compression), default 3</li>
+   *   <li>ZSTD: negative levels trade compression ratio for higher speed, up to 22 for best compression, default 3; the exact bounds are defined by the zstd library</li>
    *   <li>GZIP: 1 (fastest) to 9 (best compression), default 6</li>
    *   <li>BROTLI: 0 (fastest) to 11 (best compression), default 1</li>
    * </ul>
