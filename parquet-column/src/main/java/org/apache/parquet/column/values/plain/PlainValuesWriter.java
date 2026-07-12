@@ -67,12 +67,12 @@ public class PlainValuesWriter extends ValuesWriter {
 
   @Override
   public final void writeFloat(float v) {
-    arrayOut.writeInt(Float.floatToIntBits(v));
+    arrayOut.writeInt(Float.floatToRawIntBits(v));
   }
 
   @Override
   public final void writeDouble(double v) {
-    arrayOut.writeLong(Double.doubleToLongBits(v));
+    arrayOut.writeLong(Double.doubleToRawLongBits(v));
   }
 
   @Override
