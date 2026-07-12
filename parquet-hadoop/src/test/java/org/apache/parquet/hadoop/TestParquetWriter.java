@@ -833,7 +833,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnCodec_overridesDefaultForOneColumn() throws Exception {
+  public void perColumnCodecOverridesDefaultForOneColumn() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -865,7 +865,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnCodec_defaultUsedWhenNoOverride() throws Exception {
+  public void perColumnCodecDefaultUsedWhenNoOverride() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -893,7 +893,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnLevel_dataRoundTrips() throws Exception {
+  public void perColumnLevelDataRoundTrips() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -934,7 +934,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnLevel_invalidZstdLevel_throwsBadConfigurationException() throws Exception {
+  public void perColumnLevelInvalidZstdLevelThrows() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -958,7 +958,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnLevel_invalidLevel_throwsBadConfigurationException() throws Exception {
+  public void perColumnLevelInvalidLevelThrows() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -982,7 +982,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnLevel_differentLevelsPerColumn_dataRoundTrips() throws Exception {
+  public void perColumnLevelDifferentLevelsPerColumnDataRoundTrips() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -1025,7 +1025,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void perColumnCodec_allColumnsOverridden() throws Exception {
+  public void perColumnCodecAllColumnsOverridden() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -1096,7 +1096,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void outputFormat_setColumnCompression_overridesDefaultForOneColumn() throws Exception {
+  public void outputFormatSetColumnCompressionOverridesDefaultForOneColumn() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -1117,7 +1117,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void outputFormat_setColumnCompression_allColumnsOverridden() throws Exception {
+  public void outputFormatSetColumnCompressionAllColumnsOverridden() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -1139,7 +1139,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void outputFormat_setColumnCompression_defaultUsedWhenNotSet() throws Exception {
+  public void outputFormatSetColumnCompressionDefaultUsedWhenNotSet() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -1159,7 +1159,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void outputFormat_setColumnCompressionLevel_withCodec_dataRoundTrips() throws Exception {
+  public void outputFormatSetColumnCompressionLevelWithCodecDataRoundTrips() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -1188,7 +1188,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void outputFormat_setColumnCompressionLevel_differentLevelsPerColumn() throws Exception {
+  public void outputFormatSetColumnCompressionLevelDifferentLevelsPerColumn() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())

@@ -326,7 +326,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   @Test
-  public void perColumnCodec_defaultUsedWhenNotSet() throws Exception {
+  public void perColumnCodecDefaultUsedWhenNotSet() throws Exception {
     MessageType schema =
         MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props = ParquetProperties.builder().build();
@@ -338,7 +338,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   @Test
-  public void perColumnCodec_overridesDefaultForOneColumn() throws Exception {
+  public void perColumnCodecOverridesDefaultForOneColumn() throws Exception {
     MessageType schema =
         MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props =
@@ -351,7 +351,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   @Test
-  public void perColumnCodec_allColumnsOverridden() throws Exception {
+  public void perColumnCodecAllColumnsOverridden() throws Exception {
     MessageType schema =
         MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props = ParquetProperties.builder()
@@ -366,7 +366,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   @Test
-  public void perColumnLevel_withCodec_roundTrip() throws Exception {
+  public void perColumnLevelWithCodecRoundTrip() throws Exception {
     MessageType schema =
         MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
     ParquetProperties props = ParquetProperties.builder()
@@ -381,7 +381,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   @Test
-  public void perColumnLevel_invalidZstdLevel_throwsBadConfigurationException() throws Exception {
+  public void perColumnLevelInvalidZstdLevelThrows() throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary col_a; }");
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec("col_a", ZSTD)
@@ -394,7 +394,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   @Test
-  public void perColumnLevel_invalidGzipLevel_throwsBadConfigurationException() throws Exception {
+  public void perColumnLevelInvalidGzipLevelThrows() throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary col_a; }");
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec("col_a", GZIP)
