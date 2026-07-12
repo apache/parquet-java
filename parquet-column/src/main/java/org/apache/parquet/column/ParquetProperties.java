@@ -399,7 +399,7 @@ public class ParquetProperties {
 
   @Override
   public String toString() {
-    return "Parquet page size to " + getPageSizeThreshold() + '\n'
+    String result = "Parquet page size to " + getPageSizeThreshold() + '\n'
         + "Parquet dictionary page size to " + getDictionaryPageSizeThreshold() + '\n'
         + "Dictionary is " + dictionaryEnabled + '\n'
         + "Writer version is: " + getWriterVersion() + '\n'
@@ -415,9 +415,19 @@ public class ParquetProperties {
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
-        + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
-        + "Per-column codecs: " + columnCodecs + '\n'
-        + "Per-column compression levels: " + columnCompressionLevels;
+        + "Size statistics enabled: " + sizeStatisticsEnabled;
+    String perColumn = "";
+    if (!columnCodecs.toString().equals(Objects.toString(columnCodecs.getDefaultValue()))) {
+      perColumn = "Per-column codecs: " + columnCodecs;
+    }
+    if (!columnCompressionLevels.toString().equals(Objects.toString(columnCompressionLevels.getDefaultValue()))) {
+      perColumn += perColumn.isEmpty() ? "Per-column compression levels: " : ", compression levels: ";
+      perColumn += columnCompressionLevels;
+    }
+    if (!perColumn.isEmpty()) {
+      result += '\n' + perColumn;
+    }
+    return result;
   }
 
   public static class Builder {

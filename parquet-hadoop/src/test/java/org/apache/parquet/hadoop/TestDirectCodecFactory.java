@@ -292,7 +292,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_sameLevel_returnsCachedInstance() {
+  public void leveledCompressorCachedForSameLevel() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     BytesInputCompressor c1 = factory.getCompressor(ZSTD, 3);
     BytesInputCompressor c2 = factory.getCompressor(ZSTD, 3);
@@ -301,7 +301,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_differentLevels_returnsDifferentInstances() {
+  public void leveledCompressorDiffersByLevel() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     BytesInputCompressor c1 = factory.getCompressor(ZSTD, 1);
     BytesInputCompressor c3 = factory.getCompressor(ZSTD, 3);
@@ -310,7 +310,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_levelCacheIsolatedFromNoLevelCache() {
+  public void leveledCacheIsolatedFromNoLevelCache() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     BytesInputCompressor noLevel = factory.getCompressor(ZSTD);
     BytesInputCompressor withLevel = factory.getCompressor(ZSTD, 3);
@@ -320,7 +320,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_uncompressed_returnsNoOpCompressor() {
+  public void leveledUncompressedReturnsNoOp() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     BytesInputCompressor comp = factory.getCompressor(UNCOMPRESSED, 5);
     Assert.assertSame(CodecFactory.NO_OP_COMPRESSOR, comp);
@@ -328,7 +328,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_snappy_ignoresLevel() {
+  public void leveledSnappyIgnoresLevel() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     BytesInputCompressor comp = factory.getCompressor(SNAPPY, 99);
     Assert.assertNotNull(comp);
@@ -337,7 +337,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_gzip_invalidLevel_throwsBadConfigurationException() {
+  public void leveledGzipInvalidLevelThrows() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     try {
       BadConfigurationException ex =
@@ -349,7 +349,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_gzip_validBoundaryLevels_noException() {
+  public void leveledGzipBoundaryLevelsValid() {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     for (int level : new int[] {-1, 0, 1, 9}) {
       BytesInputCompressor comp = factory.getCompressor(GZIP, level);
@@ -360,11 +360,11 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_zstd_roundTrip() throws IOException {
+  public void leveledZstdRoundTrip() throws IOException {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     byte[] original = "hello parquet per-column compression".getBytes(StandardCharsets.UTF_8);
     BytesInputDecompressor decompressor = factory.getDecompressor(ZSTD);
-    for (int level : new int[] {1, 3, 10, 22}) {
+    for (int level : new int[] {-5, 0, 1, 3, 10, 22}) {
       BytesInput compressed = factory.getCompressor(ZSTD, level).compress(BytesInput.from(original));
       byte[] result = decompressor.decompress(compressed, original.length).toByteArray();
       Assert.assertArrayEquals("Round-trip failed at ZSTD level " + level, original, result);
@@ -373,7 +373,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void levelAwareCompressor_gzip_roundTrip() throws IOException {
+  public void leveledGzipRoundTrip() throws IOException {
     CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
     byte[] original = "hello parquet per-column compression".getBytes(StandardCharsets.UTF_8);
     BytesInputDecompressor decompressor = factory.getDecompressor(GZIP);
@@ -386,7 +386,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void directFactory_levelAwareCompressor_usesDirectCompressorAndRoundTrips() throws IOException {
+  public void directFactoryLeveledZstdRoundTrip() throws IOException {
     CodecFactory heap = new CodecFactory(new Configuration(), pageSize);
     CodecFactory direct =
         CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
@@ -435,7 +435,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void directFactory_levelAwareCompressor_invalidZstdLevel_throwsBadConfigurationException() {
+  public void directFactoryInvalidZstdLevelThrows() {
     CodecFactory direct =
         CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
     try {

@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import com.github.luben.zstd.Zstd;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -308,9 +309,9 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   static void validateZstdLevel(int level) {
-    if (level < 1 || level > 22) {
-      throw new BadConfigurationException("Unsupported ZSTD compression level: " + level
-          + ". Valid range is 1 (fastest) to 22 (best compression).");
+    if (level < Zstd.minCompressionLevel() || level > Zstd.maxCompressionLevel()) {
+      throw new BadConfigurationException("Unsupported ZSTD compression level: " + level + ". Valid range is "
+          + Zstd.minCompressionLevel() + " (fastest) to " + Zstd.maxCompressionLevel() + " (best compression).");
     }
   }
 
