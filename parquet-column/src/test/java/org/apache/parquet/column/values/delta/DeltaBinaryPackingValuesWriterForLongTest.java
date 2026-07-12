@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.delta;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -48,9 +49,12 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
     random = new Random(0);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriterForLong(1281, 4, 100, 100, new DirectByteBufferAllocator());
+    assertThatThrownBy(() ->
+            new DeltaBinaryPackingValuesWriterForLong(1281, 4, 100, 100, new DirectByteBufferAllocator()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("miniBlockSize must be multiple of 8, but it's 320.25");
   }
 
   /* When data size is multiple of Block */

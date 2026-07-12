@@ -17,7 +17,12 @@
 
 name: CI Hadoop 3
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - parquet-*
+  pull_request:
 
 jobs:
   build:

@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -52,7 +54,7 @@ public class SchemaCommandTest extends ParquetFileTest {
     Assert.assertTrue(0 < outputFile.length());
   }
 
-  @Test(expected = FileAlreadyExistsException.class)
+  @Test
   public void testSchemaCommandOverwriteExistentFileWithoutOverwriteOption() throws IOException {
     File inputFile = parquetFile();
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avsc");
@@ -61,6 +63,8 @@ public class SchemaCommandTest extends ParquetFileTest {
     command.targets = Arrays.asList(inputFile.getAbsolutePath());
     command.outputPath = outputFile.getAbsolutePath();
     command.setConf(new Configuration());
-    command.run();
+    assertThatThrownBy(command::run)
+        .isInstanceOf(FileAlreadyExistsException.class)
+        .hasMessageContaining("File already exists");
   }
 }

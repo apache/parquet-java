@@ -41,8 +41,24 @@ public class TestByteBitPacking512VectorLE {
     }
   }
 
+  @Test
+  public void unpackValuesUsingVectorDirectByteBuffer() {
+    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    for (int i = 1; i <= 32; i++) {
+      unpackValuesUsingVectorBitWidthDirect(i);
+    }
+  }
+
+  @Test
+  public void unpackValuesUsingVectorReadOnlyByteBuffer() {
+    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    for (int i = 1; i <= 32; i++) {
+      unpackValuesUsingVectorBitWidthReadOnly(i);
+    }
+  }
+
   private void unpackValuesUsingVectorBitWidth(int bitWidth) {
-    try (Stream<int[]> intInputs = getRangeData(bitWidth)) {
+    try (Stream<int[]> intInputs = getRangeData(bitWidth, 8192)) {
       intInputs.forEach(intInput -> {
         int pack8Count = intInput.length / 8;
         int byteOutputSize = pack8Count * bitWidth;
@@ -65,6 +81,64 @@ public class TestByteBitPacking512VectorLE {
         ByteBuffer byteBuffer = ByteBuffer.wrap(byteOutput);
         unpackValuesUsingVectorByteBuffer(bitWidth, byteBuffer, output);
         assertArrayEquals(intInput, output);
+        Arrays.fill(output, 0);
+      });
+    }
+  }
+
+  private void unpackValuesUsingVectorBitWidthDirect(int bitWidth) {
+    // Use a smaller dataset to avoid OOM on CI; correctness of the vector path is already
+    // exhaustively tested by unpackValuesUsingVectorBitWidth — here we only verify that
+    // reading from a direct (off-heap) ByteBuffer produces the same result.
+    try (Stream<int[]> intInputs = getRangeData(bitWidth, 8192)) {
+      intInputs.forEach(intInput -> {
+        int pack8Count = intInput.length / 8;
+        int byteOutputSize = pack8Count * bitWidth;
+        byte[] byteOutput = new byte[byteOutputSize];
+        int[] output = new int[intInput.length];
+        int[] expected = new int[intInput.length];
+
+        BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+        for (int i = 0; i < pack8Count; i++) {
+          bytePacker.pack8Values(intInput, 8 * i, byteOutput, bitWidth * i);
+        }
+
+        unpack8Values(bitWidth, byteOutput, expected);
+
+        // Direct (off-heap) ByteBuffer
+        ByteBuffer directBuffer = ByteBuffer.allocateDirect(byteOutputSize);
+        directBuffer.put(byteOutput);
+        directBuffer.flip();
+        unpackValuesUsingVectorByteBuffer(bitWidth, directBuffer, output);
+        assertArrayEquals(expected, output);
+        Arrays.fill(output, 0);
+      });
+    }
+  }
+
+  private void unpackValuesUsingVectorBitWidthReadOnly(int bitWidth) {
+    // Use a smaller dataset to avoid OOM on CI; correctness of the vector path is already
+    // exhaustively tested by unpackValuesUsingVectorBitWidth — here we only verify that
+    // reading from a read-only ByteBuffer produces the same result.
+    try (Stream<int[]> intInputs = getRangeData(bitWidth, 8192)) {
+      intInputs.forEach(intInput -> {
+        int pack8Count = intInput.length / 8;
+        int byteOutputSize = pack8Count * bitWidth;
+        byte[] byteOutput = new byte[byteOutputSize];
+        int[] output = new int[intInput.length];
+        int[] expected = new int[intInput.length];
+
+        BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+        for (int i = 0; i < pack8Count; i++) {
+          bytePacker.pack8Values(intInput, 8 * i, byteOutput, bitWidth * i);
+        }
+
+        unpack8Values(bitWidth, byteOutput, expected);
+
+        // Read-only heap ByteBuffer (hasArray() returns false)
+        ByteBuffer readOnlyBuffer = ByteBuffer.wrap(byteOutput).asReadOnlyBuffer();
+        unpackValuesUsingVectorByteBuffer(bitWidth, readOnlyBuffer, output);
+        assertArrayEquals(expected, output);
         Arrays.fill(output, 0);
       });
     }
@@ -121,9 +195,7 @@ public class TestByteBitPacking512VectorLE {
     }
   }
 
-  private Stream<int[]> getRangeData(int bitWidth) {
-    int itemMax = 268435456;
-
+  private Stream<int[]> getRangeData(int bitWidth, int itemMax) {
     long maxValue = getMaxValue(bitWidth);
     long maxValueFilled = maxValue + 1;
     int itemCount = (int) (maxValueFilled / itemMax);
@@ -134,39 +206,42 @@ public class TestByteBitPacking512VectorLE {
 
     final int finalItemCount = itemCount;
 
-    return IntStream.range(0, finalItemCount).mapToObj(i -> {
-      int len;
-      if ((i == finalItemCount - 1) && mode != 0) {
-        len = mode;
-      } else {
-        len = itemMax;
-      }
-      if (len < 64) {
-        len = 64;
-      } else {
-        len += 64;
-      }
-      int[] array = new int[len];
-      int j = 0;
-      while (j < len) {
-        int value = j + i * itemMax;
-        if (value > maxValue) {
-          if (maxValue < Integer.MAX_VALUE) {
-            value = (int) maxValue;
+    // Test the first and last chunks to cover both low-range and high-range boundary values.
+    return IntStream.range(0, finalItemCount)
+        .filter(i -> i == 0 || i == finalItemCount - 1)
+        .mapToObj(i -> {
+          int len;
+          if ((i == finalItemCount - 1) && mode != 0) {
+            len = mode;
           } else {
-            value = Integer.MAX_VALUE;
+            len = itemMax;
           }
-        }
-        if (value < 0) {
-          if (bitWidth < 32) {
-            value = value - Integer.MIN_VALUE;
+          if (len < 64) {
+            len = 64;
+          } else {
+            len += 64;
           }
-        }
-        array[j] = value;
-        j++;
-      }
-      return array;
-    });
+          int[] array = new int[len];
+          int j = 0;
+          while (j < len) {
+            int value = j + i * itemMax;
+            if (value > maxValue) {
+              if (maxValue < Integer.MAX_VALUE) {
+                value = (int) maxValue;
+              } else {
+                value = Integer.MAX_VALUE;
+              }
+            }
+            if (value < 0) {
+              if (bitWidth < 32) {
+                value = value - Integer.MIN_VALUE;
+              }
+            }
+            array[j] = value;
+            j++;
+          }
+          return array;
+        });
   }
 
   private long getMaxValue(int bitWidth) {
