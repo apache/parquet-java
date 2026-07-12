@@ -184,6 +184,10 @@ public class TestParquetFileWriter {
     Configuration conf = new Configuration();
     // set the vector IO option
     conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, vectoredRead);
+    // Checksum verification is left at its default (enabled) so that, combined with the strict
+    // TrackingByteBufferAllocator, the vectored-read path is exercised with ChecksumFileSystem
+    // returning sliced buffers. This guards against leaking (or double-releasing) the buffers
+    // allocated during a vectored read. See ParquetFileReader.RecordingByteBufferAllocator.
     return conf;
   }
 
