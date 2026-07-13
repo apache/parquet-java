@@ -94,12 +94,10 @@ final class AlpEncoderDecoder {
     }
   }
 
-  /** Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f]) — single expression. */
   static int encodeFloat(float value, int exponent, int factor) {
     return fastRoundFloat(value * FLOAT_POW10[exponent] * FLOAT_POW10_NEGATIVE[factor]);
   }
 
-  /** Decode: encoded * POW10[f] * POW10_NEGATIVE[e] — single expression. */
   static float decodeFloat(int encoded, int exponent, int factor) {
     return encoded * FLOAT_POW10[factor] * FLOAT_POW10_NEGATIVE[exponent];
   }
@@ -139,12 +137,10 @@ final class AlpEncoderDecoder {
     }
   }
 
-  /** Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f]) — single expression. */
   static long encodeDouble(double value, int exponent, int factor) {
     return fastRoundDouble(value * DOUBLE_POW10[exponent] * DOUBLE_POW10_NEGATIVE[factor]);
   }
 
-  /** Decode: encoded * POW10[f] * POW10_NEGATIVE[e] — single expression. */
   static double decodeDouble(long encoded, int exponent, int factor) {
     return encoded * DOUBLE_POW10[factor] * DOUBLE_POW10_NEGATIVE[exponent];
   }
