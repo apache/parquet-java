@@ -37,15 +37,19 @@ public class AlpBitPackingTest {
 
   @Test
   public void testBytePackerIntRoundTrip() {
-    // Verify BytePacker pack/unpack round-trip for various bit widths
-    for (int bitWidth = 1; bitWidth <= 31; bitWidth++) {
+    // Verify BytePacker pack/unpack round-trip for every bit width, including the
+    // full 32-bit width where the frame-of-reference delta uses all int bits.
+    for (int bitWidth = 1; bitWidth <= 32; bitWidth++) {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-      int maxVal = (int) Math.min((1L << bitWidth) - 1, Integer.MAX_VALUE);
+      // Largest value representable in bitWidth bits (unsigned). At width 32 that is
+      // all bits set (-1); (1L << 32) - 1 would not fit in an int, so special-case it.
+      int maxVal = (bitWidth == 32) ? -1 : (int) ((1L << bitWidth) - 1);
 
       int[] input = new int[8];
-      for (int i = 0; i < 8; i++) {
-        input[i] = (maxVal / 8) * i;
+      for (int i = 0; i < 7; i++) {
+        input[i] = (maxVal >>> 3) * i; // spread of values, each fitting in bitWidth bits
       }
+      input[7] = maxVal; // exercise the top bit of this width
 
       byte[] packed = new byte[bitWidth];
       packer.pack8Values(input, 0, packed, 0);
@@ -62,15 +66,19 @@ public class AlpBitPackingTest {
 
   @Test
   public void testBytePackerForLongRoundTrip() {
-    // Verify BytePackerForLong pack/unpack round-trip for various bit widths
-    for (int bitWidth = 1; bitWidth <= 63; bitWidth++) {
+    // Verify BytePackerForLong pack/unpack round-trip for every bit width, including the
+    // full 64-bit width where the frame-of-reference delta uses all long bits.
+    for (int bitWidth = 1; bitWidth <= 64; bitWidth++) {
       BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
-      long maxVal = (bitWidth == 63) ? Long.MAX_VALUE : (1L << bitWidth) - 1;
+      // Largest value representable in bitWidth bits (unsigned). At width 64 that is
+      // all bits set (-1L); (1L << 64) - 1 would wrap to 0, so special-case it.
+      long maxVal = (bitWidth == 64) ? -1L : (1L << bitWidth) - 1;
 
       long[] input = new long[8];
-      for (int i = 0; i < 8; i++) {
-        input[i] = (maxVal / 8) * i;
+      for (int i = 0; i < 7; i++) {
+        input[i] = (maxVal >>> 3) * i; // spread of values, each fitting in bitWidth bits
       }
+      input[7] = maxVal; // exercise the top bit of this width
 
       byte[] packed = new byte[bitWidth];
       packer.pack8Values(input, 0, packed, 0);
