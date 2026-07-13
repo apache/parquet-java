@@ -51,4 +51,4 @@ As a consequence:
  * When using these translation layers it is the user's responsibility to make sure their classpath is secure and does not contain any classes that when loaded might cause an adverse issue for their system.
  * If class loading driven by file contents is problematic, end users should use APIs to directly read the data from Parquet instead of relying on translation.
  * Arbitrary class loading by itself is not considered a security issue by the library. A security issue must demonstrate further ability to execute
-   arbitrary methods on the instantiated object.
+   arbitrary methods on the instantiated object in such a way that it presents a security risk.
