@@ -170,6 +170,75 @@ public class AlpValuesEndToEndTest {
   }
 
   @Test
+  public void testFloatWideForRange() throws Exception {
+    // Integer-valued floats spanning the widest signed range float holds losslessly (< 2^23), so the
+    // frame-of-reference minimum is deeply negative and the FOR delta needs a high bit width. A buggy
+    // unsigned (max - min) range estimate would misjudge this; the signed range must round-trip cleanly.
+    float[] values = new float[2048];
+    float lo = -8.3e6f, hi = 8.3e6f;
+    for (int i = 0; i < values.length; i++) {
+      values[i] = (i % 2 == 0) ? lo + i : hi - i;
+    }
+    values[0] = lo; // frame minimum near -2^23
+    values[1] = hi; // frame maximum near +2^23
+    roundTripFloat(values);
+  }
+
+  @Test
+  public void testDoubleWideForRange() throws Exception {
+    // Integer-valued doubles spanning a wide signed range (< 2^52) so the frame-of-reference minimum
+    // is deeply negative and the FOR delta needs a near-53-bit width, all with zero exceptions.
+    double[] values = new double[2048];
+    double lo = -4.5e15, hi = 4.5e15;
+    for (int i = 0; i < values.length; i++) {
+      values[i] = (i % 2 == 0) ? lo + i : hi - i;
+    }
+    values[0] = lo; // frame minimum near -2^52
+    values[1] = hi; // frame maximum near +2^52
+    roundTripDouble(values);
+  }
+
+  @Test
+  public void testFloatAllNullPage() throws Exception {
+    // Every row on the page is null, so no value reaches the writer and num_elements is 0.
+    // numVectors then works out to 0 and the reader ends up calling slice(0) on empty offset and
+    // vector buffers. Initialization must succeed even though the page carries a positive row count.
+    AlpValuesWriter.FloatAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(
+          256, 256, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+      // no writeFloat calls: all rows are null
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+      reader.initFromPage(100, ByteBufferInputStream.wrap(input.toByteBuffer()));
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  @Test
+  public void testDoubleAllNullPage() throws Exception {
+    // Double analogue of testFloatAllNullPage: an all-null page produces num_elements 0.
+    AlpValuesWriter.DoubleAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+          512, 512, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+      // no writeDouble calls: all rows are null
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+      reader.initFromPage(100, ByteBufferInputStream.wrap(input.toByteBuffer()));
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  @Test
   public void testFloatIdenticalValues() throws Exception {
     float[] values = new float[100];
     for (int i = 0; i < values.length; i++) {
