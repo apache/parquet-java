@@ -19,9 +19,11 @@
 
 package org.apache.parquet.column;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 /**
@@ -67,6 +69,11 @@ abstract class ColumnProperty<T> {
         return value;
       }
       return getDefaultValue();
+    }
+
+    @Override
+    Set<ColumnPath> getColumnPaths() {
+      return values.keySet();
     }
 
     @Override
@@ -124,6 +131,14 @@ abstract class ColumnProperty<T> {
   public abstract T getDefaultValue();
 
   public abstract T getValue(ColumnPath columnPath);
+
+  /**
+   * @return the column paths that have an explicit per-column value set (empty when the property
+   *     only carries a default value)
+   */
+  Set<ColumnPath> getColumnPaths() {
+    return Collections.emptySet();
+  }
 
   public T getValue(String columnPath) {
     return getValue(ColumnPath.fromDotString(columnPath));
