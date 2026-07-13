@@ -21,10 +21,12 @@ package org.apache.parquet.column;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
+import java.util.Set;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -33,6 +35,7 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.alp.AlpConfig;
 import org.apache.parquet.column.values.alp.AlpConstants;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
@@ -40,6 +43,7 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -135,8 +139,7 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
-  private final ColumnProperty<Boolean> alpEnabled;
-  private final ColumnProperty<Integer> alpVectorSize;
+  private final ColumnProperty<AlpConfig> alp;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
@@ -169,8 +172,7 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
-    this.alpEnabled = builder.alpEnabled.build();
-    this.alpVectorSize = builder.alpVectorSize.build();
+    this.alp = builder.buildAlp();
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
@@ -277,7 +279,7 @@ public class ParquetProperties {
     switch (column.getPrimitiveType().getPrimitiveTypeName()) {
       case FLOAT:
       case DOUBLE:
-        return alpEnabled.getValue(column);
+        return alp.getValue(column).isEnabled();
       default:
         return false;
     }
@@ -291,7 +293,7 @@ public class ParquetProperties {
    * @return the ALP vector size for this column
    */
   public int getAlpVectorSize(ColumnDescriptor column) {
-    return alpVectorSize.getValue(column);
+    return alp.getValue(column).getVectorSize();
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -424,8 +426,7 @@ public class ParquetProperties {
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
         + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
-        + "ALP enabled: " + alpEnabled + '\n'
-        + "ALP vector size: " + alpVectorSize;
+        + "ALP: " + alp;
   }
 
   public static class Builder {
@@ -498,8 +499,16 @@ public class ParquetProperties {
       this.numBloomFilterCandidates = ColumnProperty.builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
-      this.alpEnabled = ColumnProperty.builder(toCopy.alpEnabled);
-      this.alpVectorSize = ColumnProperty.builder(toCopy.alpVectorSize);
+      // Split the bundled per-column AlpConfig back into the two independent builder scaffolds
+      // so the withAlpEncoding/withAlpVectorSize setters can keep operating on them independently.
+      AlpConfig alpDefault = toCopy.alp.getDefaultValue();
+      this.alpEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(alpDefault.isEnabled());
+      this.alpVectorSize = ColumnProperty.<Integer>builder().withDefaultValue(alpDefault.getVectorSize());
+      for (ColumnPath column : toCopy.alp.getColumnPaths()) {
+        AlpConfig columnConfig = toCopy.alp.getValue(column);
+        this.alpEnabled.withValue(column, columnConfig.isEnabled());
+        this.alpVectorSize.withValue(column, columnConfig.getVectorSize());
+      }
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
@@ -624,6 +633,25 @@ public class ParquetProperties {
       AlpConstants.validateVectorSize(vectorSize);
       this.alpVectorSize.withValue(columnPath, vectorSize);
       return this;
+    }
+
+    /**
+     * Merge the independently-tracked ALP enabled flag and vector size into a single per-column
+     * {@link AlpConfig} property. A column gets an explicit config when either setter touched it;
+     * for every other column the default config applies.
+     */
+    private ColumnProperty<AlpConfig> buildAlp() {
+      ColumnProperty<Boolean> enabled = alpEnabled.build();
+      ColumnProperty<Integer> vectorSize = alpVectorSize.build();
+      ColumnProperty.Builder<AlpConfig> builder = ColumnProperty.<AlpConfig>builder()
+          .withDefaultValue(new AlpConfig(enabled.getDefaultValue(), vectorSize.getDefaultValue()));
+      Set<ColumnPath> columns = new HashSet<>();
+      columns.addAll(enabled.getColumnPaths());
+      columns.addAll(vectorSize.getColumnPaths());
+      for (ColumnPath column : columns) {
+        builder.withValue(column, new AlpConfig(enabled.getValue(column), vectorSize.getValue(column)));
+      }
+      return builder.build();
     }
 
     /**
