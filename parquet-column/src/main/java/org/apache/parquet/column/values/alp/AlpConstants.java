@@ -82,7 +82,8 @@ public final class AlpConstants {
   };
 
   // NEGATIVE_POWERS_OF_TEN: reciprocals used for scaling down (multiply-by-reciprocal).
-  // Using separate negative-power arrays instead of division ensures C++ wire compatibility.
+  // Multiplying by a precomputed reciprocal instead of dividing keeps the rounding bit-for-bit
+  // identical to the ALP reference implementation, so encoded values interop across implementations.
   static final float[] FLOAT_POW10_NEGATIVE = {
     1e0f, 1e-1f, 1e-2f, 1e-3f, 1e-4f, 1e-5f, 1e-6f, 1e-7f, 1e-8f, 1e-9f, 1e-10f
   };
