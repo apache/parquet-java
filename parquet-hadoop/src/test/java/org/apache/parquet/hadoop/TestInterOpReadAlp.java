@@ -784,7 +784,18 @@ public class TestInterOpReadAlp {
     }
     cols.add(CornerCaseData.optionalDoubles("f64_with_nulls", withNulls, nullMask));
 
-    // 8–14: f32 analogues
+    // 8. f64_wide_for_range: integer-valued doubles spanning a wide signed range so the
+    //    frame-of-reference minimum is deeply negative and the delta (max - min) needs a high
+    //    bit width. Exercises the signed FOR-range computation (a buggy unsigned max - min would
+    //    overstate the range here). Values stay below 2^52 so they encode exactly with no exceptions.
+    double[] wideD = new double[N];
+    final double loD = -4.5e15, hiD = 4.5e15;
+    for (int i = 0; i < N; i++) wideD[i] = (i % 2 == 0) ? loD + i : hiD - i;
+    wideD[0] = loD; // frame minimum near -2^52
+    wideD[1] = hiD; // frame maximum near +2^52
+    cols.add(CornerCaseData.doubles("f64_wide_for_range", wideD));
+
+    // 9–15: f32 analogues
     float[] noExcF = new float[N];
     for (int i = 0; i < N; i++) noExcF[i] = (i % 1000) / 100.0f;
     cols.add(CornerCaseData.floats("f32_no_exceptions", noExcF));
@@ -828,6 +839,16 @@ public class TestInterOpReadAlp {
       }
     }
     cols.add(CornerCaseData.optionalFloats("f32_with_nulls", withNullsF, nullMaskF));
+
+    // f32_wide_for_range: integer-valued floats spanning the widest signed range float can hold
+    // losslessly (< 2^23), so the frame-of-reference minimum is deeply negative and the FOR delta
+    // needs a high bit width. Mirrors f64_wide_for_range for the int-encoded (float) path.
+    float[] wideF = new float[N];
+    final float loF = -8.3e6f, hiF = 8.3e6f;
+    for (int i = 0; i < N; i++) wideF[i] = (i % 2 == 0) ? loF + i : hiF - i;
+    wideF[0] = loF; // frame minimum near -2^23
+    wideF[1] = hiF; // frame maximum near +2^23
+    cols.add(CornerCaseData.floats("f32_wide_for_range", wideF));
 
     return cols;
   }
