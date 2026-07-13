@@ -22,7 +22,7 @@
 ## Reporting a Vulnerability
 
 Please report suspected vulnerabilities privately to the Parquet Project Management
-Committee at private@parquet.apache.org. Do **not** file a public GitHub issue or pull
+ASF security  at security@apache.org. Do **not** file a public GitHub issue or pull
 request for a suspected vulnerability, as that would disclose it before a fix is available.
 
 When reporting, please include as much of the following as you can:
