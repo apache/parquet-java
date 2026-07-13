@@ -195,7 +195,7 @@ class VariantUtil {
    * same limit as in VariantJsonParser: {@value}.
    * <p>This depth is not part of the specification and was chosen after discussion on the
    * Parquet developer mailing list to be high enough to reduce the impact of parsing malicious files
-   * on a multi-tenant, multi-threaded system, while still supporting complex structurres.
+   * on a multi-tenant, multi-threaded system, while still supporting complex structures.
    *
    * @see <a href="https://lists.apache.org/thread/q6wbom1q9pndv2nj6wcynxjcjxxkc1hm">how deep is a realistic variant depth?</a>
    */
@@ -769,7 +769,8 @@ class VariantUtil {
         dataStart <= (long) value.limit() - value.position(),
         "variant object offset table extends past buffer: numElements=%s",
         numElements);
-    return new ObjectInfo((int) numElements, idSize, offsetSize, idStartOffset, (int) offsetStart, (int) dataStart);
+    return new ObjectInfo(
+        Math.toIntExact(numElements), idSize, offsetSize, idStartOffset, (int) offsetStart, (int) dataStart);
   }
 
   /**
