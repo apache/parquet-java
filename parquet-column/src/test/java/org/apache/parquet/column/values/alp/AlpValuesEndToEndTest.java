@@ -239,6 +239,75 @@ public class AlpValuesEndToEndTest {
   }
 
   @Test
+  public void testFloatPartialNullPage() throws Exception {
+    // Some rows are null, so fewer values reach the writer than the page's row count: num_elements
+    // is less than valueCount. The reader is initialized with the larger page count and must serve
+    // exactly the num_elements encoded values back.
+    int numValues = 700;
+    int pageRowCount = 1000; // 300 nulls
+    float[] values = new float[numValues];
+    for (int i = 0; i < numValues; i++) {
+      values[i] = (i % 100) / 100.0f + 1.0f;
+    }
+    AlpValuesWriter.FloatAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(
+          16384, 16384, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+      for (float v : values) {
+        writer.writeFloat(v);
+      }
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+      reader.initFromPage(pageRowCount, ByteBufferInputStream.wrap(input.toByteBuffer()));
+      for (int i = 0; i < numValues; i++) {
+        assertEquals(
+            "Value mismatch at index " + i,
+            Float.floatToRawIntBits(values[i]),
+            Float.floatToRawIntBits(reader.readFloat()));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  @Test
+  public void testDoublePartialNullPage() throws Exception {
+    // Double analogue of testFloatPartialNullPage: num_elements less than valueCount because some
+    // rows are null.
+    int numValues = 700;
+    int pageRowCount = 1000; // 300 nulls
+    double[] values = new double[numValues];
+    for (int i = 0; i < numValues; i++) {
+      values[i] = (i % 100) / 100.0 + 1.0;
+    }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+          32768, 32768, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+      for (double v : values) {
+        writer.writeDouble(v);
+      }
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+      reader.initFromPage(pageRowCount, ByteBufferInputStream.wrap(input.toByteBuffer()));
+      for (int i = 0; i < numValues; i++) {
+        assertEquals(
+            "Value mismatch at index " + i,
+            Double.doubleToRawLongBits(values[i]),
+            Double.doubleToRawLongBits(reader.readDouble()));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  @Test
   public void testFloatIdenticalValues() throws Exception {
     float[] values = new float[100];
     for (int i = 0; i < values.length; i++) {
