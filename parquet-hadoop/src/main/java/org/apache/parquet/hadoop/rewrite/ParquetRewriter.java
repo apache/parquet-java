@@ -991,8 +991,10 @@ public class ParquetRewriter implements Closeable {
 
     // Create new schema that only has the current column
     MessageType newSchema = getSchemaWithRenamedColumns(newSchema(outSchema, descriptor));
-    ColumnChunkPageWriteStore cPageStore = ColumnChunkPageWriteStore.build(
-            compressor, newSchema, props.getAllocator())
+    ColumnChunkPageWriteStore cPageStore = ColumnChunkPageWriteStore.builder()
+        .withCompressorProvider(col -> compressor)
+        .withSchema(newSchema)
+        .withAllocator(props.getAllocator())
         .withColumnIndexTruncateLength(props.getColumnIndexTruncateLength())
         .withPageWriteChecksumEnabled(props.getPageWriteChecksumEnabled())
         .withFileEncryptor(nullColumnEncryptor)

@@ -147,8 +147,10 @@ public class TestDataPageChecksums {
     CodecFactory codecFactory = new CodecFactory(conf, PAGE_SIZE);
     BytesInputCompressor compressor = codecFactory.getCompressor(compression);
 
-    ColumnChunkPageWriteStore writeStore = ColumnChunkPageWriteStore.build(
-            compressor, schemaSimple, new HeapByteBufferAllocator())
+    ColumnChunkPageWriteStore writeStore = ColumnChunkPageWriteStore.builder()
+        .withCompressorProvider(col -> compressor)
+        .withSchema(schemaSimple)
+        .withAllocator(new HeapByteBufferAllocator())
         .withColumnIndexTruncateLength(Integer.MAX_VALUE)
         .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
         .build();
