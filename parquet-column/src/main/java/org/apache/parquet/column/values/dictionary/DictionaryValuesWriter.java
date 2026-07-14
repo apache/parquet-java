@@ -73,6 +73,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /* will become true if the dictionary becomes too big */
   protected boolean dictionaryTooBig;
 
+  /* set to true when the dictionary exceeds maxDictionaryByteSize or MAX_DICTIONARY_ENTRIES,
+   * checked by shouldFallBack() to avoid repeated virtual dispatch to getDictionarySize() on every write */
+  private boolean dictionarySizeExceeded;
+
   /* current size in bytes the dictionary will take once serialized */
   protected long dictionaryByteSize;
 
@@ -115,8 +119,20 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
   @Override
   public boolean shouldFallBack() {
-    // if the dictionary reaches the max byte size or the values can not be encoded on 4 bytes anymore.
-    return dictionaryByteSize > maxDictionaryByteSize || getDictionarySize() > MAX_DICTIONARY_ENTRIES;
+    return dictionarySizeExceeded;
+  }
+
+  /**
+   * Called by subclass write methods after adding a new dictionary entry to check if the dictionary
+   * has exceeded its size limits. This avoids the per-value virtual dispatch overhead of calling
+   * getDictionarySize() on every write -- the check only runs when a new entry is actually added.
+   *
+   * @param newDictionarySize the current dictionary size after adding the new entry
+   */
+  void checkDictionarySizeLimit(int newDictionarySize) {
+    if (dictionaryByteSize > maxDictionaryByteSize || newDictionarySize > MAX_DICTIONARY_ENTRIES) {
+      dictionarySizeExceeded = true;
+    }
   }
 
   @Override
@@ -202,6 +218,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     lastUsedDictionaryByteSize = 0;
     lastUsedDictionarySize = 0;
     dictionaryTooBig = false;
+    dictionarySizeExceeded = false;
     clearDictionaryContent();
   }
 
@@ -244,6 +261,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         binaryDictionaryContent.put(v.copy(), id);
         // length as int (4 bytes) + actual bytes
         dictionaryByteSize += 4L + v.length();
+        checkDictionarySizeLimit(id + 1);
       }
       encodedValues.add(id);
     }
@@ -314,6 +332,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         id = binaryDictionaryContent.size();
         binaryDictionaryContent.put(value.copy(), id);
         dictionaryByteSize += length;
+        checkDictionarySizeLimit(id + 1);
       }
       encodedValues.add(id);
     }
@@ -358,6 +377,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         id = longDictionaryContent.size();
         longDictionaryContent.put(v, id);
         dictionaryByteSize += 8;
+        checkDictionarySizeLimit(id + 1);
       }
       encodedValues.add(id);
     }
@@ -430,6 +450,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         id = doubleDictionaryContent.size();
         doubleDictionaryContent.put(bits, id);
         dictionaryByteSize += 8;
+        checkDictionarySizeLimit(id + 1);
       }
       encodedValues.add(id);
     }
@@ -504,6 +525,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         id = intDictionaryContent.size();
         intDictionaryContent.put(v, id);
         dictionaryByteSize += 4;
+        checkDictionarySizeLimit(id + 1);
       }
       encodedValues.add(id);
     }
@@ -577,6 +599,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         id = floatDictionaryContent.size();
         floatDictionaryContent.put(bits, id);
         dictionaryByteSize += 4;
+        checkDictionarySizeLimit(id + 1);
       }
       encodedValues.add(id);
     }
