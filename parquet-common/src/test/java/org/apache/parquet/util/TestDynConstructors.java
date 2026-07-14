@@ -19,6 +19,9 @@
 
 package org.apache.parquet.util;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.util.concurrent.Callable;
 import org.apache.parquet.TestUtils;
 import org.apache.parquet.util.Concatenator.SomeCheckedException;
@@ -166,4 +169,63 @@ public class TestDynConstructors {
     Assert.assertNotNull("Should allow invokeChecked(null, ...)", ctor.invokeChecked(null));
     Assert.assertNotNull("Should allow invoke(null, ...)", ctor.invoke(null));
   }
+
+  @Test
+  public void implWithNoClassDefFoundError() throws Exception {
+    ClassLoader errorLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        if ("org.apache.parquet.MissingDependencyClass".equals(name)) {
+          throw new NoClassDefFoundError("some/TransitiveDependency");
+        }
+
+        return super.loadClass(name, resolve);
+      }
+    };
+
+    assertThatThrownBy(() -> new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .impl("org.apache.parquet.MissingDependencyClass")
+            .buildChecked())
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageStartingWith("Cannot find constructor for interface")
+        .hasMessageContaining("Missing org.apache.parquet.MissingDependencyClass");
+
+    assertThat(new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .impl("org.apache.parquet.MissingDependencyClass")
+            .impl(MyClass.class)
+            .buildChecked()
+            .newInstance())
+        .isInstanceOf(MyClass.class);
+
+    assertThat(new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .hiddenImpl("org.apache.parquet.MissingDependencyClass")
+            .impl(MyClass.class)
+            .buildChecked()
+            .newInstance())
+        .isInstanceOf(MyClass.class);
+  }
+
+  @Test
+  public void implWithExceptionInInitializerError() {
+    ClassLoader errorLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name, boolean resolve) {
+        throw new ExceptionInInitializerError("static initializer failed");
+      }
+    };
+
+    assertThatThrownBy(() -> new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .impl("org.apache.parquet.FailingInitClass")
+            .buildChecked())
+        .isInstanceOf(ExceptionInInitializerError.class)
+        .hasMessage("static initializer failed");
+  }
+
+  public interface MyInterface {}
+
+  public static class MyClass implements MyInterface {}
 }

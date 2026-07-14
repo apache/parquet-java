@@ -43,6 +43,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
@@ -168,9 +169,11 @@ public class TestAvroSchemaConverter {
         convertedAvroSchema.toString());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testTopLevelMustBeARecord() {
-    new AvroSchemaConverter().convert(Schema.create(INT));
+    assertThatThrownBy(() -> new AvroSchemaConverter().convert(Schema.create(INT)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Avro schema must be a record.");
   }
 
   @Test
@@ -292,7 +295,7 @@ public class TestAvroSchemaConverter {
     testParquetToAvroConversion(schema, ALL_PARQUET_SCHEMA);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testParquetMapWithNonStringKeyFails() throws Exception {
     MessageType parquetSchema =
         MessageTypeParser.parseMessageType("message myrecord {\n" + "  required group mymap (MAP) {\n"
@@ -302,7 +305,9 @@ public class TestAvroSchemaConverter {
             + "    }\n"
             + "  }\n"
             + "}\n");
-    new AvroSchemaConverter().convert(parquetSchema);
+    assertThatThrownBy(() -> new AvroSchemaConverter().convert(parquetSchema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Map key type must be binary (UTF8): required int32 key");
   }
 
   @Test

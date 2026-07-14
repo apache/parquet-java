@@ -112,6 +112,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void endField(String field, int index) {
     delegate.endField(field, index);
     fieldValueCount.pop();
+    previousField.pop();
     previousField.push(fields.pop());
   }
 

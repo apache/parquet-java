@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.cli;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
@@ -60,6 +63,29 @@ public class BaseCommandTest {
   public void qualifiedURIResourceURITest() throws IOException {
     URI uri = this.command.qualifiedURI("resource:/a");
     Assert.assertEquals("/a", uri.getPath());
+  }
+
+  @Test
+  public void hexToBytes() {
+    assertThat(this.command.hexToBytes("0x10")).containsExactly(0x10);
+    assertThat(this.command.hexToBytes("0x0506")).containsExactly(0x05, 0x06);
+    assertThat(this.command.hexToBytes("0506")).containsExactly(0x05, 0x06);
+    assertThat(this.command.hexToBytes("0x010203")).containsExactly(0x01, 0x02, 0x03);
+  }
+
+  @Test
+  public void hexToBytesRejectsInvalidHexString() {
+    assertThatThrownBy(() -> this.command.hexToBytes("0x011"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid hex string: 0x011");
+
+    assertThatThrownBy(() -> this.command.hexToBytes("0xABZZ"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid hex string: 0xABZZ");
+
+    assertThatThrownBy(() -> this.command.hexToBytes("0xabgg"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid hex string: 0xabgg");
   }
 
   // For Windows

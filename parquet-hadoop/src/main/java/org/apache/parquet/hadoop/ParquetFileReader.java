@@ -86,6 +86,7 @@ import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.format.BlockCipher;
@@ -112,7 +113,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -1289,6 +1289,22 @@ public class ParquetFileReader implements Closeable {
   }
 
   /**
+   * @param blockIndex the index of the requested block
+   * @param rowRanges  the row ranges to be read from the requested block
+   * @return the PageReadStore which can provide PageReaders for each column or null if there are no rows in this block
+   * @throws IOException              if an error occurs while reading
+   * @throws IllegalArgumentException if the {@code blockIndex} is invalid or the {@code rowRanges} is null
+   * @deprecated use {@link #readFilteredRowGroup(int, RowRanges)} with
+   *     {@link org.apache.parquet.filter2.columnindex.RowRanges} instead. This overload is retained
+   *     for backward compatibility and will be removed in 2.0.
+   */
+  @Deprecated
+  public ColumnChunkPageReadStore readFilteredRowGroup(
+      int blockIndex, org.apache.parquet.internal.filter2.columnindex.RowRanges rowRanges) throws IOException {
+    return readFilteredRowGroup(blockIndex, (RowRanges) rowRanges);
+  }
+
+  /**
    * Read data in all parts via either vectored IO or serial IO.
    * @param allParts all parts to be read.
    * @param builder used to build chunk list to read the pages for the different columns.
@@ -1516,9 +1532,34 @@ public class ParquetFileReader implements Closeable {
     return ciStore;
   }
 
-  private RowRanges getRowRanges(int blockIndex) {
-    assert FilterCompat.isFilteringRequired(options.getRecordFilter())
-        : "Should not be invoked if filter is null or NOOP";
+  /**
+   * Computes the {@link RowRanges} within the given row group that may pass the configured filter
+   * (set via {@link ParquetReadOptions} or {@link ParquetInputFormat#setFilterPredicate}). If no
+   * filter is configured, returns a {@link RowRanges} covering all rows in the row group. If the
+   * row group has no rows, returns {@link RowRanges#EMPTY}.
+   *
+   * <p>This computation is metadata-only: it consults each filter-referenced column's column
+   * index from the file footer; no column data is read from disk. The result can be passed to
+   * {@link #readFilteredRowGroup(int, RowRanges)} (intersected with any caller-supplied row
+   * ranges if desired) to read only the matching pages.
+   *
+   * @param blockIndex the row group (block) index
+   * @return row ranges within the block that may pass the configured filter
+   * @throws IllegalArgumentException if {@code blockIndex} is out of range
+   */
+  public RowRanges getRowRanges(int blockIndex) {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      throw new IllegalArgumentException(String.format(
+          "Invalid block index %s, the valid block index range are: [%s, %s]",
+          blockIndex, 0, blocks.size() - 1));
+    }
+    long rowCount = blocks.get(blockIndex).getRowCount();
+    if (rowCount == 0L) {
+      return RowRanges.EMPTY;
+    }
+    if (!FilterCompat.isFilteringRequired(options.getRecordFilter())) {
+      return RowRanges.createSingle(rowCount);
+    }
     RowRanges rowRanges = blockRowRanges.get(blockIndex);
     if (rowRanges == null) {
       rowRanges = ColumnIndexFilter.calculateRowRanges(

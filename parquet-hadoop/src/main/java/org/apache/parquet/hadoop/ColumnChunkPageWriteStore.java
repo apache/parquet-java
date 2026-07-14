@@ -25,8 +25,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.zip.CRC32;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
@@ -44,6 +46,7 @@ import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
@@ -53,6 +56,7 @@ import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -583,21 +587,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       int columnIndexTruncateLength,
       boolean pageWriteChecksumEnabled) {
     this.schema = schema;
-    for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(
-          path,
-          new ColumnChunkPageWriter(
-              path,
-              compressor,
-              allocator,
-              columnIndexTruncateLength,
-              pageWriteChecksumEnabled,
-              null,
-              null,
-              null,
-              -1,
-              -1));
-    }
+    initWriters(col -> compressor, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled, null, -1);
   }
 
   @Deprecated
@@ -628,13 +618,138 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
     this.schema = schema;
+    initWriters(
+        col -> compressor,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
+  }
+
+  private ColumnChunkPageWriteStore(
+      Function<ColumnDescriptor, BytesInputCompressor> compressorProvider,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      InternalFileEncryptor fileEncryptor,
+      int rowGroupOrdinal) {
+    this.schema = schema;
+    initWriters(
+        compressorProvider,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
+  }
+
+  static Function<ColumnDescriptor, BytesInputCompressor> compressorProvider(
+      CompressionCodecFactory codecFactory,
+      CompressionCodecName defaultCodec,
+      ParquetProperties parquetProperties) {
+    return column -> resolveCompressor(column, codecFactory, defaultCodec, parquetProperties);
+  }
+
+  private static BytesInputCompressor resolveCompressor(
+      ColumnDescriptor column,
+      CompressionCodecFactory codecFactory,
+      CompressionCodecName defaultCodec,
+      ParquetProperties parquetProperties) {
+    CompressionCodecName columnCodec = parquetProperties.getColumnCodec(column);
+    CompressionCodecName codec = columnCodec != null ? columnCodec : defaultCodec;
+    Integer level = parquetProperties.getColumnCompressionLevel(column);
+    if (level != null && columnCodec == null) {
+      LOG.warn(
+          "Column '{}': compression level {} set without a per-column codec; "
+              + "applying level to the default codec ({}).",
+          ColumnPath.get(column.getPath()),
+          level,
+          defaultCodec);
+    }
+    return level != null ? codecFactory.getCompressor(codec, level) : codecFactory.getCompressor(codec);
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static class Builder {
+    private Function<ColumnDescriptor, BytesInputCompressor> compressorProvider;
+    private MessageType schema;
+    private ByteBufferAllocator allocator;
+    private int columnIndexTruncateLength = ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
+    private boolean pageWriteChecksumEnabled = ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
+    private InternalFileEncryptor fileEncryptor = null;
+    private int rowGroupOrdinal = -1;
+
+    private Builder() {}
+
+    public Builder withCompressorProvider(Function<ColumnDescriptor, BytesInputCompressor> compressorProvider) {
+      this.compressorProvider = compressorProvider;
+      return this;
+    }
+
+    public Builder withSchema(MessageType schema) {
+      this.schema = schema;
+      return this;
+    }
+
+    public Builder withAllocator(ByteBufferAllocator allocator) {
+      this.allocator = allocator;
+      return this;
+    }
+
+    public Builder withColumnIndexTruncateLength(int columnIndexTruncateLength) {
+      this.columnIndexTruncateLength = columnIndexTruncateLength;
+      return this;
+    }
+
+    public Builder withPageWriteChecksumEnabled(boolean pageWriteChecksumEnabled) {
+      this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
+      return this;
+    }
+
+    public Builder withFileEncryptor(InternalFileEncryptor fileEncryptor) {
+      this.fileEncryptor = fileEncryptor;
+      return this;
+    }
+
+    public Builder withRowGroupOrdinal(int rowGroupOrdinal) {
+      this.rowGroupOrdinal = rowGroupOrdinal;
+      return this;
+    }
+
+    public ColumnChunkPageWriteStore build() {
+      Objects.requireNonNull(compressorProvider, "compressorProvider cannot be null");
+      Objects.requireNonNull(schema, "schema cannot be null");
+      Objects.requireNonNull(allocator, "allocator cannot be null");
+      return new ColumnChunkPageWriteStore(
+          compressorProvider,
+          schema,
+          allocator,
+          columnIndexTruncateLength,
+          pageWriteChecksumEnabled,
+          fileEncryptor,
+          rowGroupOrdinal);
+    }
+  }
+
+  private void initWriters(
+      Function<ColumnDescriptor, BytesInputCompressor> compressorFn,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      InternalFileEncryptor fileEncryptor,
+      int rowGroupOrdinal) {
     if (null == fileEncryptor) {
       for (ColumnDescriptor path : schema.getColumns()) {
         writers.put(
             path,
             new ColumnChunkPageWriter(
                 path,
-                compressor,
+                compressorFn.apply(path),
                 allocator,
                 columnIndexTruncateLength,
                 pageWriteChecksumEnabled,
@@ -666,7 +781,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           path,
           new ColumnChunkPageWriter(
               path,
-              compressor,
+              compressorFn.apply(path),
               allocator,
               columnIndexTruncateLength,
               pageWriteChecksumEnabled,

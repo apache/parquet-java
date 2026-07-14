@@ -19,6 +19,8 @@
 
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.beust.jcommander.JCommander;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -95,9 +97,12 @@ public class ToAvroCommandTest extends AvroFileTest {
     Assert.assertTrue(avroFile.exists());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testToAvroCommandWithInvalidCompression() throws IOException {
-    toAvro(parquetFile(), "FOO");
+    File parquetFile = parquetFile();
+    assertThatThrownBy(() -> toAvro(parquetFile, "FOO"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Codec incompatible with Avro: FOO");
   }
 
   @Test
@@ -109,10 +114,13 @@ public class ToAvroCommandTest extends AvroFileTest {
     Assert.assertTrue(0 < avroFile.length());
   }
 
-  @Test(expected = FileAlreadyExistsException.class)
+  @Test
   public void testToAvroCommandOverwriteExistentFileWithoutOverwriteOption() throws IOException {
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
     FileUtils.touch(outputFile);
-    toAvro(parquetFile(), outputFile, false);
+    File parquetFile = parquetFile();
+    assertThatThrownBy(() -> toAvro(parquetFile, outputFile, false))
+        .isInstanceOf(FileAlreadyExistsException.class)
+        .hasMessageContaining("File already exists");
   }
 }

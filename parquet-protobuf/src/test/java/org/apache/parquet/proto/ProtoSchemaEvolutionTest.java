@@ -20,8 +20,7 @@ package org.apache.parquet.proto;
 
 import static org.apache.parquet.proto.TestUtils.readMessages;
 import static org.apache.parquet.proto.TestUtils.writeMessages;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.List;
@@ -47,8 +46,8 @@ public class ProtoSchemaEvolutionTest {
         .build();
     Path file = writeMessages(dataV2);
     List<TestProto3SchemaV1.MessageSchema> messagesV1 = readMessages(file, TestProto3SchemaV1.MessageSchema.class);
-    assertEquals(messagesV1.size(), 1);
-    assertEquals(messagesV1.get(0).getOptionalLabelNumberPairValue(), 2);
+    assertThat(messagesV1).hasSize(1);
+    assertThat(messagesV1.get(0).getOptionalLabelNumberPairValue()).isEqualTo(2);
   }
 
   /**
@@ -63,10 +62,9 @@ public class ProtoSchemaEvolutionTest {
         .build();
     Path file = writeMessages(dataV1WithEnumValueFromV2);
     List<TestProto3SchemaV2.MessageSchema> messagesV2 = readMessages(file, TestProto3SchemaV2.MessageSchema.class);
-    assertEquals(messagesV2.size(), 1);
-    assertSame(
-        messagesV2.get(0).getOptionalLabelNumberPair(),
-        TestProto3SchemaV2.MessageSchema.LabelNumberPair.SECOND);
+    assertThat(messagesV2).hasSize(1);
+    assertThat(messagesV2.get(0).getOptionalLabelNumberPair())
+        .isSameAs(TestProto3SchemaV2.MessageSchema.LabelNumberPair.SECOND);
   }
 
   /**
@@ -91,9 +89,9 @@ public class ProtoSchemaEvolutionTest {
     Path file = writeMessages(dataV3);
     List<TestProto3SchemaV1.MessageSchema> messagesV1 =
         readMessages(file, TestProto3SchemaV1.MessageSchema.class, true);
-    assertEquals(messagesV1.size(), 1);
-    assertEquals(messagesV1.get(0).getOptionalLabelNumberPairValue(), 2);
-    assertEquals(messagesV1.get(0).getOptionalString(), "string value");
+    assertThat(messagesV1).hasSize(1);
+    assertThat(messagesV1.get(0).getOptionalLabelNumberPairValue()).isEqualTo(2);
+    assertThat(messagesV1.get(0).getOptionalString()).isEqualTo("string value");
   }
 
   /**
@@ -107,10 +105,9 @@ public class ProtoSchemaEvolutionTest {
         .build();
     Path file = writeMessages(dataV1WithEnumValueFromV1);
     List<TestProto3SchemaV3.MessageSchema> messagesV3 = readMessages(file, TestProto3SchemaV3.MessageSchema.class);
-    assertEquals(messagesV3.size(), 1);
-    assertSame(
-        messagesV3.get(0).getOptionalLabelNumberPair(),
-        TestProto3SchemaV3.MessageSchema.LabelNumberPair.SECOND);
+    assertThat(messagesV3).hasSize(1);
+    assertThat(messagesV3.get(0).getOptionalLabelNumberPair())
+        .isSameAs(TestProto3SchemaV3.MessageSchema.LabelNumberPair.SECOND);
   }
 
   /**
@@ -134,18 +131,19 @@ public class ProtoSchemaEvolutionTest {
     Path file = writeMessages(dataV3);
     List<TestProto3SchemaV3.MessageSchema> messagesV3 =
         readMessages(file, TestProto3SchemaV3.MessageSchema.class, false);
-    assertEquals(messagesV3.size(), 1);
-    assertEquals(messagesV3.get(0).getOptionalLabelNumberPairValue(), 2);
-    assertEquals(messagesV3.get(0).getOptionalString(), "string value");
-    assertEquals(messagesV3.get(0).getRepeatedDubMessageSchemaList().get(0).getOptionalFirstString(), "abc");
-    assertEquals(messagesV3.get(0).getRepeatedDubMessageSchemaList().get(0).getOptionalFirstInt32(0), 1);
-    assertEquals(
-        messagesV3
+    assertThat(messagesV3).hasSize(1);
+    assertThat(messagesV3.get(0).getOptionalLabelNumberPairValue()).isEqualTo(2);
+    assertThat(messagesV3.get(0).getOptionalString()).isEqualTo("string value");
+    assertThat(messagesV3.get(0).getRepeatedDubMessageSchemaList().get(0).getOptionalFirstString())
+        .isEqualTo("abc");
+    assertThat(messagesV3.get(0).getRepeatedDubMessageSchemaList().get(0).getOptionalFirstInt32(0))
+        .isEqualTo(1);
+    assertThat(messagesV3
             .get(0)
             .getRepeatedDubMessageSchemaList()
             .get(0)
             .getLevel2Schema()
-            .getOptionalValues(0),
-        "axc");
+            .getOptionalValues(0))
+        .isEqualTo("axc");
   }
 }

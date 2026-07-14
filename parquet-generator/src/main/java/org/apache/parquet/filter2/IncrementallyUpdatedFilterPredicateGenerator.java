@@ -281,51 +281,50 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   }
 
   private void addInNotInCase(TypeInfo info, boolean isEq, boolean expectMultipleResults) throws IOException {
-    add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      if (pred.getValues().contains(null)) {\n"
-        + "        valueInspector = new ValueInspector() {\n"
-        + "          @Override\n"
-        + "          public void updateNull() {\n"
-        + "            setResult("
-        + isEq + ");\n" + "          }\n"
-        + "\n"
-        + "          @Override\n"
-        + "          public void update("
-        + info.primitiveName + " value) {\n" + "            setResult("
-        + !isEq + ");\n" + "          }\n"
-        + "        };\n"
-        + "      } else {\n"
-        + "        final Set<"
+    String nullResult = isEq ? "containsNull" : "!containsNull";
+    add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      final Set<"
         + info.className + "> target = (Set<" + info.className + ">) pred.getValues();\n"
-        + "        final PrimitiveComparator<"
+        + "      final boolean containsNull = target.contains(null);\n"
+        + "      final PrimitiveComparator<"
         + info.className + "> comparator = getComparator(columnPath);\n" + "\n"
-        + "        valueInspector = new ValueInspector() {\n"
-        + "          @Override\n"
-        + "          public void updateNull() {\n"
-        + "            setResult("
-        + !isEq + ");\n" + "          }\n"
+        + "      valueInspector = new ValueInspector() {\n"
+        + "        @Override\n"
+        + "        public void updateNull() {\n");
+    if (!expectMultipleResults) {
+      add("          setResult(" + nullResult + ");\n");
+    } else {
+      add("          if (" + nullResult + ") { setResult(true); }\n");
+    }
+    add("        }\n"
         + "\n"
-        + "          @Override\n"
-        + "          public void update("
+        + "        @Override\n"
+        + "        public void update("
         + info.primitiveName + " value) {\n");
 
     if (expectMultipleResults) {
-      add("            if (isKnown()) return;\n");
+      add("          if (isKnown()) return;\n");
     }
-    add("            for (" + info.primitiveName + " i : target) {\n");
+    add("          for (" + info.className + " i : target) {\n"
+        + "            if (i == null) { continue; }\n"
+        + "            "
+        + info.primitiveName + " targetValue = i;\n");
 
-    add("              if(" + compareEquality("value", "i", isEq) + ") {\n");
+    add("            if(" + compareEquality("value", "targetValue", true) + ") {\n");
 
-    add("                 setResult(true);\n                 return;\n");
-
-    add("               }\n");
+    if (!expectMultipleResults || isEq) {
+      add("               setResult(" + isEq + ");\n");
+    }
+    add("               return;\n");
 
     add("             }\n");
-    if (!expectMultipleResults) {
-      add("             setResult(false);\n");
-    }
-    add("           }\n");
 
-    add("         };\n" + "       }\n" + "    }\n\n");
+    add("           }\n");
+    if (!expectMultipleResults || !isEq) {
+      add("           setResult(" + !isEq + ");\n");
+    }
+    add("         }\n");
+
+    add("       };\n" + "    }\n\n");
   }
 
   private void addUdpBegin() throws IOException {

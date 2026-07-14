@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
-import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -34,19 +33,15 @@ import org.slf4j.LoggerFactory;
  * ValuesWriter for FIXED_LEN_BYTE_ARRAY.
  */
 public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FixedLenByteArrayPlainValuesWriter.class);
 
   private CapacityByteArrayOutputStream arrayOut;
-  private LittleEndianDataOutputStream out;
   private int length;
-  private ByteBufferAllocator allocator;
 
   public FixedLenByteArrayPlainValuesWriter(
       int length, int initialSize, int pageSize, ByteBufferAllocator allocator) {
     this.length = length;
-    this.allocator = allocator;
-    this.arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, this.allocator);
-    this.out = new LittleEndianDataOutputStream(arrayOut);
+    this.arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
   }
 
   @Override
@@ -56,7 +51,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
           "Fixed Binary size " + v.length() + " does not match field type length " + length);
     }
     try {
-      v.writeTo(out);
+      v.writeTo(arrayOut);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write fixed bytes", e);
     }
@@ -69,11 +64,6 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
 
   @Override
   public BytesInput getBytes() {
-    try {
-      out.flush();
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page", e);
-    }
     LOG.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.from(arrayOut);
   }

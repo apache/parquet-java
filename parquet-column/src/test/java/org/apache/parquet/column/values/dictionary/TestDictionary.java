@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -286,6 +287,67 @@ public class TestDictionary {
   }
 
   @Test
+  public void testDictionaryWriterReusableAfterFallBack() throws IOException {
+    int count = 1000;
+    try (final FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainBinaryDictionaryValuesWriter(1000, 10000)) {
+
+      // --- Row group 1 ---
+      // First page is dictionary encoded and committed, which keeps the dictionary alive for
+      // the whole row group.
+      writeRepeated(count, cw, "a");
+      getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+
+      // Second page no longer fits the dictionary so it falls back to plain. The current writer
+      // becomes the fallback writer, while the dictionary writer still buffers this page's ids.
+      writeDistinct(count, cw, "b");
+      getBytesAndCheckEncoding(cw, PLAIN);
+
+      // End of row group 1: emit the dictionary page and reset the dictionary state for reuse.
+      assertThat(cw.toDictPageAndClose()).isNotNull();
+      cw.resetDictionary();
+
+      // --- Row group 2 ---
+      // The dictionary writer must be clean again
+      writeRepeated(count, cw, "c");
+      BytesInput rg2Bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+
+      // The page must decode back to exactly the values written in row group 2.
+      DictionaryValuesReader cr = initDicReader(cw, BINARY);
+      checkRepeated(count, rg2Bytes, cr, "c");
+    }
+  }
+
+  @Test
+  public void testDictionaryWriterReusableAfterFirstPageFallBack() throws IOException {
+    int count = 1000;
+    try (final FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainBinaryDictionaryValuesWriter(10000, 10000)) {
+
+      // --- Row group 1 ---
+      // The very first page falls back to plain because dictionary encoding is not efficient. Because the
+      // fallback happens on the first page, the dictionary was never committed as the page encoding, so
+      // initialUsedAndHadDictionary stays false and the current writer becomes the fallback writer. The
+      // dictionary writer, however, still holds this page's entries and byte size.
+      writeDistinct(count, cw, "a");
+      getBytesAndCheckEncoding(cw, PLAIN);
+
+      // End of row group 1: reset the dictionary state for reuse
+      cw.resetDictionary();
+
+      // --- Row group 2 ---
+      // The data is now dictionary friendly, so it must be dictionary encoded again. Without a clean initial
+      // dictionary writer, the stale entries/byte size from row group 1 would push this page back to plain.
+      writeRepeated(count, cw, "b");
+      BytesInput rg2Bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+
+      // The page must decode back to exactly the values written in row group 2.
+      DictionaryValuesReader cr = initDicReader(cw, BINARY);
+      checkRepeated(count, rg2Bytes, cr, "b");
+    }
+  }
+
+  @Test
   public void testLongDictionary() throws IOException {
     int COUNT = 1000;
     int COUNT2 = 2000;
@@ -409,6 +471,37 @@ public class TestDictionary {
       for (double i = COUNT2; i > 0; i--) {
         double back = cr.readDouble();
         assertEquals(i % 50, back, 0.0);
+      }
+    }
+  }
+
+  @Test
+  public void testDoubleDictionaryPreservesNaNBits() throws IOException {
+    double[] dictionaryValues = {
+      Double.longBitsToDouble(0xffffffffffffffffL),
+      Double.longBitsToDouble(0xfff0000000000001L),
+      -0.0d,
+      0.0d,
+      Double.longBitsToDouble(0x7ff0000000000001L),
+      Double.longBitsToDouble(0x7fffffffffffffffL)
+    };
+    try (final FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainDoubleDictionaryValuesWriter(10000, 10000)) {
+      for (int i = 0; i < 10; i++) {
+        for (double value : dictionaryValues) {
+          cw.writeDouble(value);
+        }
+      }
+
+      BytesInput bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+      assertEquals(dictionaryValues.length, cw.initialWriter.getDictionarySize());
+
+      final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
+      cr.initFromPage(dictionaryValues.length * 10, bytes.toInputStream());
+      for (int i = 0; i < 10; i++) {
+        for (double expected : dictionaryValues) {
+          assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(cr.readDouble()));
+        }
       }
     }
   }
@@ -601,6 +694,37 @@ public class TestDictionary {
     }
   }
 
+  @Test
+  public void testFloatDictionaryPreservesNaNBits() throws IOException {
+    float[] dictionaryValues = {
+      Float.intBitsToFloat(0xffffffff),
+      Float.intBitsToFloat(0xfff00001),
+      -0.0f,
+      0.0f,
+      Float.intBitsToFloat(0x7fc00001),
+      Float.intBitsToFloat(0x7fffffff)
+    };
+    try (final FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainFloatDictionaryValuesWriter(10000, 10000)) {
+      for (int i = 0; i < 10; i++) {
+        for (float value : dictionaryValues) {
+          cw.writeFloat(value);
+        }
+      }
+
+      BytesInput bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+      assertEquals(dictionaryValues.length, cw.initialWriter.getDictionarySize());
+
+      final DictionaryValuesReader cr = initDicReader(cw, FLOAT);
+      cr.initFromPage(dictionaryValues.length * 10, bytes.toInputStream());
+      for (int i = 0; i < 10; i++) {
+        for (float expected : dictionaryValues) {
+          assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(cr.readFloat()));
+        }
+      }
+    }
+  }
+
   private void roundTripFloat(
       FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> cw,
       ValuesReader reader,
@@ -765,7 +889,7 @@ public class TestDictionary {
   private void checkRepeated(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
     cr.initFromPage(COUNT, bytes.toInputStream());
     for (int i = 0; i < COUNT; i++) {
-      Assert.assertEquals(prefix + i % 10, cr.readBytes().toStringUsingUTF8());
+      assertThat(cr.readBytes().toStringUsingUTF8()).isEqualTo(prefix + i % 10);
     }
   }
 
@@ -792,7 +916,7 @@ public class TestDictionary {
 
   private BytesInput getBytesAndCheckEncoding(ValuesWriter cw, Encoding encoding) throws IOException {
     BytesInput bytes = BytesInput.copy(cw.getBytes());
-    assertEquals(encoding, cw.getEncoding());
+    assertThat(cw.getEncoding()).isEqualTo(encoding);
     cw.reset();
     return bytes;
   }

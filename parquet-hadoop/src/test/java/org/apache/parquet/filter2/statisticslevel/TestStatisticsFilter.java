@@ -23,6 +23,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
@@ -36,6 +37,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDrop;
 import static org.apache.parquet.io.api.Binary.fromString;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -44,14 +46,17 @@ import static org.junit.Assert.fail;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.DoubleStatistics;
+import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
+import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
@@ -59,6 +64,9 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.junit.Test;
@@ -383,6 +391,45 @@ public class TestStatisticsFilter {
   }
 
   @Test
+  public void testInWithNullLiteralAndUnsetNumNulls() {
+    // Reproduces the bug where StatisticsFilter drops a row group for IN (..., null) when num_nulls
+    // is unset. min/max are present but the number of nulls is unknown, so we must not fall through
+    // to the min/max-only check (which only considers the non-null literals) and drop a chunk that
+    // may contain matching null rows
+    org.apache.parquet.column.statistics.Statistics<?> statsUnsetNulls =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(
+                Types.required(PrimitiveTypeName.INT32).named("test_int32"))
+            .withMin(BytesUtils.intToBytes(10))
+            .withMax(BytesUtils.intToBytes(100))
+            .build();
+    // min/max are available but num_nulls is not
+    assertThat(statsUnsetNulls.hasNonNullValue()).isTrue();
+    assertThat(statsUnsetNulls.isNumNullsSet()).isFalse();
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(statsUnsetNulls, 177L), getDoubleColumnMeta(doubleStats, 177L));
+
+    // IN (200, null) where 200 is outside [10, 100]. The chunk might contain null rows matching the
+    // null literal, so it must NOT be dropped
+    Set<Integer> valuesNullAndOutOfRange = new HashSet<>();
+    valuesNullAndOutOfRange.add(null);
+    valuesNullAndOutOfRange.add(200);
+    assertThat(canDrop(in(intColumn, valuesNullAndOutOfRange), metas)).isFalse();
+
+    // IN (200) without a null literal can still be dropped based on min/max even if num_nulls is
+    // unknown, confirming the fix does not over-broaden pruning.
+    Set<Integer> valuesOutOfRange = new HashSet<>();
+    valuesOutOfRange.add(200);
+    assertThat(canDrop(in(intColumn, valuesOutOfRange), metas)).isTrue();
+
+    // IN (50, null) where 50 is inside [10, 100] must also not be dropped.
+    Set<Integer> valuesNullAndInRange = new HashSet<>();
+    valuesNullAndInRange.add(null);
+    valuesNullAndInRange.add(50);
+    assertThat(canDrop(in(intColumn, valuesNullAndInRange), metas)).isFalse();
+  }
+
+  @Test
   public void testContainsEqNonNull() {
     assertTrue(canDrop(contains(eq(intColumn, 9)), columnMetas));
     assertFalse(canDrop(contains(eq(intColumn, 10)), columnMetas));
@@ -588,5 +635,405 @@ public class TestStatisticsFilter {
               + " not(eq(double.column, 12.0))",
           e.getMessage());
     }
+  }
+
+  private static final FloatColumn floatCol = floatColumn("float.column");
+
+  private static ColumnChunkMetaData getFloatColumnMeta(
+      org.apache.parquet.column.statistics.Statistics<?> stats, long valueCount) {
+    return ColumnChunkMetaData.get(
+        ColumnPath.get("float", "column"),
+        PrimitiveTypeName.FLOAT,
+        CompressionCodecName.GZIP,
+        new HashSet<>(List.of(Encoding.PLAIN)),
+        stats,
+        0L,
+        0L,
+        valueCount,
+        0L,
+        0L);
+  }
+
+  private static ColumnChunkMetaData getDoubleColumnMetaWithType(
+      PrimitiveType type, org.apache.parquet.column.statistics.Statistics<?> stats, long valueCount) {
+    return ColumnChunkMetaData.get(
+        ColumnPath.get("double", "column"),
+        type,
+        CompressionCodecName.GZIP,
+        null,
+        new HashSet<>(List.of(Encoding.PLAIN)),
+        stats,
+        0L,
+        0L,
+        valueCount,
+        0L,
+        0L);
+  }
+
+  // ========================= Double NaN Tests =========================
+
+  @Test
+  public void testNaNDoubleAllNaN() {
+    // All non-null values are NaN, TYPE_DEFINED_ORDER (no min/max set)
+    DoubleStatistics allNanStats = new DoubleStatistics();
+    allNanStats.setNumNulls(0);
+    allNanStats.incrementNanCount(177);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(allNanStats, 177L));
+
+    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(in(doubleColumn, new HashSet<>(List.of(5.0))), metas));
+
+    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+  }
+
+  @Test
+  public void testNaNDoubleMixed() {
+    // Mixed: nan_count=50, null_count=0, min=10, max=100, valueCount=177
+    DoubleStatistics mixedStats = new DoubleStatistics();
+    mixedStats.setMinMax(10, 100);
+    mixedStats.setNumNulls(0);
+    mixedStats.incrementNanCount(50);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(mixedStats, 177L));
+
+    // Non-NaN literal within range: cannot drop
+    assertFalse(canDrop(eq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas));
+    assertFalse(canDrop(lt(doubleColumn, 0.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 200.0), metas));
+
+    DoubleStatistics mixedEqualStats = new DoubleStatistics();
+    mixedEqualStats.setMinMax(5.0, 5.0);
+    mixedEqualStats.setNumNulls(0);
+    mixedEqualStats.incrementNanCount(1);
+    List<ColumnChunkMetaData> mixedEqualMetas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(mixedEqualStats, 177L));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), mixedEqualMetas));
+
+    // NaN literal: NaN values are present so cannot drop
+    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+  }
+
+  @Test
+  public void testNaNDoubleMissingNaNCountIsConservative() {
+    org.apache.parquet.column.statistics.Statistics<?> statsWithUnknownNaNs =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(
+                Types.required(PrimitiveTypeName.DOUBLE).named("test_double"))
+            .withMin(BytesUtils.longToBytes(Double.doubleToLongBits(10.0)))
+            .withMax(BytesUtils.longToBytes(Double.doubleToLongBits(100.0)))
+            .withNumNulls(0)
+            .build();
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(statsWithUnknownNaNs, 177L));
+
+    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 200.0), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, 200.0), metas));
+  }
+
+  @Test
+  public void testNaNDoubleZeroNaNCount() {
+    // Explicit zero NaN count with valid min/max
+    DoubleStatistics zeroNanStats = new DoubleStatistics();
+    zeroNanStats.setMinMax(10, 100);
+    zeroNanStats.setNumNulls(0);
+    zeroNanStats.incrementNanCount(0);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(zeroNanStats, 177L));
+
+    assertFalse(canDrop(eq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas));
+
+    assertTrue(canDrop(eq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+  }
+
+  @Test
+  public void testNaNDoubleIeee754TotalOrder() {
+    // All-NaN with IEEE_754_TOTAL_ORDER, stats built via builder (no min/max)
+    PrimitiveType ieee754Type = Types.required(PrimitiveTypeName.DOUBLE)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("test_double");
+    org.apache.parquet.column.statistics.Statistics<?> allNanStats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(ieee754Type)
+            .withNumNulls(0)
+            .withNanCount(177)
+            .build();
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMetaWithType(ieee754Type, allNanStats, 177L));
+
+    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(in(doubleColumn, new HashSet<>(List.of(5.0))), metas));
+
+    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+  }
+
+  // ========================= Float NaN Tests =========================
+
+  @Test
+  public void testNaNFloatAllNaN() {
+    // All non-null values are NaN
+    FloatStatistics allNanStats = new FloatStatistics();
+    allNanStats.setNumNulls(0);
+    allNanStats.incrementNanCount(177);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(allNanStats, 177L));
+
+    assertTrue(canDrop(eq(floatCol, 5.0f), metas));
+    assertFalse(canDrop(notEq(floatCol, 5.0f), metas));
+    assertFalse(canDrop(lt(floatCol, 5.0f), metas));
+    assertFalse(canDrop(ltEq(floatCol, 5.0f), metas));
+    assertFalse(canDrop(gt(floatCol, 5.0f), metas));
+    assertFalse(canDrop(gtEq(floatCol, 5.0f), metas));
+    assertTrue(canDrop(in(floatCol, new HashSet<>(List.of(5.0f))), metas));
+
+    assertFalse(canDrop(eq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(gtEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas));
+  }
+
+  @Test
+  public void testNaNFloatMixed() {
+    // Mixed: nan_count=50, min=10, max=100
+    FloatStatistics mixedStats = new FloatStatistics();
+    mixedStats.setMinMax(10.0f, 100.0f);
+    mixedStats.setNumNulls(0);
+    mixedStats.incrementNanCount(50);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(mixedStats, 177L));
+
+    assertFalse(canDrop(eq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(notEq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(lt(floatCol, 50.0f), metas));
+    assertFalse(canDrop(ltEq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(gt(floatCol, 50.0f), metas));
+    assertFalse(canDrop(gtEq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas));
+    assertFalse(canDrop(lt(floatCol, 0.0f), metas));
+    assertFalse(canDrop(gt(floatCol, 200.0f), metas));
+
+    FloatStatistics mixedEqualStats = new FloatStatistics();
+    mixedEqualStats.setMinMax(5.0f, 5.0f);
+    mixedEqualStats.setNumNulls(0);
+    mixedEqualStats.incrementNanCount(1);
+    List<ColumnChunkMetaData> mixedEqualMetas =
+        List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(mixedEqualStats, 177L));
+    assertFalse(canDrop(notEq(floatCol, 5.0f), mixedEqualMetas));
+
+    assertFalse(canDrop(eq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(gtEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas));
+  }
+
+  @Test
+  public void testNaNFloatZeroNaNCount() {
+    // Zero NaN count with valid min/max
+    FloatStatistics zeroNanStats = new FloatStatistics();
+    zeroNanStats.setMinMax(10.0f, 100.0f);
+    zeroNanStats.setNumNulls(0);
+    zeroNanStats.incrementNanCount(0);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(zeroNanStats, 177L));
+
+    assertFalse(canDrop(eq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(notEq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(lt(floatCol, 50.0f), metas));
+    assertFalse(canDrop(ltEq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(gt(floatCol, 50.0f), metas));
+    assertFalse(canDrop(gtEq(floatCol, 50.0f), metas));
+    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas));
+
+    assertTrue(canDrop(eq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(gtEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas));
+  }
+
+  // ========================= Float16 NaN Tests =========================
+
+  private static final PrimitiveType FLOAT16_TYPE = Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+      .length(2)
+      .as(LogicalTypeAnnotation.float16Type())
+      .named("test_float16");
+
+  private static final Binary FLOAT16_NAN = Binary.fromConstantByteArray(new byte[] {0x00, 0x7e});
+  private static final Binary FLOAT16_ONE = Binary.fromConstantByteArray(new byte[] {0x00, 0x3c});
+  private static final Binary FLOAT16_TEN = Binary.fromConstantByteArray(new byte[] {0x00, 0x49});
+  private static final Binary FLOAT16_HUNDRED = Binary.fromConstantByteArray(new byte[] {0x40, 0x56});
+  private static final Binary FLOAT16_FIFTY = Binary.fromConstantByteArray(new byte[] {0x40, 0x52});
+
+  private static final Operators.BinaryColumn float16Column = binaryColumn("float16.column");
+
+  private static ColumnChunkMetaData getFloat16ColumnMeta(
+      org.apache.parquet.column.statistics.Statistics<?> stats, long valueCount) {
+    return ColumnChunkMetaData.get(
+        ColumnPath.get("float16", "column"),
+        FLOAT16_TYPE,
+        CompressionCodecName.GZIP,
+        null,
+        new HashSet<>(List.of(Encoding.PLAIN)),
+        stats,
+        0L,
+        0L,
+        valueCount,
+        0L,
+        0L);
+  }
+
+  @Test
+  public void testNaNFloat16AllNaN() {
+    // All non-null values are NaN
+    org.apache.parquet.column.statistics.Statistics<?> allNanStats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(FLOAT16_TYPE)
+            .withNumNulls(0)
+            .withNanCount(177)
+            .build();
+
+    ColumnChunkMetaData float16Meta = getFloat16ColumnMeta(allNanStats, 177L);
+    List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
+
+    assertTrue(canDrop(eq(float16Column, FLOAT16_ONE), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_ONE), metas));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_ONE), metas));
+    assertFalse(canDrop(ltEq(float16Column, FLOAT16_ONE), metas));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_ONE), metas));
+    assertFalse(canDrop(gtEq(float16Column, FLOAT16_ONE), metas));
+    assertTrue(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_ONE))), metas));
+
+    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(gtEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas));
+  }
+
+  @Test
+  public void testNaNFloat16Mixed() {
+    // Mixed: nan_count=50, min=10, max=100
+    org.apache.parquet.column.statistics.Statistics<?> mixedStats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(FLOAT16_TYPE)
+            .withMin(FLOAT16_TEN.getBytes())
+            .withMax(FLOAT16_HUNDRED.getBytes())
+            .withNumNulls(0)
+            .withNanCount(50)
+            .build();
+
+    ColumnChunkMetaData float16Meta = getFloat16ColumnMeta(mixedStats, 177L);
+    List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
+
+    assertFalse(canDrop(eq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(ltEq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(gtEq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas));
+
+    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(gtEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas));
+  }
+
+  @Test
+  public void testNaNFloat16ZeroNaNCount() {
+    // Zero NaN count with valid min/max
+    org.apache.parquet.column.statistics.Statistics<?> zeroNanStats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(FLOAT16_TYPE)
+            .withMin(FLOAT16_TEN.getBytes())
+            .withMax(FLOAT16_HUNDRED.getBytes())
+            .withNumNulls(0)
+            .withNanCount(0)
+            .build();
+
+    ColumnChunkMetaData float16Meta = getFloat16ColumnMeta(zeroNanStats, 177L);
+    List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
+
+    assertFalse(canDrop(eq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(ltEq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(gtEq(float16Column, FLOAT16_FIFTY), metas));
+    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas));
+
+    assertTrue(canDrop(eq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(gtEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas));
   }
 }

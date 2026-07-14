@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,10 +43,11 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -410,9 +412,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
   @Override
   public void close() {
-    for (ColumnChunkPageReader reader : readers.values()) {
-      reader.releaseBuffers();
-    }
-    releaser.close();
+    // Wrap each reader + the releaser as an AutoCloseable so AutoCloseables.uncheckedClose()
+    // releases every resource even if one fails, and aggregates failures via suppressed exceptions
+    List<AutoCloseable> toClose = new ArrayList<>(readers.size() + 1);
+    readers.values().forEach(reader -> toClose.add(reader::releaseBuffers));
+    toClose.add(releaser);
+    AutoCloseables.uncheckedClose(toClose);
   }
 }

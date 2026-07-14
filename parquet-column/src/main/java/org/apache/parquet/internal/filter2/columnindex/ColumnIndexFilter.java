@@ -21,6 +21,7 @@ package org.apache.parquet.internal.filter2.columnindex;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.Function;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
@@ -197,7 +198,12 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
     }
 
     PrimitiveIterator.OfInt pageIndexes = func.apply(ci);
-    return RowRanges.create(rowCount, pageIndexes, oi);
+    RowRanges.Builder rangesBuilder = RowRanges.builder();
+    while (pageIndexes.hasNext()) {
+      int pageIndex = pageIndexes.nextInt();
+      rangesBuilder.addSelectedRange(oi.getFirstRowIndex(pageIndex), oi.getLastRowIndex(pageIndex, rowCount));
+    }
+    return rangesBuilder.build();
   }
 
   @Override
