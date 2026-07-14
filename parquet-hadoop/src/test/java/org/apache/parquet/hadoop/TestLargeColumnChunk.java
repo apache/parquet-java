@@ -27,8 +27,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.buildMessage;
 import static org.apache.parquet.schema.Types.required;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.Random;
@@ -119,10 +118,10 @@ public class TestLargeColumnChunk {
         ParquetReader.builder(new GroupReadSupport(), file).build()) {
       for (long id = 0; id < ROW_COUNT; ++id) {
         Group group = reader.read();
-        assertEquals(id, group.getLong(ID_INDEX, 0));
-        assertEquals(nextBinary(random), group.getBinary(DATA_INDEX, 0));
+        assertThat(group.getLong(ID_INDEX, 0)).isEqualTo(id);
+        assertThat(group.getBinary(DATA_INDEX, 0)).isEqualTo(nextBinary(random));
       }
-      assertNull("No more record should be read", reader.read());
+      assertThat(reader.read()).as("No more record should be read").isNull();
     }
   }
 
@@ -132,14 +131,14 @@ public class TestLargeColumnChunk {
         .withFilter(FilterCompat.get(eq(binaryColumn("data"), VALUE_IN_DATA)))
         .build()) {
       Group group = reader.read();
-      assertEquals(ID_OF_FILTERED_DATA, group.getLong(ID_INDEX, 0));
-      assertEquals(VALUE_IN_DATA, group.getBinary(DATA_INDEX, 0));
-      assertNull("No more record should be read", reader.read());
+      assertThat(group.getLong(ID_INDEX, 0)).isEqualTo(ID_OF_FILTERED_DATA);
+      assertThat(group.getBinary(DATA_INDEX, 0)).isEqualTo(VALUE_IN_DATA);
+      assertThat(reader.read()).as("No more record should be read").isNull();
     }
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
         .withFilter(FilterCompat.get(eq(binaryColumn("data"), VALUE_NOT_IN_DATA)))
         .build()) {
-      assertNull("No record should be read", reader.read());
+      assertThat(reader.read()).as("No record should be read").isNull();
     }
   }
 }

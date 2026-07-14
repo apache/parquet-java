@@ -38,7 +38,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -346,7 +346,7 @@ public class TestColumnIndexes {
 
       List<ContractViolation> violations =
           ColumnIndexValidator.checkContractViolations(HadoopInputFile.fromPath(file, new Configuration()));
-      assertTrue(violations.toString(), violations.isEmpty());
+      assertThat(violations).as(violations.toString()).isEmpty();
     } finally {
       if (file != null) {
         file.getFileSystem(new Configuration()).delete(file, false);

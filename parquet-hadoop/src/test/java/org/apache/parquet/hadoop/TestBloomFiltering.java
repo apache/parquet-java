@@ -28,9 +28,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -256,7 +254,9 @@ public class TestBloomFiltering {
         exp = expIt.next();
       }
     }
-    assertFalse("Not all expected elements are in the actual list. E.g.: " + exp, expIt.hasNext());
+    assertThat(expIt)
+        .as("Not all expected elements are in the actual list. E.g.: " + exp)
+        .isExhausted();
   }
 
   private void assertCorrectFiltering(Predicate<PhoneBookWriter.User> expectedFilter, FilterPredicate actualFilter)
@@ -264,7 +264,7 @@ public class TestBloomFiltering {
     // Check with only bloom filter based filtering
     List<PhoneBookWriter.User> result = readUsers(actualFilter, false, true);
 
-    assertTrue("Bloom filtering should drop some row groups", result.size() < DATA.size());
+    assertThat(result).as("Bloom filtering should drop some row groups").hasSizeLessThan(DATA.size());
     LOGGER.info(
         "{}/{} records read; filtering ratio: {}%",
         result.size(), DATA.size(), 100 * result.size() / DATA.size());
@@ -275,7 +275,7 @@ public class TestBloomFiltering {
 
     // Check with all the filtering filtering to ensure the result contains exactly the required values
     result = readUsers(actualFilter, true, false);
-    assertEquals(DATA.stream().filter(expectedFilter).collect(Collectors.toList()), result);
+    assertThat(result).isEqualTo(DATA.stream().filter(expectedFilter).collect(Collectors.toList()));
   }
 
   protected static FileEncryptionProperties getFileEncryptionProperties() {
@@ -456,7 +456,7 @@ public class TestBloomFiltering {
               int bitsetSize =
                   bloomFilterReader.readBloomFilter(column).getBitsetSize();
               // when setting nvd to a fixed value 10000L, bitsetSize will always be 16384
-              assertEquals(16384, bitsetSize);
+              assertThat(bitsetSize).isEqualTo(16384);
             });
       });
     }

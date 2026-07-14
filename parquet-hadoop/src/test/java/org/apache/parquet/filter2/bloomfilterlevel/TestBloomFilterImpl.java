@@ -23,8 +23,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashSet;
 import java.util.List;
@@ -59,12 +58,15 @@ public class TestBloomFilterImpl {
     ColumnChunkMetaData meta = columnMeta("double_column", PrimitiveTypeName.DOUBLE);
     BloomFilterReader reader = bloomFilterReader(meta, new BlockSplitBloomFilter(0));
 
-    assertTrue(BloomFilterImpl.canDrop(eq(column, 1.0D), List.of(meta), reader));
-    assertFalse(BloomFilterImpl.canDrop(eq(column, DOUBLE_NAN), List.of(meta), reader));
+    assertThat(BloomFilterImpl.canDrop(eq(column, 1.0D), List.of(meta), reader))
+        .isTrue();
+    assertThat(BloomFilterImpl.canDrop(eq(column, DOUBLE_NAN), List.of(meta), reader))
+        .isFalse();
 
     Set<Double> values = new HashSet<>();
     values.add(DOUBLE_NAN);
-    assertFalse(BloomFilterImpl.canDrop(in(column, values), List.of(meta), reader));
+    assertThat(BloomFilterImpl.canDrop(in(column, values), List.of(meta), reader))
+        .isFalse();
   }
 
   @Test
@@ -73,12 +75,15 @@ public class TestBloomFilterImpl {
     ColumnChunkMetaData meta = columnMeta("float_column", PrimitiveTypeName.FLOAT);
     BloomFilterReader reader = bloomFilterReader(meta, new BlockSplitBloomFilter(0));
 
-    assertTrue(BloomFilterImpl.canDrop(eq(column, 1.0F), List.of(meta), reader));
-    assertFalse(BloomFilterImpl.canDrop(eq(column, FLOAT_NAN), List.of(meta), reader));
+    assertThat(BloomFilterImpl.canDrop(eq(column, 1.0F), List.of(meta), reader))
+        .isTrue();
+    assertThat(BloomFilterImpl.canDrop(eq(column, FLOAT_NAN), List.of(meta), reader))
+        .isFalse();
 
     Set<Float> values = new HashSet<>();
     values.add(FLOAT_NAN);
-    assertFalse(BloomFilterImpl.canDrop(in(column, values), List.of(meta), reader));
+    assertThat(BloomFilterImpl.canDrop(in(column, values), List.of(meta), reader))
+        .isFalse();
   }
 
   @Test
@@ -91,11 +96,13 @@ public class TestBloomFilterImpl {
     ColumnChunkMetaData meta = columnMeta("float16_column", type);
     BloomFilterReader reader = bloomFilterReader(meta, new BlockSplitBloomFilter(0));
 
-    assertFalse(BloomFilterImpl.canDrop(eq(column, FLOAT16_NAN), List.of(meta), reader));
+    assertThat(BloomFilterImpl.canDrop(eq(column, FLOAT16_NAN), List.of(meta), reader))
+        .isFalse();
 
     Set<Binary> values = new HashSet<>();
     values.add(FLOAT16_NAN);
-    assertFalse(BloomFilterImpl.canDrop(in(column, values), List.of(meta), reader));
+    assertThat(BloomFilterImpl.canDrop(in(column, values), List.of(meta), reader))
+        .isFalse();
   }
 
   private static ColumnChunkMetaData columnMeta(String name, PrimitiveTypeName type) {

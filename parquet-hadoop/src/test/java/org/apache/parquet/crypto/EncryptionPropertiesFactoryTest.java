@@ -19,8 +19,7 @@
 
 package org.apache.parquet.crypto;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -40,13 +39,11 @@ public class EncryptionPropertiesFactoryTest {
     FileEncryptionProperties encryptionProperties =
         encryptionPropertiesFactory.getFileEncryptionProperties(conf, null, null);
 
-    assertArrayEquals(encryptionProperties.getFooterKey(), SampleEncryptionPropertiesFactory.FOOTER_KEY);
-    assertEquals(
-        encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1),
-        SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
-    assertEquals(
-        encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2),
-        SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
+    assertThat(encryptionProperties.getFooterKey()).isEqualTo(SampleEncryptionPropertiesFactory.FOOTER_KEY);
+    assertThat(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1))
+        .isEqualTo(SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
+    assertThat(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2))
+        .isEqualTo(SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
   }
 
   @Test
@@ -60,12 +57,10 @@ public class EncryptionPropertiesFactoryTest {
     FileEncryptionProperties encryptionProperties = encryptionPropertiesFactory.getFileEncryptionProperties(
         ConfigurationUtil.createHadoopConfiguration(conf), null, null);
 
-    assertArrayEquals(encryptionProperties.getFooterKey(), SampleEncryptionPropertiesFactory.FOOTER_KEY);
-    assertEquals(
-        encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1),
-        SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
-    assertEquals(
-        encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2),
-        SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
+    assertThat(encryptionProperties.getFooterKey()).isEqualTo(SampleEncryptionPropertiesFactory.FOOTER_KEY);
+    assertThat(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1))
+        .isEqualTo(SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
+    assertThat(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2))
+        .isEqualTo(SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
   }
 }

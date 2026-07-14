@@ -19,9 +19,7 @@
 
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
@@ -61,25 +59,24 @@ public class TestInterOpReadFloat16 {
       ColumnChunkMetaData column =
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
 
-      assertArrayEquals(
-          new byte[] {0x00, (byte) 0xc0}, column.getStatistics().getMinBytes());
+      assertThat(column.getStatistics().getMinBytes()).isEqualTo(new byte[] {0x00, (byte) 0xc0});
       // 0x40 equals @ in ASCII
-      assertArrayEquals(new byte[] {0x00, 0x40}, column.getStatistics().getMaxBytes());
+      assertThat(column.getStatistics().getMaxBytes()).isEqualTo(new byte[] {0x00, (byte) 0x40});
     }
 
     try (ParquetReader<Group> reader =
         ParquetReader.builder(new GroupReadSupport(), filePath).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
-        if (group == null) {
-          fail("Should not reach end of file before " + expectRows + " rows");
-        }
+        assertThat(group)
+            .as("Should not reach end of file before " + expectRows + " rows")
+            .isNotNull();
         if (group.getFieldRepetitionCount(0) != 0) {
           // Check if the field is not null
-          assertEquals(c0ExpectValues[i], group.getBinary(0, 0));
+          assertThat(group.getBinary(0, 0)).isEqualTo(c0ExpectValues[i]);
         } else {
           // Check if the field is null
-          assertEquals(0, i);
+          assertThat(i).isEqualTo(0);
         }
       }
     }
@@ -101,24 +98,23 @@ public class TestInterOpReadFloat16 {
       ColumnChunkMetaData column =
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
 
-      assertArrayEquals(
-          new byte[] {0x00, (byte) 0x80}, column.getStatistics().getMinBytes());
-      assertArrayEquals(new byte[] {0x00, 0x00}, column.getStatistics().getMaxBytes());
+      assertThat(column.getStatistics().getMinBytes()).isEqualTo(new byte[] {0x00, (byte) 0x80});
+      assertThat(column.getStatistics().getMaxBytes()).isEqualTo(new byte[] {0x00, 0x00});
     }
 
     try (ParquetReader<Group> reader =
         ParquetReader.builder(new GroupReadSupport(), filePath).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
-        if (group == null) {
-          fail("Should not reach end of file before " + expectRows + " rows");
-        }
+        assertThat(group)
+            .as("Should not reach end of file before " + expectRows + " rows")
+            .isNotNull();
         if (group.getFieldRepetitionCount(0) != 0) {
           // Check if the field is not null
-          assertEquals(c0ExpectValues[i], group.getBinary(0, 0));
+          assertThat(group.getBinary(0, 0)).isEqualTo(c0ExpectValues[i]);
         } else {
           // Check if the field is null
-          assertEquals(0, i);
+          assertThat(i).isEqualTo(0);
         }
       }
     }

@@ -21,8 +21,8 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -33,7 +33,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
@@ -184,22 +183,22 @@ public class TestParquetReader {
   public void testCurrentRowIndex() throws Exception {
     ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator);
     // Fetch row index without processing any row.
-    assertEquals(reader.getCurrentRowIndex(), -1);
+    assertThat(reader.getCurrentRowIndex()).isEqualTo(-1);
     reader.read();
-    assertEquals(reader.getCurrentRowIndex(), 0);
+    assertThat(reader.getCurrentRowIndex()).isEqualTo(0);
     // calling the same API again and again should return same result.
-    assertEquals(reader.getCurrentRowIndex(), 0);
+    assertThat(reader.getCurrentRowIndex()).isEqualTo(0);
 
     reader.read();
-    assertEquals(reader.getCurrentRowIndex(), 1);
-    assertEquals(reader.getCurrentRowIndex(), 1);
+    assertThat(reader.getCurrentRowIndex()).isEqualTo(1);
+    assertThat(reader.getCurrentRowIndex()).isEqualTo(1);
     long expectedCurrentRowIndex = 2L;
     while (reader.read() != null) {
-      assertEquals(reader.getCurrentRowIndex(), expectedCurrentRowIndex);
+      assertThat(reader.getCurrentRowIndex()).isEqualTo(expectedCurrentRowIndex);
       expectedCurrentRowIndex++;
     }
     // reader.read() returned null and so reader doesn't have any more rows.
-    assertEquals(reader.getCurrentRowIndex(), -1);
+    assertThat(reader.getCurrentRowIndex()).isEqualTo(-1);
   }
 
   @Test
@@ -209,28 +208,30 @@ public class TestParquetReader {
         ParquetFileReader.open(HadoopInputFile.fromPath(file, new Configuration()))) {
       expectedRowGroups = fileReader.getRowGroups().size();
     }
-    assertTrue("expected multiple row groups for this test", expectedRowGroups > 1);
+    assertThat(expectedRowGroups)
+        .as("expected multiple row groups for this test")
+        .isGreaterThan(1);
 
     try (ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator)) {
       // before reading anything, returns -1
-      assertEquals(-1, reader.getCurrentRowGroupIndex());
+      assertThat(reader.getCurrentRowGroupIndex()).isEqualTo(-1);
 
       reader.read();
-      assertEquals(0, reader.getCurrentRowGroupIndex());
+      assertThat(reader.getCurrentRowGroupIndex()).isEqualTo(0);
       // idempotent
-      assertEquals(0, reader.getCurrentRowGroupIndex());
+      assertThat(reader.getCurrentRowGroupIndex()).isEqualTo(0);
 
       int prevIdx = 0;
       while (reader.read() != null) {
         int idx = reader.getCurrentRowGroupIndex();
-        assertTrue(idx >= prevIdx);
-        assertTrue(idx <= prevIdx + 1);
+        assertThat(idx).isGreaterThanOrEqualTo(prevIdx);
+        assertThat(idx).isLessThanOrEqualTo(prevIdx + 1);
         prevIdx = idx;
       }
       // last row group seen should be the final one
-      assertEquals(expectedRowGroups - 1, prevIdx);
+      assertThat(prevIdx).isEqualTo(expectedRowGroups - 1);
       // after exhaustion, returns -1
-      assertEquals(-1, reader.getCurrentRowGroupIndex());
+      assertThat(reader.getCurrentRowGroupIndex()).isEqualTo(-1);
     }
   }
 
@@ -251,21 +252,21 @@ public class TestParquetReader {
     // The readUsers also validates the rowIndex for each returned row.
     List<PhoneBookWriter.User> filteredUsers1 =
         readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, true);
-    assertEquals(filteredUsers1.size(), 2L);
+    assertThat(filteredUsers1).hasSize(2);
     List<PhoneBookWriter.User> filteredUsers2 =
         readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, false);
-    assertEquals(filteredUsers2.size(), 2L);
+    assertThat(filteredUsers2).hasSize(2);
     List<PhoneBookWriter.User> filteredUsers3 =
         readUsers(FilterCompat.get(in(longColumn("id"), idSet)), false, false);
-    assertEquals(filteredUsers3.size(), 1000L);
+    assertThat(filteredUsers3).hasSize(1000);
   }
 
   @Test
   public void testNoFiltering() throws Exception {
-    assertEquals(DATA, readUsers(FilterCompat.NOOP, false, false));
-    assertEquals(DATA, readUsers(FilterCompat.NOOP, true, false));
-    assertEquals(DATA, readUsers(FilterCompat.NOOP, false, true));
-    assertEquals(DATA, readUsers(FilterCompat.NOOP, true, true));
+    assertThat(readUsers(FilterCompat.NOOP, false, false)).isEqualTo(DATA);
+    assertThat(readUsers(FilterCompat.NOOP, true, false)).isEqualTo(DATA);
+    assertThat(readUsers(FilterCompat.NOOP, false, true)).isEqualTo(DATA);
+    assertThat(readUsers(FilterCompat.NOOP, true, true)).isEqualTo(DATA);
   }
 
   private static class TestParquetReaderBuilder extends ParquetReader.Builder<Group> {
@@ -280,29 +281,30 @@ public class TestParquetReader {
   public void testParquetReaderBuilderWithInputFile() throws Exception {
     InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
     Builder<Group> builder = new TestParquetReaderBuilder().withFile(inputFile);
-    assertEquals(DATA, PhoneBookWriter.readUsers(builder, false));
+    assertThat(PhoneBookWriter.readUsers(builder, false)).isEqualTo(DATA);
   }
 
   @Test
   public void testParquetReaderBuilderValidatesThatInputFileCanNotBeNull() throws Exception {
-    TestUtils.assertThrows("file cannot be null", NullPointerException.class, (Callable<ParquetReader<Group>>)
-        () -> new TestParquetReaderBuilder().withFile(null).build());
+    assertThatThrownBy(() -> new TestParquetReaderBuilder().withFile(null).build())
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("file cannot be null");
   }
 
   @Test
   public void testParquetReaderBuilderValidatesThatInputFileIsSet() throws Exception {
-    TestUtils.assertThrows("File or Path must be set", IllegalStateException.class, (Callable<ParquetReader<Group>>)
-        () -> new TestParquetReaderBuilder().build());
+    assertThatThrownBy(() -> new TestParquetReaderBuilder().build())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("File or Path must be set");
   }
 
   @Test
   public void testParquetReaderBuilderCanNotConfigurePathAndFile() throws Exception {
-    TestUtils.assertThrows(
-        "Path is already set", IllegalStateException.class, (Callable<ParquetReader<Group>>) () -> {
-          InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
-          return ParquetReader.<Group>builder(new GroupReadSupport(), file)
-              .withFile(inputFile)
-              .build();
-        });
+    InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
+    assertThatThrownBy(() -> ParquetReader.<Group>builder(new GroupReadSupport(), file)
+            .withFile(inputFile)
+            .build())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Path is already set");
   }
 }

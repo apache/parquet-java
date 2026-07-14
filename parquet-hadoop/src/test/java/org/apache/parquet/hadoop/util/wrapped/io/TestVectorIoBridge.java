@@ -18,11 +18,9 @@
 
 package org.apache.parquet.hadoop.util.wrapped.io;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -105,7 +103,9 @@ public class TestVectorIoBridge {
   @Before
   public void setUp() throws IOException {
     // skip the tests if the VectorIoBridge is unavailable
-    assumeTrue("Bridge not available", VectorIoBridge.instance().available());
+    assumeThat(VectorIoBridge.instance().available())
+        .as("Bridge not available")
+        .isTrue();
 
     fileSystem = FileSystem.getLocal(new Configuration());
     testFilePath = fileSystem.makeQualified(vectoredPath);
@@ -132,7 +132,9 @@ public class TestVectorIoBridge {
    */
   @Test
   public void testVectorIOBridgeAvailable() throws Throwable {
-    assertTrue("VectorIoBridge not available", VectorIoBridge.bridgeAvailable());
+    assertThat(VectorIoBridge.bridgeAvailable())
+        .as("VectorIoBridge not available")
+        .isTrue();
   }
 
   /**
@@ -249,9 +251,9 @@ public class TestVectorIoBridge {
     try (FSDataInputStream in = openTestFile()) {
       final boolean streamDoesNativeVectorIo =
           VectorIoBridge.instance().hasCapability(in, VectorIoBridge.VECTOREDIO_CAPABILITY);
-      assertTrue(
-          "capability " + VectorIoBridge.VECTOREDIO_CAPABILITY + " not supported by " + in,
-          streamDoesNativeVectorIo);
+      assertThat(streamDoesNativeVectorIo)
+          .as("capability " + VectorIoBridge.VECTOREDIO_CAPABILITY + " not supported by " + in)
+          .isTrue();
     }
   }
 
@@ -289,20 +291,21 @@ public class TestVectorIoBridge {
    */
   @Test
   public void testOverlappingRanges() throws Exception {
-    verifyExceptionalVectoredRead(getSampleOverlappingRanges(), IllegalArgumentException.class);
+    verifyExceptionalVectoredRead(
+        getSampleOverlappingRanges(), IllegalArgumentException.class, "Overlapping ranges");
   }
 
   @Test
   public void testSameRanges() throws Exception {
     // Same ranges are special case of overlapping only.
-    verifyExceptionalVectoredRead(getSampleSameRanges(), IllegalArgumentException.class);
+    verifyExceptionalVectoredRead(getSampleSameRanges(), IllegalArgumentException.class, "Overlapping ranges");
   }
   /**
    * A null range is not permitted.
    */
   @Test
   public void testNullRangeList() throws Exception {
-    verifyExceptionalVectoredRead(null, NullPointerException.class);
+    verifyExceptionalVectoredRead(null, NullPointerException.class, "Null input list");
   }
 
   /**
@@ -340,7 +343,7 @@ public class TestVectorIoBridge {
 
   @Test
   public void testNegativeLengthRange() throws Exception {
-    verifyExceptionalVectoredRead(ranges(1, -50), IllegalArgumentException.class);
+    verifyExceptionalVectoredRead(ranges(1, -50), IllegalArgumentException.class, "length is negative");
   }
 
   /**
@@ -349,7 +352,7 @@ public class TestVectorIoBridge {
    */
   @Test
   public void testNegativeOffsetRange() throws Exception {
-    verifyExceptionalVectoredRead(ranges(-1, 50), IllegalArgumentException.class);
+    verifyExceptionalVectoredRead(ranges(-1, 50), IllegalArgumentException.class, "offset is negative");
   }
 
   /**
@@ -366,7 +369,9 @@ public class TestVectorIoBridge {
       in.read(res, 0, 200);
       ByteBuffer buffer = ByteBuffer.wrap(res);
       assertDatasetEquals(0, "normal_read", buffer, 200, DATASET);
-      assertEquals("Vectored read shouldn't change file pointer.", 200, in.getPos());
+      assertThat(in.getPos())
+          .as("Vectored read shouldn't change file pointer.")
+          .isEqualTo(200);
       validateVectoredReadResult(fileRanges, DATASET);
     }
   }
@@ -383,7 +388,9 @@ public class TestVectorIoBridge {
       in.read(res, 0, 200);
       ByteBuffer buffer = ByteBuffer.wrap(res);
       assertDatasetEquals(0, "normal_read", buffer, 200, DATASET);
-      assertEquals("Vectored read shouldn't change file pointer.", 200, in.getPos());
+      assertThat(in.getPos())
+          .as("Vectored read shouldn't change file pointer.")
+          .isEqualTo(200);
       readVectored(in, fileRanges);
 
       validateVectoredReadResult(fileRanges, DATASET);
@@ -413,7 +420,8 @@ public class TestVectorIoBridge {
     verifyExceptionalVectoredRead(
         getSampleNonOverlappingRanges(),
         DirectByteBufferAllocator.getInstance(),
-        UnsupportedOperationException.class);
+        UnsupportedOperationException.class,
+        "Vectored IO not available");
   }
 
   /**
@@ -422,9 +430,9 @@ public class TestVectorIoBridge {
   @Test
   public void testDirectBufferReadReportedAsUnavailable() throws Exception {
     try (FSDataInputStream in = openTestFile()) {
-      assertFalse(
-          "Direct buffer read should not be available",
-          VectorIoBridge.instance().readVectoredAvailable(in, DirectByteBufferAllocator.getInstance()));
+      assertThat(VectorIoBridge.instance().readVectoredAvailable(in, DirectByteBufferAllocator.getInstance()))
+          .as("Direct buffer read should not be available")
+          .isFalse();
     }
   }
 
@@ -456,7 +464,9 @@ public class TestVectorIoBridge {
    */
   private List<ParquetFileRange> ranges(int... args) {
     final int len = args.length;
-    assertEquals("range argument length of " + len + " is not even", 0, (len & 1));
+    assertThat((len & 1))
+        .as("range argument length of " + len + " is not even")
+        .isEqualTo(0);
     List<ParquetFileRange> fileRanges = new ArrayList<>();
     for (int i = 0; i < len; i += 2) {
       fileRanges.add(range(args[i], args[i + 1]));
@@ -502,10 +512,9 @@ public class TestVectorIoBridge {
       final int readOffset, final String operation, final ByteBuffer data, int length, byte[] originalData) {
     for (int i = 0; i < length; i++) {
       int o = readOffset + i;
-      assertEquals(
-          operation + " with read offset " + readOffset + ": data[" + i + "] != DATASET[" + o + "]",
-          originalData[o],
-          data.get());
+      assertThat(data.get())
+          .as(operation + " with read offset " + readOffset + ": data[" + i + "] != DATASET[" + o + "]")
+          .isEqualTo(originalData[o]);
     }
   }
 
@@ -542,18 +551,19 @@ public class TestVectorIoBridge {
   }
 
   /**
-   * Validate that a specific exception is be thrown during a vectored
+   * Validate that a specific exception is thrown during a vectored
    * read operation with specific input ranges.
    *
    * @param fileRanges input file ranges.
    * @param clazz type of exception expected.
+   * @param messageSubstring expected substring of the exception message
    *
    * @throws IOException any IOE raised during the read.
    */
-  protected <T extends Throwable> T verifyExceptionalVectoredRead(List<ParquetFileRange> fileRanges, Class<T> clazz)
+  protected void verifyExceptionalVectoredRead(
+      List<ParquetFileRange> fileRanges, Class<? extends Throwable> clazz, String messageSubstring)
       throws IOException {
-
-    return verifyExceptionalVectoredRead(fileRanges, allocate, clazz);
+    verifyExceptionalVectoredRead(fileRanges, allocate, clazz, messageSubstring);
   }
 
   /**
@@ -564,23 +574,20 @@ public class TestVectorIoBridge {
    * @param fileRanges input file ranges.
    * @param allocator  allocator to use.
    * @param clazz type of exception expected.
+   * @param messageSubstring expected substring of the exception message
    *
    * @throws IOException any IOE raised during the read.
    */
-  private <T extends Throwable> T verifyExceptionalVectoredRead(
-      List<ParquetFileRange> fileRanges, ByteBufferAllocator allocator, Class<T> clazz) throws IOException {
+  protected void verifyExceptionalVectoredRead(
+      List<ParquetFileRange> fileRanges,
+      ByteBufferAllocator allocator,
+      Class<? extends Throwable> clazz,
+      String messageSubstring)
+      throws IOException {
     try (FSDataInputStream in = openTestFile()) {
-      VectorIoBridge.instance().readVectoredRanges(in, fileRanges, allocator);
-      fail("expected error reading " + in);
-      // for the compiler
-      return null;
-    } catch (AssertionError e) {
-      throw e;
-    } catch (Exception e) {
-      if (!clazz.isAssignableFrom(e.getClass())) {
-        throw e;
-      }
-      return (T) e;
+      assertThatThrownBy(() -> VectorIoBridge.instance().readVectoredRanges(in, fileRanges, allocator))
+          .isInstanceOf(clazz)
+          .hasMessageContaining(messageSubstring);
     }
   }
 }

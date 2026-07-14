@@ -21,15 +21,15 @@ package org.apache.parquet.hadoop.util;
 
 import static org.apache.parquet.hadoop.util.HadoopStreams.wrap;
 import static org.apache.parquet.hadoop.util.MockHadoopInputStream.TEST_ARRAY;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.hadoop.TestUtils;
 import org.apache.parquet.io.SeekableInputStream;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestHadoop2ByteBufferReads {
@@ -65,15 +65,15 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(8, readBuffer.position());
-    Assert.assertEquals(8, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(8);
+    assertThat(readBuffer.limit()).isEqualTo(8);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(8, readBuffer.position());
-    Assert.assertEquals(8, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(8);
+    assertThat(readBuffer.limit()).isEqualTo(8);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 8));
   }
 
   @Test
@@ -83,10 +83,8 @@ public class TestHadoop2ByteBufferReads {
     FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
-    TestUtils.assertThrows("Should throw EOFException", EOFException.class, () -> {
-      H2SeekableInputStream.readFully(reader, readBuffer);
-      return null;
-    });
+    assertThatThrownBy(() -> H2SeekableInputStream.readFully(reader, readBuffer))
+        .isInstanceOf(EOFException.class);
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
     // several read operations that will read up to the end of the input. This
@@ -94,8 +92,8 @@ public class TestHadoop2ByteBufferReads {
     // behavior can't be implemented for the heap buffer without using the read
     // method instead of the readFully method on the underlying
     // FSDataInputStream.
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(20, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(20);
   }
 
   @Test
@@ -107,16 +105,16 @@ public class TestHadoop2ByteBufferReads {
 
     // reads all of the bytes available without EOFException
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     // trying to read 0 more bytes doesn't result in EOFException
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
   }
 
   @Test
@@ -127,15 +125,15 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
   }
 
   @Test
@@ -148,15 +146,15 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
   }
 
   @Test
@@ -168,24 +166,24 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
 
     readBuffer.position(7);
     readBuffer.limit(10);
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
   }
 
   @Test
@@ -199,24 +197,24 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 4));
 
     readBuffer.position(7);
     readBuffer.limit(10);
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
   }
 
   @Test
@@ -227,15 +225,15 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(8, readBuffer.position());
-    Assert.assertEquals(8, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(8);
+    assertThat(readBuffer.limit()).isEqualTo(8);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(8, readBuffer.position());
-    Assert.assertEquals(8, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(8);
+    assertThat(readBuffer.limit()).isEqualTo(8);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 8));
   }
 
   @Test
@@ -245,10 +243,8 @@ public class TestHadoop2ByteBufferReads {
     FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
-    TestUtils.assertThrows("Should throw EOFException", EOFException.class, () -> {
-      H2SeekableInputStream.readFully(reader, readBuffer);
-      return null;
-    });
+    assertThatThrownBy(() -> H2SeekableInputStream.readFully(reader, readBuffer))
+        .isInstanceOf(EOFException.class);
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
     // several read operations that will read up to the end of the input. This
@@ -256,8 +252,8 @@ public class TestHadoop2ByteBufferReads {
     // behavior can't be implemented for the heap buffer without using the read
     // method instead of the readFully method on the underlying
     // FSDataInputStream.
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(20, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(20);
   }
 
   @Test
@@ -269,16 +265,16 @@ public class TestHadoop2ByteBufferReads {
 
     // reads all of the bytes available without EOFException
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     // trying to read 0 more bytes doesn't result in EOFException
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
   }
 
   @Test
@@ -289,15 +285,15 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
   }
 
   @Test
@@ -310,15 +306,15 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
   }
 
   @Test
@@ -330,24 +326,24 @@ public class TestHadoop2ByteBufferReads {
     H2SeekableInputStream.Reader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
 
     readBuffer.position(7);
     readBuffer.limit(10);
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
   }
 
   @Test
@@ -361,49 +357,49 @@ public class TestHadoop2ByteBufferReads {
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(7, readBuffer.position());
-    Assert.assertEquals(7, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(7);
+    assertThat(readBuffer.limit()).isEqualTo(7);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 4));
 
     readBuffer.position(7);
     readBuffer.limit(10);
     H2SeekableInputStream.readFully(reader, readBuffer);
-    Assert.assertEquals(10, readBuffer.position());
-    Assert.assertEquals(10, readBuffer.limit());
+    assertThat(readBuffer.position()).isEqualTo(10);
+    assertThat(readBuffer.limit()).isEqualTo(10);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
   }
 
   @Test
   public void testCreateStreamNoByteBufferReadable() {
     final SeekableInputStream s = wrap(new FSDataInputStream(new MockHadoopInputStream()));
-    Assert.assertTrue("Wrong wrapper: " + s, s instanceof H1SeekableInputStream);
+    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H1SeekableInputStream.class);
   }
 
   @Test
   public void testDoubleWrapNoByteBufferReadable() {
     final SeekableInputStream s = wrap(new FSDataInputStream(new FSDataInputStream(new MockHadoopInputStream())));
-    Assert.assertTrue("Wrong wrapper: " + s, s instanceof H1SeekableInputStream);
+    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H1SeekableInputStream.class);
   }
 
   @Test
   public void testCreateStreamWithByteBufferReadable() {
     final SeekableInputStream s = wrap(new FSDataInputStream(new MockByteBufferInputStream()));
-    Assert.assertTrue("Wrong wrapper: " + s, s instanceof H2SeekableInputStream);
+    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H2SeekableInputStream.class);
   }
 
   @Test
   public void testDoubleWrapByteBufferReadable() {
     final SeekableInputStream s =
         wrap(new FSDataInputStream(new FSDataInputStream(new MockByteBufferInputStream())));
-    Assert.assertTrue("Wrong wrapper: " + s, s instanceof H2SeekableInputStream);
+    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H2SeekableInputStream.class);
   }
 
   /**

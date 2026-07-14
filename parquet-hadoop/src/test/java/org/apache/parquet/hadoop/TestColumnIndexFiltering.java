@@ -41,9 +41,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.optional;
 import static org.apache.parquet.schema.Types.required;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -315,7 +313,9 @@ public class TestColumnIndexFiltering {
         exp = expIt.next();
       }
     }
-    assertFalse("Not all expected elements are in the actual list. E.g.: " + exp, expIt.hasNext());
+    assertThat(expIt)
+        .as("Not all expected elements are in the actual list. E.g.: " + exp)
+        .isExhausted();
   }
 
   private void assertCorrectFiltering(Predicate<User> expectedFilter, FilterPredicate actualFilter)
@@ -323,7 +323,7 @@ public class TestColumnIndexFiltering {
     // Check with only column index based filtering
     List<User> result = readUsers(actualFilter, false);
 
-    assertTrue("Column-index filtering should drop some pages", result.size() < DATA.size());
+    assertThat(result).as("Column-index filtering should drop some pages").hasSizeLessThan(DATA.size());
     LOGGER.info(
         "{}/{} records read; filtering ratio: {}%",
         result.size(), DATA.size(), 100 * result.size() / DATA.size());
@@ -334,7 +334,7 @@ public class TestColumnIndexFiltering {
 
     // Check with all the filtering filtering to ensure the result contains exactly the required values
     result = readUsers(actualFilter, true);
-    assertEquals(DATA.stream().filter(expectedFilter).collect(Collectors.toList()), result);
+    assertThat(result).isEqualTo(DATA.stream().filter(expectedFilter).collect(Collectors.toList()));
   }
 
   @BeforeClass
@@ -449,28 +449,28 @@ public class TestColumnIndexFiltering {
   @Test
   public void testNoFiltering() throws IOException {
     // Column index filtering with no-op filter
-    assertEquals(DATA, readUsers(FilterCompat.NOOP, false));
-    assertEquals(DATA, readUsers(FilterCompat.NOOP, true));
+    assertThat(readUsers(FilterCompat.NOOP, false)).isEqualTo(DATA);
+    assertThat(readUsers(FilterCompat.NOOP, true)).isEqualTo(DATA);
 
     // Column index filtering with null filter
-    assertEquals(DATA, readUsers((Filter) null, false));
-    assertEquals(DATA, readUsers((Filter) null, true));
+    assertThat(readUsers((Filter) null, false)).isEqualTo(DATA);
+    assertThat(readUsers((Filter) null, true)).isEqualTo(DATA);
 
     // Column index filtering turned off
-    assertEquals(
-        DATA.stream().filter(user -> user.getId() == 1234).collect(Collectors.toList()),
-        readUsers(eq(longColumn("id"), 1234l), true, false));
-    assertEquals(
-        DATA.stream().filter(user -> "miller".equals(user.getName())).collect(Collectors.toList()),
-        readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), true, false));
-    assertEquals(
-        DATA.stream().filter(user -> user.getName() == null).collect(Collectors.toList()),
-        readUsers(eq(binaryColumn("name"), null), true, false));
+    assertThat(readUsers(eq(longColumn("id"), 1234l), true, false))
+        .isEqualTo(DATA.stream().filter(user -> user.getId() == 1234).collect(Collectors.toList()));
+    assertThat(readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), true, false))
+        .isEqualTo(DATA.stream()
+            .filter(user -> "miller".equals(user.getName()))
+            .collect(Collectors.toList()));
+    assertThat(readUsers(eq(binaryColumn("name"), null), true, false))
+        .isEqualTo(DATA.stream().filter(user -> user.getName() == null).collect(Collectors.toList()));
 
     // Every filtering mechanism turned off
-    assertEquals(DATA, readUsers(eq(longColumn("id"), 1234l), false, false));
-    assertEquals(DATA, readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), false, false));
-    assertEquals(DATA, readUsers(eq(binaryColumn("name"), null), false, false));
+    assertThat(readUsers(eq(longColumn("id"), 1234l), false, false)).isEqualTo(DATA);
+    assertThat(readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), false, false))
+        .isEqualTo(DATA);
+    assertThat(readUsers(eq(binaryColumn("name"), null), false, false)).isEqualTo(DATA);
   }
 
   @Test
@@ -606,7 +606,8 @@ public class TestColumnIndexFiltering {
   @Test
   public void testFilteringWithMissingColumns() throws IOException {
     // Missing column filter is always true
-    assertEquals(DATA, readUsers(notEq(binaryColumn("not-existing-binary"), Binary.EMPTY), true));
+    assertThat(readUsers(notEq(binaryColumn("not-existing-binary"), Binary.EMPTY), true))
+        .isEqualTo(DATA);
     assertCorrectFiltering(
         record -> record.getId() == 1234,
         and(eq(longColumn("id"), 1234l), eq(longColumn("not-existing-long"), null)));
@@ -617,7 +618,7 @@ public class TestColumnIndexFiltering {
             invert(userDefined(binaryColumn("not-existing-binary"), NameStartsWithVowel.class))));
 
     // Missing column filter is always false
-    assertEquals(emptyList(), readUsers(lt(longColumn("not-existing-long"), 0l), true));
+    assertThat(readUsers(lt(longColumn("not-existing-long"), 0l), true)).isEqualTo(emptyList());
     assertCorrectFiltering(
         record -> "miller".equals(record.getName()),
         or(
@@ -631,22 +632,19 @@ public class TestColumnIndexFiltering {
   @Test
   public void testFilteringWithProjection() throws IOException {
     // All rows shall be retrieved because all values in column 'name' shall be handled as null values
-    assertEquals(
-        DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()),
-        readUsersWithProjection(
-            FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true));
+    assertThat(readUsersWithProjection(
+            FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true))
+        .isEqualTo(DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()));
 
     // Column index filter shall drop all pages because all values in column 'name' shall be handled as null values
-    assertEquals(
-        emptyList(),
-        readUsersWithProjection(
-            FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true));
-    assertEquals(
-        emptyList(),
-        readUsersWithProjection(
+    assertThat(readUsersWithProjection(
+            FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true))
+        .isEqualTo(emptyList());
+    assertThat(readUsersWithProjection(
             FilterCompat.get(userDefined(binaryColumn("name"), NameStartsWithVowel.class)),
             SCHEMA_WITHOUT_NAME,
             false,
-            true));
+            true))
+        .isEqualTo(emptyList());
   }
 }

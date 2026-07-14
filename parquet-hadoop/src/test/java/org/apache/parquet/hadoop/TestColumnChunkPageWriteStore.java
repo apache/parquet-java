@@ -31,11 +31,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -223,29 +220,26 @@ public class TestColumnChunkPageWriteStore {
       PageReadStore rowGroup = reader.readNextRowGroup();
       PageReader pageReader = rowGroup.getPageReader(col);
       DataPageV2 page = (DataPageV2) pageReader.readPage();
-      assertEquals(rowCount, page.getRowCount());
-      assertEquals(nullCount, page.getNullCount());
-      assertEquals(valueCount, page.getValueCount());
-      assertEquals(d, intValue(page.getDefinitionLevels()));
-      assertEquals(r, intValue(page.getRepetitionLevels()));
-      assertEquals(dataEncoding, page.getDataEncoding());
-      assertEquals(v, intValue(page.getData()));
+      assertThat(page.getRowCount()).isEqualTo(rowCount);
+      assertThat(page.getNullCount()).isEqualTo(nullCount);
+      assertThat(page.getValueCount()).isEqualTo(valueCount);
+      assertThat(intValue(page.getDefinitionLevels())).isEqualTo(d);
+      assertThat(intValue(page.getRepetitionLevels())).isEqualTo(r);
+      assertThat(page.getDataEncoding()).isEqualTo(dataEncoding);
+      assertThat(intValue(page.getData())).isEqualTo(v);
 
       // Checking column/offset indexes for the one page
       ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
       ColumnIndex columnIndex = reader.readColumnIndex(column);
-      assertArrayEquals(
-          statistics.getMinBytes(), columnIndex.getMinValues().get(0).array());
-      assertArrayEquals(
-          statistics.getMaxBytes(), columnIndex.getMaxValues().get(0).array());
-      assertEquals(
-          statistics.getNumNulls(), columnIndex.getNullCounts().get(0).longValue());
-      assertFalse(columnIndex.getNullPages().get(0));
+      assertThat(columnIndex.getMinValues().get(0).array()).isEqualTo(statistics.getMinBytes());
+      assertThat(columnIndex.getMaxValues().get(0).array()).isEqualTo(statistics.getMaxBytes());
+      assertThat(columnIndex.getNullCounts().get(0).longValue()).isEqualTo(statistics.getNumNulls());
+      assertThat(columnIndex.getNullPages().get(0)).isFalse();
       OffsetIndex offsetIndex = reader.readOffsetIndex(column);
-      assertEquals(1, offsetIndex.getPageCount());
-      assertEquals(pageSize, offsetIndex.getCompressedPageSize(0));
-      assertEquals(0, offsetIndex.getFirstRowIndex(0));
-      assertEquals(pageOffset, offsetIndex.getOffset(0));
+      assertThat(offsetIndex.getPageCount()).isEqualTo(1);
+      assertThat(offsetIndex.getCompressedPageSize(0)).isEqualTo(pageSize);
+      assertThat(offsetIndex.getFirstRowIndex(0)).isEqualTo(0);
+      assertThat(offsetIndex.getOffset(0)).isEqualTo(pageOffset);
 
       reader.close();
     }
@@ -326,8 +320,8 @@ public class TestColumnChunkPageWriteStore {
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
 
-    assertEquals(SNAPPY, codecs.get("col_a"));
-    assertEquals(SNAPPY, codecs.get("col_b"));
+    assertThat(codecs.get("col_a")).isEqualTo(SNAPPY);
+    assertThat(codecs.get("col_b")).isEqualTo(SNAPPY);
   }
 
   @Test
@@ -339,8 +333,8 @@ public class TestColumnChunkPageWriteStore {
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
 
-    assertEquals(ZSTD, codecs.get("col_a"));
-    assertEquals(SNAPPY, codecs.get("col_b"));
+    assertThat(codecs.get("col_a")).isEqualTo(ZSTD);
+    assertThat(codecs.get("col_b")).isEqualTo(SNAPPY);
   }
 
   @Test
@@ -354,8 +348,8 @@ public class TestColumnChunkPageWriteStore {
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
 
-    assertEquals(ZSTD, codecs.get("col_a"));
-    assertEquals(GZIP, codecs.get("col_b"));
+    assertThat(codecs.get("col_a")).isEqualTo(ZSTD);
+    assertThat(codecs.get("col_b")).isEqualTo(GZIP);
   }
 
   @Test
@@ -369,8 +363,8 @@ public class TestColumnChunkPageWriteStore {
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
 
-    assertEquals(ZSTD, codecs.get("col_a"));
-    assertEquals(SNAPPY, codecs.get("col_b"));
+    assertThat(codecs.get("col_a")).isEqualTo(ZSTD);
+    assertThat(codecs.get("col_b")).isEqualTo(SNAPPY);
   }
 
   @Test
@@ -381,9 +375,9 @@ public class TestColumnChunkPageWriteStore {
         .withCompressionLevel("col_a", 23)
         .build();
 
-    BadConfigurationException ex =
-        assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
-    assertTrue(ex.getMessage().contains("23"));
+    assertThatThrownBy(() -> writeAndReadCodecs(schema, SNAPPY, props))
+        .isInstanceOf(BadConfigurationException.class)
+        .hasMessageContaining("23");
   }
 
   @Test
@@ -394,9 +388,9 @@ public class TestColumnChunkPageWriteStore {
         .withCompressionLevel("col_a", 10)
         .build();
 
-    BadConfigurationException ex =
-        assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
-    assertTrue(ex.getMessage().contains("10"));
+    assertThatThrownBy(() -> writeAndReadCodecs(schema, SNAPPY, props))
+        .isInstanceOf(BadConfigurationException.class)
+        .hasMessageContaining("10");
   }
 
   private Map<String, CompressionCodecName> writeAndReadCodecs(

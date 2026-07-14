@@ -23,9 +23,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -282,23 +280,23 @@ public class TestIeee754TotalOrderE2E {
   }
 
   private static void assertFloatBits(List<Float> values, int... expectedBits) {
-    assertEquals(expectedBits.length, values.size());
+    assertThat(values).hasSameSizeAs(expectedBits);
     for (int i = 0; i < expectedBits.length; i++) {
-      assertEquals(expectedBits[i], Float.floatToRawIntBits(values.get(i)));
+      assertThat(Float.floatToRawIntBits(values.get(i))).isEqualTo(expectedBits[i]);
     }
   }
 
   private static void assertDoubleBits(List<Double> values, long... expectedBits) {
-    assertEquals(expectedBits.length, values.size());
+    assertThat(values).hasSameSizeAs(expectedBits);
     for (int i = 0; i < expectedBits.length; i++) {
-      assertEquals(expectedBits[i], Double.doubleToRawLongBits(values.get(i)));
+      assertThat(Double.doubleToRawLongBits(values.get(i))).isEqualTo(expectedBits[i]);
     }
   }
 
   private static void assertFloat16Bits(List<Binary> values, int... expectedBits) {
-    assertEquals(expectedBits.length, values.size());
+    assertThat(values).hasSameSizeAs(expectedBits);
     for (int i = 0; i < expectedBits.length; i++) {
-      assertEquals(expectedBits[i], values.get(i).get2BytesLittleEndian());
+      assertThat(values.get(i).get2BytesLittleEndian()).isEqualTo((short) expectedBits[i]);
     }
   }
 
@@ -311,37 +309,38 @@ public class TestIeee754TotalOrderE2E {
       ColumnChunkMetaData column = block.getColumns().get(0);
 
       // Verify column order is IEEE 754
-      assertEquals(
-          ColumnOrder.ieee754TotalOrder(), column.getPrimitiveType().columnOrder());
+      assertThat(column.getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
 
       // Verify statistics
       Statistics<?> stats = column.getStatistics();
-      assertNotNull(stats);
-      assertTrue("nan_count should be set", stats.isNanCountSet());
-      assertEquals("nan_count should be 2", 2, stats.getNanCount());
+      assertThat(stats).isNotNull();
+      assertThat(stats.isNanCountSet()).as("nan_count should be set").isTrue();
+      assertThat(stats.getNanCount()).as("nan_count should be 2").isEqualTo(2);
 
       // Min/max should exclude NaN
       FloatStatistics floatStats = (FloatStatistics) stats;
-      assertEquals(1.0f, floatStats.getMin(), 0.0f);
-      assertEquals(5.0f, floatStats.getMax(), 0.0f);
+      assertThat(floatStats.getMin()).isEqualTo(1.0f);
+      assertThat(floatStats.getMax()).isEqualTo(5.0f);
 
       // Verify column index
       ColumnIndex columnIndex = reader.readColumnIndex(column);
-      assertNotNull("ColumnIndex should not be null for IEEE 754 with NaN", columnIndex);
+      assertThat(columnIndex)
+          .as("ColumnIndex should not be null for IEEE 754 with NaN")
+          .isNotNull();
       List<Long> nanCounts = columnIndex.getNanCounts();
-      assertNotNull("nan_counts should be set in column index", nanCounts);
+      assertThat(nanCounts).as("nan_counts should be set in column index").isNotNull();
       // All values in one page, so one entry with nan_count = 2
-      assertEquals(1, nanCounts.size());
-      assertEquals(Long.valueOf(2), nanCounts.get(0));
+      assertThat(nanCounts).hasSize(1);
+      assertThat(nanCounts.get(0)).isEqualTo(Long.valueOf(2));
 
       // Verify min/max in column index exclude NaN
       List<ByteBuffer> minValues = columnIndex.getMinValues();
       List<ByteBuffer> maxValues = columnIndex.getMaxValues();
-      assertEquals(1, minValues.size());
+      assertThat(minValues).hasSize(1);
       float ciMin = minValues.get(0).order(ByteOrder.LITTLE_ENDIAN).getFloat(0);
       float ciMax = maxValues.get(0).order(ByteOrder.LITTLE_ENDIAN).getFloat(0);
-      assertEquals(1.0f, ciMin, 0.0f);
-      assertEquals(5.0f, ciMax, 0.0f);
+      assertThat(ciMin).isEqualTo(1.0f);
+      assertThat(ciMax).isEqualTo(5.0f);
     }
   }
 
@@ -354,23 +353,22 @@ public class TestIeee754TotalOrderE2E {
       BlockMetaData block = reader.getFooter().getBlocks().get(0);
       ColumnChunkMetaData column = block.getColumns().get(0);
 
-      assertEquals(
-          ColumnOrder.ieee754TotalOrder(), column.getPrimitiveType().columnOrder());
+      assertThat(column.getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
 
       Statistics<?> stats = column.getStatistics();
-      assertTrue(stats.isNanCountSet());
-      assertEquals(3, stats.getNanCount());
+      assertThat(stats.isNanCountSet()).isTrue();
+      assertThat(stats.getNanCount()).isEqualTo(3);
 
       DoubleStatistics doubleStats = (DoubleStatistics) stats;
-      assertEquals(-10.0, doubleStats.getMin(), 0.0);
-      assertEquals(20.0, doubleStats.getMax(), 0.0);
+      assertThat(doubleStats.getMin()).isEqualTo(-10.0);
+      assertThat(doubleStats.getMax()).isEqualTo(20.0);
 
       ColumnIndex columnIndex = reader.readColumnIndex(column);
-      assertNotNull(columnIndex);
+      assertThat(columnIndex).isNotNull();
       List<Long> nanCounts = columnIndex.getNanCounts();
-      assertNotNull(nanCounts);
-      assertEquals(1, nanCounts.size());
-      assertEquals(Long.valueOf(3), nanCounts.get(0));
+      assertThat(nanCounts).isNotNull();
+      assertThat(nanCounts).hasSize(1);
+      assertThat(nanCounts.get(0)).isEqualTo(Long.valueOf(3));
     }
   }
 
@@ -383,12 +381,12 @@ public class TestIeee754TotalOrderE2E {
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
       Statistics<?> stats = column.getStatistics();
 
-      assertTrue(stats.isNanCountSet());
-      assertEquals(0, stats.getNanCount());
+      assertThat(stats.isNanCountSet()).isTrue();
+      assertThat(stats.getNanCount()).isEqualTo(0);
 
       FloatStatistics floatStats = (FloatStatistics) stats;
-      assertEquals(1.0f, floatStats.getMin(), 0.0f);
-      assertEquals(3.0f, floatStats.getMax(), 0.0f);
+      assertThat(floatStats.getMin()).isEqualTo(1.0f);
+      assertThat(floatStats.getMax()).isEqualTo(3.0f);
     }
   }
 
@@ -401,13 +399,19 @@ public class TestIeee754TotalOrderE2E {
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
       Statistics<?> stats = column.getStatistics();
 
-      assertTrue(stats.isNanCountSet());
-      assertEquals(3, stats.getNanCount());
+      assertThat(stats.isNanCountSet()).isTrue();
+      assertThat(stats.getNanCount()).isEqualTo(3);
 
-      assertTrue("All-NaN column should have min/max values", stats.hasNonNullValue());
+      assertThat(stats.hasNonNullValue())
+          .as("All-NaN column should have min/max values")
+          .isTrue();
       FloatStatistics floatStats = (FloatStatistics) stats;
-      assertTrue("All-NaN min should be NaN", Float.isNaN(floatStats.getMin()));
-      assertTrue("All-NaN max should be NaN", Float.isNaN(floatStats.getMax()));
+      assertThat(Float.isNaN(floatStats.getMin()))
+          .as("All-NaN min should be NaN")
+          .isTrue();
+      assertThat(Float.isNaN(floatStats.getMax()))
+          .as("All-NaN max should be NaN")
+          .isTrue();
     }
   }
 
@@ -512,35 +516,32 @@ public class TestIeee754TotalOrderE2E {
 
       // Verify float column
       ColumnChunkMetaData floatCol = block.getColumns().get(0);
-      assertEquals(
-          ColumnOrder.ieee754TotalOrder(), floatCol.getPrimitiveType().columnOrder());
+      assertThat(floatCol.getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
       Statistics<?> floatStats = floatCol.getStatistics();
-      assertTrue(floatStats.isNanCountSet());
-      assertEquals(1, floatStats.getNanCount());
-      assertEquals(1.0f, ((FloatStatistics) floatStats).getMin(), 0.0f);
-      assertEquals(3.0f, ((FloatStatistics) floatStats).getMax(), 0.0f);
+      assertThat(floatStats.isNanCountSet()).isTrue();
+      assertThat(floatStats.getNanCount()).isEqualTo(1);
+      assertThat(((FloatStatistics) floatStats).getMin()).isEqualTo(1.0f);
+      assertThat(((FloatStatistics) floatStats).getMax()).isEqualTo(3.0f);
 
       // Verify double column
       ColumnChunkMetaData doubleCol = block.getColumns().get(1);
-      assertEquals(
-          ColumnOrder.ieee754TotalOrder(),
-          doubleCol.getPrimitiveType().columnOrder());
+      assertThat(doubleCol.getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
       Statistics<?> doubleStats = doubleCol.getStatistics();
-      assertTrue(doubleStats.isNanCountSet());
-      assertEquals(1, doubleStats.getNanCount());
-      assertEquals(-5.0, ((DoubleStatistics) doubleStats).getMin(), 0.0);
-      assertEquals(10.0, ((DoubleStatistics) doubleStats).getMax(), 0.0);
+      assertThat(doubleStats.isNanCountSet()).isTrue();
+      assertThat(doubleStats.getNanCount()).isEqualTo(1);
+      assertThat(((DoubleStatistics) doubleStats).getMin()).isEqualTo(-5.0);
+      assertThat(((DoubleStatistics) doubleStats).getMax()).isEqualTo(10.0);
 
       // Verify column indexes for both
       ColumnIndex floatCI = reader.readColumnIndex(floatCol);
-      assertNotNull(floatCI);
-      assertNotNull(floatCI.getNanCounts());
-      assertEquals(Long.valueOf(1), floatCI.getNanCounts().get(0));
+      assertThat(floatCI).isNotNull();
+      assertThat(floatCI.getNanCounts()).isNotNull();
+      assertThat(floatCI.getNanCounts().get(0)).isEqualTo(Long.valueOf(1));
 
       ColumnIndex doubleCI = reader.readColumnIndex(doubleCol);
-      assertNotNull(doubleCI);
-      assertNotNull(doubleCI.getNanCounts());
-      assertEquals(Long.valueOf(1), doubleCI.getNanCounts().get(0));
+      assertThat(doubleCI).isNotNull();
+      assertThat(doubleCI.getNanCounts()).isNotNull();
+      assertThat(doubleCI.getNanCounts().get(0)).isEqualTo(Long.valueOf(1));
     }
   }
 }

@@ -19,9 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -85,13 +84,13 @@ public class TestParquetFileReaderRowRanges {
   @Test
   public void getRowRangesWithoutFilterCoversAllRows() throws IOException {
     try (ParquetFileReader reader = openReader()) {
-      assertEquals(1, reader.getRowGroups().size());
+      assertThat(reader.getRowGroups()).hasSize(1);
       BlockMetaData block = reader.getRowGroups().get(0);
 
       RowRanges ranges = reader.getRowRanges(0);
 
-      assertEquals(block.getRowCount(), ranges.rowCount());
-      assertTrue(ranges.isOverlapping(0L, block.getRowCount() - 1));
+      assertThat(ranges.rowCount()).isEqualTo(block.getRowCount());
+      assertThat(ranges.isOverlapping(0L, block.getRowCount() - 1)).isTrue();
     }
   }
 
@@ -99,8 +98,12 @@ public class TestParquetFileReaderRowRanges {
   public void getRowRangesRejectsOutOfRangeBlockIndex() throws IOException {
     try (ParquetFileReader reader = openReader()) {
       int blockCount = reader.getRowGroups().size();
-      assertThrows(IllegalArgumentException.class, () -> reader.getRowRanges(-1));
-      assertThrows(IllegalArgumentException.class, () -> reader.getRowRanges(blockCount));
+      assertThatThrownBy(() -> reader.getRowRanges(-1))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid block index");
+      assertThatThrownBy(() -> reader.getRowRanges(blockCount))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid block index");
     }
   }
 }

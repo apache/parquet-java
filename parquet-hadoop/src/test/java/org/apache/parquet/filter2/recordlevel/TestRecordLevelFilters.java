@@ -34,7 +34,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -149,11 +149,13 @@ public class TestRecordLevelFilters {
 
   private static void assertFilter(List<Group> found, UserFilter f) {
     List<Group> expected = getExpected(f);
-    assertEquals(expected.size(), found.size());
+    assertThat(found).hasSameSizeAs(expected);
     Iterator<Group> expectedIter = expected.iterator();
     Iterator<Group> foundIter = found.iterator();
     while (expectedIter.hasNext()) {
-      assertEquals(expectedIter.next().toString(), foundIter.next().toString());
+      assertThat(foundIter.next())
+          .asString()
+          .isEqualTo(expectedIter.next().toString());
     }
   }
 
@@ -164,9 +166,9 @@ public class TestRecordLevelFilters {
   private static void assertPredicate(File file, FilterPredicate predicate, long... expectedIds) throws IOException {
     List<Group> found = PhoneBookWriter.readFile(file, FilterCompat.get(predicate));
 
-    assertEquals(expectedIds.length, found.size());
+    assertThat(found).hasSameSizeAs(expectedIds);
     for (int i = 0; i < expectedIds.length; i++) {
-      assertEquals(expectedIds[i], found.get(i).getLong("id", 0));
+      assertThat(found.get(i).getLong("id", 0)).isEqualTo(expectedIds[i]);
     }
   }
 
@@ -217,7 +219,7 @@ public class TestRecordLevelFilters {
     FilterPredicate pred = eq(name, Binary.fromString("no matches"));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
-    assertEquals(new ArrayList<Group>(), found);
+    assertThat(found).isEmpty();
   }
 
   @Test
@@ -245,10 +247,10 @@ public class TestRecordLevelFilters {
 
     // validate that all the values returned by the reader fulfills the filter and there are no values left out,
     // i.e. "thing1", "thing2" and from "p100" to "p199" and nothing else.
-    assertEquals(expectedNames.get(0), ((Group) (found.get(0))).getString("name", 0));
-    assertEquals(expectedNames.get(1), ((Group) (found.get(1))).getString("name", 0));
+    assertThat(((Group) (found.get(0))).getString("name", 0)).isEqualTo(expectedNames.get(0));
+    assertThat(((Group) (found.get(1))).getString("name", 0)).isEqualTo(expectedNames.get(1));
     for (int i = 2; i < 102; i++) {
-      assertEquals(expectedNames.get(i), ((Group) (found.get(i))).getString("name", 0));
+      assertThat(((Group) (found.get(i))).getString("name", 0)).isEqualTo(expectedNames.get(i));
     }
     assert (found.size() == 102);
   }

@@ -19,10 +19,8 @@
 
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.io.IOException;
 import java.util.List;
@@ -41,7 +39,6 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,10 +87,8 @@ public class TestInteropBloomFilter {
         ParquetReader.builder(new GroupReadSupport(), filePath).build()) {
       for (int i = 0; i < expectedRowCount; ++i) {
         Group group = reader.read();
-        if (group == null) {
-          fail("Should not reach end of file");
-        }
-        assertEquals(expectedValues[i], group.getString(0, 0));
+        assertThat(group).as("Should not reach end of file").isNotNull();
+        assertThat(group.getString(0, 0)).isEqualTo(expectedValues[i]);
       }
     }
 
@@ -101,30 +96,29 @@ public class TestInteropBloomFilter {
         HadoopInputFile.fromPath(filePath, new Configuration()),
         ParquetReadOptions.builder().build());
     List<BlockMetaData> blocks = reader.getRowGroups();
-    blocks.forEach(block -> {
-      try {
-        assertEquals(14, block.getRowCount());
-        ColumnChunkMetaData idMeta = block.getColumns().get(0);
-        BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
-        Assert.assertNotNull(bloomFilter);
-        assertEquals(192, idMeta.getBloomFilterOffset());
-        assertEquals(-1, idMeta.getBloomFilterLength());
-        for (int i = 0; i < expectedRowCount; ++i) {
-          assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))));
-        }
-        for (int i = 0; i < unexpectedValues.length; ++i) {
-          assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
-        }
-        assertEquals(152, idMeta.getTotalSize());
-        assertEquals(163, idMeta.getTotalUncompressedSize());
-        assertEquals(181, idMeta.getOffsetIndexReference().getOffset());
-        assertEquals(11, idMeta.getOffsetIndexReference().getLength());
-        assertEquals(156, idMeta.getColumnIndexReference().getOffset());
-        assertEquals(25, idMeta.getColumnIndexReference().getLength());
-      } catch (IOException e) {
-        fail("Should not throw exception: " + e.getMessage());
-      }
-    });
+    blocks.forEach(block -> assertThatCode(() -> {
+          assertThat(block.getRowCount()).isEqualTo(14);
+          ColumnChunkMetaData idMeta = block.getColumns().get(0);
+          BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
+          assertThat(bloomFilter).isNotNull();
+          assertThat(idMeta.getBloomFilterOffset()).isEqualTo(192);
+          assertThat(idMeta.getBloomFilterLength()).isEqualTo(-1);
+          for (int i = 0; i < expectedRowCount; ++i) {
+            assertThat(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))))
+                .isTrue();
+          }
+          for (int i = 0; i < unexpectedValues.length; ++i) {
+            assertThat(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))))
+                .isFalse();
+          }
+          assertThat(idMeta.getTotalSize()).isEqualTo(152);
+          assertThat(idMeta.getTotalUncompressedSize()).isEqualTo(163);
+          assertThat(idMeta.getOffsetIndexReference().getOffset()).isEqualTo(181);
+          assertThat(idMeta.getOffsetIndexReference().getLength()).isEqualTo(11);
+          assertThat(idMeta.getColumnIndexReference().getOffset()).isEqualTo(156);
+          assertThat(idMeta.getColumnIndexReference().getLength()).isEqualTo(25);
+        })
+        .doesNotThrowAnyException());
   }
 
   @Test
@@ -158,10 +152,8 @@ public class TestInteropBloomFilter {
         ParquetReader.builder(new GroupReadSupport(), filePath).build()) {
       for (int i = 0; i < expectedRowCount; ++i) {
         Group group = reader.read();
-        if (group == null) {
-          fail("Should not reach end of file");
-        }
-        assertEquals(expectedValues[i], group.getString(0, 0));
+        assertThat(group).as("Should not reach end of file").isNotNull();
+        assertThat(group.getString(0, 0)).isEqualTo(expectedValues[i]);
       }
     }
 
@@ -169,30 +161,29 @@ public class TestInteropBloomFilter {
         HadoopInputFile.fromPath(filePath, new Configuration()),
         ParquetReadOptions.builder().build());
     List<BlockMetaData> blocks = reader.getRowGroups();
-    blocks.forEach(block -> {
-      try {
-        assertEquals(14, block.getRowCount());
-        ColumnChunkMetaData idMeta = block.getColumns().get(0);
-        BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
-        Assert.assertNotNull(bloomFilter);
-        assertEquals(253, idMeta.getBloomFilterOffset());
-        assertEquals(2064, idMeta.getBloomFilterLength());
-        for (int i = 0; i < expectedRowCount; ++i) {
-          assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))));
-        }
-        for (int i = 0; i < unexpectedValues.length; ++i) {
-          assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
-        }
-        assertEquals(199, idMeta.getTotalSize());
-        assertEquals(199, idMeta.getTotalUncompressedSize());
-        assertEquals(2342, idMeta.getOffsetIndexReference().getOffset());
-        assertEquals(11, idMeta.getOffsetIndexReference().getLength());
-        assertEquals(2317, idMeta.getColumnIndexReference().getOffset());
-        assertEquals(25, idMeta.getColumnIndexReference().getLength());
-      } catch (Exception e) {
-        fail("Should not throw exception: " + e.getMessage());
-      }
-    });
+    blocks.forEach(block -> assertThatCode(() -> {
+          assertThat(block.getRowCount()).isEqualTo(14);
+          ColumnChunkMetaData idMeta = block.getColumns().get(0);
+          BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
+          assertThat(bloomFilter).isNotNull();
+          assertThat(idMeta.getBloomFilterOffset()).isEqualTo(253);
+          assertThat(idMeta.getBloomFilterLength()).isEqualTo(2064);
+          for (int i = 0; i < expectedRowCount; ++i) {
+            assertThat(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))))
+                .isTrue();
+          }
+          for (int i = 0; i < unexpectedValues.length; ++i) {
+            assertThat(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))))
+                .isFalse();
+          }
+          assertThat(idMeta.getTotalSize()).isEqualTo(199);
+          assertThat(idMeta.getTotalUncompressedSize()).isEqualTo(199);
+          assertThat(idMeta.getOffsetIndexReference().getOffset()).isEqualTo(2342);
+          assertThat(idMeta.getOffsetIndexReference().getLength()).isEqualTo(11);
+          assertThat(idMeta.getColumnIndexReference().getOffset()).isEqualTo(2317);
+          assertThat(idMeta.getColumnIndexReference().getLength()).isEqualTo(25);
+        })
+        .doesNotThrowAnyException());
   }
 
   private Path downloadInterOpFiles(Path rootPath, String fileName, OkHttpClient httpClient) throws IOException {

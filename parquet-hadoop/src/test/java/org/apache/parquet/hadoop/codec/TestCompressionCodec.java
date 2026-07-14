@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
@@ -41,7 +40,6 @@ import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompress
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -102,8 +100,8 @@ public class TestCompressionCodec {
     int decompressedSize = decompressor.decompress(decompressedData, 0, uncompressedSize);
     assert (decompressor.finished());
 
-    assertEquals(uncompressedSize, decompressedSize);
-    assertArrayEquals(uncompressedData, decompressedData);
+    assertThat(decompressedSize).isEqualTo(uncompressedSize);
+    assertThat(decompressedData).isEqualTo(uncompressedData);
   }
 
   @Test
@@ -145,7 +143,7 @@ public class TestCompressionCodec {
     }
     BytesInput compressedData = compress(codec, BytesInput.from(data));
     byte[] decompressedData = decompress(codec, compressedData, data.length);
-    Assert.assertArrayEquals(data, decompressedData);
+    assertThat(decompressedData).isEqualTo(data);
   }
 
   private BytesInput compress(CompressionCodec codec, BytesInput bytes) throws IOException {
@@ -205,7 +203,7 @@ public class TestCompressionCodec {
       BytesInput decompressed = decompressor.decompress(compressed, size);
 
       BytesInput copied = decompressed.copy(releaser);
-      Assert.assertArrayEquals(raw, copied.toByteArray());
+      assertThat(copied.toByteArray()).isEqualTo(raw);
 
       compressor.release();
       decompressor.release();
@@ -224,9 +222,8 @@ public class TestCompressionCodec {
     NonBlockedDecompressorStream decompressorStream =
         new NonBlockedDecompressorStream(new ByteArrayInputStream(new byte[0]), mockDecompressor, 1024);
 
-    assertThrows(IOException.class, () -> {
-      // Attempt to read from the stream, which should trigger the IOException.
-      decompressorStream.read(new byte[1024], 0, 1024);
-    });
+    assertThatThrownBy(() -> decompressorStream.read(new byte[1024], 0, 1024))
+        .isInstanceOf(IOException.class)
+        .hasMessage("Corrupt file: Zero bytes read during decompression.");
   }
 }

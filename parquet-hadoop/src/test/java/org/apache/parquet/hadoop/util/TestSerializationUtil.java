@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.hadoop.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,33 +37,33 @@ public class TestSerializationUtil {
 
   @Test
   public void testReadWriteObjectToConfAsBase64() throws Exception {
-    Map<Integer, String> anObject = new HashMap<Integer, String>();
+    Map<Integer, String> anObject = new HashMap<>();
     anObject.put(7, "seven");
     anObject.put(8, "eight");
 
+    Configuration confWithObject = new Configuration();
+
+    SerializationUtil.writeObjectToConfAsBase64("anobject", anObject, confWithObject);
+    Map<Integer, String> copy = SerializationUtil.readObjectFromConfAsBase64("anobject", confWithObject);
+    assertThat(copy).isEqualTo(anObject);
+
+    assertThatThrownBy(() -> {
+          Set<String> bad = SerializationUtil.readObjectFromConfAsBase64("anobject", confWithObject);
+        })
+        .isInstanceOf(ClassCastException.class)
+        .hasMessageContaining("cannot be cast to class java.util.Set");
+
     Configuration conf = new Configuration();
-
-    SerializationUtil.writeObjectToConfAsBase64("anobject", anObject, conf);
-    Map<Integer, String> copy = SerializationUtil.readObjectFromConfAsBase64("anobject", conf);
-    assertEquals(anObject, copy);
-
-    try {
-      Set<String> bad = SerializationUtil.readObjectFromConfAsBase64("anobject", conf);
-      fail("This should throw a ClassCastException");
-    } catch (ClassCastException e) {
-
-    }
-
-    conf = new Configuration();
     Object nullObj = null;
 
     SerializationUtil.writeObjectToConfAsBase64("anobject", null, conf);
     Object copyObj = SerializationUtil.readObjectFromConfAsBase64("anobject", conf);
-    assertEquals(nullObj, copyObj);
+    assertThat(copyObj).isEqualTo(nullObj);
   }
 
   @Test
   public void readObjectFromConfAsBase64UnsetKey() throws Exception {
-    assertNull(SerializationUtil.readObjectFromConfAsBase64("non-existant-key", new Configuration()));
+    assertThat(SerializationUtil.<Object>readObjectFromConfAsBase64("non-existant-key", new Configuration()))
+        .isNull();
   }
 }

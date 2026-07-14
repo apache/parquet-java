@@ -21,6 +21,8 @@ package org.apache.parquet.hadoop;
 import static java.lang.Thread.sleep;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -46,8 +48,6 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -123,8 +123,7 @@ public class TestInputFormatColumnProjection {
 
   @Test
   public void testProjectionSize() throws Exception {
-    Assume.assumeTrue( // only run this test for Hadoop 2
-        org.apache.hadoop.mapreduce.JobContext.class.isInterface());
+    assumeThat(org.apache.hadoop.mapreduce.JobContext.class.isInterface()).isTrue();
 
     File inputFile = temp.newFile();
     FileOutputStream out = new FileOutputStream(inputFile);
@@ -195,10 +194,10 @@ public class TestInputFormatColumnProjection {
       bytesRead = Reader.bytesReadCounter.getValue();
     }
 
-    Assert.assertTrue(
-        "Should read (" + bytesRead + " bytes)" + " less than 10% of the input file size (" + bytesWritten
-            + ")",
-        bytesRead < (bytesWritten / 10));
+    assertThat(bytesRead)
+        .as("Should read (" + bytesRead + " bytes)" + " less than 10% of the input file size (" + bytesWritten
+            + ")")
+        .isLessThan(bytesWritten / 10);
   }
 
   private void waitForJob(Job job) throws Exception {

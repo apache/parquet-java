@@ -19,10 +19,7 @@
 package org.apache.parquet.hadoop.example;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -147,7 +144,7 @@ public class TestInputOutputFormat {
     @Override
     public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
       Set<String> counts = context.getKeyValueMetadata().get("my.count");
-      assertFalse("counts: " + counts, counts.isEmpty());
+      assertThat(counts).as("counts: " + counts).isNotEmpty();
       return super.init(context);
     }
   }
@@ -243,10 +240,10 @@ public class TestInputOutputFormat {
     while ((lineIn = in.readLine()) != null && (lineOut = out.readLine()) != null) {
       ++lineNumber;
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
-      assertEquals("line " + lineNumber, lineIn, lineOut);
+      assertThat(lineOut).as("line " + lineNumber).isEqualTo(lineIn);
     }
-    assertNull("line " + lineNumber, out.readLine());
-    assertNull("line " + lineNumber, lineIn);
+    assertThat(out.readLine()).as("line " + lineNumber).isNull();
+    assertThat(lineIn).as("line " + lineNumber).isNull();
     in.close();
     out.close();
   }
@@ -290,7 +287,7 @@ public class TestInputOutputFormat {
 
     File file = new File(outputPath.toString(), "part-m-00000");
     List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
-    assertTrue(lines.isEmpty());
+    assertThat(lines).isEmpty();
   }
 
   @Test
@@ -337,7 +334,7 @@ public class TestInputOutputFormat {
 
     sbFound.deleteCharAt(sbFound.length() - 1);
 
-    assertEquals(String.join("\n", expected), sbFound.toString());
+    assertThat(sbFound).asString().isEqualTo(String.join("\n", expected));
   }
 
   @Test
@@ -363,12 +360,11 @@ public class TestInputOutputFormat {
   public void testReadWriteWithCounter() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
 
-    assertTrue(value(readJob, "parquet", "bytesread") > 0L);
-    assertTrue(value(readJob, "parquet", "bytestotal") > 0L);
-    assertEquals(
-        "bytestotal != bytesread",
-        value(readJob, "parquet", "bytestotal"),
-        value(readJob, "parquet", "bytesread"));
+    assertThat(value(readJob, "parquet", "bytesread")).isPositive();
+    assertThat(value(readJob, "parquet", "bytestotal")).isPositive();
+    assertThat(value(readJob, "parquet", "bytesread"))
+        .as("bytestotal != bytesread")
+        .isEqualTo(value(readJob, "parquet", "bytestotal"));
     // not testing the time read counter since it could be zero due to the size of data is too small
   }
 
@@ -378,9 +374,9 @@ public class TestInputOutputFormat {
     conf.set("parquet.benchmark.bytes.total", "false");
     conf.set("parquet.benchmark.bytes.read", "false");
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(value(readJob, "parquet", "bytesread") == 0L);
-    assertTrue(value(readJob, "parquet", "bytestotal") == 0L);
-    assertTrue(value(readJob, "parquet", "timeread") == 0L);
+    assertThat(value(readJob, "parquet", "bytesread")).isZero();
+    assertThat(value(readJob, "parquet", "bytestotal")).isZero();
+    assertThat(value(readJob, "parquet", "timeread")).isZero();
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {

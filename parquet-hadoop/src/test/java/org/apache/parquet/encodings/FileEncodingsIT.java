@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.encodings;
 
-import static junit.framework.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -555,12 +555,11 @@ public class FileEncodingsIT {
     }
 
     public void validateNextValue(Object value) {
-      assertEquals(
-          String.format(
+      assertThat(value)
+          .as(String.format(
               "Value from page is different than expected, ROW_GROUP_ID=%d PAGE_ID=%d VALUE_POS=%d",
-              rowGroupID, pageID, currentPos),
-          expectedValues.get(currentPos++),
-          value);
+              rowGroupID, pageID, currentPos))
+          .isEqualTo(expectedValues.get(currentPos++));
     }
 
     public static void validateValuesForPage(

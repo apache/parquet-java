@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -31,7 +32,6 @@ import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestParquetReaderEmptyBlock {
@@ -61,11 +61,11 @@ public class TestParquetReaderEmptyBlock {
 
     // The parquet file contains only one empty row group
     ParquetMetadata readFooter = ParquetFileReader.readFooter(inputFile, options, inputFile.newStream());
-    Assert.assertEquals(1, readFooter.getBlocks().size());
+    assertThat(readFooter.getBlocks()).hasSize(1);
 
     // The empty block is skipped via readNextRowGroup()
     try (ParquetFileReader r = new ParquetFileReader(inputFile, options)) {
-      Assert.assertNull(r.readNextRowGroup());
+      assertThat(r.readNextRowGroup()).isNull();
     }
 
     // The empty block is skipped via readNextFilteredRowGroup()
@@ -76,7 +76,7 @@ public class TestParquetReaderEmptyBlock {
         .useStatsFilter(true)
         .build();
     try (ParquetFileReader r = new ParquetFileReader(inputFile, filterOptions)) {
-      Assert.assertNull(r.readNextFilteredRowGroup());
+      assertThat(r.readNextFilteredRowGroup()).isNull();
     }
   }
 
@@ -88,21 +88,21 @@ public class TestParquetReaderEmptyBlock {
 
     // The parquet file contains three row groups, the second one is empty
     ParquetMetadata readFooter = ParquetFileReader.readFooter(inputFile, options, inputFile.newStream());
-    Assert.assertEquals(3, readFooter.getBlocks().size());
+    assertThat(readFooter.getBlocks()).hasSize(3);
 
     // Second row group is empty and skipped via readNextRowGroup()
     try (ParquetFileReader r = new ParquetFileReader(inputFile, options)) {
       PageReadStore pages = null;
       pages = r.readNextRowGroup();
-      Assert.assertNotNull(pages);
-      Assert.assertEquals(1, pages.getRowCount());
+      assertThat(pages).isNotNull();
+      assertThat(pages.getRowCount()).isEqualTo(1);
 
       pages = r.readNextRowGroup();
-      Assert.assertNotNull(pages);
-      Assert.assertEquals(3, pages.getRowCount());
+      assertThat(pages).isNotNull();
+      assertThat(pages.getRowCount()).isEqualTo(3);
 
       pages = r.readNextRowGroup();
-      Assert.assertNull(pages);
+      assertThat(pages).isNull();
     }
 
     // Only the last row group is read via readNextFilteredRowGroup()
@@ -115,11 +115,11 @@ public class TestParquetReaderEmptyBlock {
     try (ParquetFileReader r = new ParquetFileReader(inputFile, filterOptions)) {
       PageReadStore pages = null;
       pages = r.readNextFilteredRowGroup();
-      Assert.assertNotNull(pages);
-      Assert.assertEquals(3, pages.getRowCount());
+      assertThat(pages).isNotNull();
+      assertThat(pages.getRowCount()).isEqualTo(3);
 
       pages = r.readNextFilteredRowGroup();
-      Assert.assertNull(pages);
+      assertThat(pages).isNull();
     }
   }
 
@@ -131,21 +131,21 @@ public class TestParquetReaderEmptyBlock {
 
     // The parquet file contains four row groups, the second one and third one are empty
     ParquetMetadata readFooter = ParquetFileReader.readFooter(inputFile, options, inputFile.newStream());
-    Assert.assertEquals(4, readFooter.getBlocks().size());
+    assertThat(readFooter.getBlocks()).hasSize(4);
 
     // Second and third row groups are empty and skipped via readNextRowGroup()
     try (ParquetFileReader r = new ParquetFileReader(inputFile, options)) {
       PageReadStore pages = null;
       pages = r.readNextRowGroup();
-      Assert.assertNotNull(pages);
-      Assert.assertEquals(1, pages.getRowCount());
+      assertThat(pages).isNotNull();
+      assertThat(pages.getRowCount()).isEqualTo(1);
 
       pages = r.readNextRowGroup();
-      Assert.assertNotNull(pages);
-      Assert.assertEquals(4, pages.getRowCount());
+      assertThat(pages).isNotNull();
+      assertThat(pages.getRowCount()).isEqualTo(4);
 
       pages = r.readNextRowGroup();
-      Assert.assertNull(pages);
+      assertThat(pages).isNull();
     }
 
     // Only the last row group is read via readNextFilteredRowGroup()
@@ -158,11 +158,11 @@ public class TestParquetReaderEmptyBlock {
     try (ParquetFileReader r = new ParquetFileReader(inputFile, filterOptions)) {
       PageReadStore pages = null;
       pages = r.readNextFilteredRowGroup();
-      Assert.assertNotNull(pages);
-      Assert.assertEquals(4, pages.getRowCount());
+      assertThat(pages).isNotNull();
+      assertThat(pages.getRowCount()).isEqualTo(4);
 
       pages = r.readNextFilteredRowGroup();
-      Assert.assertNull(pages);
+      assertThat(pages).isNull();
     }
   }
 }

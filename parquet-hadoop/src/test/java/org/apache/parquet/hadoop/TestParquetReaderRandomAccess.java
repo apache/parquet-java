@@ -23,9 +23,8 @@ import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -250,7 +249,7 @@ public class TestParquetReaderRandomAccess {
     public void assertValues(
         PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
       if (index < 0 || index >= blockAmount) {
-        assertNull(pages);
+        assertThat(pages).isNull();
         return;
       }
 
@@ -261,22 +260,18 @@ public class TestParquetReaderRandomAccess {
       RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema));
       for (long i = firstValue; i <= lastValue; i++) {
         Group group = recordReader.read();
-        assertEquals(i, group.getLong("i64", 0));
-        assertEquals((i % 2) == 0 ? 1 : 0, group.getLong("i64_flip", 0));
+        assertThat(group.getLong("i64", 0)).isEqualTo(i);
+        assertThat(group.getLong("i64_flip", 0)).isEqualTo((i % 2) == 0 ? 1 : 0);
       }
-      boolean exceptionThrown = false;
-      try {
-        recordReader.read();
-      } catch (ParquetDecodingException e) {
-        exceptionThrown = true;
-      }
-      assertTrue(exceptionThrown);
+      assertThatThrownBy(recordReader::read)
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("Can't read value in column");
     }
 
     public void assertFilteredValues(
         PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
       if (index < 0 || index >= blockAmount) {
-        assertNull(pages);
+        assertThat(pages).isNull();
         return;
       }
 
@@ -290,20 +285,17 @@ public class TestParquetReaderRandomAccess {
       for (long i = firstValue; i <= lastValue; i++) {
         Group group = recordReader.read();
         if ((i % 2) == 0) {
-          assertEquals(i, group.getLong("i64", 0));
-          assertEquals(1, group.getLong("i64_flip", 0));
+          assertThat(group.getLong("i64", 0)).isEqualTo(i);
+          assertThat(group.getLong("i64_flip", 0)).isEqualTo(1);
         } else {
-          assertTrue(group == null || recordReader.shouldSkipCurrentRecord());
+          assertThat(group == null || recordReader.shouldSkipCurrentRecord())
+              .isTrue();
         }
       }
 
-      boolean exceptionThrown = false;
-      try {
-        recordReader.read();
-      } catch (ParquetDecodingException e) {
-        exceptionThrown = true;
-      }
-      assertTrue(exceptionThrown);
+      assertThatThrownBy(recordReader::read)
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("Can't read value in column");
     }
 
     protected abstract void test(

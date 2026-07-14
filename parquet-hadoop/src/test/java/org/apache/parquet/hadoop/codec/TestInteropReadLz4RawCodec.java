@@ -19,8 +19,8 @@
 
 package org.apache.parquet.hadoop.codec;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.io.IOException;
 import org.apache.hadoop.fs.Path;
@@ -50,12 +50,12 @@ public class TestInteropReadLz4RawCodec {
         ParquetReader.builder(new GroupReadSupport(), simpleFile).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
-        assertTrue(group != null);
-        assertEquals(c0ExpectValues[i], group.getLong(0, 0));
-        assertEquals(c1ExpectValues[i], group.getString(1, 0));
-        assertEquals(c2ExpectValues[i], group.getDouble(2, 0), 0.000001);
+        assertThat(group).isNotNull();
+        assertThat(group.getLong(0, 0)).isEqualTo(c0ExpectValues[i]);
+        assertThat(group.getString(1, 0)).isEqualTo(c1ExpectValues[i]);
+        assertThat(group.getDouble(2, 0)).isCloseTo(c2ExpectValues[i], offset(0.000001));
       }
-      assertTrue(reader.read() == null);
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -76,13 +76,13 @@ public class TestInteropReadLz4RawCodec {
         ParquetReader.builder(new GroupReadSupport(), largerFile).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
-        assertTrue(group != null);
+        assertThat(group).isNotNull();
         if (i == 0 || i == 1 || i == expectRows - 2 || i == expectRows - 1) {
-          assertEquals(c0ExpectValues[index], group.getString(0, 0));
+          assertThat(group.getString(0, 0)).isEqualTo(c0ExpectValues[index]);
           index++;
         }
       }
-      assertTrue(reader.read() == null);
+      assertThat(reader.read()).isNull();
     }
   }
 }

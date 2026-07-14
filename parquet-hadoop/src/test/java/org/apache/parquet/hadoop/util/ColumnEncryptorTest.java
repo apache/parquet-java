@@ -23,10 +23,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -137,14 +134,14 @@ public class ColumnEncryptorTest {
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
 
     ParquetMetadata metaData = getParquetMetadata(EncDecProperties.getFileDecryptionProperties());
-    assertFalse(metaData.getBlocks().isEmpty());
+    assertThat(metaData.getBlocks()).isNotEmpty();
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
     Set<String> set = new HashSet<>(List.of(encryptColumns));
     for (ColumnChunkMetaData column : columns) {
       if (set.contains(column.getPath().toDotString())) {
-        assertTrue(column.isEncrypted());
+        assertThat(column.isEncrypted()).isTrue();
       } else {
-        assertFalse(column.isEncrypted());
+        assertThat(column.isEncrypted()).isFalse();
       }
     }
   }
@@ -208,21 +205,19 @@ public class ColumnEncryptorTest {
     ParquetReader<Group> reader = createReader(outputFile);
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      assertTrue(group.getLong("DocId", 0) == inputFile.getFileContent()[i].getLong("DocId", 0));
-      assertArrayEquals(
-          group.getBinary("Name", 0).getBytes(),
-          inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
-      assertArrayEquals(
-          group.getBinary("Gender", 0).getBytes(),
-          inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
+      assertThat(group.getLong("DocId", 0)).isEqualTo(inputFile.getFileContent()[i].getLong("DocId", 0));
+      assertThat(group.getBinary("Name", 0).getBytes())
+          .isEqualTo(
+              inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
+      assertThat(group.getBinary("Gender", 0).getBytes())
+          .isEqualTo(
+              inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
       Group subGroupInRead = group.getGroup("Links", 0);
       Group expectedSubGroup = inputFile.getFileContent()[i].getGroup("Links", 0);
-      assertArrayEquals(
-          subGroupInRead.getBinary("Forward", 0).getBytes(),
-          expectedSubGroup.getBinary("Forward", 0).getBytes());
-      assertArrayEquals(
-          subGroupInRead.getBinary("Backward", 0).getBytes(),
-          expectedSubGroup.getBinary("Backward", 0).getBytes());
+      assertThat(subGroupInRead.getBinary("Forward", 0).getBytes())
+          .isEqualTo(expectedSubGroup.getBinary("Forward", 0).getBytes());
+      assertThat(subGroupInRead.getBinary("Backward", 0).getBytes())
+          .isEqualTo(expectedSubGroup.getBinary("Backward", 0).getBytes());
     }
     reader.close();
   }
@@ -261,7 +256,7 @@ public class ColumnEncryptorTest {
           inMetaData.getBlocks().get(blockIndex).getColumns();
       List<ColumnChunkMetaData> outColumns =
           outMetaData.getBlocks().get(blockIndex).getColumns();
-      assertEquals(inColumns.size(), outColumns.size());
+      assertThat(outColumns).hasSameSizeAs(inColumns);
       validateColumns(inReader, outReader, inColumns, outColumns);
       inStore = inReader.readNextRowGroup();
       outStore = outReader.readNextRowGroup();
@@ -283,7 +278,7 @@ public class ColumnEncryptorTest {
       ColumnChunkMetaData outChunk = outColumns.get(i);
       OffsetIndex inOffsetIndex = inReader.readOffsetIndex(inChunk);
       OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
-      assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
+      assertThat(outOffsetIndex.getPageCount()).isEqualTo(inOffsetIndex.getPageCount());
       if (outChunk.isEncrypted()) {
         continue;
       }
@@ -304,13 +299,13 @@ public class ColumnEncryptorTest {
       outReader.setStreamPosition(outPageOffset);
       PageHeader inPageHeader = inReader.readPageHeader();
       PageHeader outPageHeader = outReader.readPageHeader();
-      assertEquals(inPageHeader, outPageHeader);
+      assertThat(outPageHeader).isEqualTo(inPageHeader);
       DataPageHeader inHeaderV1 = inPageHeader.data_page_header;
       DataPageHeader outHeaderV1 = outPageHeader.data_page_header;
-      assertEquals(inHeaderV1, outHeaderV1);
+      assertThat(outHeaderV1).isEqualTo(inHeaderV1);
       BytesInput inPageLoad = readBlockAllocate(inReader, inPageHeader.compressed_page_size);
       BytesInput outPageLoad = readBlockAllocate(outReader, outPageHeader.compressed_page_size);
-      assertEquals(inPageLoad.toByteBuffer(), outPageLoad.toByteBuffer());
+      assertThat(outPageLoad.toByteBuffer()).isEqualTo(inPageLoad.toByteBuffer());
     }
   }
 

@@ -19,7 +19,7 @@
 
 package org.apache.parquet.crypto;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
@@ -36,12 +36,10 @@ public class DecryptionPropertiesFactoryTest {
     FileDecryptionProperties decryptionProperties =
         decryptionPropertiesFactory.getFileDecryptionProperties(conf, null);
 
-    assertArrayEquals(decryptionProperties.getFooterKey(), SampleDecryptionPropertiesFactory.FOOTER_KEY);
-    assertArrayEquals(
-        decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL1),
-        SampleDecryptionPropertiesFactory.COL1_KEY);
-    assertArrayEquals(
-        decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL2),
-        SampleDecryptionPropertiesFactory.COL2_KEY);
+    assertThat(decryptionProperties.getFooterKey()).isEqualTo(SampleDecryptionPropertiesFactory.FOOTER_KEY);
+    assertThat(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL1))
+        .isEqualTo(SampleDecryptionPropertiesFactory.COL1_KEY);
+    assertThat(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL2))
+        .isEqualTo(SampleDecryptionPropertiesFactory.COL2_KEY);
   }
 }

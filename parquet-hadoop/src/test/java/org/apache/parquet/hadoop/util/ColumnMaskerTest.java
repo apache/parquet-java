@@ -24,8 +24,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertArrayEquals;
 
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -116,9 +116,9 @@ public class ColumnMaskerTest {
         .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
+      assertThat(group.getBinary("Name", 0).getBytes()).isEqualTo(testDocs.name[i].getBytes());
       Group subGroup = group.getGroup("Links", 0);
-      assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
+      assertThat(subGroup.getBinary("Forward", 0).getBytes()).isEqualTo(testDocs.linkForward[i].getBytes());
     }
     reader.close();
   }

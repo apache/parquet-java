@@ -32,7 +32,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.io.Files;
 import java.io.IOException;
@@ -161,7 +161,7 @@ public class TestMultipleWriteRead {
     try (ParquetReader<Group> reader =
         ParquetReader.builder(new GroupReadSupport(), file).build()) {
       for (Group group : data) {
-        assertEquals(group.toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(group.toString());
       }
     }
   }
@@ -171,7 +171,7 @@ public class TestMultipleWriteRead {
         .withFilter(filter)
         .build()) {
       for (Iterator<Group> it = data.iterator(); it.hasNext(); ) {
-        assertEquals(it.next().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(it.next().toString());
       }
     }
   }

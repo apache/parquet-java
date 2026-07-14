@@ -21,6 +21,7 @@ package org.apache.parquet.statistics;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.geographyType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.geometryType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +43,6 @@ import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -95,22 +95,22 @@ public class TestGeometryTypeRoundTrip {
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
-      Assert.assertEquals(2, reader.getRecordCount());
+      assertThat(reader.getRecordCount()).isEqualTo(2);
 
       ParquetMetadata footer = reader.getFooter();
-      Assert.assertNotNull(footer);
+      assertThat(footer).isNotNull();
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
-      Assert.assertNotNull(columnChunkMetaData);
+      assertThat(columnChunkMetaData).isNotNull();
 
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNotNull(geospatialStatistics);
+      assertThat(geospatialStatistics).isNotNull();
 
-      Assert.assertEquals(1.0, geospatialStatistics.getBoundingBox().getXMin(), 0.0);
-      Assert.assertEquals(2.0, geospatialStatistics.getBoundingBox().getXMax(), 0.0);
-      Assert.assertEquals(1.0, geospatialStatistics.getBoundingBox().getYMin(), 0.0);
-      Assert.assertEquals(2.0, geospatialStatistics.getBoundingBox().getYMax(), 0.0);
+      assertThat(geospatialStatistics.getBoundingBox().getXMin()).isEqualTo(1.0);
+      assertThat(geospatialStatistics.getBoundingBox().getXMax()).isEqualTo(2.0);
+      assertThat(geospatialStatistics.getBoundingBox().getYMin()).isEqualTo(1.0);
+      assertThat(geospatialStatistics.getBoundingBox().getYMax()).isEqualTo(2.0);
     }
   }
 
@@ -148,17 +148,17 @@ public class TestGeometryTypeRoundTrip {
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
-      Assert.assertEquals(2, reader.getRecordCount());
+      assertThat(reader.getRecordCount()).isEqualTo(2);
 
       ParquetMetadata footer = reader.getFooter();
-      Assert.assertNotNull(footer);
+      assertThat(footer).isNotNull();
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
-      Assert.assertNotNull(columnChunkMetaData);
+      assertThat(columnChunkMetaData).isNotNull();
 
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNull(geospatialStatistics);
+      assertThat(geospatialStatistics).isNull();
     }
   }
 
@@ -201,27 +201,35 @@ public class TestGeometryTypeRoundTrip {
 
     // Read and verify the file
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
-      Assert.assertEquals(3, reader.getRecordCount());
+      assertThat(reader.getRecordCount()).isEqualTo(3);
 
       ParquetMetadata footer = reader.getFooter();
-      Assert.assertNotNull(footer);
+      assertThat(footer).isNotNull();
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
-      Assert.assertNotNull(columnChunkMetaData);
+      assertThat(columnChunkMetaData).isNotNull();
 
       // The key verification - when invalid geometry data is present,
       // geospatial statistics should omit the invalid data
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNotNull("Geospatial statistics should omit the corrupt geometry", geospatialStatistics);
+      assertThat(geospatialStatistics)
+          .as("Geospatial statistics should omit the corrupt geometry")
+          .isNotNull();
 
       // further check fields in the GeospatialStatistics
-      Assert.assertTrue("Geospatial statistics should be valid", geospatialStatistics.isValid());
-      Assert.assertNotNull("Bounding box should not be null", geospatialStatistics.getBoundingBox());
-      Assert.assertNotNull("Geospatial types should not be null", geospatialStatistics.getGeospatialTypes());
-      Assert.assertTrue(
-          "Geospatial types should be valid",
-          geospatialStatistics.getGeospatialTypes().isValid());
+      assertThat(geospatialStatistics.isValid())
+          .as("Geospatial statistics should be valid")
+          .isTrue();
+      assertThat(geospatialStatistics.getBoundingBox())
+          .as("Bounding box should not be null")
+          .isNotNull();
+      assertThat(geospatialStatistics.getGeospatialTypes())
+          .as("Geospatial types should not be null")
+          .isNotNull();
+      assertThat(geospatialStatistics.getGeospatialTypes().isValid())
+          .as("Geospatial types should be valid")
+          .isTrue();
     }
   }
 }
