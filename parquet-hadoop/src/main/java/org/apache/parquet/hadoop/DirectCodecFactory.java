@@ -56,7 +56,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
   private final ByteBufferAllocator allocator;
 
-  // Any of these can be null depending on the version of hadoop on the classpath
+  // Any of these can be null depending on the version of hadoop on the classpath.
+  // Only used by the deprecated IndirectDecompressor/FullDirectDecompressor/DirectCodecPool shims.
   private static final Class<?> DIRECT_DECOMPRESSION_CODEC_CLASS;
   private static final Method DECOMPRESS_METHOD;
   private static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
@@ -103,8 +104,14 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyCompressor();
       case ZSTD:
         return new ZstdCompressor();
-        // todo: create class similar to the SnappyCompressor for zlib and exclude it as
-        // snappy is above since it also generates allocateDirect calls.
+      case LZ4_RAW:
+        return new Lz4RawCompressor();
+      case BROTLI:
+        if (Brotli4j.AVAILABLE) {
+          return new BrotliDirectCompressor();
+        }
+        return super.createCompressor(codecName);
+      case LZO:
       default:
         return super.createCompressor(codecName);
     }
@@ -131,66 +138,24 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyDecompressor();
       case ZSTD:
         return new ZstdDecompressor();
+      case LZ4_RAW:
+        return new Lz4RawDecompressor();
+      case BROTLI:
+        if (Brotli4j.AVAILABLE) {
+          return new BrotliDirectDecompressor();
+        }
+        // fall through to super (which throws UnsupportedOperationException)
+      case GZIP:
+      case LZO:
+      case UNCOMPRESSED:
+        return super.createDecompressor(codecName);
       default:
-        CompressionCodec codec = getCodec(codecName);
-        if (codec == null) {
-          return NO_OP_DECOMPRESSOR;
-        }
-        DirectCodecPool.CodecPool pool = DirectCodecPool.INSTANCE.codec(codec);
-        if (pool.supportsDirectDecompression()) {
-          return new FullDirectDecompressor(pool.borrowDirectDecompressor());
-        } else {
-          return new IndirectDecompressor(pool.borrowDecompressor());
-        }
+        return super.createDecompressor(codecName);
     }
   }
 
   public void close() {
     release();
-  }
-
-  /**
-   * Wrapper around legacy hadoop compressors that do not implement a direct memory
-   * based version of the decompression algorithm.
-   */
-  public class IndirectDecompressor extends BytesDecompressor {
-    private final Decompressor decompressor;
-
-    public IndirectDecompressor(CompressionCodec codec) {
-      this(DirectCodecPool.INSTANCE.codec(codec).borrowDecompressor());
-    }
-
-    private IndirectDecompressor(Decompressor decompressor) {
-      this.decompressor = decompressor;
-    }
-
-    @Override
-    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
-      decompressor.reset();
-      byte[] inputBytes = bytes.toByteArray();
-      decompressor.setInput(inputBytes, 0, inputBytes.length);
-      byte[] output = new byte[decompressedSize];
-      decompressor.decompress(output, 0, decompressedSize);
-      return BytesInput.from(output);
-    }
-
-    @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
-        throws IOException {
-
-      decompressor.reset();
-      byte[] inputBytes = new byte[compressedSize];
-      input.get(inputBytes);
-      decompressor.setInput(inputBytes, 0, inputBytes.length);
-      byte[] outputBytes = new byte[decompressedSize];
-      decompressor.decompress(outputBytes, 0, decompressedSize);
-      output.put(outputBytes);
-    }
-
-    @Override
-    public void release() {
-      DirectCodecPool.INSTANCE.returnDecompressor(decompressor);
-    }
   }
 
   private abstract class BaseDecompressor extends BytesDecompressor {
@@ -212,8 +177,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         ByteBuffer output = outputAllocator.allocate(decompressedSize);
         int size = decompress(input.slice(), output.slice());
         if (size != decompressedSize) {
-          throw new DirectCodecPool.ParquetCompressionCodecException(
-              "Unexpected decompressed size: " + size + " != " + decompressedSize);
+          throw new IOException("Unexpected decompressed size: " + size + " != " + decompressedSize);
         }
         output.limit(size);
         return BytesInput.from(output);
@@ -231,8 +195,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       output.limit(output.position() + decompressedSize);
       int size = decompress(input.slice(), output.slice());
       if (size != decompressedSize) {
-        throw new DirectCodecPool.ParquetCompressionCodecException(
-            "Unexpected decompressed size: " + size + " != " + decompressedSize);
+        throw new IOException("Unexpected decompressed size: " + size + " != " + decompressedSize);
       }
       input.position(input.limit());
       input.limit(origInputLimit);
@@ -281,66 +244,6 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     abstract void closeCompressor();
-  }
-
-  /**
-   * Wrapper around new Hadoop compressors that implement a direct memory
-   * based version of a particular decompression algorithm. To maintain
-   * compatibility with Hadoop 1.x these classes that implement
-   * {@link org.apache.hadoop.io.compress.DirectDecompressionCodec}
-   * are currently retrieved and have their decompression method invoked
-   * with reflection.
-   */
-  public class FullDirectDecompressor extends BaseDecompressor {
-    private final Object decompressor;
-
-    public FullDirectDecompressor(CompressionCodecName codecName) {
-      this(DirectCodecPool.INSTANCE
-          .codec(Objects.requireNonNull(getCodec(codecName)))
-          .borrowDirectDecompressor());
-    }
-
-    private FullDirectDecompressor(Object decompressor) {
-      this.decompressor = decompressor;
-    }
-
-    @Override
-    public BytesInput decompress(BytesInput compressedBytes, int decompressedSize) throws IOException {
-      // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
-      if (decompressor instanceof Decompressor) {
-        ((Decompressor) decompressor).reset();
-      }
-      return super.decompress(compressedBytes, decompressedSize);
-    }
-
-    @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
-        throws IOException {
-      // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
-      if (decompressor instanceof Decompressor) {
-        ((Decompressor) decompressor).reset();
-      }
-      super.decompress(input, compressedSize, output, decompressedSize);
-    }
-
-    @Override
-    int decompress(ByteBuffer input, ByteBuffer output) {
-      int startPos = output.position();
-      try {
-        DECOMPRESS_METHOD.invoke(decompressor, input, output);
-      } catch (IllegalAccessException | InvocationTargetException e) {
-        throw new DirectCodecPool.ParquetCompressionCodecException(e);
-      }
-      int size = output.position() - startPos;
-      // Some decompressors flip the output buffer, some don't:
-      // Let's rely on the limit if the position did not change
-      return size == 0 ? output.limit() : size;
-    }
-
-    @Override
-    void closeDecompressor() {
-      DirectCodecPool.INSTANCE.returnDirectDecompressor(decompressor);
-    }
   }
 
   /**
@@ -419,6 +322,26 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  /**
+   * Direct-memory LZ4_RAW decompressor using airlift's LZ4 decompressor with
+   * direct ByteBuffers.
+   */
+  private class Lz4RawDecompressor extends BaseDecompressor {
+    private final io.airlift.compress.lz4.Lz4Decompressor decompressor =
+        new io.airlift.compress.lz4.Lz4Decompressor();
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) {
+      decompressor.decompress(input, output);
+      return output.position();
+    }
+
+    @Override
+    void closeDecompressor() {
+      // no-op
+    }
+  }
+
   private class ZstdCompressor extends BaseCompressor {
     private final ZstdCompressCtx context;
 
@@ -462,6 +385,95 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   }
 
   /**
+   * Direct-memory LZ4_RAW compressor using airlift's LZ4 compressor with
+   * direct ByteBuffers, avoiding the stream-based heap path.
+   */
+  private class Lz4RawCompressor extends BaseCompressor {
+    private final io.airlift.compress.lz4.Lz4Compressor compressor = new io.airlift.compress.lz4.Lz4Compressor();
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.LZ4_RAW;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      return compressor.maxCompressedLength(size);
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) {
+      compressor.compress(input, output);
+      return output.position();
+    }
+
+    @Override
+    void closeCompressor() {
+      // no-op
+    }
+  }
+
+  /**
+   * Direct-memory Brotli decompressor using brotli4j via reflection.
+   * brotli4j only exposes a byte-array API, so input/output are copied through heap arrays.
+   * Brotli is slow enough that the copy overhead is negligible.
+   */
+  private class BrotliDirectDecompressor extends BaseDecompressor {
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) throws IOException {
+      byte[] compressedBytes = new byte[input.remaining()];
+      input.get(compressedBytes);
+      byte[] decompressed = Brotli4j.decompress(compressedBytes);
+      output.put(decompressed);
+      return decompressed.length;
+    }
+
+    @Override
+    void closeDecompressor() {
+      // no-op
+    }
+  }
+
+  /**
+   * Direct-memory Brotli compressor using brotli4j via reflection.
+   * Uses quality=1 by default (fast compression, matching the old jbrotli default).
+   * brotli4j only exposes a byte-array API, so input/output are copied through heap arrays.
+   */
+  private class BrotliDirectCompressor extends BaseCompressor {
+    private final Object params;
+
+    BrotliDirectCompressor() {
+      this.params = Brotli4j.newParams(1);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.BROTLI;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      // Brotli worst case: input size + (input size >> 2) + 1K overhead for small inputs
+      return size + (size >> 2) + 1024;
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) throws IOException {
+      byte[] inputBytes = new byte[input.remaining()];
+      input.get(inputBytes);
+      byte[] compressed = Brotli4j.compress(inputBytes, params);
+      output.put(compressed);
+      return compressed.length;
+    }
+
+    @Override
+    void closeCompressor() {
+      // no-op
+    }
+  }
+
+  /**
    * @deprecated Use {@link CodecFactory#NO_OP_COMPRESSOR} instead
    */
   @Deprecated
@@ -485,6 +497,125 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  /**
+   * Wrapper around legacy hadoop compressors that do not implement a direct memory
+   * based version of the decompression algorithm.
+   *
+   * @deprecated retained for backwards compatibility only. The default direct codec factory no
+   *     longer routes decompression through Hadoop codecs; will be removed in 2.0.0.
+   */
+  @Deprecated
+  public class IndirectDecompressor extends BytesDecompressor {
+    private final Decompressor decompressor;
+
+    public IndirectDecompressor(CompressionCodec codec) {
+      this(DirectCodecPool.INSTANCE.codec(codec).borrowDecompressor());
+    }
+
+    private IndirectDecompressor(Decompressor decompressor) {
+      this.decompressor = decompressor;
+    }
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
+      decompressor.reset();
+      byte[] inputBytes = bytes.toByteArray();
+      decompressor.setInput(inputBytes, 0, inputBytes.length);
+      byte[] output = new byte[decompressedSize];
+      decompressor.decompress(output, 0, decompressedSize);
+      return BytesInput.from(output);
+    }
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
+
+      decompressor.reset();
+      byte[] inputBytes = new byte[compressedSize];
+      input.get(inputBytes);
+      decompressor.setInput(inputBytes, 0, inputBytes.length);
+      byte[] outputBytes = new byte[decompressedSize];
+      decompressor.decompress(outputBytes, 0, decompressedSize);
+      output.put(outputBytes);
+    }
+
+    @Override
+    public void release() {
+      DirectCodecPool.INSTANCE.returnDecompressor(decompressor);
+    }
+  }
+
+  /**
+   * Wrapper around new Hadoop compressors that implement a direct memory
+   * based version of a particular decompression algorithm. To maintain
+   * compatibility with Hadoop 1.x these classes that implement
+   * {@link org.apache.hadoop.io.compress.DirectDecompressionCodec}
+   * are currently retrieved and have their decompression method invoked
+   * with reflection.
+   *
+   * @deprecated retained for backwards compatibility only. The default direct codec factory no
+   *     longer routes decompression through Hadoop codecs; will be removed in 2.0.0.
+   */
+  @Deprecated
+  public class FullDirectDecompressor extends BaseDecompressor {
+    private final Object decompressor;
+
+    public FullDirectDecompressor(CompressionCodecName codecName) {
+      this(DirectCodecPool.INSTANCE
+          .codec(Objects.requireNonNull(getCodec(codecName)))
+          .borrowDirectDecompressor());
+    }
+
+    private FullDirectDecompressor(Object decompressor) {
+      this.decompressor = decompressor;
+    }
+
+    @Override
+    public BytesInput decompress(BytesInput compressedBytes, int decompressedSize) throws IOException {
+      // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
+      if (decompressor instanceof Decompressor) {
+        ((Decompressor) decompressor).reset();
+      }
+      return super.decompress(compressedBytes, decompressedSize);
+    }
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
+      // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
+      if (decompressor instanceof Decompressor) {
+        ((Decompressor) decompressor).reset();
+      }
+      super.decompress(input, compressedSize, output, decompressedSize);
+    }
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) {
+      int startPos = output.position();
+      try {
+        DECOMPRESS_METHOD.invoke(decompressor, input, output);
+      } catch (IllegalAccessException | InvocationTargetException e) {
+        throw new DirectCodecPool.ParquetCompressionCodecException(e);
+      }
+      int size = output.position() - startPos;
+      // Some decompressors flip the output buffer, some don't:
+      // Let's rely on the limit if the position did not change
+      return size == 0 ? output.limit() : size;
+    }
+
+    @Override
+    void closeDecompressor() {
+      DirectCodecPool.INSTANCE.returnDirectDecompressor(decompressor);
+    }
+  }
+
+  /**
+   * Object pool of Hadoop compressors/decompressors.
+   *
+   * @deprecated retained for backwards compatibility only. The default direct codec factory no
+   *     longer pools Hadoop codecs; will be removed in 2.0.0.
+   */
+  @Deprecated
   static class DirectCodecPool {
 
     public static final DirectCodecPool INSTANCE = new DirectCodecPool();
