@@ -243,7 +243,7 @@ public class DynMethods {
       try {
         Class<?> targetClass = Class.forName(className, true, loader);
         impl(targetClass, methodName, argClasses);
-      } catch (ClassNotFoundException e) {
+      } catch (ClassNotFoundException | NoClassDefFoundError e) {
         // class not found on supplied classloader.
         LOG.debug("failed to load class {}", className, e);
       }
@@ -352,7 +352,7 @@ public class DynMethods {
       try {
         Class<?> targetClass = Class.forName(className, true, loader);
         hiddenImpl(targetClass, methodName, argClasses);
-      } catch (ClassNotFoundException e) {
+      } catch (ClassNotFoundException | NoClassDefFoundError e) {
         // class not found on supplied classloader.
         LOG.debug("failed to load class {}", className, e);
       }

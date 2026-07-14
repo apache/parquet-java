@@ -19,6 +19,9 @@
 
 package org.apache.parquet.util;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.util.concurrent.Callable;
 import org.apache.parquet.TestUtils;
 import org.apache.parquet.util.Concatenator.SomeCheckedException;
@@ -305,5 +308,70 @@ public class TestDynMethods {
     Assert.assertNull("NOOP can be bound", noop.bind(new Concatenator()).invoke("a"));
     Assert.assertNull("NOOP can be bound to null", noop.bind(null).invoke("a"));
     Assert.assertNull("NOOP can be static", noop.asStatic().invoke("a"));
+  }
+
+  static class Available {
+    public static String register() {
+      return "available";
+    }
+
+    @SuppressWarnings("unused")
+    private static String hiddenRegister() {
+      return "hidden-available";
+    }
+  }
+
+  @Test
+  public void implWithNoClassDefFoundError() throws NoSuchMethodException {
+    ClassLoader errorLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        if ("org.apache.parquet.MissingDependencyClass".equals(name)) {
+          throw new NoClassDefFoundError("some/TransitiveDependency");
+        }
+
+        return super.loadClass(name, resolve);
+      }
+    };
+
+    assertThatThrownBy(() -> new DynMethods.Builder("register")
+            .loader(errorLoader)
+            .impl("org.apache.parquet.MissingDependencyClass")
+            .buildStaticChecked())
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessage("Cannot find method: register");
+
+    assertThat(new DynMethods.Builder("register")
+            .loader(errorLoader)
+            .impl("org.apache.parquet.MissingDependencyClass")
+            .impl(Available.class)
+            .buildStaticChecked()
+            .<String>invoke())
+        .isEqualTo("available");
+
+    assertThat(new DynMethods.Builder("register")
+            .loader(errorLoader)
+            .hiddenImpl("org.apache.parquet.MissingDependencyClass")
+            .hiddenImpl(Available.class, "hiddenRegister")
+            .buildStaticChecked()
+            .<String>invoke())
+        .isEqualTo("hidden-available");
+  }
+
+  @Test
+  public void implWithExceptionInInitializerError() {
+    ClassLoader errorLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        throw new ExceptionInInitializerError("static initializer failed");
+      }
+    };
+
+    assertThatThrownBy(() -> new DynMethods.Builder("register")
+            .loader(errorLoader)
+            .impl("org.apache.parquet.FailingInitClass")
+            .buildStaticChecked())
+        .isInstanceOf(ExceptionInInitializerError.class)
+        .hasMessage("static initializer failed");
   }
 }
