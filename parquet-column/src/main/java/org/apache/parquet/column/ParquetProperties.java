@@ -70,6 +70,14 @@ public class ParquetProperties {
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
   /**
+   * Default for the Approach 2 (micro-row-group) writer knob: 0 means the legacy writer
+   * path is used and each {@code ParquetWriter} record-batch flush produces exactly one
+   * {@code BlockMetaData}. A positive value opts in to producing K logical
+   * micro-row-groups per physical column chunk on every flush, sized by this value.
+   */
+  public static final long DEFAULT_MICRO_ROW_GROUP_ROW_COUNT = 0L;
+
+  /**
    * @deprecated This shared instance can cause thread safety issues when used by multiple builders concurrently.
    * Use {@code new DefaultValuesWriterFactory()} instead to create individual instances.
    */
@@ -135,6 +143,7 @@ public class ParquetProperties {
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
+  private final long microRowGroupRowCount;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -167,6 +176,7 @@ public class ParquetProperties {
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
+    this.microRowGroupRowCount = builder.microRowGroupRowCount;
   }
 
   public static Builder builder() {
@@ -322,6 +332,18 @@ public class ParquetProperties {
     return pageWriteChecksumEnabled;
   }
 
+  /**
+   * @return the Approach 2 (micro-row-group) target row count per logical block, or
+   *         {@code 0} if disabled. When positive, every record-batch flush in
+   *         {@code InternalParquetRecordWriter} produces {@code ceil(flushRowCount /
+   *         microRowGroupRowCount)} logical {@code BlockMetaData} entries that share one
+   *         physical column chunk; readers consume them via
+   *         {@code ParquetFileReader.readNextRowGroup()}'s Approach 2 dispatch.
+   */
+  public long getMicroRowGroupRowCount() {
+    return microRowGroupRowCount;
+  }
+
   public OptionalLong getBloomFilterNDV(ColumnDescriptor column) {
     Long ndv = bloomFilterNDVs.getValue(column);
     return ndv == null ? OptionalLong.empty() : OptionalLong.of(ndv);
@@ -419,6 +441,7 @@ public class ParquetProperties {
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
+    private long microRowGroupRowCount = DEFAULT_MICRO_ROW_GROUP_ROW_COUNT;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -460,6 +483,7 @@ public class ParquetProperties {
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
+      this.microRowGroupRowCount = toCopy.microRowGroupRowCount;
     }
 
     /**
@@ -753,6 +777,30 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Opt in to the Approach 2 (micro-row-group) writer path: each record-batch flush
+     * produces one physical column chunk whose pages are split into multiple logical
+     * {@code BlockMetaData} entries of approximately this row count. Set to {@code 0} to
+     * use the legacy single-block-per-flush behavior (the default).
+     *
+     * <p>Prototype limitations apply (see {@link
+     * org.apache.parquet.hadoop.metadata.ColumnChunkMetaData#SENTINEL_OFFSET}):
+     * encryption is unsupported and per-block statistics / ColumnIndex / bloom filters
+     * are not emitted.
+     *
+     * @param microRowGroupRowCount target row count per logical micro-row-group, or
+     *     {@code 0} to disable. Must be non-negative.
+     * @return this builder for method chaining
+     */
+    public Builder withMicroRowGroupRowCount(long microRowGroupRowCount) {
+      Preconditions.checkArgument(
+          microRowGroupRowCount >= 0,
+          "Invalid micro-row-group row count (negative): %s",
+          microRowGroupRowCount);
+      this.microRowGroupRowCount = microRowGroupRowCount;
       return this;
     }
 

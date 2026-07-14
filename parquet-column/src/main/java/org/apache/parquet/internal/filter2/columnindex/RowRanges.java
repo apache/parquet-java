@@ -119,6 +119,22 @@ public class RowRanges {
   }
 
   /**
+   * Creates an immutable {@link RowRanges} with the single closed range {@code [from, to]}.
+   * Used by the Approach 2 (micro-row-group) reader path to express a logical micro-row-group's
+   * absolute row range against a shared physical column chunk.
+   *
+   * @param from inclusive first row index (must be non-negative)
+   * @param to   inclusive last row index (must be {@code >= from})
+   * @return an immutable {@link RowRanges} representing {@code [from, to]}
+   */
+  public static RowRanges createBetween(long from, long to) {
+    if (from < 0 || to < from) {
+      throw new IllegalArgumentException("Invalid row range [" + from + ", " + to + ']');
+    }
+    return new RowRanges(new Range(from, to));
+  }
+
+  /**
    * Creates a mutable RowRanges object with the following ranges:
    * <pre>
    * [firstRowIndex[0], lastRowIndex[0]],

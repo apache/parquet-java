@@ -48,6 +48,17 @@ import org.apache.parquet.schema.Types;
  * Column meta data for a block stored in the file footer and passed in the InputSplit
  */
 public abstract class ColumnChunkMetaData {
+  /**
+   * Sentinel value used for {@link #getFirstDataPageOffset()} and the on-disk
+   * {@code data_page_offset} / {@code ColumnChunk.file_offset} fields to mark
+   * a column chunk as <em>physically shared</em> with other logical row groups
+   * (Approach 2 of the micro-row-group format extension). When set, the
+   * column chunk's pages are owned by a physical group that spans multiple
+   * {@link BlockMetaData} entries, and page locations must be looked up via
+   * the {@code OffsetIndex} sidecar rather than derived from this metadata.
+   */
+  public static final long SENTINEL_OFFSET = -1L;
+
   protected int rowGroupOrdinal = -1;
 
   @Deprecated
@@ -308,17 +319,44 @@ public abstract class ColumnChunkMetaData {
   }
 
   /**
-   * @return the offset of the first byte in the chunk
+   * @return the offset of the first byte in the chunk, or {@link #SENTINEL_OFFSET} if this
+   *         column chunk is physically shared (see {@link #isPhysicallyShared()}). Callers
+   *         that need an actual byte offset must consult the column's {@code OffsetIndex}
+   *         in that case.
    */
   public long getStartingPos() {
     decryptIfNeeded();
     long dictionaryPageOffset = getDictionaryPageOffset();
     long firstDataPageOffset = getFirstDataPageOffset();
+    if (firstDataPageOffset == SENTINEL_OFFSET) {
+      return SENTINEL_OFFSET;
+    }
     if (dictionaryPageOffset > 0 && dictionaryPageOffset < firstDataPageOffset) {
       // if there's a dictionary and it's before the first data page, start from there
       return dictionaryPageOffset;
     }
     return firstDataPageOffset;
+  }
+
+  /**
+   * @return {@code true} if this column chunk's pages are not contiguous in the file
+   *         and must be located via the {@code OffsetIndex} sidecar (Approach 2 of the
+   *         micro-row-group format extension). When {@code true}, callers must not use
+   *         {@link #getStartingPos()} or {@link #getTotalSize()} to plan a single IO over
+   *         the column chunk.
+   *
+   *         <p>This probe must not trigger decryption: Approach 2 interacts with the
+   *         encrypted-metadata path in ways that are out of scope for this prototype, so
+   *         encrypted column chunks always return {@code false}. This also keeps the cheap
+   *         dispatch in {@link org.apache.parquet.hadoop.ParquetFileReader#readNextRowGroup()}
+   *         from throwing on plaintext-footer-encrypted-columns files when no decryptor is
+   *         configured.
+   */
+  public boolean isPhysicallyShared() {
+    if (isEncrypted()) {
+      return false;
+    }
+    return getFirstDataPageOffset() == SENTINEL_OFFSET;
   }
 
   /**

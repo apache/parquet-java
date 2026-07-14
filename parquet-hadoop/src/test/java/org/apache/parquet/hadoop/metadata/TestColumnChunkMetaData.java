@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.metadata;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashSet;
@@ -65,6 +66,23 @@ public class TestColumnChunkMetaData {
     ColumnChunkMetaData md = newMD(neg);
     assertTrue(md instanceof LongColumnChunkMetaData);
     assertEquals(neg, md.getFirstDataPageOffset());
+  }
+
+  @Test
+  public void testSentinelIsPhysicallyShared() {
+    // Approach 2 (micro-row-group) sentinel: firstDataPage == -1 marks the column as
+    // physically shared with other blocks.
+    ColumnChunkMetaData md = newMD(ColumnChunkMetaData.SENTINEL_OFFSET);
+    assertTrue(md.isPhysicallyShared());
+    assertEquals(ColumnChunkMetaData.SENTINEL_OFFSET, md.getStartingPos());
+  }
+
+  @Test
+  public void testLegacyIsNotPhysicallyShared() {
+    // A normal column chunk must not look like the Approach 2 sentinel.
+    ColumnChunkMetaData md = newMD(100L);
+    assertFalse(md.isPhysicallyShared());
+    assertEquals(100L, md.getStartingPos());
   }
 
   private ColumnChunkMetaData newMD(long big) {
