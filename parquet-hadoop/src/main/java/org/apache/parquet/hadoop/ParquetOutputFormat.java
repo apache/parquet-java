@@ -163,6 +163,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
+  public static final String COLUMN_COMPRESSION_LEVEL_PREFIX = "parquet.compression.level";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -220,6 +221,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static void setCompression(Job job, CompressionCodecName compression) {
     getConfiguration(job).set(COMPRESSION, compression.name());
+  }
+
+  public static void setColumnCompression(Job job, String columnPath, CompressionCodecName codec) {
+    getConfiguration(job).set(COMPRESSION + '#' + columnPath, codec.name());
+  }
+
+  public static void setColumnCompressionLevel(Job job, String columnPath, int level) {
+    getConfiguration(job).setInt(COLUMN_COMPRESSION_LEVEL_PREFIX + '#' + columnPath, level);
   }
 
   public static void setEnableDictionary(Job job, boolean enableDictionary) {
@@ -546,6 +555,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
             STATISTICS_ENABLED,
             key -> conf.getBoolean(key, ParquetProperties.DEFAULT_STATISTICS_ENABLED),
             propsBuilder::withStatisticsEnabled)
+        .withColumnConfig(
+            COMPRESSION,
+            key -> CompressionCodecName.fromConf(conf.get(key)),
+            propsBuilder::withCompressionCodec)
+        .withColumnConfig(
+            COLUMN_COMPRESSION_LEVEL_PREFIX,
+            key -> conf.getInt(key, -1),
+            propsBuilder::withCompressionLevel)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();
