@@ -678,7 +678,7 @@ public final class PrimitiveType extends Type {
 
   /**
    * @param logicalType LogicalTypeAnnotation
-   * @return a new PrimitiveType with the same fields and a new id null
+   * @return a new PrimitiveType with the same fields and the given logical type annotation
    */
   public PrimitiveType withLogicalTypeAnnotation(LogicalTypeAnnotation logicalType) {
     return new PrimitiveType(getRepetition(), primitive, length, getName(), logicalType, getId());
