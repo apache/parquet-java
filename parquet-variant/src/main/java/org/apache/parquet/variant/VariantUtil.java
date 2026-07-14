@@ -546,9 +546,9 @@ class VariantUtil {
   }
 
   /**
-   * Similar to getLong(), but for the types: Type.BYTE, SHORT.
+   * Similar to getLong(), but for the type: Type.BYTE.
    * @param value The Variant value
-   * @return The short value
+   * @return The byte value
    */
   static byte getByte(ByteBuffer value) {
     checkIndex(value.position(), value.limit());
