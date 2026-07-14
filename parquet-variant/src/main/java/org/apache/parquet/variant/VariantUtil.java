@@ -877,7 +877,10 @@ class VariantUtil {
     // Extracts the highest 2 bits in the metadata header to determine the integer size of the
     // offset list.
     int offsetSize = ((metadata.get(pos) >> 6) & 0x3) + 1;
+    // dictionary size
     int dictSize = readUnsigned(metadata, pos + 1, offsetSize);
+    // range check the dictionary, including from integer overflow
+    checkIndex(Math.toIntExact((long) dictSize * offsetSize), metadata.limit());
     HashMap<String, Integer> result = new HashMap<>();
     int offset = readUnsigned(metadata, pos + 1 + offsetSize, offsetSize);
     for (int id = 0; id < dictSize; id++) {

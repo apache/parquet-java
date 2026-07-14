@@ -509,6 +509,29 @@ public class TestHardenedReader {
     assertThat(top.getFieldAtIndex(1).value.getBoolean()).isTrue();
   }
 
+  @Test
+  public void testInvalidImmutableMetadata() {
+    // test immutable metadata resilience
+    VariantBuilder vb = new VariantBuilder();
+    VariantObjectBuilder obj = vb.startObject();
+    obj.appendKey("one");
+    obj.appendInt(1);
+    obj.appendKey("two");
+    obj.appendInt(2);
+    vb.endObject();
+    Variant variant = vb.build();
+
+    ByteBuffer metaBuf = variant.getMetadataBuffer();
+    ByteBuffer writable = ByteBuffer.allocate(metaBuf.remaining());
+    writable.put(metaBuf.duplicate());
+    writable.put(1, (byte) -1);
+    writable.flip();
+    // the offset rejected is 255. Without the hardening, later checks
+    // will fail, but a different offset value will be reported.
+    assertThatThrownBy(() -> new ImmutableMetadata(writable))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid byte-array offset (255). length: 11");
+  }
   // ------------------------------------------------------------------
   // Helpers
   // ------------------------------------------------------------------
