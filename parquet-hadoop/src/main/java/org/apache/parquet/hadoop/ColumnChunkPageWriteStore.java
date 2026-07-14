@@ -642,7 +642,15 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
-    this(col -> compressor, schema, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled, fileEncryptor, rowGroupOrdinal, Double.MAX_VALUE);
+    this(
+        col -> compressor,
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal,
+        Double.MAX_VALUE);
   }
 
   private ColumnChunkPageWriteStore(
