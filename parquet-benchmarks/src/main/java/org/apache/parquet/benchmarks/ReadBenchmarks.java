@@ -18,107 +18,82 @@
  */
 package org.apache.parquet.benchmarks;
 
+import static org.apache.parquet.benchmarks.BenchmarkConstants.BLOCK_SIZE_DEFAULT;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.FIXED_LEN_BYTEARRAY_SIZE;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.PAGE_SIZE_DEFAULT;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS4M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS8M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS4M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS8M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_SNAPPY;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 
 import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
+/**
+ * End-to-end read benchmark: reads back 1M rows from a real Parquet file for each compression
+ * codec, measuring the full read path (filesystem I/O + decompression + decoding).
+ *
+ * <p>Parameterized by {@code codec} so every codec is covered uniformly. This replaces the
+ * previous layout that had one hand-written {@code @Benchmark} method per codec/block/page
+ * combination (and therefore only covered UNCOMPRESSED, SNAPPY, GZIP and LZO). The file for the
+ * selected codec is generated once per trial in {@link #generateFileForRead()} (skipped if it
+ * already exists), reading the shared {@link DataGenerator#benchmarkFile corpus} that can be
+ * pre-built for every codec via {@code DataGenerator generate} (see {@code run.sh generate}). Run
+ * a subset with e.g. {@code -p codec=ZSTD,LZ4_RAW}.
+ */
 @State(Scope.Benchmark)
+@BenchmarkMode(Mode.SingleShotTime)
 public class ReadBenchmarks {
 
-  private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile)
-        .withConf(configuration)
-        .build();
-    for (int i = 0; i < nRows; i++) {
-      Group group = reader.read();
-      blackhole.consume(group.getBinary("binary_field", 0));
-      blackhole.consume(group.getInteger("int32_field", 0));
-      blackhole.consume(group.getLong("int64_field", 0));
-      blackhole.consume(group.getBoolean("boolean_field", 0));
-      blackhole.consume(group.getFloat("float_field", 0));
-      blackhole.consume(group.getDouble("double_field", 0));
-      blackhole.consume(group.getBinary("flba_field", 0));
-      blackhole.consume(group.getInt96("int96_field", 0));
-    }
-    reader.close();
-  }
+  @Param({"UNCOMPRESSED", "SNAPPY", "GZIP", "LZO", "BROTLI", "LZ4", "ZSTD", "LZ4_RAW"})
+  public String codec;
 
-  /**
-   * This needs to be done exactly once.  To avoid needlessly regenerating the files for reading, they aren't cleaned
-   * as part of the benchmark.  If the files exist, a message will be printed and they will not be regenerated.
-   */
+  private Path file;
+
   @Setup(Level.Trial)
-  public void generateFilesForRead() {
-    new DataGenerator().generateAll();
+  public void generateFileForRead() throws IOException {
+    CompressionCodecName codecName = CompressionCodecName.valueOf(codec);
+    file = DataGenerator.benchmarkFile(codecName);
+    new DataGenerator()
+        .generateData(
+            file,
+            configuration,
+            PARQUET_2_0,
+            BLOCK_SIZE_DEFAULT,
+            PAGE_SIZE_DEFAULT,
+            FIXED_LEN_BYTEARRAY_SIZE,
+            codecName,
+            ONE_MILLION);
   }
 
   @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsDefaultBlockAndPageSizeUncompressed(Blackhole blackhole) throws IOException {
-    read(file_1M, ONE_MILLION, blackhole);
-  }
-
-  @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS256MPS4MUncompressed(Blackhole blackhole) throws IOException {
-    read(file_1M_BS256M_PS4M, ONE_MILLION, blackhole);
-  }
-
-  @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS256MPS8MUncompressed(Blackhole blackhole) throws IOException {
-    read(file_1M_BS256M_PS8M, ONE_MILLION, blackhole);
-  }
-
-  @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS512MPS4MUncompressed(Blackhole blackhole) throws IOException {
-    read(file_1M_BS512M_PS4M, ONE_MILLION, blackhole);
-  }
-
-  @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS512MPS8MUncompressed(Blackhole blackhole) throws IOException {
-    read(file_1M_BS512M_PS8M, ONE_MILLION, blackhole);
-  }
-
-  // TODO how to handle lzo jar?
-  //  @Benchmark
-  //  public void read1MRowsDefaultBlockAndPageSizeLZO(Blackhole blackhole)
-  //          throws IOException
-  //  {
-  //    read(parquetFile_1M_LZO, ONE_MILLION, blackhole);
-  //  }
-
-  @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsDefaultBlockAndPageSizeSNAPPY(Blackhole blackhole) throws IOException {
-    read(file_1M_SNAPPY, ONE_MILLION, blackhole);
-  }
-
-  @Benchmark
-  @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsDefaultBlockAndPageSizeGZIP(Blackhole blackhole) throws IOException {
-    read(file_1M_GZIP, ONE_MILLION, blackhole);
+  public void read1MRows(Blackhole blackhole) throws IOException {
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+        .withConf(configuration)
+        .build()) {
+      for (int i = 0; i < ONE_MILLION; i++) {
+        Group group = reader.read();
+        blackhole.consume(group.getBinary("binary_field", 0));
+        blackhole.consume(group.getInteger("int32_field", 0));
+        blackhole.consume(group.getLong("int64_field", 0));
+        blackhole.consume(group.getBoolean("boolean_field", 0));
+        blackhole.consume(group.getFloat("float_field", 0));
+        blackhole.consume(group.getDouble("double_field", 0));
+        blackhole.consume(group.getBinary("flba_field", 0));
+        blackhole.consume(group.getInt96("int96_field", 0));
+      }
+    }
   }
 }

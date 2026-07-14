@@ -38,6 +38,7 @@ Information on the JMH_OPTIONS can be found by running: run.sh all -help
 ----------- | ----------
 all         | Runs all benchmarks in the module (listed here and others).
 build       | (No benchmark run, shortcut to rebuild the JMH uber jar).
+generate    | (No benchmark run, shortcut to pre-generate the per-codec read corpus).
 clean       | (No benchmark run, shortcut to clean up any temporary files).
 read        | Reading files with different compression, page and block sizes.
 write       | Writing files.
@@ -74,8 +75,17 @@ elif [ "$BENCHMARK" == "build" ]; then
 
 elif [ "$BENCHMARK" == "clean" ]; then
 
-  # Shortcut utility to clean any state left behind from any previous run.
+  # Shortcut utility to clean up any state left behind from any previous run.
   java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup
+
+elif [ "$BENCHMARK" == "generate" ]; then
+
+  # Shortcut utility to pre-generate the per-codec 1M-row data files reused by the read benchmark.
+  # Build the uberjar first if it isn't there yet.
+  if [ ! -f ${SCRIPT_PATH}/target/parquet-benchmarks.jar ]; then
+    ${SCRIPT_PATH}/run.sh build
+  fi
+  java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator generate
 
 else
 
