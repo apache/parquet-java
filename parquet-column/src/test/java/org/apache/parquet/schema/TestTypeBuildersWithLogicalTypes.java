@@ -534,6 +534,182 @@ public class TestTypeBuildersWithLogicalTypes {
     assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion());
   }
 
+  @Test
+  public void testFileLogicalTypePathOnly() {
+    String name = "file_field";
+    GroupType file = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.fileType(),
+        Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path"));
+
+    assertEquals(
+        "required group file_field (FILE) {\n"
+            + "  optional binary path (STRING);\n"
+            + "}",
+        file.toString());
+
+    LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
+    assertEquals(LogicalTypeAnnotation.LogicalTypeToken.FILE, annotation.getType());
+    assertNull(annotation.toOriginalType());
+    assertTrue(annotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+  }
+
+  @Test
+  public void testFileLogicalTypeAllFields() {
+    String name = "file_field";
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(INT64).named("offset")
+        .optional(INT64).named("size")
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("content_type")
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("checksum")
+        .optional(BINARY).named("inline")
+        .named(name);
+
+    LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
+    assertTrue(annotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(6, file.getFieldCount());
+    assertEquals("path", file.getType("path").getName());
+    assertEquals("offset", file.getType("offset").getName());
+    assertEquals("size", file.getType("size").getName());
+    assertEquals("content_type", file.getType("content_type").getName());
+    assertEquals("checksum", file.getType("checksum").getName());
+    assertEquals("inline", file.getType("inline").getName());
+  }
+
+  @Test
+  public void testFileLogicalTypeInlineOnly() {
+    // Every field is optional, so an inline-only group is valid (spec self-reference / inline case).
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY).named("inline")
+        .named("inline_file");
+
+    assertTrue(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(1, file.getFieldCount());
+    assertEquals("inline", file.getType("inline").getName());
+  }
+
+  @Test
+  public void testFileLogicalTypeSelfReference() {
+    // A self-reference omits 'path' and locates bytes within the current file via offset/size.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(INT64).named("offset")
+        .optional(INT64).named("size")
+        .named("self_ref_file");
+
+    assertTrue(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(2, file.getFieldCount());
+  }
+
+  @Test
+  public void testFileLogicalTypeSelfReferenceRequiresSize() {
+    // A group without 'path' or 'inline' can only hold self-references, which require 'size'.
+    // Declaring only metadata fields leaves no way to resolve or size the referenced bytes.
+    assertThrows(
+        "FILE type group without 'path'/'inline' must declare 'size'",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("content_type")
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("checksum")
+            .named("file_metadata_only"));
+  }
+
+  @Test
+  public void testFileLogicalTypeSelfReferenceWithSize() {
+    // A self-reference (no 'path') that declares 'size' is valid.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(INT64).named("size")
+        .named("self_ref_with_size");
+
+    assertTrue(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(1, file.getFieldCount());
+  }
+
+  @Test
+  public void testFileLogicalTypeOffsetRequiresSize() {
+    // The spec requires 'size' whenever 'offset' is set, so a group declaring 'offset'
+    // without 'size' can never produce a valid value and is rejected at build time.
+    assertThrows(
+        "FILE type group with 'offset' must also declare 'size'",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .optional(INT64).named("offset")
+            .named("file_offset_without_size"));
+  }
+
+  @Test
+  public void testFileLogicalTypeOffsetWithSize() {
+    // 'offset' accompanied by 'size' is valid.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(INT64).named("offset")
+        .optional(INT64).named("size")
+        .named("file_offset_with_size");
+
+    assertTrue(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(3, file.getFieldCount());
+  }
+
+  @Test
+  public void testFileLogicalTypeSizeWithoutOffset() {
+    // 'size' without 'offset' is valid (e.g. a whole-file range starting at 0).
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(INT64).named("size")
+        .named("file_size_without_offset");
+
+    assertTrue(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertEquals(2, file.getFieldCount());
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsUnrecognizedField() {
+    assertThrows(
+        "FILE type group must not contain unrecognized field names",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .optional(BINARY).named("unknown_field")
+            .named("file_with_bad_field"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsRequiredField() {
+    // All FILE fields must have OPTIONAL repetition under the current spec.
+    assertThrows(
+        "FILE type field must be optional",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .required(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .named("file_with_required_path"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsGroupField() {
+    // FILE fields must be primitives, not nested groups.
+    assertThrows(
+        "FILE type field must be primitive",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optionalGroup()
+            .optional(BINARY).named("nested")
+            .named("path")
+            .named("file_with_group_field"));
+  }
+
   /**
    * A convenience method to avoid a large number of @Test(expected=...) tests
    *
