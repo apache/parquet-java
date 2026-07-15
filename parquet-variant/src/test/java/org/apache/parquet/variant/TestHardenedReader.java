@@ -41,6 +41,7 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Rule;
@@ -469,6 +470,48 @@ public class TestHardenedReader {
   }
 
   /**
+   * Shredding a container that holds an unknown primitive type raises an exception. The shredding
+   * writer walks children through {@link Variant#getElementAtIndex}/{@link Variant#getFieldAtIndex},
+   * each of which materializes (and therefore validates) a child Variant. An unknown primitive type
+   * cannot be materialized, so the known elements shred into their typed_value columns and the
+   * unknown element aborts the write rather than being silently dropped or corrupted.
+   *
+   * <p>The current specification is: "new types may be added to the specification without
+   * incrementing the version ID. In such a situation, an implementation should be able to read the
+   * rest of the Variant value if desired." Reading the unknown value is optional; the shredding
+   * writer here declines and raises when it cannot reconstruct the value. A future policy may always
+   * reject on reconstruction.
+   */
+  @Test
+  public void testUnknownPrimitiveTypeShredding() {
+    // Shredded schema: metadata + residual value + a typed_value LIST whose element shreds INT8.
+    // Known BYTE elements land in element.typed_value; an unknown element cannot be reconstructed.
+    MessageType shreddedSchema = MessageTypeParser.parseMessageType("message variant {"
+        + "  required binary metadata;"
+        + "  optional binary value;"
+        + "  optional group typed_value (LIST) {"
+        + "    repeated group list {"
+        + "      required group element {"
+        + "        optional binary value;"
+        + "        optional int32 typed_value (INTEGER(8, true));"
+        + "      }"
+        + "    }"
+        + "  }"
+        + "}");
+
+    // Array [BYTE(10), unknown-type-63, BYTE(20)]: the top-level array is well-formed, so it
+    // constructs; the unknown element is only rejected when the writer descends into it.
+    final byte unknownPrimitive = (byte) 0xFC;
+    byte[] value = {0b0011, 0x03, 0x00, 0x02, 0x03, 0x05, 0x0C, 0x0A, unknownPrimitive, 0x0C, 0x14};
+    Variant variant = new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(EMPTY_METADATA));
+    assertThat(variant.getType()).isEqualTo(Variant.Type.ARRAY);
+
+    assertThatThrownBy(() -> VariantValueWriter.write(new NoOpRecordConsumer(), shreddedSchema, variant))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unknown primitive type");
+  }
+
+  /**
    * The spec permits a variant field offsets to be non-monotonic, and equal offsets are a legal
    * consequence of that — two fields may point at the same value bytes.
    */
@@ -606,6 +649,45 @@ public class TestHardenedReader {
       assertThat(reader.read()).describedAs("expected exactly one row").isNull();
       return new byte[][] {readMetadata, readValue};
     }
+  }
+
+  /** A {@link RecordConsumer} that discards everything: used to drive a shredded write to the point of failure. */
+  private static final class NoOpRecordConsumer extends RecordConsumer {
+    @Override
+    public void startMessage() {}
+
+    @Override
+    public void endMessage() {}
+
+    @Override
+    public void startField(String field, int index) {}
+
+    @Override
+    public void endField(String field, int index) {}
+
+    @Override
+    public void startGroup() {}
+
+    @Override
+    public void endGroup() {}
+
+    @Override
+    public void addInteger(int value) {}
+
+    @Override
+    public void addLong(long value) {}
+
+    @Override
+    public void addBoolean(boolean value) {}
+
+    @Override
+    public void addBinary(Binary value) {}
+
+    @Override
+    public void addFloat(float value) {}
+
+    @Override
+    public void addDouble(double value) {}
   }
 
   /**
