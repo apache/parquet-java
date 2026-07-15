@@ -1013,7 +1013,9 @@ public class ParquetWriter<T> implements Closeable {
      *
      * <p>When the compression ratio (compressed size / uncompressed size) exceeds this threshold,
      * the uncompressed data will be used instead. For example, with a threshold of 0.98, if
-     * compression only saves 2% of space, the data will not be compressed.
+     * compression saves less than 2% of space, the data will not be compressed.
+     * A value of 0 disables data page compression and a value of 1 only skips compression when it
+     * increases the data size.
      *
      * @param threshold the compression ratio threshold, default is {@link ParquetProperties#DEFAULT_PAGE_COMPRESS_THRESHOLD}
      * @return this builder for method chaining

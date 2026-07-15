@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.zip.CRC32;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -315,29 +317,31 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       int uncompressedSize = toIntWithCheck(data.size() + repetitionLevels.size() + definitionLevels.size());
       boolean compressed = false;
       BytesInput compressedData = BytesInput.empty();
-      if (data.size() > 0) {
-        compressedData = compressor.compress(data);
-        compressed = true;
-        double compressionRatio = (double) compressedData.size() / data.size();
-        if (compressor.getCodecName() != CompressionCodecName.UNCOMPRESSED
-            && compressionRatio > pageCompressThreshold) {
-          compressedData = data;
-          compressed = false;
+      try (ByteBufferReleaser pageReleaser = new ByteBufferReleaser(allocator)) {
+        if (data.size() > 0) {
+          ByteBuffer uncompressedData = data.toByteBuffer(pageReleaser);
+          compressedData = compressor.compress(BytesInput.from(uncompressedData.duplicate()));
+          compressed = true;
+          double compressionRatio = (double) compressedData.size() / uncompressedData.remaining();
+          if (compressor.getCodecName() != CompressionCodecName.UNCOMPRESSED
+              && compressionRatio > pageCompressThreshold) {
+            compressedData = BytesInput.from(uncompressedData.duplicate());
+            compressed = false;
+          }
         }
-      }
-      if (null != pageBlockEncryptor) {
-        AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
-        compressedData = BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray(), dataPageAAD));
-      }
-      int compressedSize =
-          toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
-      tempOutputStream.reset();
-      if (null != headerBlockEncryptor) {
-        AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
-      }
-      if (pageWriteChecksumEnabled) {
-        crc.reset();
-        try (ByteBufferReleaser pageReleaser = new ByteBufferReleaser(allocator)) {
+        if (null != pageBlockEncryptor) {
+          AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
+          compressedData =
+              BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray(), dataPageAAD));
+        }
+        int compressedSize =
+            toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
+        tempOutputStream.reset();
+        if (null != headerBlockEncryptor) {
+          AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
+        }
+        if (pageWriteChecksumEnabled) {
+          crc.reset();
           if (repetitionLevels.size() > 0) {
             crc.update(repetitionLevels.toByteBuffer(pageReleaser));
           }
@@ -347,52 +351,52 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           if (compressedData.size() > 0) {
             crc.update(compressedData.toByteBuffer(pageReleaser));
           }
+          parquetMetadataConverter.writeDataPageV2Header(
+              uncompressedSize,
+              compressedSize,
+              valueCount,
+              nullCount,
+              rowCount,
+              dataEncoding,
+              rlByteLength,
+              dlByteLength,
+              compressed,
+              (int) crc.getValue(),
+              tempOutputStream,
+              headerBlockEncryptor,
+              dataPageHeaderAAD);
+        } else {
+          parquetMetadataConverter.writeDataPageV2Header(
+              uncompressedSize,
+              compressedSize,
+              valueCount,
+              nullCount,
+              rowCount,
+              dataEncoding,
+              rlByteLength,
+              dlByteLength,
+              compressed,
+              tempOutputStream,
+              headerBlockEncryptor,
+              dataPageHeaderAAD);
         }
-        parquetMetadataConverter.writeDataPageV2Header(
-            uncompressedSize,
-            compressedSize,
-            valueCount,
-            nullCount,
+        this.uncompressedLength += uncompressedSize;
+        this.compressedLength += compressedSize;
+        this.totalValueCount += valueCount;
+        this.pageCount += 1;
+
+        mergeColumnStatistics(statistics, sizeStatistics, geospatialStatistics);
+        offsetIndexBuilder.add(
+            toIntWithCheck((long) tempOutputStream.size() + compressedSize),
             rowCount,
-            dataEncoding,
-            rlByteLength,
-            dlByteLength,
-            compressed,
-            (int) crc.getValue(),
-            tempOutputStream,
-            headerBlockEncryptor,
-            dataPageHeaderAAD);
-      } else {
-        parquetMetadataConverter.writeDataPageV2Header(
-            uncompressedSize,
-            compressedSize,
-            valueCount,
-            nullCount,
-            rowCount,
-            dataEncoding,
-            rlByteLength,
-            dlByteLength,
-            compressed,
-            tempOutputStream,
-            headerBlockEncryptor,
-            dataPageHeaderAAD);
+            sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
+
+        // by concatenating before collecting instead of collecting twice,
+        // we only allocate one buffer to copy into instead of multiple.
+        buf.collect(BytesInput.concat(
+            BytesInput.from(tempOutputStream), repetitionLevels, definitionLevels, compressedData));
+        dataEncodings.add(dataEncoding);
       }
-      this.uncompressedLength += uncompressedSize;
-      this.compressedLength += compressedSize;
-      this.totalValueCount += valueCount;
-      this.pageCount += 1;
-
-      mergeColumnStatistics(statistics, sizeStatistics, geospatialStatistics);
-      offsetIndexBuilder.add(
-          toIntWithCheck((long) tempOutputStream.size() + compressedSize),
-          rowCount,
-          sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
-
-      // by concatenating before collecting instead of collecting twice,
-      // we only allocate one buffer to copy into instead of multiple.
-      buf.collect(BytesInput.concat(
-          BytesInput.from(tempOutputStream), repetitionLevels, definitionLevels, compressedData));
-      dataEncodings.add(dataEncoding);
     }
 
     private int toIntWithCheck(long size) {
@@ -751,6 +755,12 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     }
 
     public Builder withPageCompressThreshold(double newPageCompressThreshold) {
+      Preconditions.checkArgument(
+          Double.isFinite(newPageCompressThreshold)
+              && newPageCompressThreshold >= 0.0
+              && newPageCompressThreshold <= 1.0,
+          "Invalid page compression threshold: %s. It must be a finite value between 0.0 and 1.0.",
+          newPageCompressThreshold);
       this.pageCompressThreshold = newPageCompressThreshold;
       return this;
     }

@@ -282,7 +282,7 @@ public class TestDataPageChecksums {
         .withType(schemaNestedWithNulls)
         .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
         .withWriterVersion(version)
-        .withPageCompressThreshold(100) // always compress
+        .withPageCompressThreshold(1.0) // retain compression for compressible pages
         .build()) {
       GroupFactory groupFactory = new SimpleGroupFactory(schemaNestedWithNulls);
       Random rand = new Random(42);
@@ -563,9 +563,10 @@ public class TestDataPageChecksums {
 
   /**
    * Tests that we adhere to the checksum calculation specification, namely that the crc is
-   * calculated using the compressed concatenation of the repetition levels, definition levels and
-   * the actual data. This is done by generating sample data with a nested schema containing nulls
-   * (generating non-trivial repetition and definition levels).
+   * calculated using the stored concatenation of the repetition levels, definition levels and the
+   * actual data. The data section may be compressed or stored raw when adaptive compression falls
+   * back. This is done by generating sample data with a nested schema containing nulls (generating
+   * non-trivial repetition and definition levels).
    */
   private void testNestedWithNulls(ParquetProperties.WriterVersion version) throws IOException {
     Configuration conf = new Configuration();
@@ -590,11 +591,12 @@ public class TestDataPageChecksums {
         PageReadStore pageReadStore = reader.readNextRowGroup();
 
         DataPage colCIdPage = readNextPage(colCIdDesc, pageReadStore);
-        assertCrcSetAndCorrect(colCIdPage, snappy(colCIdPageBytes, getDataOffset(colCIdPage)));
+        assertCrcSetAndCorrect(colCIdPage, adaptiveSnappy(colCIdPageBytes, getDataOffset(colCIdPage), version));
         assertCorrectContent(getPageBytes(colCIdPage), colCIdPageBytes);
 
         DataPage colDValPage = readNextPage(colDValDesc, pageReadStore);
-        assertCrcSetAndCorrect(colDValPage, snappy(colDValPageBytes, getDataOffset(colDValPage)));
+        assertCrcSetAndCorrect(
+            colDValPage, adaptiveSnappy(colDValPageBytes, getDataOffset(colDValPage), version));
         assertCorrectContent(getPageBytes(colDValPage), colDValPageBytes);
       }
     }
@@ -640,7 +642,8 @@ public class TestDataPageChecksums {
         assertCorrectContent(dictPage.getBytes().toByteArray(), dictPageBytes);
 
         DataPage colDValPage = readNextPage(colDValDesc, pageReadStore);
-        assertCrcSetAndCorrect(colDValPage, snappy(colDValPageBytes, getDataOffset(colDValPage)));
+        assertCrcSetAndCorrect(
+            colDValPage, adaptiveSnappy(colDValPageBytes, getDataOffset(colDValPage), version));
         assertCorrectContent(getPageBytes(colDValPage), colDValPageBytes);
       }
     }
@@ -675,6 +678,15 @@ public class TestDataPageChecksums {
 
   private byte[] snappy(byte[] bytes) throws IOException {
     return snappy(bytes, 0);
+  }
+
+  private byte[] adaptiveSnappy(byte[] bytes, int offset, ParquetProperties.WriterVersion version)
+      throws IOException {
+    byte[] compressed = snappy(bytes, offset);
+    if (version == ParquetProperties.WriterVersion.PARQUET_2_0 && compressed.length > bytes.length) {
+      return bytes;
+    }
+    return compressed;
   }
 
   private int getDataOffset(Page page) {

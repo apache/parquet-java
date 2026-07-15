@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.inOrder;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -427,6 +428,47 @@ public class TestColumnChunkPageWriteStore {
         "lowCompressThreshold", schema, col, rowCount, nullCount, valueCount, data, statistics, 0.01, false);
     verifyV2PageCompression(
         "highCompressThreshold", schema, col, rowCount, nullCount, valueCount, data, statistics, 1.0, true);
+  }
+
+  @Test
+  public void testV2PageCompressionFallbackWithOneShotBytesInput() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required int32 data; }");
+    ColumnDescriptor col = schema.getColumns().get(0);
+    byte[] values = new byte[400];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = (byte) i;
+    }
+    Path file = createTestFile("oneShotBytesInput");
+    ParquetProperties props = ParquetProperties.builder()
+        .withAllocator(getOrCreateAllocator())
+        .withPageCompressThreshold(0.01)
+        .build();
+    Statistics<?> statistics = Statistics.getBuilderForReading(
+            Types.required(INT32).named("data"))
+        .build();
+
+    writeColumnChunks(file, schema, 100, Mode.OVERWRITE, GZIP, props, props, 0.01, store -> store.getPageWriter(col)
+        .writePageV2(
+            100,
+            0,
+            100,
+            BytesInput.empty(),
+            BytesInput.empty(),
+            PLAIN,
+            BytesInput.from(new ByteArrayInputStream(values), values.length),
+            statistics));
+
+    verifyReadData(file, col, 100, 0, 100, BytesInput.from(values), false);
+  }
+
+  @Test
+  public void pageWriteStoreBuilderRejectsInvalidPageCompressThreshold() {
+    assertThrows(IllegalArgumentException.class, () -> ColumnChunkPageWriteStore.builder()
+        .withPageCompressThreshold(Double.NaN));
+    assertThrows(IllegalArgumentException.class, () -> ColumnChunkPageWriteStore.builder()
+        .withPageCompressThreshold(-0.01));
+    assertThrows(IllegalArgumentException.class, () -> ColumnChunkPageWriteStore.builder()
+        .withPageCompressThreshold(1.01));
   }
 
   private interface PageWriteAction {
