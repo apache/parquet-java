@@ -48,10 +48,16 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 /**
- * Exercises the bounds checks added to {@link Variant} construction by round-tripping a row of
- * {@code (metadata, value)} binaries through an in-memory uncompressed Parquet file, mutating
- * specific bytes after writing, and asserting that the resulting buffer is rejected with an
- * {@link IllegalArgumentException}.
+ * Test that the hardened variant reader behaves as expected.
+ * Many of the tests save to the local filesystem and then clean up the files
+ * in teardown. This is overkill, but it does permit these test files to
+ * be preserved and so contributed to the parquet-format repository for
+ * interoperability testing.
+ *
+ * <p>Set {@link #SAVE_GENERATED_FILES} to true to enable file preservation under
+ * {@code parquet-variant/target/test-hardened-reader}; return it to false to
+ * restore cleanup. Each file will be saved with the name of the test.
+ * .
  */
 public class TestHardenedReader {
 
@@ -338,16 +344,14 @@ public class TestHardenedReader {
   }
 
   /**
-   * Reject metadata whose version bits are not the single supported version.
+   * Handling of unknown metadata versions.
    */
   @Test
   public void testUnsupportedMetadataVersionRejected() throws IOException {
     // Header 0x02: version=2 in the low bits, offsetSize=1. A well-formed empty dictionary.
     final byte[] metadata = {0x02, 0x00, 0x00};
     byte[][] roundTripped = roundTrip(metadata, arrayOneNull());
-    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0])))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("version");
+    new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0]));
   }
 
   /**
@@ -418,30 +422,28 @@ public class TestHardenedReader {
   }
 
   /**
-   * "new types may be added to the specification without incrementing the version ID. In such a
-   * situation, an implementation should be able to read the rest of the Variant value if desired."
+   * Handling of unknown primitives.
    */
   @Test
   public void testUnknownPrimitiveType() throws IOException {
-    // Unknown primitive type id 63.
+    // Unknown primitive type
     final byte unknownPrimitive = (byte) 0xFC;
-    // arrayHeader(largeSize=false, offsetSize=1) = (0 << 4) | (0 << 2) | ARRAY = 0b0011.
-    // numElements = 3; the four 1-byte offsets frame three back-to-back elements:
-    //   element 0: INT8(10)          -> [0x0C, 0x0A]  spans data bytes [0,2)
-    //   element 1: unknown type 63   -> [0xFC]        spans data bytes [2,3)
-    //   element 2: INT8(20)          -> [0x0C, 0x14]  spans data bytes [3,5)
+    final int elt3 = 0x14;
     byte[] value = {
       0b0011,
-      0x03,
+      0x03, // three elements
       0x00,
       0x02,
-      0x03,
-      0x05,
+      0x06,
+      0x08,
       0x0C,
       0x0A,
-      unknownPrimitive, // element 1: unknown primitive type
+      unknownPrimitive, // element 1: unknown primitive type, 4 bytes wide
+      0x01,
+      0x02,
+      0x03,
       0x0C,
-      0x14
+      elt3
     };
 
     byte[][] rt = roundTrip(EMPTY_METADATA, value);
@@ -458,7 +460,7 @@ public class TestHardenedReader {
 
     Variant third = top.getElementAtIndex(2);
     assertThat(third.getType()).isEqualTo(Variant.Type.BYTE);
-    assertThat(third.getByte()).isEqualTo((byte) 20);
+    assertThat(third.getByte()).isEqualTo((byte) elt3);
 
     // Asking for the unknown element fails.
     assertThatThrownBy(() -> top.getElementAtIndex(1))

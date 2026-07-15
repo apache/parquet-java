@@ -118,12 +118,8 @@ public final class Variant {
     this.depth = 0;
     // A metadata buffer must contain at least the version byte
     Preconditions.checkArgument(this.metadata.remaining() >= 1, "variant metadata is empty");
-    // There is currently only one allowed version.
-    if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
-      throw new UnsupportedOperationException(String.format(
-          "Unsupported variant metadata version: %d",
-          metadata.get(metadata.position()) & VariantUtil.VERSION_MASK));
-    }
+    // There is no checking of version until a policy of how to handle mismatched versions
+    // is defined.
 
     // Pre-compute dictionary size for lazy metadata cache allocation.
     int pos = this.metadata.position();
