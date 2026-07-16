@@ -337,6 +337,48 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testUnknownLogicalTypePreservesPhysicalType() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    // The generated Thrift reader skips an unknown union member, leaving the union unset.
+    LogicalType unknownLogicalType = new LogicalType();
+    List<SchemaElement> parquetSchema = Lists.newArrayList(
+        new SchemaElement("Message").setNum_children(1),
+        new SchemaElement("unknown")
+            .setRepetition_type(FieldRepetitionType.REQUIRED)
+            .setType(Type.BYTE_ARRAY)
+            .setLogicalType(unknownLogicalType));
+
+    MessageType schema = converter.fromParquetSchema(parquetSchema, null);
+
+    PrimitiveType unknown = schema.getType("unknown").asPrimitiveType();
+    assertEquals(PrimitiveTypeName.BINARY, unknown.getPrimitiveTypeName());
+    assertNull(unknown.getLogicalTypeAnnotation());
+  }
+
+  @Test
+  public void testUnknownLogicalTypeUsesConvertedTypeFallback() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    LogicalType unknownLogicalType = new LogicalType();
+    // Use DECIMAL to verify that converted-type precision and scale are preserved.
+    List<SchemaElement> parquetSchema = Lists.newArrayList(
+        new SchemaElement("Message").setNum_children(1),
+        new SchemaElement("unknownWithConvertedType")
+            .setRepetition_type(FieldRepetitionType.REQUIRED)
+            .setType(Type.BYTE_ARRAY)
+            .setLogicalType(unknownLogicalType)
+            .setConverted_type(ConvertedType.DECIMAL)
+            .setPrecision(9)
+            .setScale(2));
+
+    MessageType schema = converter.fromParquetSchema(parquetSchema, null);
+
+    PrimitiveType unknownWithConvertedType =
+        schema.getType("unknownWithConvertedType").asPrimitiveType();
+    assertEquals(PrimitiveTypeName.BINARY, unknownWithConvertedType.getPrimitiveTypeName());
+    assertEquals(decimalType(2, 9), unknownWithConvertedType.getLogicalTypeAnnotation());
+  }
+
+  @Test
   public void testIncompatibleLogicalAndConvertedTypes() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType schema = Types.buildMessage()
