@@ -18,13 +18,13 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ScanCommandTest extends ParquetFileTest {
@@ -34,7 +34,7 @@ public class ScanCommandTest extends ParquetFileTest {
     ScanCommand command = new ScanCommand(createLogger());
     command.sourceFiles = Arrays.asList(file.getAbsolutePath());
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -43,7 +43,7 @@ public class ScanCommandTest extends ParquetFileTest {
     ScanCommand command = new ScanCommand(createLogger());
     command.sourceFiles = Arrays.asList(file.getAbsolutePath(), file.getAbsolutePath());
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
