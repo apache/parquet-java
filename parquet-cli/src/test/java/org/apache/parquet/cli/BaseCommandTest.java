@@ -20,15 +20,15 @@ package org.apache.parquet.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ public class BaseCommandTest {
   private Logger console = LoggerFactory.getLogger(BaseCommandTest.class);
   private TestCommand command;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     this.command = new TestCommand(this.console);
   }
@@ -90,14 +90,14 @@ public class BaseCommandTest {
   // For Windows
   @Test
   public void qualifiedPathTestForWindows() throws IOException {
-    Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
+    assumeThat(System.getProperty("os.name").toLowerCase()).startsWith("win");
     Path path = this.command.qualifiedPath(WIN_FILE_PATH);
     assertThat(path.getName()).isEqualTo("test.parquet");
   }
 
   @Test
   public void qualifiedURITestForWindows() throws IOException {
-    Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
+    assumeThat(System.getProperty("os.name").toLowerCase()).startsWith("win");
     URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
     assertThat(uri.getPath()).isEqualTo("/C:/Test/Downloads/test.parquet");
   }

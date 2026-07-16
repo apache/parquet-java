@@ -37,7 +37,7 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for ColumnIndex NaN handling under IEEE_754_TOTAL_ORDER and TYPE_DEFINED_ORDER.

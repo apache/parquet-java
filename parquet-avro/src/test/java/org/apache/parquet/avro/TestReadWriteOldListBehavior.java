@@ -34,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,32 +52,23 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-@RunWith(Parameterized.class)
 public class TestReadWriteOldListBehavior {
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-      {false}, // use the new converters
-      {true}
-    }; // use the old converters
-    return Arrays.asList(data);
-  }
-
-  private final boolean compat;
+  private boolean compat;
   private final Configuration testConf = new Configuration(false);
 
-  public TestReadWriteOldListBehavior(boolean compat) {
+  private void init(boolean compat) {
     this.compat = compat;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
   }
 
-  @Test
-  public void testEmptyArray() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testEmptyArray(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("array.avsc").openStream());
 
@@ -103,8 +93,10 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test
-  public void testEmptyMap() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testEmptyMap(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
@@ -129,8 +121,10 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test
-  public void testMapWithNulls() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testMapWithNulls(boolean compat) throws Exception {
+    init(compat);
     Schema schema = new Schema.Parser()
         .parse(Resources.getResource("map_with_nulls.avsc").openStream());
 
@@ -159,8 +153,10 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test
-  public void testMapRequiredValueWithNull() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testMapRequiredValueWithNull(boolean compat) throws Exception {
+    init(compat);
     Schema schema = Schema.createRecord("record1", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("mymap", Schema.createMap(Schema.create(Schema.Type.INT)), null, null)));
@@ -185,8 +181,10 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test
-  public void testMapWithUtf8Key() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testMapWithUtf8Key(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
@@ -211,8 +209,10 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test
-  public void testAll() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAll(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("all.avsc").openStream());
 
@@ -288,8 +288,10 @@ public class TestReadWriteOldListBehavior {
     }
   }
 
-  @Test
-  public void testArrayWithNullValues() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testArrayWithNullValues(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("all.avsc").openStream());
 
@@ -346,8 +348,10 @@ public class TestReadWriteOldListBehavior {
         .hasMessageContaining("parquet.avro.write-old-list-structure");
   }
 
-  @Test
-  public void testAllUsingDefaultAvroSchema() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAllUsingDefaultAvroSchema(boolean compat) throws Exception {
+    init(compat);
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();

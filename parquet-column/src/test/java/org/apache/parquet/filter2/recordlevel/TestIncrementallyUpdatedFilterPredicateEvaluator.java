@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Or;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestIncrementallyUpdatedFilterPredicateEvaluator {
 

@@ -27,7 +27,7 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestRunLengthBitPackingHybridEncoder {
 

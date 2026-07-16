@@ -31,8 +31,10 @@ import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArra
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
+@EnableRuleMigrationSupport
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
 public class BenchmarkDeltaLengthByteArray {

@@ -38,7 +38,7 @@ import org.apache.parquet.thrift.test.compat.SetStructV2;
 import org.apache.parquet.thrift.test.compat.StructV1;
 import org.apache.parquet.thrift.test.compat.StructV2;
 import org.apache.parquet.thrift.test.compat.TypeChangeStructV1;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class CompatibilityCheckerTest {
 

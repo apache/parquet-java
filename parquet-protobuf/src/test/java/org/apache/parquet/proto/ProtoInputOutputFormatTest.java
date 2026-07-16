@@ -36,7 +36,7 @@ import org.apache.parquet.proto.test.TestProtobuf.FirstCustomClassMessage;
 import org.apache.parquet.proto.test.TestProtobuf.SecondCustomClassMessage;
 import org.apache.parquet.proto.utils.ReadUsingMR;
 import org.apache.parquet.proto.utils.WriteUsingMR;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ProtoInputOutputFormatTest {
 

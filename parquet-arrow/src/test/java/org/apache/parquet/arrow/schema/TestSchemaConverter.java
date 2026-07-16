@@ -56,7 +56,7 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @see SchemaConverter

@@ -36,7 +36,7 @@ import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class CatCommandTest extends ParquetFileTest {
   @Test

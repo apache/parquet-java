@@ -35,7 +35,7 @@ import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestThriftSchemaConvertVisitor {
 

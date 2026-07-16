@@ -28,7 +28,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ValidatingRecordConsumerTest {
 

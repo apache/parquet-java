@@ -20,7 +20,7 @@ package org.apache.parquet.thrift.projection.deprecated;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test using glob syntax to specify which attribute to retain

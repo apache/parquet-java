@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /*
  * This test verifies all the PrimitiveComparator implementations. The logic of all tests is the same: list the

@@ -31,7 +31,7 @@ import org.apache.parquet.thrift.test.compat.StructWithNestedUnion;
 import org.apache.parquet.thrift.test.compat.StructWithOptionalUnionOfStructs;
 import org.apache.parquet.thrift.test.compat.UnionOfStructs;
 import org.apache.parquet.thrift.test.compat.UnionV2;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestThriftSchemaConverterProjectUnion {
 

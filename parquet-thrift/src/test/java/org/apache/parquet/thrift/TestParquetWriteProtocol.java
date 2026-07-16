@@ -52,7 +52,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thrift.test.OneOfEach;

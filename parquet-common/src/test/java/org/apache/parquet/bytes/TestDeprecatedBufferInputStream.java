@@ -22,141 +22,191 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the deprecated behavior of instantiating ByteBufferInputStream directly
  */
-@RunWith(Parameterized.class)
-public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams {
-  @Parameter(0)
-  public ByteBuffer data;
+public class TestDeprecatedBufferInputStream {
 
-  @Parameter(1)
-  public Integer offset;
+  abstract static class DeprecatedBufferInputStreamTestCase extends TestByteBufferInputStreams {
+    abstract ByteBuffer data();
 
-  @Parameters
-  public static List<Object[]> parameters() {
-    return Arrays.asList(
-        new Object[] {TestSingleBufferInputStream.DATA, null},
-        new Object[] {TestSingleBufferInputStream.DATA, 0},
-        new Object[] {
-          ByteBuffer.wrap(new byte[] {
-            -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-            22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34
-          }),
-          4
-        },
-        new Object[] {
-          ByteBuffer.wrap(new byte[] {
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-            26, 27, 28, 29, 30, 31, 32, 33, 34, -1, -1, -1
-          }),
-          0
-        },
-        new Object[] {
-          ByteBuffer.wrap(new byte[] {
-            -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-            23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, -1, -1
-          }),
-          3
-        });
-  }
+    abstract Integer offset();
 
-  @Override
-  protected ByteBufferInputStream newStream() {
-    if (offset == null) {
-      return new ByteBufferInputStream(data);
-    } else {
-      return new ByteBufferInputStream(data, offset, DATA_LENGTH);
+    @Override
+    protected ByteBufferInputStream newStream() {
+      if (offset() == null) {
+        return new ByteBufferInputStream(data());
+      } else {
+        return new ByteBufferInputStream(data(), offset(), DATA_LENGTH);
+      }
+    }
+
+    @Override
+    protected void checkOriginalData() {
+      assertThat(data().position()).as("Position should not change").isEqualTo(0);
+      assertThat(data().limit()).as("Limit should not change").isEqualTo(data().array().length);
+    }
+
+    @Test
+    public void testSliceData() throws Exception {
+      ByteBufferInputStream stream = newStream();
+      int length = stream.available();
+
+      List<ByteBuffer> buffers = new ArrayList<>();
+      // slice the stream into 3 8-byte buffers and 1 2-byte buffer
+      while (stream.available() > 0) {
+        int bytesToSlice = Math.min(stream.available(), 8);
+        buffers.add(stream.slice(bytesToSlice));
+      }
+
+      assertThat(stream.position()).as("Position should be at end").isEqualTo(length);
+      assertThat(buffers).as("Should produce 5 buffers").hasSize(5);
+
+      int i = 0;
+
+      ByteBuffer one = buffers.get(0);
+      assertThat(one.array()).as("Should use the same backing array").isSameAs(data().array());
+      assertThat(one.remaining()).isEqualTo(8);
+      assertThat(one.position()).isEqualTo(0);
+      assertThat(one.limit()).isEqualTo(8);
+      for (; i < 8; i += 1) {
+        assertThat((int) one.get()).as("Should produce correct values").isEqualTo(i);
+      }
+
+      ByteBuffer two = buffers.get(1);
+      assertThat(two.array()).as("Should use the same backing array").isSameAs(data().array());
+      assertThat(two.remaining()).isEqualTo(8);
+      assertThat(two.position()).isEqualTo(8);
+      assertThat(two.limit()).isEqualTo(16);
+      for (; i < 16; i += 1) {
+        assertThat((int) two.get()).as("Should produce correct values").isEqualTo(i);
+      }
+
+      // three is a copy of part of the 4th buffer
+      ByteBuffer three = buffers.get(2);
+      assertThat(three.array()).as("Should use the same backing array").isSameAs(data().array());
+      assertThat(three.remaining()).isEqualTo(8);
+      assertThat(three.position()).isEqualTo(16);
+      assertThat(three.limit()).isEqualTo(24);
+      for (; i < 24; i += 1) {
+        assertThat((int) three.get())
+            .as("Should produce correct values")
+            .isEqualTo(i);
+      }
+
+      // four should be a copy of the next 8 bytes
+      ByteBuffer four = buffers.get(3);
+      assertThat(four.array()).as("Should use the same backing array").isSameAs(data().array());
+      assertThat(four.remaining()).isEqualTo(8);
+      assertThat(four.position()).isEqualTo(24);
+      assertThat(four.limit()).isEqualTo(32);
+      for (; i < 32; i += 1) {
+        assertThat((int) four.get()).as("Should produce correct values").isEqualTo(i);
+      }
+
+      // five should be a copy of the next 8 bytes
+      ByteBuffer five = buffers.get(4);
+      assertThat(five.array()).as("Should use the same backing array").isSameAs(data().array());
+      assertThat(five.remaining()).isEqualTo(3);
+      assertThat(five.position()).isEqualTo(32);
+      assertThat(five.limit()).isEqualTo(35);
+      for (; i < 35; i += 1) {
+        assertThat((int) five.get()).as("Should produce correct values").isEqualTo(i);
+      }
+    }
+
+    @Test
+    public void testWholeSliceBuffersData() throws Exception {
+      ByteBufferInputStream stream = newStream();
+
+      List<ByteBuffer> buffers = stream.sliceBuffers(stream.available());
+      assertThat(buffers)
+          .as("Should return duplicates of all non-empty buffers")
+          .containsExactly(TestSingleBufferInputStream.DATA);
     }
   }
 
-  @Override
-  protected void checkOriginalData() {
-    assertThat(data.position()).as("Position should not change").isEqualTo(0);
-    assertThat(data.limit()).as("Limit should not change").isEqualTo(data.array().length);
-  }
-
-  @Test
-  public void testSliceData() throws Exception {
-    ByteBufferInputStream stream = newStream();
-    int length = stream.available();
-
-    List<ByteBuffer> buffers = new ArrayList<>();
-    // slice the stream into 3 8-byte buffers and 1 2-byte buffer
-    while (stream.available() > 0) {
-      int bytesToSlice = Math.min(stream.available(), 8);
-      buffers.add(stream.slice(bytesToSlice));
+  @Nested
+  class WithNullOffset extends DeprecatedBufferInputStreamTestCase {
+    @Override
+    ByteBuffer data() {
+      return TestSingleBufferInputStream.DATA;
     }
 
-    assertThat(stream.position()).as("Position should be at end").isEqualTo(length);
-    assertThat(buffers).as("Should produce 5 buffers").hasSize(5);
-
-    int i = 0;
-
-    ByteBuffer one = buffers.get(0);
-    assertThat(one.array()).as("Should use the same backing array").isSameAs(data.array());
-    assertThat(one.remaining()).isEqualTo(8);
-    assertThat(one.position()).isEqualTo(0);
-    assertThat(one.limit()).isEqualTo(8);
-    for (; i < 8; i += 1) {
-      assertThat((int) one.get()).as("Should produce correct values").isEqualTo(i);
-    }
-
-    ByteBuffer two = buffers.get(1);
-    assertThat(two.array()).as("Should use the same backing array").isSameAs(data.array());
-    assertThat(two.remaining()).isEqualTo(8);
-    assertThat(two.position()).isEqualTo(8);
-    assertThat(two.limit()).isEqualTo(16);
-    for (; i < 16; i += 1) {
-      assertThat((int) two.get()).as("Should produce correct values").isEqualTo(i);
-    }
-
-    // three is a copy of part of the 4th buffer
-    ByteBuffer three = buffers.get(2);
-    assertThat(three.array()).as("Should use the same backing array").isSameAs(data.array());
-    assertThat(three.remaining()).isEqualTo(8);
-    assertThat(three.position()).isEqualTo(16);
-    assertThat(three.limit()).isEqualTo(24);
-    for (; i < 24; i += 1) {
-      assertThat((int) three.get()).as("Should produce correct values").isEqualTo(i);
-    }
-
-    // four should be a copy of the next 8 bytes
-    ByteBuffer four = buffers.get(3);
-    assertThat(four.array()).as("Should use the same backing array").isSameAs(data.array());
-    assertThat(four.remaining()).isEqualTo(8);
-    assertThat(four.position()).isEqualTo(24);
-    assertThat(four.limit()).isEqualTo(32);
-    for (; i < 32; i += 1) {
-      assertThat((int) four.get()).as("Should produce correct values").isEqualTo(i);
-    }
-
-    // five should be a copy of the next 8 bytes
-    ByteBuffer five = buffers.get(4);
-    assertThat(five.array()).as("Should use the same backing array").isSameAs(data.array());
-    assertThat(five.remaining()).isEqualTo(3);
-    assertThat(five.position()).isEqualTo(32);
-    assertThat(five.limit()).isEqualTo(35);
-    for (; i < 35; i += 1) {
-      assertThat((int) five.get()).as("Should produce correct values").isEqualTo(i);
+    @Override
+    Integer offset() {
+      return null;
     }
   }
 
-  @Test
-  public void testWholeSliceBuffersData() throws Exception {
-    ByteBufferInputStream stream = newStream();
+  @Nested
+  class WithZeroOffset extends DeprecatedBufferInputStreamTestCase {
+    @Override
+    ByteBuffer data() {
+      return TestSingleBufferInputStream.DATA;
+    }
 
-    List<ByteBuffer> buffers = stream.sliceBuffers(stream.available());
-    assertThat(buffers)
-        .as("Should return duplicates of all non-empty buffers")
-        .containsExactly(TestSingleBufferInputStream.DATA);
+    @Override
+    Integer offset() {
+      return 0;
+    }
+  }
+
+  @Nested
+  class WithLeadingPadding extends DeprecatedBufferInputStreamTestCase {
+    private final ByteBuffer data = ByteBuffer.wrap(new byte[] {
+      -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      25, 26, 27, 28, 29, 30, 31, 32, 33, 34
+    });
+
+    @Override
+    ByteBuffer data() {
+      return data;
+    }
+
+    @Override
+    Integer offset() {
+      return 4;
+    }
+  }
+
+  @Nested
+  class WithTrailingPadding extends DeprecatedBufferInputStreamTestCase {
+    private final ByteBuffer data = ByteBuffer.wrap(new byte[] {
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+      29, 30, 31, 32, 33, 34, -1, -1, -1
+    });
+
+    @Override
+    ByteBuffer data() {
+      return data;
+    }
+
+    @Override
+    Integer offset() {
+      return 0;
+    }
+  }
+
+  @Nested
+  class WithLeadingAndTrailingPadding extends DeprecatedBufferInputStreamTestCase {
+    private final ByteBuffer data = ByteBuffer.wrap(new byte[] {
+      -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+      26, 27, 28, 29, 30, 31, 32, 33, 34, -1, -1
+    });
+
+    @Override
+    ByteBuffer data() {
+      return data;
+    }
+
+    @Override
+    Integer offset() {
+      return 3;
+    }
   }
 }

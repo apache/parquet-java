@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ParquetPropertiesThreadSafetyTest {
 

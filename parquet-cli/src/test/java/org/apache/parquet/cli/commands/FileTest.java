@@ -19,12 +19,12 @@
 package org.apache.parquet.cli.commands;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.PropertyConfigurator;
-import org.junit.Rule;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.LoggingEvent;
@@ -43,11 +43,11 @@ public abstract class FileTest {
 
   static final String[] COLORS = {"RED", "BLUE", "YELLOW", "GREEN", "WHITE"};
 
-  @Rule
-  public TemporaryFolder tempFolder = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   protected File getTempFolder() {
-    return this.tempFolder.getRoot();
+    return tempDir.toFile();
   }
 
   protected static Logger createLogger() {

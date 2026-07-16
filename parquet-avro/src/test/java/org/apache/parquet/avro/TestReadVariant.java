@@ -59,7 +59,7 @@ import org.apache.parquet.variant.Variant;
 import org.apache.parquet.variant.VariantArrayBuilder;
 import org.apache.parquet.variant.VariantBuilder;
 import org.apache.parquet.variant.VariantObjectBuilder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestReadVariant extends DirectWriterTest {
 
