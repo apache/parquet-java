@@ -39,9 +39,9 @@ import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.ParquetFileRange;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test the vector IO bridge.
@@ -100,7 +100,7 @@ public class TestVectorIoBridge {
 
   public TestVectorIoBridge() {}
 
-  @Before
+  @BeforeEach
   public void setUp() throws IOException {
     // skip the tests if the VectorIoBridge is unavailable
     assumeThat(VectorIoBridge.instance().available())
@@ -116,7 +116,7 @@ public class TestVectorIoBridge {
     initialBytesRead = vectorIOBridge.getBytesRead();
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws IOException {
     if (fileSystem != null) {
       fileSystem.delete(testFilePath, false);

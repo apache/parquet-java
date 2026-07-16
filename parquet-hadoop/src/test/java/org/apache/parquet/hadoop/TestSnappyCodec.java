@@ -29,7 +29,7 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.parquet.hadoop.codec.SnappyCodec;
 import org.apache.parquet.hadoop.codec.SnappyCompressor;
 import org.apache.parquet.hadoop.codec.SnappyDecompressor;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xerial.snappy.Snappy;
 
 public class TestSnappyCodec {

@@ -50,8 +50,8 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +68,7 @@ public class SchemaControlEncryptionTest {
   private Map<String, Map<String, Object>> cryptoMetadata = new HashMap<>();
   private Map<String, Object[]> testData = new HashMap<>();
 
-  @Before
+  @BeforeEach
   public void generateTestData() {
     String[] names = new String[numRecord];
     Long[] ages = new Long[numRecord];

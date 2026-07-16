@@ -25,6 +25,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,16 +33,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ErrorCollector;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -59,12 +61,11 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ErrorCollector;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,53 +113,82 @@ import org.slf4j.LoggerFactory;
  *                                  two encrypted columns and the footer key.
  *  - NO_DECRYPTION:   Do not decrypt anything.
  */
-@RunWith(Parameterized.class)
 public class TestPropertiesDrivenEncryption {
-  @Parameterized.Parameters(
-      name =
-          "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2} isDecryptionDirectMemory={3} isV1={4}")
-  public static Collection<Object[]> data() {
-    Collection<Object[]> list = new ArrayList<>(8);
+
+  private static final class CryptoTestParams {
+    private final boolean keyMaterialInternalStorage;
+    private final boolean doubleWrapping;
+    private final boolean wrapLocally;
+    private final boolean decryptionDirectMemory;
+    private final WriterVersion writerVersion;
+
+    private CryptoTestParams(
+        boolean keyMaterialInternalStorage,
+        boolean doubleWrapping,
+        boolean wrapLocally,
+        boolean decryptionDirectMemory,
+        WriterVersion writerVersion) {
+      this.keyMaterialInternalStorage = keyMaterialInternalStorage;
+      this.doubleWrapping = doubleWrapping;
+      this.wrapLocally = wrapLocally;
+      this.decryptionDirectMemory = decryptionDirectMemory;
+      this.writerVersion = writerVersion;
+    }
+
+    boolean isKeyMaterialInternalStorage() {
+      return keyMaterialInternalStorage;
+    }
+
+    boolean isDoubleWrapping() {
+      return doubleWrapping;
+    }
+
+    boolean isWrapLocally() {
+      return wrapLocally;
+    }
+
+    boolean isDecryptionDirectMemory() {
+      return decryptionDirectMemory;
+    }
+
+    WriterVersion writerVersion() {
+      return writerVersion;
+    }
+  }
+
+  static Stream<Arguments> data() {
     boolean[] flagValues = {false, true};
+    List<Arguments> list = new ArrayList<>();
     for (boolean keyMaterialInternalStorage : flagValues) {
       for (boolean doubleWrapping : flagValues) {
         for (boolean wrapLocally : flagValues) {
           for (boolean isDecryptionDirectMemory : flagValues) {
-            for (boolean isV1 : flagValues) {
-              Object[] vector = {
-                keyMaterialInternalStorage, doubleWrapping, wrapLocally, isDecryptionDirectMemory, isV1
-              };
-              list.add(vector);
+            for (WriterVersion writerVersion : WriterVersion.values()) {
+              list.add(Arguments.of(new CryptoTestParams(
+                  keyMaterialInternalStorage,
+                  doubleWrapping,
+                  wrapLocally,
+                  isDecryptionDirectMemory,
+                  writerVersion)));
             }
           }
         }
       }
     }
-    return list;
+    return list.stream();
   }
-
-  @Parameterized.Parameter // first data value (0) is default
-  public boolean isKeyMaterialInternalStorage;
-
-  @Parameterized.Parameter(value = 1)
-  public boolean isDoubleWrapping;
-
-  @Parameterized.Parameter(value = 2)
-  public boolean isWrapLocally;
-
-  @Parameterized.Parameter(value = 3)
-  public boolean isDecryptionDirectMemory;
-
-  @Parameterized.Parameter(value = 4)
-  public boolean isV1;
 
   private static final Logger LOG = LoggerFactory.getLogger(TestPropertiesDrivenEncryption.class);
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  @Rule
-  public final ErrorCollector errorCollector = new ErrorCollector();
+  private final ErrorCollector errorCollector = new ErrorCollector();
+
+  @AfterEach
+  public void verifyNoCollectedErrors() {
+    errorCollector.assertEmpty();
+  }
 
   private static final Base64.Encoder encoder = Base64.getEncoder();
   private static final String FOOTER_MASTER_KEY =
@@ -300,8 +330,8 @@ public class TestPropertiesDrivenEncryption {
       /**
        * Encrypt two columns and the footer, with different master keys.
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
-        Configuration conf = getCryptoProperties(test);
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
+        Configuration conf = getCryptoProperties(params);
         setColumnAndFooterKeys(conf);
         return conf;
       }
@@ -310,8 +340,8 @@ public class TestPropertiesDrivenEncryption {
       /**
        * Encrypt all columns and the footer, with same master key.
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
-        Configuration conf = getCryptoProperties(test);
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
+        Configuration conf = getCryptoProperties(params);
         setUniformKey(conf);
         return conf;
       }
@@ -322,8 +352,8 @@ public class TestPropertiesDrivenEncryption {
        * Don't encrypt footer.
        * (plaintext footer mode, readable by legacy readers)
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
-        Configuration conf = getCryptoProperties(test);
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
+        Configuration conf = getCryptoProperties(params);
         setColumnAndFooterKeys(conf);
         conf.setBoolean(PropertiesDrivenCryptoFactory.PLAINTEXT_FOOTER_PROPERTY_NAME, true);
         return conf;
@@ -334,8 +364,8 @@ public class TestPropertiesDrivenEncryption {
        * Encrypt two columns and the footer, with different master keys.
        * Use AES_GCM_CTR_V1 algorithm.
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
-        Configuration conf = getCryptoProperties(test);
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
+        Configuration conf = getCryptoProperties(params);
         setColumnAndFooterKeys(conf);
         conf.set(
             PropertiesDrivenCryptoFactory.ENCRYPTION_ALGORITHM_PROPERTY_NAME,
@@ -348,8 +378,8 @@ public class TestPropertiesDrivenEncryption {
        * Encrypt two columns and the footer, with different master keys.
        * Encrypt other columns with the footer master key.
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
-        Configuration conf = getCryptoProperties(test);
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
+        Configuration conf = getCryptoProperties(params);
         setColumnAndFooterKeys(conf);
         conf.setBoolean(PropertiesDrivenCryptoFactory.COMPLETE_COLUMN_ENCRYPTION_PROPERTY_NAME, true);
         return conf;
@@ -359,12 +389,12 @@ public class TestPropertiesDrivenEncryption {
       /**
        * Do not encrypt anything
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
         return null;
       }
     };
 
-    public abstract Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test);
+    public abstract Configuration getHadoopConfiguration(CryptoTestParams params);
   }
 
   public enum DecryptionConfiguration {
@@ -373,8 +403,8 @@ public class TestPropertiesDrivenEncryption {
        * Decrypt using key retriever callback that holds the keys
        * of two encrypted columns and the footer key.
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
-        Configuration conf = getCryptoProperties(test);
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
+        Configuration conf = getCryptoProperties(params);
         return conf;
       }
     },
@@ -382,26 +412,26 @@ public class TestPropertiesDrivenEncryption {
       /**
        * Do not decrypt anything.
        */
-      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
+      public Configuration getHadoopConfiguration(CryptoTestParams params) {
         return null;
       }
     };
 
-    public abstract Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test);
+    public abstract Configuration getHadoopConfiguration(CryptoTestParams params);
   }
 
   /**
    * Get Hadoop configuration with configuration properties common to all encryption modes
    */
-  private static Configuration getCryptoProperties(TestPropertiesDrivenEncryption test) {
+  private static Configuration getCryptoProperties(CryptoTestParams params) {
     Configuration conf = new Configuration();
     conf.set(
         EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
         PropertiesDrivenCryptoFactory.class.getName());
 
-    conf.set(OFF_HEAP_DECRYPT_BUFFER_ENABLED, String.valueOf(test.isDecryptionDirectMemory));
+    conf.set(OFF_HEAP_DECRYPT_BUFFER_ENABLED, String.valueOf(params.isDecryptionDirectMemory()));
 
-    if (test.isWrapLocally) {
+    if (params.isWrapLocally()) {
       conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, LocalWrapInMemoryKMS.class.getName());
     } else {
       conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, InMemoryKMS.class.getName());
@@ -409,8 +439,8 @@ public class TestPropertiesDrivenEncryption {
     conf.set(InMemoryKMS.KEY_LIST_PROPERTY_NAME, KEY_LIST);
     conf.set(InMemoryKMS.NEW_KEY_LIST_PROPERTY_NAME, NEW_KEY_LIST);
 
-    conf.setBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, test.isKeyMaterialInternalStorage);
-    conf.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, test.isDoubleWrapping);
+    conf.setBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, params.isKeyMaterialInternalStorage());
+    conf.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, params.isDoubleWrapping());
     return conf;
   }
 
@@ -429,29 +459,32 @@ public class TestPropertiesDrivenEncryption {
     conf.set(PropertiesDrivenCryptoFactory.UNIFORM_KEY_PROPERTY_NAME, UNIFORM_MASTER_KEY_ID);
   }
 
-  @Test
-  public void testWriteReadEncryptedParquetFiles() throws IOException {
-    Path rootPath = new Path(temporaryFolder.getRoot().getPath());
+  @ParameterizedTest(
+      name =
+          "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2} isDecryptionDirectMemory={3} writerVersion={4}")
+  @MethodSource("data")
+  public void testWriteReadEncryptedParquetFiles(CryptoTestParams params) throws IOException {
+    Path rootPath = new Path(tempDir.toUri());
     LOG.info("======== testWriteReadEncryptedParquetFiles {} ========", rootPath.toString());
     LOG.info(
         "Run: isKeyMaterialInternalStorage={} isDoubleWrapping={} isWrapLocally={}",
-        isKeyMaterialInternalStorage,
-        isDoubleWrapping,
-        isWrapLocally);
+        params.isKeyMaterialInternalStorage(),
+        params.isDoubleWrapping(),
+        params.isWrapLocally());
     KeyToolkit.removeCacheEntriesForAllTokens();
     ExecutorService threadPool = Executors.newFixedThreadPool(NUM_THREADS);
     try {
       // Write using various encryption configurations.
-      testWriteEncryptedParquetFiles(rootPath, DATA, threadPool);
+      testWriteEncryptedParquetFiles(rootPath, DATA, threadPool, params);
       // Read using various decryption configurations.
-      testReadEncryptedParquetFiles(rootPath, DATA, threadPool);
+      testReadEncryptedParquetFiles(rootPath, DATA, threadPool, params);
     } finally {
       threadPool.shutdown();
     }
   }
 
-  private void testWriteEncryptedParquetFiles(Path root, List<SingleRow> data, ExecutorService threadPool)
-      throws IOException {
+  private void testWriteEncryptedParquetFiles(
+      Path root, List<SingleRow> data, ExecutorService threadPool, CryptoTestParams params) throws IOException {
     EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
     for (EncryptionConfiguration encryptionConfiguration : encryptionConfigurations) {
       Path encryptionConfigurationFolderPath = new Path(root, encryptionConfiguration.name());
@@ -468,7 +501,7 @@ public class TestPropertiesDrivenEncryption {
         final int threadNumber = i;
         threadPool.execute(() -> {
           writeEncryptedParquetFile(
-              encryptionConfigurationFolderPath, data, encryptionConfiguration, threadNumber);
+              encryptionConfigurationFolderPath, data, encryptionConfiguration, threadNumber, params);
           latch.countDown();
         });
       }
@@ -481,7 +514,11 @@ public class TestPropertiesDrivenEncryption {
   }
 
   private void writeEncryptedParquetFile(
-      Path root, List<SingleRow> data, EncryptionConfiguration encryptionConfiguration, int threadNumber) {
+      Path root,
+      List<SingleRow> data,
+      EncryptionConfiguration encryptionConfiguration,
+      int threadNumber,
+      CryptoTestParams params) {
     MessageType schema = SingleRow.getSchema();
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
 
@@ -490,7 +527,7 @@ public class TestPropertiesDrivenEncryption {
 
     Path file = new Path(root, getFileName(root, encryptionConfiguration, threadNumber));
     LOG.info("\nWrite " + file.toString());
-    Configuration conf = encryptionConfiguration.getHadoopConfiguration(this);
+    Configuration conf = encryptionConfiguration.getHadoopConfiguration(params);
     FileEncryptionProperties fileEncryptionProperties = null;
     try {
       if (null == conf) {
@@ -503,7 +540,7 @@ public class TestPropertiesDrivenEncryption {
       addErrorToErrorCollectorAndLog("Failed writing " + file.toString(), e, encryptionConfiguration, null);
       return;
     }
-    WriterVersion writerVersion = this.isV1 ? WriterVersion.PARQUET_1_0 : WriterVersion.PARQUET_2_0;
+    WriterVersion writerVersion = params.writerVersion();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
         .withConf(conf)
         .withWriteMode(OVERWRITE)
@@ -537,17 +574,17 @@ public class TestPropertiesDrivenEncryption {
     return new Path(root, encryptionConfiguration.toString() + "_" + threadNumber + suffix);
   }
 
-  private void testReadEncryptedParquetFiles(Path root, List<SingleRow> data, ExecutorService threadPool)
-      throws IOException {
-    readFilesMultithreaded(root, data, threadPool, false /*keysRotated*/);
+  private void testReadEncryptedParquetFiles(
+      Path root, List<SingleRow> data, ExecutorService threadPool, CryptoTestParams params) throws IOException {
+    readFilesMultithreaded(root, data, threadPool, false /*keysRotated*/, params);
 
-    if (isWrapLocally) {
+    if (params.isWrapLocally()) {
       return; // key rotation is not supported with local key wrapping
     }
 
     LOG.info("--> Start master key rotation");
     Configuration hadoopConfigForRotation =
-        EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER.getHadoopConfiguration(this);
+        EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER.getHadoopConfiguration(params);
     hadoopConfigForRotation.set(InMemoryKMS.NEW_KEY_LIST_PROPERTY_NAME, NEW_KEY_LIST);
     InMemoryKMS.startKeyRotation(hadoopConfigForRotation);
 
@@ -561,7 +598,7 @@ public class TestPropertiesDrivenEncryption {
         LOG.info("Rotate master keys in folder: " + encryptionConfigurationFolderPath.toString());
         KeyToolkit.rotateMasterKeys(encryptionConfigurationFolderPath.toString(), hadoopConfigForRotation);
       } catch (UnsupportedOperationException e) {
-        if (isKeyMaterialInternalStorage || isWrapLocally) {
+        if (params.isKeyMaterialInternalStorage() || params.isWrapLocally()) {
           LOG.info("Key material file not found, as expected");
         } else {
           errorCollector.addError(e);
@@ -577,16 +614,16 @@ public class TestPropertiesDrivenEncryption {
     LOG.info("--> Finish master key rotation");
 
     LOG.info("--> Read files again with new keys");
-    readFilesMultithreaded(root, data, threadPool, true /*keysRotated*/);
+    readFilesMultithreaded(root, data, threadPool, true /*keysRotated*/, params);
   }
 
   private void readFilesMultithreaded(
-      Path root, List<SingleRow> data, ExecutorService threadPool, boolean keysRotated) {
+      Path root, List<SingleRow> data, ExecutorService threadPool, boolean keysRotated, CryptoTestParams params) {
     DecryptionConfiguration[] decryptionConfigurations = DecryptionConfiguration.values();
     for (DecryptionConfiguration decryptionConfiguration : decryptionConfigurations) {
       LOG.info("\n\n");
       LOG.info("==> Decryption configuration {}\n", decryptionConfiguration);
-      Configuration hadoopConfig = decryptionConfiguration.getHadoopConfiguration(this);
+      Configuration hadoopConfig = decryptionConfiguration.getHadoopConfiguration(params);
       if (null != hadoopConfig) {
         KeyToolkit.removeCacheEntriesForAllTokens();
       }
@@ -608,7 +645,8 @@ public class TestPropertiesDrivenEncryption {
                 decryptionConfiguration,
                 data,
                 file,
-                keysRotated);
+                keysRotated,
+                params);
 
             latch.countDown();
           });
@@ -628,7 +666,8 @@ public class TestPropertiesDrivenEncryption {
       DecryptionConfiguration decryptionConfiguration,
       List<SingleRow> data,
       Path file,
-      boolean keysRotated) {
+      boolean keysRotated,
+      CryptoTestParams params) {
     FileDecryptionProperties fileDecryptionProperties = null;
     if (null == hadoopConfig) {
       hadoopConfig = new Configuration();
@@ -651,7 +690,7 @@ public class TestPropertiesDrivenEncryption {
     if ((encryptionConfiguration != EncryptionConfiguration.NO_ENCRYPTION)
         && (encryptionConfiguration != EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
       byte[] magic = new byte[MAGIC.length];
-      try (InputStream is = new FileInputStream(file.toString())) {
+      try (InputStream is = new FileInputStream(new File(file.toUri()))) {
         if (is.read(magic) != magic.length) {
           throw new RuntimeException("ERROR");
         }
@@ -676,7 +715,7 @@ public class TestPropertiesDrivenEncryption {
 
     int rowNum = 0;
     try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
-            this.isDecryptionDirectMemory
+            params.isDecryptionDirectMemory()
                 ? new DirectByteBufferAllocator()
                 : new HeapByteBufferAllocator());
         ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)

@@ -66,7 +66,7 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestStatisticsFilter {
 

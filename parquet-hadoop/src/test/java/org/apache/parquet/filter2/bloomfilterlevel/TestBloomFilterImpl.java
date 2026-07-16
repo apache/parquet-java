@@ -45,7 +45,7 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestBloomFilterImpl {
   private static final double DOUBLE_NAN = Double.longBitsToDouble(0x7ff8000000000001L);

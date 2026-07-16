@@ -47,7 +47,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -86,21 +85,19 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Unit tests for high level column index based filtering.
  */
-@RunWith(Parameterized.class)
 public class TestColumnIndexFiltering {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestColumnIndexFiltering.class);
   private static final Random RANDOM = new Random(42);
@@ -132,32 +129,24 @@ public class TestColumnIndexFiltering {
   private static final String COLUMN_ENCRYPTION_KEY1_ID = "kc1";
   private static final String COLUMN_ENCRYPTION_KEY2_ID = "kc2";
 
-  @Parameters(name = "Run {index}: isEncrypted={1}")
-  public static Collection<Object[]> params() {
-    return List.of(
-        new Object[] {FILE_V1, false /*isEncrypted*/},
-        new Object[] {FILE_V2, false /*isEncrypted*/},
-        new Object[] {FILE_V1_E, true /*isEncrypted*/},
-        new Object[] {FILE_V2_E, true /*isEncrypted*/});
+  static Stream<Arguments> fileAndEncryption() {
+    return Stream.of(
+        Arguments.of(FILE_V1, false),
+        Arguments.of(FILE_V2, false),
+        Arguments.of(FILE_V1_E, true),
+        Arguments.of(FILE_V2_E, true));
   }
 
-  private final Path file;
-  private final boolean isEncrypted;
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
-  }
-
-  public TestColumnIndexFiltering(Path file, boolean isEncrypted) {
-    this.file = file;
-    this.isEncrypted = isEncrypted;
   }
 
   private static List<User> generateData(int rowCount) {
@@ -239,22 +228,30 @@ public class TestColumnIndexFiltering {
     }
   }
 
-  private List<User> readUsers(FilterPredicate filter, boolean useOtherFiltering) throws IOException {
-    return readUsers(FilterCompat.get(filter), useOtherFiltering, true);
-  }
-
-  private List<User> readUsers(FilterPredicate filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
+  private List<User> readUsers(Path file, boolean isEncrypted, FilterPredicate filter, boolean useOtherFiltering)
       throws IOException {
-    return readUsers(FilterCompat.get(filter), useOtherFiltering, useColumnIndexFilter);
+    return readUsers(file, isEncrypted, FilterCompat.get(filter), useOtherFiltering, true);
   }
 
-  private List<User> readUsers(Filter filter, boolean useOtherFiltering) throws IOException {
-    return readUsers(filter, useOtherFiltering, true);
-  }
-
-  private List<User> readUsers(Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
+  private List<User> readUsers(
+      Path file,
+      boolean isEncrypted,
+      FilterPredicate filter,
+      boolean useOtherFiltering,
+      boolean useColumnIndexFilter)
       throws IOException {
-    FileDecryptionProperties decryptionProperties = getFileDecryptionProperties();
+    return readUsers(file, isEncrypted, FilterCompat.get(filter), useOtherFiltering, useColumnIndexFilter);
+  }
+
+  private List<User> readUsers(Path file, boolean isEncrypted, Filter filter, boolean useOtherFiltering)
+      throws IOException {
+    return readUsers(file, isEncrypted, filter, useOtherFiltering, true);
+  }
+
+  private List<User> readUsers(
+      Path file, boolean isEncrypted, Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
+      throws IOException {
+    FileDecryptionProperties decryptionProperties = getFileDecryptionProperties(isEncrypted);
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
             .withAllocator(allocator)
@@ -268,9 +265,14 @@ public class TestColumnIndexFiltering {
   }
 
   private List<User> readUsersWithProjection(
-      Filter filter, MessageType schema, boolean useOtherFiltering, boolean useColumnIndexFilter)
+      Path file,
+      boolean isEncrypted,
+      Filter filter,
+      MessageType schema,
+      boolean useOtherFiltering,
+      boolean useColumnIndexFilter)
       throws IOException {
-    FileDecryptionProperties decryptionProperties = getFileDecryptionProperties();
+    FileDecryptionProperties decryptionProperties = getFileDecryptionProperties(isEncrypted);
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
             .withFilter(filter)
@@ -283,7 +285,7 @@ public class TestColumnIndexFiltering {
         true);
   }
 
-  private FileDecryptionProperties getFileDecryptionProperties() {
+  private FileDecryptionProperties getFileDecryptionProperties(boolean isEncrypted) {
     FileDecryptionProperties decryptionProperties = null;
     if (isEncrypted) {
       DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
@@ -318,10 +320,11 @@ public class TestColumnIndexFiltering {
         .isExhausted();
   }
 
-  private void assertCorrectFiltering(Predicate<User> expectedFilter, FilterPredicate actualFilter)
+  private void assertCorrectFiltering(
+      Path file, boolean isEncrypted, Predicate<User> expectedFilter, FilterPredicate actualFilter)
       throws IOException {
     // Check with only column index based filtering
-    List<User> result = readUsers(actualFilter, false);
+    List<User> result = readUsers(file, isEncrypted, actualFilter, false);
 
     assertThat(result).as("Column-index filtering should drop some pages").hasSizeLessThan(DATA.size());
     LOGGER.info(
@@ -333,11 +336,11 @@ public class TestColumnIndexFiltering {
     assertContains(result.stream(), DATA);
 
     // Check with all the filtering filtering to ensure the result contains exactly the required values
-    result = readUsers(actualFilter, true);
+    result = readUsers(file, isEncrypted, actualFilter, true);
     assertThat(result).isEqualTo(DATA.stream().filter(expectedFilter).collect(Collectors.toList()));
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void createFiles() throws IOException {
     writePhoneBookToFile(FILE_V1, WriterVersion.PARQUET_1_0, null);
     writePhoneBookToFile(FILE_V2, WriterVersion.PARQUET_2_0, null);
@@ -391,7 +394,7 @@ public class TestColumnIndexFiltering {
     file.getFileSystem(new Configuration()).delete(file, false);
   }
 
-  @AfterClass
+  @AfterAll
   public static void deleteFiles() throws IOException {
     deleteFile(FILE_V1);
     deleteFile(FILE_V2);
@@ -399,9 +402,10 @@ public class TestColumnIndexFiltering {
     deleteFile(FILE_V2_E);
   }
 
-  @Test
-  public void testSimpleFiltering() throws IOException {
-    assertCorrectFiltering(record -> record.getId() == 1234, eq(longColumn("id"), 1234l));
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testSimpleFiltering(Path file, boolean isEncrypted) throws IOException {
+    assertCorrectFiltering(file, isEncrypted, record -> record.getId() == 1234, eq(longColumn("id"), 1234l));
 
     Set<Long> idSet = new HashSet<>();
     idSet.add(1234l);
@@ -413,6 +417,8 @@ public class TestColumnIndexFiltering {
     idSet.add(2468l);
 
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> (record.getId() == 1234
             || record.getId() == 5678
             || record.getId() == 1357
@@ -423,7 +429,10 @@ public class TestColumnIndexFiltering {
         in(longColumn("id"), idSet));
 
     assertCorrectFiltering(
-        record -> "miller".equals(record.getName()), eq(binaryColumn("name"), Binary.fromString("miller")));
+        file,
+        isEncrypted,
+        record -> "miller".equals(record.getName()),
+        eq(binaryColumn("name"), Binary.fromString("miller")));
 
     Set<Binary> nameSet = new HashSet<>();
     nameSet.add(Binary.fromString("anderson"));
@@ -432,50 +441,59 @@ public class TestColumnIndexFiltering {
     nameSet.add(Binary.fromString("williams"));
 
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> ("anderson".equals(record.getName())
             || "miller".equals(record.getName())
             || "thomas".equals(record.getName())
             || "williams".equals(record.getName())),
         in(binaryColumn("name"), nameSet));
 
-    assertCorrectFiltering(record -> record.getName() == null, eq(binaryColumn("name"), null));
+    assertCorrectFiltering(file, isEncrypted, record -> record.getName() == null, eq(binaryColumn("name"), null));
 
     Set<Binary> nullSet = new HashSet<>();
     nullSet.add(null);
 
-    assertCorrectFiltering(record -> record.getName() == null, in(binaryColumn("name"), nullSet));
+    assertCorrectFiltering(
+        file, isEncrypted, record -> record.getName() == null, in(binaryColumn("name"), nullSet));
   }
 
-  @Test
-  public void testNoFiltering() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testNoFiltering(Path file, boolean isEncrypted) throws IOException {
     // Column index filtering with no-op filter
-    assertThat(readUsers(FilterCompat.NOOP, false)).isEqualTo(DATA);
-    assertThat(readUsers(FilterCompat.NOOP, true)).isEqualTo(DATA);
+    assertThat(readUsers(file, isEncrypted, FilterCompat.NOOP, false)).isEqualTo(DATA);
+    assertThat(readUsers(file, isEncrypted, FilterCompat.NOOP, true)).isEqualTo(DATA);
 
     // Column index filtering with null filter
-    assertThat(readUsers((Filter) null, false)).isEqualTo(DATA);
-    assertThat(readUsers((Filter) null, true)).isEqualTo(DATA);
+    assertThat(readUsers(file, isEncrypted, (Filter) null, false)).isEqualTo(DATA);
+    assertThat(readUsers(file, isEncrypted, (Filter) null, true)).isEqualTo(DATA);
 
     // Column index filtering turned off
-    assertThat(readUsers(eq(longColumn("id"), 1234l), true, false))
+    assertThat(readUsers(file, isEncrypted, eq(longColumn("id"), 1234l), true, false))
         .isEqualTo(DATA.stream().filter(user -> user.getId() == 1234).collect(Collectors.toList()));
-    assertThat(readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), true, false))
+    assertThat(readUsers(file, isEncrypted, eq(binaryColumn("name"), Binary.fromString("miller")), true, false))
         .isEqualTo(DATA.stream()
             .filter(user -> "miller".equals(user.getName()))
             .collect(Collectors.toList()));
-    assertThat(readUsers(eq(binaryColumn("name"), null), true, false))
+    assertThat(readUsers(file, isEncrypted, eq(binaryColumn("name"), null), true, false))
         .isEqualTo(DATA.stream().filter(user -> user.getName() == null).collect(Collectors.toList()));
 
     // Every filtering mechanism turned off
-    assertThat(readUsers(eq(longColumn("id"), 1234l), false, false)).isEqualTo(DATA);
-    assertThat(readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), false, false))
+    assertThat(readUsers(file, isEncrypted, eq(longColumn("id"), 1234l), false, false))
         .isEqualTo(DATA);
-    assertThat(readUsers(eq(binaryColumn("name"), null), false, false)).isEqualTo(DATA);
+    assertThat(readUsers(file, isEncrypted, eq(binaryColumn("name"), Binary.fromString("miller")), false, false))
+        .isEqualTo(DATA);
+    assertThat(readUsers(file, isEncrypted, eq(binaryColumn("name"), null), false, false))
+        .isEqualTo(DATA);
   }
 
-  @Test
-  public void testComplexFiltering() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testComplexFiltering(Path file, boolean isEncrypted) throws IOException {
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> {
           Location loc = record.getLocation();
           Double lat = loc == null ? null : loc.getLat();
@@ -486,12 +504,16 @@ public class TestColumnIndexFiltering {
             and(gtEq(doubleColumn("location.lat"), 37.0), ltEq(doubleColumn("location.lat"), 70.0)),
             and(gtEq(doubleColumn("location.lon"), -21.0), ltEq(doubleColumn("location.lon"), 35.0))));
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> {
           Location loc = record.getLocation();
           return loc == null || (loc.getLat() == null && loc.getLon() == null);
         },
         and(eq(doubleColumn("location.lat"), null), eq(doubleColumn("location.lon"), null)));
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> {
           String name = record.getName();
           return name != null && name.compareTo("thomas") < 0 && record.getId() <= 3 * DATA.size() / 4;
@@ -589,58 +611,86 @@ public class TestColumnIndexFiltering {
     }
   }
 
-  @Test
-  public void testUDF() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testUDF(Path file, boolean isEncrypted) throws IOException {
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0,
         or(
             userDefined(binaryColumn("name"), NameStartsWithVowel.class),
             userDefined(longColumn("id"), new IsDivisibleBy(234))));
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> !(NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
         not(or(
             userDefined(binaryColumn("name"), NameStartsWithVowel.class),
             userDefined(longColumn("id"), new IsDivisibleBy(234)))));
   }
 
-  @Test
-  public void testFilteringWithMissingColumns() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testFilteringWithMissingColumns(Path file, boolean isEncrypted) throws IOException {
     // Missing column filter is always true
-    assertThat(readUsers(notEq(binaryColumn("not-existing-binary"), Binary.EMPTY), true))
+    assertThat(readUsers(file, isEncrypted, notEq(binaryColumn("not-existing-binary"), Binary.EMPTY), true))
         .isEqualTo(DATA);
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> record.getId() == 1234,
         and(eq(longColumn("id"), 1234l), eq(longColumn("not-existing-long"), null)));
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> "miller".equals(record.getName()),
         and(
             eq(binaryColumn("name"), Binary.fromString("miller")),
             invert(userDefined(binaryColumn("not-existing-binary"), NameStartsWithVowel.class))));
 
     // Missing column filter is always false
-    assertThat(readUsers(lt(longColumn("not-existing-long"), 0l), true)).isEqualTo(emptyList());
+    assertThat(readUsers(file, isEncrypted, lt(longColumn("not-existing-long"), 0l), true))
+        .isEqualTo(emptyList());
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> "miller".equals(record.getName()),
         or(
             eq(binaryColumn("name"), Binary.fromString("miller")),
             gtEq(binaryColumn("not-existing-binary"), Binary.EMPTY)));
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> record.getId() == 1234,
         or(eq(longColumn("id"), 1234l), userDefined(longColumn("not-existing-long"), new IsDivisibleBy(1))));
   }
 
-  @Test
-  public void testFilteringWithProjection() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testFilteringWithProjection(Path file, boolean isEncrypted) throws IOException {
     // All rows shall be retrieved because all values in column 'name' shall be handled as null values
     assertThat(readUsersWithProjection(
-            FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true))
+            file,
+            isEncrypted,
+            FilterCompat.get(eq(binaryColumn("name"), null)),
+            SCHEMA_WITHOUT_NAME,
+            true,
+            true))
         .isEqualTo(DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()));
 
     // Column index filter shall drop all pages because all values in column 'name' shall be handled as null values
     assertThat(readUsersWithProjection(
-            FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true))
+            file,
+            isEncrypted,
+            FilterCompat.get(notEq(binaryColumn("name"), null)),
+            SCHEMA_WITHOUT_NAME,
+            false,
+            true))
         .isEqualTo(emptyList());
     assertThat(readUsersWithProjection(
+            file,
+            isEncrypted,
             FilterCompat.get(userDefined(binaryColumn("name"), NameStartsWithVowel.class)),
             SCHEMA_WITHOUT_NAME,
             false,

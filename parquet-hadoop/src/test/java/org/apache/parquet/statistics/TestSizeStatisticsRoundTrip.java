@@ -20,12 +20,10 @@ package org.apache.parquet.statistics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -43,14 +41,12 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestSizeStatisticsRoundTrip {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testBinaryColumnSizeStatistics() throws IOException {
@@ -153,9 +149,7 @@ public class TestSizeStatisticsRoundTrip {
     }
   }
 
-  private Path newTempPath() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.getAbsolutePath());
+  private Path newTempPath() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 }

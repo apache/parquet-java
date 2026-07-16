@@ -24,10 +24,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -48,17 +47,14 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Parameterized on Vectored IO enabled/disabled so can verify that
  * ranged reads work through the bridge on compatible hadoop versions.
  */
-@RunWith(Parameterized.class)
 public class TestInputFormatColumnProjection {
   public static final String FILE_CONTENT = "" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
       + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
@@ -104,38 +100,19 @@ public class TestInputFormatColumnProjection {
     }
   }
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  @Parameterized.Parameters(name = "vectored : {0}")
-  public static List<Boolean> params() {
-    return List.of(true, false);
-  }
-
-  /**
-   * Read type: true for vectored IO.
-   */
-  private final boolean readType;
-
-  public TestInputFormatColumnProjection(boolean readType) {
-    this.readType = readType;
-  }
-
-  @Test
-  public void testProjectionSize() throws Exception {
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testProjectionSize(boolean readType) throws Exception {
     assumeThat(org.apache.hadoop.mapreduce.JobContext.class.isInterface()).isTrue();
 
-    File inputFile = temp.newFile();
-    FileOutputStream out = new FileOutputStream(inputFile);
-    out.write(FILE_CONTENT.getBytes("UTF-8"));
-    out.close();
+    java.nio.file.Path inputPath = Files.createTempFile(tempDir, "input", ".txt");
+    Files.write(inputPath, FILE_CONTENT.getBytes(StandardCharsets.UTF_8));
 
-    File tempFolder = temp.newFolder();
-    tempFolder.delete();
-    Path tempPath = new Path(tempFolder.toURI());
-
-    File outputFolder = temp.newFile();
-    outputFolder.delete();
+    Path tempPath = new Path(tempDir.resolve("parquet-out").toUri());
+    Path outputPath = new Path(tempDir.resolve("text-out").toUri());
 
     Configuration conf = new Configuration();
     // set the vector IO option
@@ -157,7 +134,7 @@ public class TestInputFormatColumnProjection {
     {
       Job writeJob = new Job(conf, "write");
       writeJob.setInputFormatClass(TextInputFormat.class);
-      TextInputFormat.addInputPath(writeJob, new Path(inputFile.toString()));
+      TextInputFormat.addInputPath(writeJob, new Path(inputPath.toUri()));
 
       writeJob.setOutputFormatClass(ExampleOutputFormat.class);
       writeJob.setMapperClass(Writer.class);
@@ -187,7 +164,7 @@ public class TestInputFormatColumnProjection {
       readJob.setOutputFormatClass(TextOutputFormat.class);
       readJob.setMapperClass(Reader.class);
       readJob.setNumReduceTasks(0); // no reduce phase
-      TextOutputFormat.setOutputPath(readJob, new Path(outputFolder.toString()));
+      TextOutputFormat.setOutputPath(readJob, outputPath);
 
       waitForJob(readJob);
 

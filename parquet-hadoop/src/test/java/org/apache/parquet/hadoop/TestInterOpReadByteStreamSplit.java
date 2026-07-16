@@ -26,7 +26,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestInterOpReadByteStreamSplit {
   private static final String FLOATS_FILE = "byte_stream_split.zstd.parquet";

@@ -44,11 +44,9 @@ import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-@RunWith(Parameterized.class)
 public class TestIndexCache {
   private final Configuration conf = new Configuration();
   private final int numRecords = 100000;
@@ -63,20 +61,10 @@ public class TestIndexCache {
           new PrimitiveType(REPEATED, BINARY, "Backward"),
           new PrimitiveType(REPEATED, BINARY, "Forward")));
 
-  private final ParquetProperties.WriterVersion writerVersion;
-
-  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}")
-  public static Object[] parameters() {
-    return new Object[] {"v1", "v2"};
-  }
-
-  public TestIndexCache(String writerVersion) {
-    this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
-  }
-
-  @Test
-  public void testNoneCacheStrategy() throws IOException {
-    String file = createTestFile("DocID");
+  @ParameterizedTest(name = "WriterVersion = {0}")
+  @EnumSource(ParquetProperties.WriterVersion.class)
+  public void testNoneCacheStrategy(ParquetProperties.WriterVersion writerVersion) throws IOException {
+    String file = createTestFile(writerVersion, "DocID");
 
     ParquetReadOptions options = ParquetReadOptions.builder().build();
     ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
@@ -96,9 +84,10 @@ public class TestIndexCache {
     }
   }
 
-  @Test
-  public void testPrefetchCacheStrategy() throws IOException {
-    String file = createTestFile("DocID", "Name");
+  @ParameterizedTest(name = "WriterVersion = {0}")
+  @EnumSource(ParquetProperties.WriterVersion.class)
+  public void testPrefetchCacheStrategy(ParquetProperties.WriterVersion writerVersion) throws IOException {
+    String file = createTestFile(writerVersion, "DocID", "Name");
 
     ParquetReadOptions options = ParquetReadOptions.builder().build();
     ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
@@ -118,7 +107,8 @@ public class TestIndexCache {
     validPrecacheIndexCache(fileReader, indexCache, columns, true);
   }
 
-  private String createTestFile(String... bloomFilterEnabledColumns) throws IOException {
+  private String createTestFile(ParquetProperties.WriterVersion writerVersion, String... bloomFilterEnabledColumns)
+      throws IOException {
     return new TestFileBuilder(conf, schema)
         .withNumRecord(numRecords)
         .withCodec("ZSTD")

@@ -30,10 +30,9 @@ import static org.apache.parquet.schema.Types.required;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.ResourceIntensiveTestRule;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -44,16 +43,19 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * This test is to test parquet-mr working with potential int overflows (when the sizes are greater than
  * Integer.MAX_VALUE).
  */
+@EnabledIfSystemProperty(
+    named = "enableResourceIntensiveTests",
+    matches = "(?i)true",
+    disabledReason = "Resource intensive test is not executed due to the limitations of the environment")
 public class TestLargeColumnChunk {
   private static final MessageType SCHEMA = buildMessage()
       .addFields(required(INT64).named("id"), required(BINARY).named("data"))
@@ -68,17 +70,15 @@ public class TestLargeColumnChunk {
   private static final long ID_OF_FILTERED_DATA = ROW_COUNT / 2;
   private static Binary VALUE_IN_DATA;
   private static Binary VALUE_NOT_IN_DATA;
-  private static Path file;
+  private static org.apache.hadoop.fs.Path file;
 
-  @ClassRule
-  public static TestRule maySkip = ResourceIntensiveTestRule.get();
+  @TempDir
+  private static Path tempDir;
 
-  @ClassRule
-  public static TemporaryFolder folder = new TemporaryFolder();
-
-  @BeforeClass
+  @BeforeAll
   public static void createFile() throws IOException {
-    file = new Path(folder.newFile().getAbsolutePath());
+    file = new org.apache.hadoop.fs.Path(
+        tempDir.resolve("large-column-chunk.parquet").toUri());
 
     GroupFactory factory = new SimpleGroupFactory(SCHEMA);
     Random random = new Random(RANDOM_SEED);

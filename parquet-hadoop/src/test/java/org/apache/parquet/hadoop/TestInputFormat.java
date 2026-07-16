@@ -70,8 +70,8 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TestInputFormat {
 
@@ -87,7 +87,7 @@ public class TestInputFormat {
   xxxxx xxxxx
   each x is a row group, each groups of x's is a hdfsBlock
   */
-  @Before
+  @BeforeEach
   public void setUp() {
     blocks = new ArrayList<BlockMetaData>();
     for (int i = 0; i < 10; i++) {
