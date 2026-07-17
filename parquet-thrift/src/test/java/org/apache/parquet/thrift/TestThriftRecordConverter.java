@@ -25,7 +25,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.thrift.ThriftRecordConverter.FieldEnumConverter;
@@ -43,7 +43,7 @@ import org.junit.Test;
 public class TestThriftRecordConverter {
   @Test
   public void testUnknownEnumThrowsGoodException() throws Exception {
-    EnumType et = new EnumType(Arrays.asList(new EnumValue(77, "hello")));
+    EnumType et = new EnumType(List.of(new EnumValue(77, "hello")));
     ThriftField field = new ThriftField("name", (short) 1, Requirement.REQUIRED, et);
 
     ArrayList<TProtocol> events = new ArrayList<TProtocol>();

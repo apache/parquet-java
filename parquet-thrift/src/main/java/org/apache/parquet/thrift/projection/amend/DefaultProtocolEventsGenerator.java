@@ -49,7 +49,7 @@ class DefaultProtocolEventsGenerator {
     @Override
     public void readFieldEnd() throws TException {}
   };
-  List createdEvents = new ArrayList<TProtocol>();
+  List<TProtocol> createdEvents = new ArrayList<>();
 
   public List<TProtocol> createProtocolEventsForField(ThriftField missingField) {
     TProtocol fieldBegin = new ReadFieldBeginProtocol(missingField);
