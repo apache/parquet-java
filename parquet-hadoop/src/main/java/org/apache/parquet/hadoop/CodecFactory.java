@@ -385,7 +385,12 @@ public class CodecFactory implements CompressionCodecFactory {
         break;
       case GZIP:
         validateGzipLevel(level);
-        levelConf.setEnum(GZIP_COMPRESS_LEVEL, zlibCompressionLevel(level));
+        // Store the enum constant name rather than using Configuration#setEnum, which persists
+        // Enum#toString(). Hadoop reads this back via Configuration#getEnum -> Enum#valueOf, which
+        // requires the constant name. In some Hadoop builds ZlibCompressor.CompressionLevel
+        // overrides toString() to return the numeric level (e.g. "5"), so setEnum would write a
+        // value that valueOf cannot resolve, throwing "No enum constant ...CompressionLevel.5".
+        levelConf.set(GZIP_COMPRESS_LEVEL, zlibCompressionLevel(level).name());
         break;
       case BROTLI:
         validateBrotliLevel(level);
@@ -464,7 +469,12 @@ public class CodecFactory implements CompressionCodecFactory {
 
   private String cacheKey(CompressionCodecName codecName, int level) {
     String codecClass = codecName.getHadoopCompressionCodecClassName();
-    return (codecClass == null ? codecName.name() : codecClass) + ":" + level;
+    // Use a distinct namespace ("#level=") for the leveled path so that this key can never
+    // collide with the no-level cacheKey(codecName), which appends the raw configuration value
+    // (e.g. "<codecClass>:5" when zlib.compress.level=5 is set directly). Both maps that use
+    // these keys (the per-factory compressors map and the shared static CODEC_BY_NAME) would
+    // otherwise return a codec built from the raw config instead of the level-configured one.
+    return (codecClass == null ? codecName.name() : codecClass) + "#level=" + level;
   }
 
   @Override
