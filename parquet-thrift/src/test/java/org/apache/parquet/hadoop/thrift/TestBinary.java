@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -68,19 +68,20 @@ public class TestBinary {
     reader.close();
 
     assertSchema(ParquetFileReader.readFooter(new Configuration(), path));
-    assertEquals("Should match after serialization round trip", expected, record);
+    assertThat(record).as("Should match after serialization round trip").isEqualTo(expected);
   }
 
   private void assertSchema(ParquetMetadata parquetMetadata) {
     List<Type> fields = parquetMetadata.getFileMetaData().getSchema().getFields();
-    assertEquals(2, fields.size());
-    assertEquals(
-        Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
+    assertThat(fields).hasSize(2);
+    assertThat(fields.get(0))
+        .isEqualTo(Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
             .as(OriginalType.UTF8)
             .id(1)
-            .named("s"),
-        fields.get(0));
-    assertEquals(
-        Types.required(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("b"), fields.get(1));
+            .named("s"));
+    assertThat(fields.get(1))
+        .isEqualTo(Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
+            .id(2)
+            .named("b"));
   }
 }

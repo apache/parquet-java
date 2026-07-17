@@ -19,8 +19,8 @@
 package org.apache.parquet.hadoop.thrift;
 
 import static org.apache.parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +55,7 @@ public class TestCorruptThriftRecords {
     public static List<Object> records;
 
     @Override
-    protected void setup(Context context) throws IOException, InterruptedException {
+    protected void setup(Context context) {
       records = new ArrayList<Object>();
     }
 
@@ -119,10 +119,6 @@ public class TestCorruptThriftRecords {
     job.setOutputFormatClass(NullOutputFormat.class);
   }
 
-  protected void assertEqualsExcepted(List<StructWithUnionV2> expected, List<Object> found) throws Exception {
-    assertEquals(expected, found);
-  }
-
   private Path writeFileWithCorruptRecords(int numCorrupt, List<StructWithUnionV2> collectExpectedRecords)
       throws Exception {
     // generate a file with records that are corrupt according to thrift
@@ -167,16 +163,14 @@ public class TestCorruptThriftRecords {
   }
 
   @Test
-  public void testDefaultsToNoTolerance() throws Exception {
+  public void testDefaultsToNoTolerance() {
     ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
-    try {
-      readFile(writeFileWithCorruptRecords(1, expected), new Configuration(), "testDefaultsToNoTolerance");
-      fail("This should throw");
-    } catch (RuntimeException e) {
-      // still should have actually read all the valid records
-      assertEquals(100, ReadMapper.records.size());
-      assertEqualsExcepted(expected.subList(0, 100), ReadMapper.records);
-    }
+    assertThatThrownBy(() -> readFile(
+            writeFileWithCorruptRecords(1, expected), new Configuration(), "testDefaultsToNoTolerance"))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("job failed testDefaultsToNoTolerance");
+    // still should have actually read all the valid records
+    assertThat(ReadMapper.records).hasSize(100).isEqualTo(expected.subList(0, 100));
   }
 
   @Test
@@ -187,24 +181,21 @@ public class TestCorruptThriftRecords {
     List<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
 
     readFile(writeFileWithCorruptRecords(4, expected), conf, "testCanTolerateBadRecords");
-    assertEquals(200, ReadMapper.records.size());
-    assertEqualsExcepted(expected, ReadMapper.records);
+    assertThat(ReadMapper.records).hasSize(200).isEqualTo(expected);
   }
 
   @Test
-  public void testThrowsWhenTooManyBadRecords() throws Exception {
+  public void testThrowsWhenTooManyBadRecords() {
     Configuration conf = new Configuration();
     conf.setFloat(UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
 
     ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
 
-    try {
-      readFile(writeFileWithCorruptRecords(300, expected), conf, "testThrowsWhenTooManyBadRecords");
-      fail("This should throw");
-    } catch (RuntimeException e) {
-      // still should have actually read all the valid records
-      assertEquals(100, ReadMapper.records.size());
-      assertEqualsExcepted(expected.subList(0, 100), ReadMapper.records);
-    }
+    assertThatThrownBy(() ->
+            readFile(writeFileWithCorruptRecords(300, expected), conf, "testThrowsWhenTooManyBadRecords"))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("job failed testThrowsWhenTooManyBadRecords");
+    // still should have actually read all the valid records
+    assertThat(ReadMapper.records).hasSize(100).isEqualTo(expected.subList(0, 100));
   }
 }

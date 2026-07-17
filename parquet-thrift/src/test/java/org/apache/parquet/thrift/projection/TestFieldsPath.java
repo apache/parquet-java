@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.thrift.projection;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
@@ -48,20 +48,18 @@ public class TestFieldsPath {
     StructType person = ThriftSchemaConverter.toStructType(Person.class);
 
     List<String> paths = PrimitivePathVisitor.visit(person, ".");
-    assertEquals(
-        Arrays.asList("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"),
-        paths);
+    assertThat(paths)
+        .containsExactly("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type");
 
     paths = PrimitivePathVisitor.visit(person, "/");
-    assertEquals(
-        Arrays.asList("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"),
-        paths);
+    assertThat(paths)
+        .containsExactly("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type");
 
     StructType structInMap = ThriftSchemaConverter.toStructType(TestStructInMap.class);
 
     paths = PrimitivePathVisitor.visit(structInMap, ".");
-    assertEquals(
-        Arrays.asList(
+    assertThat(paths)
+        .containsExactly(
             "name",
             "names.key",
             "names.value.name.first_name",
@@ -69,12 +67,11 @@ public class TestFieldsPath {
             "names.value.phones.key",
             "names.value.phones.value",
             "name_to_id.key",
-            "name_to_id.value"),
-        paths);
+            "name_to_id.value");
 
     paths = PrimitivePathVisitor.visit(structInMap, "/");
-    assertEquals(
-        Arrays.asList(
+    assertThat(paths)
+        .containsExactly(
             "name",
             "names/key",
             "names/value/name/first_name",
@@ -82,8 +79,7 @@ public class TestFieldsPath {
             "names/value/phones/key",
             "names/value/phones/value",
             "name_to_id/key",
-            "name_to_id/value"),
-        paths);
+            "name_to_id/value");
   }
 
   private static class PrimitivePathVisitor implements ThriftType.StateVisitor<List<String>, FieldsPath> {

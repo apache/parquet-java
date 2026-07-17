@@ -19,12 +19,10 @@
 package org.apache.parquet.format;
 
 import static java.util.Arrays.asList;
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNull;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeFileMetaData;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,17 +50,13 @@ public class TestUtil {
     readFileMetaData(in(baos), new DefaultFileMetaDataConsumer(md4), true);
     FileMetaData md5 = readFileMetaData(in(baos), true);
     FileMetaData md6 = readFileMetaData(in(baos), false);
-    assertEquals(md, md2);
-    assertEquals(md, md3);
-    assertNull(md4.getRow_groups());
-    assertNull(md5.getRow_groups());
-    assertEquals(md4, md5);
+    assertThat(md2).isEqualTo(md3).isEqualTo(md);
+    assertThat(md4.getRow_groups()).isNull();
+    assertThat(md5.getRow_groups()).isNull();
+    assertThat(md4).isEqualTo(md5);
     md4.setRow_groups(md.getRow_groups());
     md5.setRow_groups(md.getRow_groups());
-    assertEquals(md, md4);
-    assertEquals(md, md5);
-    assertEquals(md4, md5);
-    assertEquals(md, md6);
+    assertThat(md4).isEqualTo(md5).isEqualTo(md6).isEqualTo(md);
   }
 
   @Test
@@ -71,14 +65,9 @@ public class TestUtil {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     Util.writePageHeader(ph, out);
 
-    try {
-      Util.readPageHeader(in(out));
-      fail("Expected exception but did not thrown");
-    } catch (InvalidParquetMetadataException e) {
-      assertTrue(
-          "Exception message does not contain the expected parts",
-          e.getMessage().contains("Compressed page size"));
-    }
+    assertThatThrownBy(() -> Util.readPageHeader(in(out)))
+        .isInstanceOf(InvalidParquetMetadataException.class)
+        .hasMessageContaining("Compressed page size");
   }
 
   private ByteArrayInputStream in(ByteArrayOutputStream baos) {
