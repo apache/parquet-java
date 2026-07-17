@@ -18,11 +18,9 @@
  */
 package org.apache.parquet.glob;
 
-import static junit.framework.Assert.fail;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
-import junit.framework.Assert;
 import org.apache.parquet.Strings;
 import org.apache.parquet.glob.GlobParser.GlobParseException;
 import org.junit.Test;
@@ -31,28 +29,28 @@ public class TestGlob {
 
   @Test
   public void testNoGlobs() {
-    assertEquals(List.of("foo"), Strings.expandGlob("foo"));
+    assertThat(Strings.expandGlob("foo")).containsExactly("foo");
   }
 
   @Test
   public void testEmptyGroup() {
-    assertEquals(List.of(""), Strings.expandGlob(""));
-    assertEquals(List.of(""), Strings.expandGlob("{}"));
-    assertEquals(List.of("a"), Strings.expandGlob("a{}"));
-    assertEquals(List.of("ab"), Strings.expandGlob("a{}b"));
-    assertEquals(List.of("a"), Strings.expandGlob("{}a"));
-    assertEquals(List.of("a"), Strings.expandGlob("a{}"));
-    assertEquals(List.of("", ""), Strings.expandGlob("{,}"));
-    assertEquals(List.of("ab", "a", "ac"), Strings.expandGlob("a{b,{},c}"));
+    assertThat(Strings.expandGlob("")).containsExactly("");
+    assertThat(Strings.expandGlob("{}")).containsExactly("");
+    assertThat(Strings.expandGlob("a{}")).containsExactly("a");
+    assertThat(Strings.expandGlob("a{}b")).containsExactly("ab");
+    assertThat(Strings.expandGlob("{}a")).containsExactly("a");
+    assertThat(Strings.expandGlob("a{}")).containsExactly("a");
+    assertThat(Strings.expandGlob("{,}")).containsExactly("", "");
+    assertThat(Strings.expandGlob("a{b,{},c}")).containsExactly("ab", "a", "ac");
   }
 
   @Test
   public void testSingleLevel() {
-    assertEquals(List.of("foobar", "foobaz"), Strings.expandGlob("foo{bar,baz}"));
-    assertEquals(List.of("startfooend", "startbarend"), Strings.expandGlob("start{foo,bar}end"));
-    assertEquals(List.of("fooend", "barend"), Strings.expandGlob("{foo,bar}end"));
-    assertEquals(
-        List.of(
+    assertThat(Strings.expandGlob("foo{bar,baz}")).containsExactly("foobar", "foobaz");
+    assertThat(Strings.expandGlob("start{foo,bar}end")).containsExactly("startfooend", "startbarend");
+    assertThat(Strings.expandGlob("{foo,bar}end")).containsExactly("fooend", "barend");
+    assertThat(Strings.expandGlob("start{foo,bar}end{a,b,c,d}"))
+        .containsExactly(
             "startfooenda",
             "startfooendb",
             "startfooendc",
@@ -60,16 +58,15 @@ public class TestGlob {
             "startbarenda",
             "startbarendb",
             "startbarendc",
-            "startbarendd"),
-        Strings.expandGlob("start{foo,bar}end{a,b,c,d}"));
-    assertEquals(List.of("xa", "xb", "xc", "ya", "yb", "yc"), Strings.expandGlob("{x,y}{a,b,c}"));
-    assertEquals(List.of("x", "y", "z"), Strings.expandGlob("{x,y,z}"));
+            "startbarendd");
+    assertThat(Strings.expandGlob("{x,y}{a,b,c}")).containsExactly("xa", "xb", "xc", "ya", "yb", "yc");
+    assertThat(Strings.expandGlob("{x,y,z}")).containsExactly("x", "y", "z");
   }
 
   @Test
   public void testNested() {
-    assertEquals(
-        List.of(
+    assertThat(Strings.expandGlob("{start{one,pre{two,three}post,{four,five}}end,a,b,foo{x,y}}"))
+        .containsExactly(
             "startoneend",
             "startpretwopostend",
             "startprethreepostend",
@@ -78,61 +75,49 @@ public class TestGlob {
             "a",
             "b",
             "foox",
-            "fooy"),
-        Strings.expandGlob("{start{one,pre{two,three}post,{four,five}}end,a,b,foo{x,y}}"));
+            "fooy");
   }
 
   @Test
   public void testExtraBraces() {
-    assertEquals(List.of("x", "y", "z"), Strings.expandGlob("{{x,y,z}}"));
-    assertEquals(List.of("x", "y", "z"), Strings.expandGlob("{{{x,y,z}}}"));
-    assertEquals(List.of("startx", "starta", "startb", "starty"), Strings.expandGlob("start{x,{a,b},y}"));
+    assertThat(Strings.expandGlob("{{x,y,z}}")).containsExactly("x", "y", "z");
+    assertThat(Strings.expandGlob("{{{x,y,z}}}")).containsExactly("x", "y", "z");
+    assertThat(Strings.expandGlob("start{x,{a,b},y}")).containsExactly("startx", "starta", "startb", "starty");
   }
 
   @Test
   public void testCommaInTopLevel() {
-    try {
-      Strings.expandGlob("foo,bar");
-      fail("This should throw");
-    } catch (GlobParseException e) {
-      Assert.assertEquals("Unexpected comma outside of a {} group:\n" + "foo,bar\n" + "---^", e.getMessage());
-    }
+    assertThatThrownBy(() -> Strings.expandGlob("foo,bar"))
+        .isInstanceOf(GlobParseException.class)
+        .hasMessage("Unexpected comma outside of a {} group:\n" + "foo,bar\n" + "---^");
   }
 
   @Test
   public void testCommaCornerCases() {
     // single empty string in each location
-    assertEquals(List.of("foobar", "foo", "foobaz"), Strings.expandGlob("foo{bar,,baz}"));
-    assertEquals(List.of("foo", "foobar", "foobaz"), Strings.expandGlob("foo{,bar,baz}"));
-    assertEquals(List.of("foobar", "foobaz", "foo"), Strings.expandGlob("foo{bar,baz,}"));
+    assertThat(Strings.expandGlob("foo{bar,,baz}")).containsExactly("foobar", "foo", "foobaz");
+    assertThat(Strings.expandGlob("foo{,bar,baz}")).containsExactly("foo", "foobar", "foobaz");
+    assertThat(Strings.expandGlob("foo{bar,baz,}")).containsExactly("foobar", "foobaz", "foo");
 
     // multiple empty strings
-    assertEquals(List.of("foobar", "foo", "foo", "foobaz"), Strings.expandGlob("foo{bar,,,baz}"));
-    assertEquals(List.of("foo", "foo", "foobar", "foobaz"), Strings.expandGlob("foo{,,bar,baz}"));
-    assertEquals(List.of("foobar", "foobaz", "foo", "foo"), Strings.expandGlob("foo{bar,baz,,}"));
+    assertThat(Strings.expandGlob("foo{bar,,,baz}")).containsExactly("foobar", "foo", "foo", "foobaz");
+    assertThat(Strings.expandGlob("foo{,,bar,baz}")).containsExactly("foo", "foo", "foobar", "foobaz");
+    assertThat(Strings.expandGlob("foo{bar,baz,,}")).containsExactly("foobar", "foobaz", "foo", "foo");
 
     // between groups
-    assertEquals(List.of("x", "y", "", "a", "b"), Strings.expandGlob("{{x,y},,{a,b}}"));
+    assertThat(Strings.expandGlob("{{x,y},,{a,b}}")).containsExactly("x", "y", "", "a", "b");
   }
 
   private void assertNotEnoughCloseBraces(String s) {
-    String expected = "Not enough close braces in: ";
-    try {
-      Strings.expandGlob(s);
-      fail("this should throw");
-    } catch (GlobParseException e) {
-      Assert.assertEquals(expected, e.getMessage().substring(0, expected.length()));
-    }
+    assertThatThrownBy(() -> Strings.expandGlob(s))
+        .isInstanceOf(GlobParseException.class)
+        .hasMessageStartingWith("Not enough close braces in: ");
   }
 
   private void assertTooManyCloseBraces(String s) {
-    String expected = "Unexpected closing }:";
-    try {
-      Strings.expandGlob(s);
-      fail("this should throw");
-    } catch (GlobParseException e) {
-      Assert.assertEquals(expected, e.getMessage().substring(0, expected.length()));
-    }
+    assertThatThrownBy(() -> Strings.expandGlob(s))
+        .isInstanceOf(GlobParseException.class)
+        .hasMessageStartingWith("Unexpected closing }:");
   }
 
   @Test

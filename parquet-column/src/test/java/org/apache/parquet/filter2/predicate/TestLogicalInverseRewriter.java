@@ -31,7 +31,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverseRewriter.rewrite;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
@@ -58,7 +58,7 @@ public class TestLogicalInverseRewriter {
       or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
 
   private static void assertNoOp(FilterPredicate p) {
-    assertEquals(p, rewrite(p));
+    assertThat(rewrite(p)).isEqualTo(p);
   }
 
   @Test
@@ -75,25 +75,25 @@ public class TestLogicalInverseRewriter {
     assertNoOp(or(eq(intColumn, 17), eq(doubleColumn, 12.0)));
     assertNoOp(ud);
 
-    assertEquals(notEq(intColumn, 17), rewrite(not(eq(intColumn, 17))));
-    assertEquals(eq(intColumn, 17), rewrite(not(notEq(intColumn, 17))));
-    assertEquals(gtEq(intColumn, 17), rewrite(not(lt(intColumn, 17))));
-    assertEquals(gt(intColumn, 17), rewrite(not(ltEq(intColumn, 17))));
-    assertEquals(ltEq(intColumn, 17), rewrite(not(gt(intColumn, 17))));
-    assertEquals(lt(intColumn, 17), rewrite(not(gtEq(intColumn, 17))));
-    assertEquals(new LogicalNotUserDefined<>(ud), rewrite(not(ud)));
+    assertThat(rewrite(not(eq(intColumn, 17)))).isEqualTo(notEq(intColumn, 17));
+    assertThat(rewrite(not(notEq(intColumn, 17)))).isEqualTo(eq(intColumn, 17));
+    assertThat(rewrite(not(lt(intColumn, 17)))).isEqualTo(gtEq(intColumn, 17));
+    assertThat(rewrite(not(ltEq(intColumn, 17)))).isEqualTo(gt(intColumn, 17));
+    assertThat(rewrite(not(gt(intColumn, 17)))).isEqualTo(ltEq(intColumn, 17));
+    assertThat(rewrite(not(gtEq(intColumn, 17)))).isEqualTo(lt(intColumn, 17));
+    assertThat(rewrite(not(ud))).isEqualTo(new LogicalNotUserDefined<>(ud));
 
     FilterPredicate notedAnd = not(and(eq(intColumn, 17), eq(doubleColumn, 12.0)));
     FilterPredicate distributedAnd = or(notEq(intColumn, 17), notEq(doubleColumn, 12.0));
-    assertEquals(distributedAnd, rewrite(notedAnd));
+    assertThat(rewrite(notedAnd)).isEqualTo(distributedAnd);
 
     FilterPredicate andWithNots = and(not(gtEq(intColumn, 17)), lt(intColumn, 7));
     FilterPredicate andWithoutNots = and(lt(intColumn, 17), lt(intColumn, 7));
-    assertEquals(andWithoutNots, rewrite(andWithNots));
+    assertThat(rewrite(andWithNots)).isEqualTo(andWithoutNots);
   }
 
   @Test
   public void testComplex() {
-    assertEquals(complexCollapsed, rewrite(complex));
+    assertThat(rewrite(complex)).isEqualTo(complexCollapsed);
   }
 }

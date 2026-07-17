@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -52,30 +52,25 @@ public class TestThriftRecordConverter {
 
     conv.addBinary(Binary.fromString("hello"));
 
-    assertEquals(1, events.size());
-    assertEquals(77, events.get(0).readI32());
+    assertThat(events).hasSize(1);
+    assertThat(events.get(0).readI32()).isEqualTo(77);
 
-    try {
-      conv.addBinary(Binary.fromString("FAKE_ENUM_VALUE"));
-      fail("this should throw");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          ("Unrecognized enum value: FAKE_ENUM_VALUE known values: {Binary{\"hello\"}=77} in {\n"
-                  + "  \"name\" : \"name\",\n"
-                  + "  \"fieldId\" : 1,\n"
-                  + "  \"requirement\" : \"REQUIRED\",\n"
-                  + "  \"type\" : {\n"
-                  + "    \"id\" : \"ENUM\",\n"
-                  + "    \"values\" : [ {\n"
-                  + "      \"id\" : 77,\n"
-                  + "      \"name\" : \"hello\"\n"
-                  + "    } ],\n"
-                  + "    \"logicalTypeAnnotation\" : null\n"
-                  + "  }\n"
-                  + "}")
-              .replace("\n", System.lineSeparator()),
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> conv.addBinary(Binary.fromString("FAKE_ENUM_VALUE")))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(("Unrecognized enum value: FAKE_ENUM_VALUE known values: {Binary{\"hello\"}=77} in {\n"
+                + "  \"name\" : \"name\",\n"
+                + "  \"fieldId\" : 1,\n"
+                + "  \"requirement\" : \"REQUIRED\",\n"
+                + "  \"type\" : {\n"
+                + "    \"id\" : \"ENUM\",\n"
+                + "    \"values\" : [ {\n"
+                + "      \"id\" : 77,\n"
+                + "      \"name\" : \"hello\"\n"
+                + "    } ],\n"
+                + "    \"logicalTypeAnnotation\" : null\n"
+                + "  }\n"
+                + "}")
+            .replace("\n", System.lineSeparator()));
   }
 
   @Test

@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.util.Random;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -49,9 +50,9 @@ public class ByteStreamSplitValuesEndToEndTest {
         writer.writeFloat(v);
       }
 
-      assertEquals(numElements * 4, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(numElements * 4);
       BytesInput input = writer.getBytes();
-      assertEquals(numElements * 4, input.size());
+      assertThat(input.size()).isEqualTo(numElements * 4);
 
       ByteStreamSplitValuesReaderForFloat reader = new ByteStreamSplitValuesReaderForFloat();
 
@@ -59,7 +60,7 @@ public class ByteStreamSplitValuesEndToEndTest {
 
       for (float expectedValue : values) {
         float newValue = reader.readFloat();
-        assertEquals(expectedValue, newValue, 0.0f);
+        assertThat(newValue).isCloseTo(expectedValue, offset(0.0f));
       }
     } finally {
       if (writer != null) {
@@ -93,7 +94,8 @@ public class ByteStreamSplitValuesEndToEndTest {
       reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       for (float expectedValue : values) {
-        assertEquals(Float.floatToRawIntBits(expectedValue), Float.floatToRawIntBits(reader.readFloat()));
+        assertThat(Float.floatToRawIntBits(reader.readFloat()))
+            .isEqualTo(Float.floatToRawIntBits(expectedValue));
       }
     } finally {
       if (writer != null) {
@@ -118,9 +120,9 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeDouble(v);
     }
 
-    assertEquals(numElements * 8, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * 8);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * 8, input.size());
+    assertThat(input.size()).isEqualTo(numElements * 8);
 
     ByteStreamSplitValuesReaderForDouble reader = new ByteStreamSplitValuesReaderForDouble();
 
@@ -128,7 +130,7 @@ public class ByteStreamSplitValuesEndToEndTest {
 
     for (double expectedValue : values) {
       double newValue = reader.readDouble();
-      assertEquals(expectedValue, newValue, 0.0);
+      assertThat(newValue).isCloseTo(expectedValue, offset(0.0));
     }
 
     writer.reset();
@@ -158,7 +160,8 @@ public class ByteStreamSplitValuesEndToEndTest {
     reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (double expectedValue : values) {
-      assertEquals(Double.doubleToRawLongBits(expectedValue), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble()))
+          .isEqualTo(Double.doubleToRawLongBits(expectedValue));
     }
 
     writer.reset();
@@ -180,16 +183,16 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeInteger(v);
     }
 
-    assertEquals(numElements * 4, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * 4);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * 4, input.size());
+    assertThat(input.size()).isEqualTo(numElements * 4);
 
     ByteStreamSplitValuesReaderForInteger reader = new ByteStreamSplitValuesReaderForInteger();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (int expectedValue : values) {
       int newValue = reader.readInteger();
-      assertEquals(expectedValue, newValue);
+      assertThat(newValue).isEqualTo(expectedValue);
     }
 
     writer.reset();
@@ -211,16 +214,16 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeLong(v);
     }
 
-    assertEquals(numElements * 8, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * 8);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * 8, input.size());
+    assertThat(input.size()).isEqualTo(numElements * 8);
 
     ByteStreamSplitValuesReaderForLong reader = new ByteStreamSplitValuesReaderForLong();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (long expectedValue : values) {
       long newValue = reader.readLong();
-      assertEquals(expectedValue, newValue);
+      assertThat(newValue).isEqualTo(expectedValue);
     }
 
     writer.reset();
@@ -250,9 +253,9 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeBytes(Binary.fromConstantByteArray(v));
     }
 
-    assertEquals(numElements * typeLength, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * typeLength);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * typeLength, input.size());
+    assertThat(input.size()).isEqualTo(numElements * typeLength);
 
     ByteStreamSplitValuesReaderForFLBA reader = new ByteStreamSplitValuesReaderForFLBA(typeLength);
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
@@ -261,10 +264,10 @@ public class ByteStreamSplitValuesEndToEndTest {
     for (byte[] expectedValue : values) {
       Binary expected = Binary.fromConstantByteArray(expectedValue);
       Binary actual = reader.readBytes();
-      assertEquals(expected, actual);
+      assertThat(actual).isEqualTo(expected);
       if (previousExpected != null) {
         // The latest readBytes() call shouldn't have clobbered the result of the previous call.
-        assertEquals(previousExpected, previousActual);
+        assertThat(previousActual).isEqualTo(previousExpected);
       }
       previousExpected = expected;
       previousActual = actual;

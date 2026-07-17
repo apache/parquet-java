@@ -31,7 +31,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
@@ -61,31 +61,31 @@ public class TestLogicalInverter {
 
   @Test
   public void testBaseCases() {
-    assertEquals(notEq(intColumn, 17), invert(eq(intColumn, 17)));
-    assertEquals(eq(intColumn, 17), invert(notEq(intColumn, 17)));
-    assertEquals(gtEq(intColumn, 17), invert(lt(intColumn, 17)));
-    assertEquals(gt(intColumn, 17), invert(ltEq(intColumn, 17)));
-    assertEquals(ltEq(intColumn, 17), invert(gt(intColumn, 17)));
-    assertEquals(lt(intColumn, 17), invert(gtEq(intColumn, 17)));
+    assertThat(invert(eq(intColumn, 17))).isEqualTo(notEq(intColumn, 17));
+    assertThat(invert(notEq(intColumn, 17))).isEqualTo(eq(intColumn, 17));
+    assertThat(invert(lt(intColumn, 17))).isEqualTo(gtEq(intColumn, 17));
+    assertThat(invert(ltEq(intColumn, 17))).isEqualTo(gt(intColumn, 17));
+    assertThat(invert(gt(intColumn, 17))).isEqualTo(ltEq(intColumn, 17));
+    assertThat(invert(gtEq(intColumn, 17))).isEqualTo(lt(intColumn, 17));
 
     FilterPredicate andPos = and(eq(intColumn, 17), eq(doubleColumn, 12.0));
     FilterPredicate andInv = or(notEq(intColumn, 17), notEq(doubleColumn, 12.0));
-    assertEquals(andInv, invert(andPos));
+    assertThat(invert(andPos)).isEqualTo(andInv);
 
     FilterPredicate orPos = or(eq(intColumn, 17), eq(doubleColumn, 12.0));
     FilterPredicate orInv = and(notEq(intColumn, 17), notEq(doubleColumn, 12.0));
-    assertEquals(orPos, invert(orInv));
+    assertThat(invert(orInv)).isEqualTo(orPos);
 
-    assertEquals(eq(intColumn, 17), invert(not(eq(intColumn, 17))));
+    assertThat(invert(not(eq(intColumn, 17)))).isEqualTo(eq(intColumn, 17));
 
     UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
-    assertEquals(new LogicalNotUserDefined<>(ud), invert(ud));
-    assertEquals(ud, invert(not(ud)));
-    assertEquals(ud, invert(new LogicalNotUserDefined<>(ud)));
+    assertThat(invert(ud)).isEqualTo(new LogicalNotUserDefined<>(ud));
+    assertThat(invert(not(ud))).isEqualTo(ud);
+    assertThat(invert(new LogicalNotUserDefined<>(ud))).isEqualTo(ud);
   }
 
   @Test
   public void testComplex() {
-    assertEquals(complexInverse, invert(complex));
+    assertThat(invert(complex)).isEqualTo(complexInverse);
   }
 }

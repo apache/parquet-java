@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import org.apache.parquet.thrift.struct.ThriftField;
@@ -41,16 +41,19 @@ public class TestThriftMetaData {
 
     StructType descriptor = new StructType(new ArrayList<ThriftField>(), StructOrUnionType.STRUCT);
     ThriftMetaData tmd = new ThriftMetaData("non existent class!!!", descriptor);
-    assertEquals(
-        ("ThriftMetaData(thriftClassName: non existent class!!!, descriptor: {\n" + "  \"id\" : \"STRUCT\",\n"
+    assertThat(tmd)
+        .asString()
+        .isEqualTo(("ThriftMetaData(thriftClassName: non existent class!!!, descriptor: {\n"
+                + "  \"id\" : \"STRUCT\",\n"
                 + "  \"children\" : [ ],\n"
                 + "  \"structOrUnionType\" : \"STRUCT\",\n"
                 + "  \"logicalTypeAnnotation\" : null\n"
                 + "})")
-            .replace("\n", System.lineSeparator()),
-        tmd.toString());
+            .replace("\n", System.lineSeparator()));
 
     tmd = new ThriftMetaData("non existent class!!!", null);
-    assertEquals("ThriftMetaData(thriftClassName: non existent class!!!, descriptor: null)", tmd.toString());
+    assertThat(tmd)
+        .asString()
+        .isEqualTo("ThriftMetaData(thriftClassName: non existent class!!!, descriptor: null)");
   }
 }

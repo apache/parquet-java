@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -54,17 +54,17 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = 100 << 1 = 200
-    assertEquals(200, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(200);
     // payload = 4
-    assertEquals(4, BytesUtils.readIntLittleEndianOnOneByte(is));
+    assertThat(BytesUtils.readIntLittleEndianOnOneByte(is)).isEqualTo(4);
 
     // header = 100 << 1 = 200
-    assertEquals(200, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(200);
     // payload = 5
-    assertEquals(5, BytesUtils.readIntLittleEndianOnOneByte(is));
+    assertThat(BytesUtils.readIntLittleEndianOnOneByte(is)).isEqualTo(5);
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -81,12 +81,12 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = 10 << 1 = 20
-    assertEquals(20, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(20);
     // payload = 4
-    assertEquals(0, BytesUtils.readIntLittleEndianOnOneByte(is));
+    assertThat(BytesUtils.readIntLittleEndianOnOneByte(is)).isEqualTo(0);
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -99,10 +99,10 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = 10 << 1 = 20
-    assertEquals(20, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(20);
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -115,16 +115,16 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = ((104/8) << 1) | 1 = 27
-    assertEquals(27, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(27);
 
     List<Integer> values = unpack(3, 104, is);
 
     for (int i = 0; i < 100; i++) {
-      assertEquals(i % 3, (int) values.get(i));
+      assertThat((int) values.get(i)).isEqualTo(i % 3);
     }
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -140,23 +140,23 @@ public class TestRunLengthBitPackingHybridEncoder {
     // 504 is the max number of values in a bit packed run
     // that still has a header of 1 byte
     // header = ((504/8) << 1) | 1 = 127
-    assertEquals(127, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(127);
     List<Integer> values = unpack(3, 504, is);
 
     for (int i = 0; i < 504; i++) {
-      assertEquals(i % 3, (int) values.get(i));
+      assertThat((int) values.get(i)).isEqualTo(i % 3);
     }
 
     // there should now be 496 values in another bit-packed run
     // header = ((496/8) << 1) | 1 = 125
-    assertEquals(125, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(125);
     values = unpack(3, 496, is);
     for (int i = 0; i < 496; i++) {
-      assertEquals((i + 504) % 3, (int) values.get(i));
+      assertThat((int) values.get(i)).isEqualTo((i + 504) % 3);
     }
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -183,18 +183,18 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = ((8/8) << 1) | 1 = 3
-    assertEquals(3, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(3);
 
     List<Integer> values = unpack(3, 8, is);
-    assertEquals(List.of(0, 1, 0, 1, 0, 2, 2, 2), values);
+    assertThat(values).containsExactly(0, 1, 0, 1, 0, 2, 2, 2);
 
     // header = 100 << 1 = 200
-    assertEquals(200, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(200);
     // payload = 2
-    assertEquals(2, BytesUtils.readIntLittleEndianOnOneByte(is));
+    assertThat(BytesUtils.readIntLittleEndianOnOneByte(is)).isEqualTo(2);
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -207,13 +207,13 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = ((16/8) << 1) | 1 = 5
-    assertEquals(5, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(5);
 
     List<Integer> values = unpack(5, 16, is);
 
-    assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0), values);
+    assertThat(values).containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0);
 
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -247,40 +247,40 @@ public class TestRunLengthBitPackingHybridEncoder {
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
 
     // header = 25 << 1 = 50
-    assertEquals(50, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(50);
     // payload = 17, stored in 2 bytes
-    assertEquals(17, BytesUtils.readIntLittleEndianOnTwoBytes(is));
+    assertThat(BytesUtils.readIntLittleEndianOnTwoBytes(is)).isEqualTo(17);
 
     // header = ((16/8) << 1) | 1 = 5
-    assertEquals(5, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(5);
     List<Integer> values = unpack(9, 16, is);
     int v = 0;
     for (int i = 0; i < 7; i++) {
-      assertEquals(7, (int) values.get(v));
+      assertThat((int) values.get(v)).isEqualTo(7);
       v++;
     }
 
-    assertEquals(8, (int) values.get(v++));
-    assertEquals(9, (int) values.get(v++));
-    assertEquals(10, (int) values.get(v++));
+    assertThat((int) values.get(v++)).isEqualTo(8);
+    assertThat((int) values.get(v++)).isEqualTo(9);
+    assertThat((int) values.get(v++)).isEqualTo(10);
 
     for (int i = 0; i < 6; i++) {
-      assertEquals(6, (int) values.get(v));
+      assertThat((int) values.get(v)).isEqualTo(6);
       v++;
     }
 
     // header = 19 << 1 = 38
-    assertEquals(38, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(38);
     // payload = 6, stored in 2 bytes
-    assertEquals(6, BytesUtils.readIntLittleEndianOnTwoBytes(is));
+    assertThat(BytesUtils.readIntLittleEndianOnTwoBytes(is)).isEqualTo(6);
 
     // header = 8 << 1  = 16
-    assertEquals(16, BytesUtils.readUnsignedVarInt(is));
+    assertThat(BytesUtils.readUnsignedVarInt(is)).isEqualTo(16);
     // payload = 5, stored in 2 bytes
-    assertEquals(5, BytesUtils.readIntLittleEndianOnTwoBytes(is));
+    assertThat(BytesUtils.readIntLittleEndianOnTwoBytes(is)).isEqualTo(5);
 
     // end of stream
-    assertEquals(-1, is.read());
+    assertThat(is.read()).isEqualTo(-1);
   }
 
   @Test
@@ -292,10 +292,10 @@ public class TestRunLengthBitPackingHybridEncoder {
     bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
     ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
-    assertEquals(decoder.readInt(), 1);
-    assertEquals(decoder.readInt(), 2);
-    assertEquals(decoder.readInt(), 3);
-    assertEquals(stream.available(), 0);
+    assertThat(decoder.readInt()).isEqualTo(1);
+    assertThat(decoder.readInt()).isEqualTo(2);
+    assertThat(decoder.readInt()).isEqualTo(3);
+    assertThat(stream.available()).isEqualTo(0);
   }
 
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {

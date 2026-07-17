@@ -31,7 +31,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
@@ -44,7 +44,7 @@ public class TestContainsRewriter {
   private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 
   private static void assertNoOp(FilterPredicate p) {
-    assertEquals(p, rewrite(p));
+    assertThat(rewrite(p)).isEqualTo(p);
   }
 
   @Test
@@ -65,8 +65,8 @@ public class TestContainsRewriter {
     Contains<Integer> containsRhs = contains(eq(intColumn, 7));
 
     assertNoOp(containsLhs);
-    assertEquals(containsLhs.and(containsRhs), rewrite(and(containsLhs, containsRhs)));
-    assertEquals(containsLhs.or(containsRhs), rewrite(or(containsLhs, containsRhs)));
+    assertThat(rewrite(and(containsLhs, containsRhs))).isEqualTo(containsLhs.and(containsRhs));
+    assertThat(rewrite(or(containsLhs, containsRhs))).isEqualTo(containsLhs.or(containsRhs));
   }
 
   @Test
@@ -76,14 +76,13 @@ public class TestContainsRewriter {
     Contains<Integer> contains3 = contains(eq(intColumn, 3));
     Contains<Integer> contains4 = contains(eq(intColumn, 4));
 
-    assertEquals(contains1.and(contains2.or(contains3)), rewrite(and(contains1, or(contains2, contains3))));
-    assertEquals(contains1.and(contains2).or(contains3), rewrite(or(and(contains1, contains2), contains3)));
+    assertThat(rewrite(and(contains1, or(contains2, contains3)))).isEqualTo(contains1.and(contains2.or(contains3)));
+    assertThat(rewrite(or(and(contains1, contains2), contains3)))
+        .isEqualTo(contains1.and(contains2).or(contains3));
 
-    assertEquals(
-        contains1.and(contains2).and(contains2.or(contains3)),
-        rewrite(and(and(contains1, contains2), or(contains2, contains3))));
-    assertEquals(
-        contains1.and(contains2).or(contains3.or(contains4)),
-        rewrite(or(and(contains1, contains2), or(contains3, contains4))));
+    assertThat(rewrite(and(and(contains1, contains2), or(contains2, contains3))))
+        .isEqualTo(contains1.and(contains2).and(contains2.or(contains3)));
+    assertThat(rewrite(or(and(contains1, contains2), or(contains3, contains4))))
+        .isEqualTo(contains1.and(contains2).or(contains3.or(contains4)));
   }
 }

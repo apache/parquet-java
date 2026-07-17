@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.common.collect.Lists;
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +36,6 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.variant.Variant;
-import org.junit.Assert;
 import org.junit.rules.TemporaryFolder;
 
 public class AvroTestUtil {
@@ -111,7 +112,7 @@ public class AvroTestUtil {
   public static <D> File write(TemporaryFolder temp, Configuration conf, GenericData model, Schema schema, D... data)
       throws IOException {
     File file = temp.newFile();
-    Assert.assertTrue(file.delete());
+    assertThat(file.delete()).isTrue();
 
     try (ParquetWriter<D> writer = AvroParquetWriter.<D>builder(new Path(file.toString()))
         .withDataModel(model)
@@ -136,30 +137,30 @@ public class AvroTestUtil {
    * E.g. values in an object may be ordered differently in the binary.
    */
   static void assertEquivalent(Variant expected, Variant actual) {
-    Assert.assertEquals(expected.getType(), actual.getType());
+    assertThat(actual.getType()).isEqualTo(expected.getType());
     switch (expected.getType()) {
       case STRING:
         // Short strings may use the compact or extended representation.
-        Assert.assertEquals(expected.getString(), actual.getString());
+        assertThat(actual.getString()).isEqualTo(expected.getString());
         break;
       case ARRAY:
-        Assert.assertEquals(expected.numArrayElements(), actual.numArrayElements());
+        assertThat(actual.numArrayElements()).isEqualTo(expected.numArrayElements());
         for (int i = 0; i < expected.numArrayElements(); ++i) {
           assertEquivalent(expected.getElementAtIndex(i), actual.getElementAtIndex(i));
         }
         break;
       case OBJECT:
-        Assert.assertEquals(expected.numObjectElements(), actual.numObjectElements());
+        assertThat(actual.numObjectElements()).isEqualTo(expected.numObjectElements());
         for (int i = 0; i < expected.numObjectElements(); ++i) {
           Variant.ObjectField expectedField = expected.getFieldAtIndex(i);
           Variant.ObjectField actualField = actual.getFieldAtIndex(i);
-          Assert.assertEquals(expectedField.key, actualField.key);
+          assertThat(actualField.key).isEqualTo(expectedField.key);
           assertEquivalent(expectedField.value, actualField.value);
         }
         break;
       default:
         // All other types have a single representation, and must be bit-for-bit identical.
-        Assert.assertEquals(expected.getValueBuffer(), actual.getValueBuffer());
+        assertThat(actual.getValueBuffer()).isEqualTo(expected.getValueBuffer());
     }
   }
 }

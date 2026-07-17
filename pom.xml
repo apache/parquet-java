@@ -75,8 +75,8 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.22.0</jackson.version>
-    <jackson-databind.version>2.22.0</jackson-databind.version>
+    <jackson.version>2.22.1</jackson.version>
+    <jackson-databind.version>2.22.1</jackson-databind.version>
     <jackson-annotations.version>2.22</jackson-annotations.version>
     <japicmp.version>0.26.1</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
@@ -621,6 +621,15 @@
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetFileReader#PARQUET_READ_PARALLELISM</exclude>
+              <!-- GH-3596: RowRanges moved to org.apache.parquet.filter2.columnindex. A deprecated
+                subclass is kept at the old internal location so the released
+                ParquetFileReader#readFilteredRowGroup(int, RowRanges) signature stays compatible.
+                The internal package carries no backward-compatibility guarantee, so the removal of
+                the old RowRanges' own members (statics, Range) and the ColumnIndexFilter
+                return-type changes are intentional. -->
+              <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges</exclude>
+              <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges$Range</exclude>
+              <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter</exclude>
             </excludes>
           </parameter>
         </configuration>

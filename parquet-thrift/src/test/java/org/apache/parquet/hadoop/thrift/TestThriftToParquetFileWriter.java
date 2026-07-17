@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -85,14 +85,13 @@ public class TestThriftToParquetFileWriter {
     Group g = null;
     int i = 0;
     while ((g = reader.read()) != null) {
-      assertEquals(a.persons.size(), g.getFieldRepetitionCount("persons"));
-      assertEquals(
-          a.persons.get(0).email,
-          g.getGroup("persons", 0).getGroup(0, 0).getString("email", 0));
+      assertThat(g.getFieldRepetitionCount("persons")).isEqualTo(a.persons.size());
+      assertThat(g.getGroup("persons", 0).getGroup(0, 0).getString("email", 0))
+          .isEqualTo(a.persons.get(0).email);
       // just some sanity check, we're testing the various layers somewhere else
       ++i;
     }
-    assertEquals("read 1 record", 1, i);
+    assertThat(i).as("read 1 record").isEqualTo(1);
   }
 
   @Test
@@ -223,13 +222,12 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while ((g = reader.read()) != null) {
-      assertEquals(listMap.names.size(), g.getGroup("names", 0).getFieldRepetitionCount("names_tuple"));
-      assertEquals(
-          listMap.names.get(0).size(),
-          g.getGroup("names", 0).getGroup("names_tuple", 0).getFieldRepetitionCount("key_value"));
-      assertEquals(
-          listMap.names.get(1).size(),
-          g.getGroup("names", 0).getGroup("names_tuple", 1).getFieldRepetitionCount("key_value"));
+      assertThat(g.getGroup("names", 0).getFieldRepetitionCount("names_tuple"))
+          .isEqualTo(listMap.names.size());
+      assertThat(g.getGroup("names", 0).getGroup("names_tuple", 0).getFieldRepetitionCount("key_value"))
+          .isEqualTo(listMap.names.get(0).size());
+      assertThat(g.getGroup("names", 0).getGroup("names_tuple", 1).getFieldRepetitionCount("key_value"))
+          .isEqualTo(listMap.names.get(1).size());
     }
   }
 
@@ -244,18 +242,16 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while ((g = reader.read()) != null) {
-      assertEquals(
-          "key",
-          g.getGroup("names", 0)
+      assertThat(g.getGroup("names", 0)
               .getGroup("key_value", 0)
               .getBinary("key", 0)
-              .toStringUsingUTF8());
-      assertEquals(
-          map.get("key").size(),
-          g.getGroup("names", 0)
+              .toStringUsingUTF8())
+          .isEqualTo("key");
+      assertThat(g.getGroup("names", 0)
               .getGroup("key_value", 0)
               .getGroup("value", 0)
-              .getFieldRepetitionCount(0));
+              .getFieldRepetitionCount(0))
+          .isEqualTo(map.get("key").size());
     }
   }
 
@@ -270,34 +266,30 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while ((g = reader.read()) != null) {
-      assertEquals(
-          "key1",
-          g.getGroup("names", 0)
+      assertThat(g.getGroup("names", 0)
               .getGroup("key_value", 0)
               .getGroup("key", 0)
               .getBinary("key_tuple", 0)
-              .toStringUsingUTF8());
-      assertEquals(
-          "key2",
-          g.getGroup("names", 0)
+              .toStringUsingUTF8())
+          .isEqualTo("key1");
+      assertThat(g.getGroup("names", 0)
               .getGroup("key_value", 0)
               .getGroup("key", 0)
               .getBinary("key_tuple", 1)
-              .toStringUsingUTF8());
-      assertEquals(
-          "val1",
-          g.getGroup("names", 0)
+              .toStringUsingUTF8())
+          .isEqualTo("key2");
+      assertThat(g.getGroup("names", 0)
               .getGroup("key_value", 0)
               .getGroup("value", 0)
               .getBinary("value_tuple", 0)
-              .toStringUsingUTF8());
-      assertEquals(
-          "val2",
-          g.getGroup("names", 0)
+              .toStringUsingUTF8())
+          .isEqualTo("val1");
+      assertThat(g.getGroup("names", 0)
               .getGroup("key_value", 0)
               .getGroup("value", 0)
               .getBinary("value_tuple", 1)
-              .toStringUsingUTF8());
+              .toStringUsingUTF8())
+          .isEqualTo("val2");
     }
   }
 
@@ -319,14 +311,13 @@ public class TestThriftToParquetFileWriter {
     Group g = null;
     int i = 0;
     while ((g = reader.read()) != null) {
-      assertEquals(a.persons.size(), g.getFieldRepetitionCount("persons"));
-      assertEquals(
-          a.persons.get(0).email,
-          g.getGroup("persons", 0).getGroup(0, 0).getGroup(0, 0).getString("email", 0));
+      assertThat(g.getFieldRepetitionCount("persons")).isEqualTo(a.persons.size());
+      assertThat(g.getGroup("persons", 0).getGroup(0, 0).getGroup(0, 0).getString("email", 0))
+          .isEqualTo(a.persons.get(0).email);
       // just some sanity check, we're testing the various layers somewhere else
       ++i;
     }
-    assertEquals("read 1 record", 1, i);
+    assertThat(i).as("read 1 record").isEqualTo(1);
   }
 
   @Test
@@ -347,19 +338,17 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while ((g = reader.read()) != null) {
-      assertEquals(listMap.names.size(), g.getGroup("names", 0).getFieldRepetitionCount("list"));
-      assertEquals(
-          listMap.names.get(0).size(),
-          g.getGroup("names", 0)
+      assertThat(g.getGroup("names", 0).getFieldRepetitionCount("list")).isEqualTo(listMap.names.size());
+      assertThat(g.getGroup("names", 0)
               .getGroup("list", 0)
               .getGroup("element", 0)
-              .getFieldRepetitionCount("key_value"));
-      assertEquals(
-          listMap.names.get(1).size(),
-          g.getGroup("names", 0)
+              .getFieldRepetitionCount("key_value"))
+          .isEqualTo(listMap.names.get(0).size());
+      assertThat(g.getGroup("names", 0)
               .getGroup("list", 1)
               .getGroup("element", 0)
-              .getFieldRepetitionCount("key_value"));
+              .getFieldRepetitionCount("key_value"))
+          .isEqualTo(listMap.names.get(1).size());
     }
   }
 

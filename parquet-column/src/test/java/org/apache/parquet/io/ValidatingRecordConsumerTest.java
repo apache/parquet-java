@@ -20,7 +20,7 @@ package org.apache.parquet.io;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
 import java.util.Deque;
@@ -90,8 +90,9 @@ public class ValidatingRecordConsumerTest {
       consumer.endMessage();
 
       Deque<?> previousField = (Deque<?>) previousFieldField.get(consumer);
-      assertEquals(
-          "previousField deque should be empty after endMessage (row " + row + ")", 0, previousField.size());
+      assertThat(previousField)
+          .as("previousField deque should be empty after endMessage (row " + row + ")")
+          .isEmpty();
     }
   }
 }

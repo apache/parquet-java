@@ -21,6 +21,7 @@ package org.apache.parquet.cli.commands;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +45,6 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ShowBloomFilterCommandTest extends ParquetFileTest {
@@ -56,7 +56,7 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
     command.columnPath = INT32_FIELD;
     command.testValues = Arrays.asList(new String[] {"1"});
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -75,7 +75,7 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
         "02030405060708090a0b0c0d0e0f1011:name,email;0405060708090a0b0c0d0e0f10111213:phone");
     command.setConf(conf);
 
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
 
     ShowBloomFilterCommand emailCommand = new ShowBloomFilterCommand(createLogger());
     emailCommand.file = encryptedFile.getAbsolutePath();
@@ -83,7 +83,7 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
     emailCommand.testValues = Arrays.asList(new String[] {"user1@test.com", "missing@test.com"});
     emailCommand.setConf(conf);
 
-    Assert.assertEquals(0, emailCommand.run());
+    assertThat(emailCommand.run()).isZero();
 
     ShowBloomFilterCommand phoneCommand = new ShowBloomFilterCommand(createLogger());
     phoneCommand.file = encryptedFile.getAbsolutePath();
@@ -91,7 +91,7 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
     phoneCommand.testValues = Arrays.asList(new String[] {"555-0001", "555-9999"});
     phoneCommand.setConf(conf);
 
-    Assert.assertEquals(0, phoneCommand.run());
+    assertThat(phoneCommand.run()).isZero();
 
     encryptedFile.delete();
   }

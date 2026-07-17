@@ -18,13 +18,13 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ConvertCSVCommandTest extends CSVFileTest {
@@ -36,8 +36,8 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -48,8 +48,8 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -77,7 +77,7 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     conf.set("parquet.avro.write-parquet-uuid", "true");
     conf.set("parquet.avro.write-old-list-structure", "false");
     command.setConf(conf);
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 }

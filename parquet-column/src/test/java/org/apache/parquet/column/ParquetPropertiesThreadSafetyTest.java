@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column;
 
-import static org.junit.Assert.assertNotSame;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
@@ -39,8 +39,14 @@ public class ParquetPropertiesThreadSafetyTest {
     ValuesWriterFactory factory2 = (ValuesWriterFactory) factoryField.get(builder2);
     ValuesWriterFactory factory3 = (ValuesWriterFactory) factoryField.get(builder3);
 
-    assertNotSame("Builder instances should not share ValuesWriterFactory instances", factory1, factory2);
-    assertNotSame("Builder instances should not share ValuesWriterFactory instances", factory2, factory3);
-    assertNotSame("Builder instances should not share ValuesWriterFactory instances", factory1, factory3);
+    assertThat(factory1)
+        .as("Builder instances should not share ValuesWriterFactory instances")
+        .isNotSameAs(factory2);
+    assertThat(factory2)
+        .as("Builder instances should not share ValuesWriterFactory instances")
+        .isNotSameAs(factory3);
+    assertThat(factory1)
+        .as("Builder instances should not share ValuesWriterFactory instances")
+        .isNotSameAs(factory3);
   }
 }

@@ -31,12 +31,13 @@ import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT64_COMPARA
 import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
@@ -57,9 +58,10 @@ public class TestPrimitiveComparator {
         Boolean vi = valuesInAscendingOrder[i];
         Boolean vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, BOOLEAN_COMPARATOR.compare(vi, vj));
+        assertOrdering(vi, vj, exp, BOOLEAN_COMPARATOR);
         if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, BOOLEAN_COMPARATOR.compare(vi.booleanValue(), vj.booleanValue()));
+          assertOrdering(
+              vi, vj, exp, (a, b) -> BOOLEAN_COMPARATOR.compare(a.booleanValue(), b.booleanValue()));
         }
       }
     }
@@ -93,9 +95,9 @@ public class TestPrimitiveComparator {
         Integer vi = valuesInAscendingOrder[i];
         Integer vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
+        assertOrdering(vi, vj, exp, comparator);
         if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, comparator.compare(vi.intValue(), vj.intValue()));
+          assertOrdering(vi, vj, exp, (a, b) -> comparator.compare(a.intValue(), b.intValue()));
         }
       }
     }
@@ -117,12 +119,10 @@ public class TestPrimitiveComparator {
     };
 
     for (PrimitiveType.PrimitiveTypeName type : types) {
-      assertEquals(
-          new PrimitiveType(Type.Repetition.REQUIRED, type, "vo")
-              .withLogicalTypeAnnotation(LogicalTypeAnnotation.unknownType())
-              .comparator()
-              .compare(null, null),
-          0);
+      Comparator<Binary> comparator = new PrimitiveType(Type.Repetition.REQUIRED, type, "vo")
+          .withLogicalTypeAnnotation(LogicalTypeAnnotation.unknownType())
+          .comparator();
+      assertThat(comparator.compare(null, null)).isZero();
     }
   }
 
@@ -160,9 +160,9 @@ public class TestPrimitiveComparator {
         Long vi = valuesInAscendingOrder[i];
         Long vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
+        assertOrdering(vi, vj, exp, comparator);
         if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, comparator.compare(vi.longValue(), vj.longValue()));
+          assertOrdering(vi, vj, exp, (a, b) -> comparator.compare(a.longValue(), b.longValue()));
         }
       }
     }
@@ -176,9 +176,9 @@ public class TestPrimitiveComparator {
         Float vi = valuesInAscendingOrder[i];
         Float vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
+        assertOrdering(vi, vj, exp, comparator);
         if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, comparator.compare(vi.floatValue(), vj.floatValue()));
+          assertOrdering(vi, vj, exp, (a, b) -> comparator.compare(a.floatValue(), b.floatValue()));
         }
       }
     }
@@ -233,9 +233,9 @@ public class TestPrimitiveComparator {
         Double vi = valuesInAscendingOrder[i];
         Double vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
+        assertOrdering(vi, vj, exp, comparator);
         if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, comparator.compare(vi.doubleValue(), vj.doubleValue()));
+          assertOrdering(vi, vj, exp, (a, b) -> comparator.compare(a.doubleValue(), b.doubleValue()));
         }
       }
     }
@@ -346,10 +346,9 @@ public class TestPrimitiveComparator {
 
     for (Binary v1 : valuesToCompare) {
       for (Binary v2 : valuesToCompare) {
-        assertEquals(
-            String.format("Wrong result of comparison %s and %s", v1, v2),
-            0,
-            BINARY_AS_SIGNED_INTEGER_COMPARATOR.compare(v1, v2));
+        assertThat(v1)
+            .usingComparator(BINARY_AS_SIGNED_INTEGER_COMPARATOR)
+            .isEqualTo(v2);
       }
     }
   }
@@ -371,11 +370,12 @@ public class TestPrimitiveComparator {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
         Binary bi = valuesInAscendingOrder[i];
         Binary bj = valuesInAscendingOrder[j];
-        float fi = Float16.toFloat(bi);
-        float fj = Float16.toFloat(bj);
-        assertEquals(Float.compare(fi, fj), BINARY_AS_FLOAT16_COMPARATOR.compare(bi, bj));
         if (i < j) {
-          assertEquals(-1, Float.compare(fi, fj));
+          assertThat(bi).usingComparator(BINARY_AS_FLOAT16_COMPARATOR).isLessThan(bj);
+        } else if (i > j) {
+          assertThat(bi).usingComparator(BINARY_AS_FLOAT16_COMPARATOR).isGreaterThan(bj);
+        } else {
+          assertThat(bi).usingComparator(BINARY_AS_FLOAT16_COMPARATOR).isEqualByComparingTo(bj);
         }
       }
     }
@@ -404,7 +404,7 @@ public class TestPrimitiveComparator {
         Binary vi = valuesInAscendingOrder[i];
         Binary vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR.compare(vi, vj));
+        assertOrdering(vi, vj, exp, BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR);
       }
     }
   }
@@ -415,57 +415,51 @@ public class TestPrimitiveComparator {
         T vi = valuesInAscendingOrder[i];
         T vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
+        assertOrdering(vi, vj, exp, comparator);
       }
     }
 
     checkThrowingUnsupportedException(comparator, null);
   }
 
-  private <T> void assertSignumEquals(T v1, T v2, int expected, int actual) {
-    String sign = expected < 0 ? " < " : expected > 0 ? " > " : " = ";
-    assertEquals("expected: " + v1 + sign + v2, signum(expected), signum(actual));
-  }
-
-  private int signum(int i) {
-    return i < 0 ? -1 : i > 0 ? 1 : 0;
+  private <T> void assertOrdering(T v1, T v2, int expectedSignum, Comparator<T> comparator) {
+    int compareResult = comparator.compare(v1, v2);
+    if (expectedSignum < 0) {
+      assertThat(compareResult).isNegative();
+    } else if (expectedSignum > 0) {
+      assertThat(compareResult).isPositive();
+    } else {
+      assertThat(compareResult).isZero();
+    }
   }
 
   private void checkThrowingUnsupportedException(PrimitiveComparator<?> comparator, Class<?> exclude) {
     if (Integer.TYPE != exclude) {
-      try {
-        comparator.compare(0, 0);
-        fail("An UnsupportedOperationException should have been thrown");
-      } catch (UnsupportedOperationException e) {
-      }
+      assertThatThrownBy(() -> comparator.compare(0, 0))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("compare(int, int) was called on a non-int comparator: " + comparator);
     }
     if (Long.TYPE != exclude) {
-      try {
-        comparator.compare(0L, 0L);
-        fail("An UnsupportedOperationException should have been thrown");
-      } catch (UnsupportedOperationException e) {
-      }
+      assertThatThrownBy(() -> comparator.compare(0L, 0L))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("compare(long, long) was called on a non-long comparator: " + comparator);
     }
     if (Float.TYPE != exclude) {
-      try {
-        comparator.compare(0.0F, 0.0F);
-        fail("An UnsupportedOperationException should have been thrown");
-      } catch (UnsupportedOperationException e) {
-      }
+      assertThatThrownBy(() -> comparator.compare(0.0F, 0.0F))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("compare(float, float) was called on a non-float comparator: " + comparator);
     }
     if (Double.TYPE != exclude) {
-      try {
-        comparator.compare(0.0, 0.0);
-        fail("An UnsupportedOperationException should have been thrown");
-      } catch (UnsupportedOperationException e) {
-      }
+      assertThatThrownBy(() -> comparator.compare(0.0, 0.0))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(
+              "compare(double, double) was called on a non-double comparator: " + comparator);
     }
     if (Boolean.TYPE != exclude) {
-      try {
-        comparator.compare(false, false);
-        fail("An UnsupportedOperationException should have been thrown");
-      } catch (UnsupportedOperationException e) {
-      }
+      assertThatThrownBy(() -> comparator.compare(false, false))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(
+              "compare(boolean, boolean) was called on a non-boolean comparator: " + comparator);
     }
   }
 }

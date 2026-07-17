@@ -18,13 +18,14 @@
  */
 package org.apache.parquet.column.values.deltalengthbytearray;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestDeltaLengthByteArray {
@@ -44,7 +45,7 @@ public class TestDeltaLengthByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
     for (int i = 0; i < bin.length; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      assertThat(bin[i]).isEqualTo(Binary.fromString(values[i]));
     }
   }
 
@@ -58,7 +59,7 @@ public class TestDeltaLengthByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
     for (int i = 0; i < bin.length; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      assertThat(bin[i]).isEqualTo(Binary.fromString(values[i]));
     }
   }
 
@@ -72,7 +73,7 @@ public class TestDeltaLengthByteArray {
 
     reader.initFromPage(values.length, writer.getBytes().toInputStream());
     for (int i = 0; i < values.length; i += 2) {
-      Assert.assertEquals(Binary.fromString(values[i]), reader.readBytes());
+      assertThat(reader.readBytes()).isEqualTo(Binary.fromString(values[i]));
       reader.skip();
     }
 
@@ -81,7 +82,7 @@ public class TestDeltaLengthByteArray {
     int skipCount;
     for (int i = 0; i < values.length; i += skipCount + 1) {
       skipCount = (values.length - i) / 2;
-      Assert.assertEquals(Binary.fromString(values[i]), reader.readBytes());
+      assertThat(reader.readBytes()).isEqualTo(Binary.fromString(values[i]));
       reader.skip(skipCount);
     }
   }
@@ -95,7 +96,7 @@ public class TestDeltaLengthByteArray {
     int[] bin = Utils.readInts(reader, writer.getBytes().toInputStream(), values.length);
 
     for (int i = 0; i < bin.length; i++) {
-      Assert.assertEquals(values[i].length(), bin[i]);
+      assertThat(bin[i]).isEqualTo(values[i].length());
     }
   }
 }

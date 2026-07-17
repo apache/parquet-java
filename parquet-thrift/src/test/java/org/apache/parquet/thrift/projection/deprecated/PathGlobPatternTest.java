@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.thrift.projection.deprecated;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
@@ -30,27 +29,27 @@ public class PathGlobPatternTest {
   @Test
   public void testRecursiveGlob() {
     PathGlobPattern g = new PathGlobPattern("a/**/b");
-    assertFalse(g.matches("a/b"));
-    assertTrue(g.matches("a/asd/b"));
-    assertTrue(g.matches("a/asd/ss/b"));
+    assertThat(g.matches("a/b")).isFalse();
+    assertThat(g.matches("a/asd/b")).isTrue();
+    assertThat(g.matches("a/asd/ss/b")).isTrue();
 
     g = new PathGlobPattern("a/**");
-    assertTrue(g.matches("a/as"));
-    assertTrue(g.matches("a/asd/b"));
-    assertTrue(g.matches("a/asd/ss/b"));
+    assertThat(g.matches("a/as")).isTrue();
+    assertThat(g.matches("a/asd/b")).isTrue();
+    assertThat(g.matches("a/asd/ss/b")).isTrue();
   }
 
   @Test
   public void testStandardGlob() {
     PathGlobPattern g = new PathGlobPattern("a/*");
-    assertTrue(g.matches("a/as"));
-    assertFalse(g.matches("a/asd/b"));
-    assertFalse(g.matches("a/asd/ss/b"));
+    assertThat(g.matches("a/as")).isTrue();
+    assertThat(g.matches("a/asd/b")).isFalse();
+    assertThat(g.matches("a/asd/ss/b")).isFalse();
 
     g = new PathGlobPattern("a/{bb,cc}/d");
-    assertTrue(g.matches("a/bb/d"));
-    assertTrue(g.matches("a/cc/d"));
-    assertFalse(g.matches("a/cc/bb/d"));
-    assertFalse(g.matches("a/d"));
+    assertThat(g.matches("a/bb/d")).isTrue();
+    assertThat(g.matches("a/cc/d")).isTrue();
+    assertThat(g.matches("a/cc/bb/d")).isFalse();
+    assertThat(g.matches("a/d")).isFalse();
   }
 }

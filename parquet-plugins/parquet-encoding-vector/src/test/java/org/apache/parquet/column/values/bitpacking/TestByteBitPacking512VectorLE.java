@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -71,16 +71,16 @@ public class TestByteBitPacking512VectorLE {
         }
 
         unpack8Values(bitWidth, byteOutput, output);
-        assertArrayEquals(intInput, output);
+        assertThat(output).isEqualTo(intInput);
         Arrays.fill(output, 0);
 
         unpackValuesUsingVectorArray(bitWidth, byteOutput, output);
-        assertArrayEquals(intInput, output);
+        assertThat(output).isEqualTo(intInput);
         Arrays.fill(output, 0);
 
         ByteBuffer byteBuffer = ByteBuffer.wrap(byteOutput);
         unpackValuesUsingVectorByteBuffer(bitWidth, byteBuffer, output);
-        assertArrayEquals(intInput, output);
+        assertThat(output).isEqualTo(intInput);
         Arrays.fill(output, 0);
       });
     }
@@ -110,7 +110,7 @@ public class TestByteBitPacking512VectorLE {
         directBuffer.put(byteOutput);
         directBuffer.flip();
         unpackValuesUsingVectorByteBuffer(bitWidth, directBuffer, output);
-        assertArrayEquals(expected, output);
+        assertThat(output).isEqualTo(expected);
         Arrays.fill(output, 0);
       });
     }
@@ -138,7 +138,7 @@ public class TestByteBitPacking512VectorLE {
         // Read-only heap ByteBuffer (hasArray() returns false)
         ByteBuffer readOnlyBuffer = ByteBuffer.wrap(byteOutput).asReadOnlyBuffer();
         unpackValuesUsingVectorByteBuffer(bitWidth, readOnlyBuffer, output);
-        assertArrayEquals(expected, output);
+        assertThat(output).isEqualTo(expected);
         Arrays.fill(output, 0);
       });
     }

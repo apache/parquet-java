@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.proto;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import com.google.protobuf.BoolValue;
 import com.google.protobuf.ByteString;
@@ -59,15 +58,15 @@ public class ProtoInputOutputFormatTest {
 
     List<Message> result = runMRJobs(input);
 
-    assertEquals(1, result.size());
+    assertThat(result).hasSize(1);
     TestProtobuf.IOFormatMessage output = (TestProtobuf.IOFormatMessage) result.get(0);
 
-    assertEquals(666, output.getOptionalDouble(), 0.00001);
-    assertEquals(323, output.getMsg().getSomeId());
-    assertEquals("Msg1", output.getRepeatedString(0));
-    assertEquals("Msg2", output.getRepeatedString(1));
+    assertThat(output.getOptionalDouble()).isCloseTo(666, offset(0.00001));
+    assertThat(output.getMsg().getSomeId()).isEqualTo(323);
+    assertThat(output.getRepeatedString(0)).isEqualTo("Msg1");
+    assertThat(output.getRepeatedString(1)).isEqualTo("Msg2");
 
-    assertEquals(input, output);
+    assertThat(output).isEqualTo(input);
   }
 
   @Test
@@ -84,15 +83,15 @@ public class ProtoInputOutputFormatTest {
 
     List<Message> result = runMRJobs(input);
 
-    assertEquals(1, result.size());
+    assertThat(result).hasSize(1);
     TestProto3.IOFormatMessage output = (TestProto3.IOFormatMessage) result.get(0);
 
-    assertEquals(666, output.getOptionalDouble(), 0.00001);
-    assertEquals(323, output.getMsg().getSomeId());
-    assertEquals("Msg1", output.getRepeatedString(0));
-    assertEquals("Msg2", output.getRepeatedString(1));
+    assertThat(output.getOptionalDouble()).isCloseTo(666, offset(0.00001));
+    assertThat(output.getMsg().getSomeId()).isEqualTo(323);
+    assertThat(output.getRepeatedString(0)).isEqualTo("Msg1");
+    assertThat(output.getRepeatedString(1)).isEqualTo("Msg2");
 
-    assertEquals(input, output);
+    assertThat(output).isEqualTo(input);
   }
 
   /**
@@ -117,8 +116,10 @@ public class ProtoInputOutputFormatTest {
     TestProtobuf.Document readDocument = (TestProtobuf.Document) output.get(0);
 
     // test that only requested fields were deserialized
-    assertTrue(readDocument.hasDocId());
-    assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
+    assertThat(readDocument.getDocId()).isEqualTo(12345L);
+    assertThat(readDocument.getNameCount())
+        .as("Found data outside projection.")
+        .isZero();
   }
 
   @Test
@@ -139,9 +140,11 @@ public class ProtoInputOutputFormatTest {
     TestProto3.Document readDocument = (TestProto3.Document) output.get(0);
 
     // test that only requested fields were deserialized
-    assertTrue(readDocument.getDocId() == 12345);
-    assertTrue(readDocument.getNameCount() == 0);
-    assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
+    assertThat(readDocument.getDocId()).isEqualTo(12345);
+    assertThat(readDocument.getNameCount()).isEqualTo(0);
+    assertThat(readDocument.getNameCount())
+        .as("Found data outside projection.")
+        .isZero();
   }
 
   /**
@@ -160,14 +163,14 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(1, result.size());
+    assertThat(result).hasSize(1);
     Message msg = result.get(0);
-    assertFalse("Class from header returned.", msg instanceof FirstCustomClassMessage);
-    assertTrue("Custom class was not used", msg instanceof SecondCustomClassMessage);
+    assertThat(msg).as("Class from header returned.").isNotInstanceOf(FirstCustomClassMessage.class);
+    assertThat(msg).as("Custom class was not used").isInstanceOf(SecondCustomClassMessage.class);
 
     String stringValue;
     stringValue = ((SecondCustomClassMessage) msg).getString();
-    assertEquals("writtenString", stringValue);
+    assertThat(stringValue).isEqualTo("writtenString");
   }
 
   @Test
@@ -182,14 +185,14 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(1, result.size());
+    assertThat(result).hasSize(1);
     Message msg = result.get(0);
-    assertFalse("Class from header returned.", msg instanceof TestProto3.FirstCustomClassMessage);
-    assertTrue("Custom class was not used", msg instanceof TestProto3.SecondCustomClassMessage);
+    assertThat(msg).as("Class from header returned.").isNotInstanceOf(TestProto3.FirstCustomClassMessage.class);
+    assertThat(msg).as("Custom class was not used").isInstanceOf(TestProto3.SecondCustomClassMessage.class);
 
     String stringValue;
     stringValue = ((TestProto3.SecondCustomClassMessage) msg).getString();
-    assertEquals("writtenString", stringValue);
+    assertThat(stringValue).isEqualTo("writtenString");
   }
 
   @Test
@@ -207,9 +210,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -227,9 +230,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -250,9 +253,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -273,9 +276,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -293,9 +296,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -313,9 +316,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -336,9 +339,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -359,9 +362,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -381,9 +384,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -403,9 +406,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -428,9 +431,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -453,9 +456,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -472,8 +475,8 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(1, result.size());
-    // assertEquals(msgEmpty, result.get(0));
+    assertThat(result).hasSize(1);
+    // assertThat(result.get(0)).isEqualTo(msgEmpty)
     // proto3 will return default values for absent fields which is what is returned in output
     // this is why we can ignore absent fields here as optionalMessage and optionalMap will get default value
     com.google.common.truth.extensions.proto.ProtoTruth.assertThat(result.get(0))
@@ -517,7 +520,7 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(1, result.size());
+    assertThat(result).hasSize(1);
     // proto3 will return default values for absent fields which is what is returned in output
     // this is why we can ignore absent fields here as optionalMap will get default value
     com.google.common.truth.extensions.proto.ProtoTruth.assertThat(result.get(0))
@@ -527,23 +530,23 @@ public class ProtoInputOutputFormatTest {
         .isEqualTo(dataBuilt);
 
     TestProto3.SchemaConverterAllDatatypes o = (TestProto3.SchemaConverterAllDatatypes) result.get(0);
-    assertEquals("Good Will Hunting", o.getOptionalString());
-    assertEquals(true, o.getOptionalBool());
-    assertEquals(ByteString.copyFrom("someText", "UTF-8"), o.getOptionalBytes());
-    assertEquals(0.577, o.getOptionalDouble(), 0.00001);
-    assertEquals(3.1415f, o.getOptionalFloat(), 0.00001);
-    assertEquals(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST, o.getOptionalEnum());
-    assertEquals(1000 * 1000 * 1, o.getOptionalFixed32());
-    assertEquals(1000 * 1000 * 1000 * 2, o.getOptionalFixed64());
-    assertEquals(1000 * 1000 * 3, o.getOptionalInt32());
-    assertEquals(1000L * 1000 * 1000 * 4, o.getOptionalInt64());
-    assertEquals(1000 * 1000 * 5, o.getOptionalSFixed32());
-    assertEquals(1000L * 1000 * 1000 * 6, o.getOptionalSFixed64());
-    assertEquals(1000 * 1000 * 56, o.getOptionalSInt32());
-    assertEquals(1000L * 1000 * 1000 * 7, o.getOptionalSInt64());
-    assertEquals(1000 * 1000 * 8, o.getOptionalUInt32());
-    assertEquals(1000L * 1000 * 1000 * 9, o.getOptionalUInt64());
-    assertEquals(1984, o.getOptionalMessage().getSomeId());
+    assertThat(o.getOptionalString()).isEqualTo("Good Will Hunting");
+    assertThat(o.getOptionalBool()).isTrue();
+    assertThat(o.getOptionalBytes()).isEqualTo(ByteString.copyFrom("someText", "UTF-8"));
+    assertThat(o.getOptionalDouble()).isCloseTo(0.577, offset(0.00001));
+    assertThat(o.getOptionalFloat()).isCloseTo(3.1415f, offset(0.00001f));
+    assertThat(o.getOptionalEnum()).isEqualTo(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST);
+    assertThat(o.getOptionalFixed32()).isEqualTo(1000 * 1000 * 1);
+    assertThat(o.getOptionalFixed64()).isEqualTo(1000 * 1000 * 1000 * 2);
+    assertThat(o.getOptionalInt32()).isEqualTo(1000 * 1000 * 3);
+    assertThat(o.getOptionalInt64()).isEqualTo(1000L * 1000 * 1000 * 4);
+    assertThat(o.getOptionalSFixed32()).isEqualTo(1000 * 1000 * 5);
+    assertThat(o.getOptionalSFixed64()).isEqualTo(1000L * 1000 * 1000 * 6);
+    assertThat(o.getOptionalSInt32()).isEqualTo(1000 * 1000 * 56);
+    assertThat(o.getOptionalSInt64()).isEqualTo(1000L * 1000 * 1000 * 7);
+    assertThat(o.getOptionalUInt32()).isEqualTo(1000 * 1000 * 8);
+    assertThat(o.getOptionalUInt64()).isEqualTo(1000L * 1000 * 1000 * 9);
+    assertThat(o.getOptionalMessage().getSomeId()).isEqualTo(1984);
   }
 
   @Test
@@ -583,7 +586,7 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(100, result.size());
+    assertThat(result).hasSize(100);
     for (int i = 0; i < 100; i++) {
       // proto3 will return default values for absent fields which is what is returned in output
       // this is why we can ignore absent fields here
@@ -593,10 +596,10 @@ public class ProtoInputOutputFormatTest {
           .reportingMismatchesOnly()
           .isEqualTo(input[i]);
     }
-    assertEquals(
-        "Good Will Hunting 0", ((TestProto3.SchemaConverterAllDatatypes) result.get(0)).getOptionalString());
-    assertEquals(
-        "Good Will Hunting 90", ((TestProto3.SchemaConverterAllDatatypes) result.get(90)).getOptionalString());
+    assertThat(((TestProto3.SchemaConverterAllDatatypes) result.get(0)).getOptionalString())
+        .isEqualTo("Good Will Hunting 0");
+    assertThat(((TestProto3.SchemaConverterAllDatatypes) result.get(90)).getOptionalString())
+        .isEqualTo("Good Will Hunting 90");
   }
 
   @Test
@@ -616,23 +619,23 @@ public class ProtoInputOutputFormatTest {
     List<Message> messages = readUsingMR.read(outputPath);
     TestProto3.TopMessage result = (TestProto3.TopMessage) messages.get(0);
 
-    assertEquals(3, result.getInnerCount());
+    assertThat(result.getInnerCount()).isEqualTo(3);
 
     TestProto3.InnerMessage first = result.getInner(0);
     TestProto3.InnerMessage second = result.getInner(1);
     TestProto3.InnerMessage third = result.getInner(2);
 
-    assertEquals("First inner", first.getOne());
-    assertTrue(first.getTwo().isEmpty());
-    assertTrue(first.getThree().isEmpty());
+    assertThat(first.getOne()).isEqualTo("First inner");
+    assertThat(first.getTwo()).isEmpty();
+    assertThat(first.getThree()).isEmpty();
 
-    assertEquals("Second inner", second.getTwo());
-    assertTrue(second.getOne().isEmpty());
-    assertTrue(second.getThree().isEmpty());
+    assertThat(second.getTwo()).isEqualTo("Second inner");
+    assertThat(second.getOne()).isEmpty();
+    assertThat(second.getThree()).isEmpty();
 
-    assertEquals("Third inner", third.getThree());
-    assertTrue(third.getOne().isEmpty());
-    assertTrue(third.getTwo().isEmpty());
+    assertThat(third.getThree()).isEqualTo("Third inner");
+    assertThat(third.getOne()).isEmpty();
+    assertThat(third.getTwo()).isEmpty();
   }
 
   @Test
@@ -651,9 +654,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -673,9 +676,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(2, result.size());
-    assertEquals(msgEmpty, result.get(0));
-    assertEquals(msgNonEmpty, result.get(1));
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).isEqualTo(msgEmpty);
+    assertThat(result.get(1)).isEqualTo(msgNonEmpty);
   }
 
   @Test
@@ -684,15 +687,15 @@ public class ProtoInputOutputFormatTest {
     TestProto3.SchemaConverterAllDatatypes intMin = TestProto3.SchemaConverterAllDatatypes.newBuilder()
         .setOptionalUInt32(Integer.MIN_VALUE)
         .build();
-    assertEquals(intMin.toString(), "optionalUInt32: 2147483648\n");
+    assertThat(intMin).asString().isEqualTo("optionalUInt32: 2147483648\n");
     TestProto3.SchemaConverterAllDatatypes uintMin = TestProto3.SchemaConverterAllDatatypes.newBuilder()
         .setOptionalUInt32(-1)
         .build();
-    assertEquals(uintMin.toString(), "optionalUInt32: 4294967295\n");
+    assertThat(uintMin).asString().isEqualTo("optionalUInt32: 4294967295\n");
     TestProto3.SchemaConverterAllDatatypes uintMax = TestProto3.SchemaConverterAllDatatypes.newBuilder()
         .setOptionalUInt32(Integer.MAX_VALUE)
         .build();
-    assertEquals(uintMax.toString(), "optionalUInt32: 2147483647\n");
+    assertThat(uintMax).asString().isEqualTo("optionalUInt32: 2147483647\n");
 
     Configuration conf = new Configuration();
     Path outputPath = new WriteUsingMR(conf).write(intMin, uintMin, uintMax);
@@ -701,9 +704,9 @@ public class ProtoInputOutputFormatTest {
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
 
-    assertEquals(result.get(0), intMin);
-    assertEquals(result.get(1), uintMin);
-    assertEquals(result.get(2), uintMax);
+    assertThat(result.get(0)).isEqualTo(intMin);
+    assertThat(result.get(1)).isEqualTo(uintMin);
+    assertThat(result.get(2)).isEqualTo(uintMax);
   }
 
   /**

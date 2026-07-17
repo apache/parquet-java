@@ -28,8 +28,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,7 +60,6 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -155,7 +154,7 @@ public class TestColumnIO {
 
   @Test
   public void testSchema() {
-    assertEquals(schemaString, schema.toString());
+    assertThat(schema).asString().isEqualTo(schemaString);
   }
 
   @Test
@@ -204,16 +203,12 @@ public class TestColumnIO {
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
     writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
 
-    try {
-      MessageType schemaWithIncompatibleField = new MessageType(
-          "schema", new PrimitiveType(OPTIONAL, BINARY, "e")); // Incompatible schema: different type
-      readGroups(store, originalSchema, schemaWithIncompatibleField, 1);
-      fail("should have thrown an incompatible schema exception");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          "The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e",
-          e.getMessage());
-    }
+    // Incompatible schema: different type
+    MessageType schemaWithIncompatibleField = new MessageType("schema", new PrimitiveType(OPTIONAL, BINARY, "e"));
+    assertThatThrownBy(() -> readGroups(store, originalSchema, schemaWithIncompatibleField, 1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e");
   }
 
   @Test
@@ -223,17 +218,13 @@ public class TestColumnIO {
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
     writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
 
-    try {
-      MessageType schemaWithRequiredFieldThatWasOptional = new MessageType(
-          "schema",
-          new PrimitiveType(REQUIRED, INT32, "e")); // Incompatible schema: required when it was optional
-      readGroups(store, originalSchema, schemaWithRequiredFieldThatWasOptional, 1);
-      fail("should have thrown an incompatible schema exception");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          "The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e",
-          e.getMessage());
-    }
+    // Incompatible schema: required when it was optional
+    MessageType schemaWithRequiredFieldThatWasOptional =
+        new MessageType("schema", new PrimitiveType(REQUIRED, INT32, "e"));
+    assertThatThrownBy(() -> readGroups(store, originalSchema, schemaWithRequiredFieldThatWasOptional, 1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e");
   }
 
   @Test
@@ -263,11 +254,10 @@ public class TestColumnIO {
       for (int j = 0; j < objects.length; j++) {
         Object object = objects[j];
         if (object == null) {
-          assertEquals(0, next.getFieldRepetitionCount(j));
+          assertThat(next.getFieldRepetitionCount(j)).isEqualTo(0);
         } else {
-          assertEquals(
-              "looking for r[" + i + "][" + j + "][0]=" + object, 1, next.getFieldRepetitionCount(j));
-          assertEquals(object, next.getInteger(j, 0));
+          assertThat(next.getFieldRepetitionCount(j)).isEqualTo(1);
+          assertThat(next.getInteger(j, 0)).isEqualTo(object);
         }
       }
     }
@@ -336,14 +326,14 @@ public class TestColumnIO {
         log("r" + (++i));
         log(record);
       }
-      assertEquals(
-          "deserialization does not display the same result",
-          r1.toString(),
-          records.get(0).toString());
-      assertEquals(
-          "deserialization does not display the same result",
-          r2.toString(),
-          records.get(1).toString());
+      assertThat(records.get(0))
+          .as("deserialization does not display the same result")
+          .asString()
+          .isEqualTo(r1.toString());
+      assertThat(records.get(1))
+          .as("deserialization does not display the same result")
+          .asString()
+          .isEqualTo(r2.toString());
     }
     {
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
@@ -361,14 +351,14 @@ public class TestColumnIO {
         log("r" + (++i));
         log(record);
       }
-      assertEquals(
-          "deserialization does not display the expected result",
-          pr1.toString(),
-          records.get(0).toString());
-      assertEquals(
-          "deserialization does not display the expected result",
-          pr2.toString(),
-          records.get(1).toString());
+      assertThat(records.get(0))
+          .as("deserialization does not display the expected result")
+          .asString()
+          .isEqualTo(pr1.toString());
+      assertThat(records.get(1))
+          .as("deserialization does not display the expected result")
+          .asString()
+          .isEqualTo(pr2.toString());
     }
   }
 
@@ -487,7 +477,10 @@ public class TestColumnIO {
     RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
-      assertEquals("deserialization does not display the same result", group.toString(), got.toString());
+      assertThat(got)
+          .as("deserialization does not display the same result")
+          .asString()
+          .isEqualTo(group.toString());
     }
   }
 
@@ -516,10 +509,7 @@ public class TestColumnIO {
                 ? "end"
                 : Arrays.toString(leaves.get(next).getFieldPath())) + ": "
             + recordReader.getNextLevel(i, r));
-        assertEquals(
-            Arrays.toString(primitiveColumnIO.getFieldPath()) + ": " + r + " -> ",
-            next,
-            recordReader.getNextReader(i, r));
+        assertThat(recordReader.getNextReader(i, r)).isEqualTo(next);
       }
     }
     log("----");
@@ -561,13 +551,9 @@ public class TestColumnIO {
     recordWriter.addLong(0);
     recordWriter.endField("DocId", 0);
     recordWriter.startField("Links", 1);
-    try {
-      recordWriter.endField("Links", 1);
-      Assert.fail("expected exception because of empty field");
-    } catch (ParquetEncodingException e) {
-      Assert.assertEquals(
-          "empty fields are illegal, the field should be ommited completely instead", e.getMessage());
-    }
+    assertThatThrownBy(() -> recordWriter.endField("Links", 1))
+        .isInstanceOf(ParquetEncodingException.class)
+        .hasMessage("empty fields are illegal, the field should be ommited completely instead");
   }
 
   @Test
@@ -580,14 +566,14 @@ public class TestColumnIO {
     result.add(groupRecordConverter.getCurrentRecord());
     groupWriter.write(r2);
     result.add(groupRecordConverter.getCurrentRecord());
-    assertEquals(
-        "deserialization does not display the expected result",
-        result.get(0).toString(),
-        r1.toString());
-    assertEquals(
-        "deserialization does not display the expected result",
-        result.get(1).toString(),
-        r2.toString());
+    assertThat(r1)
+        .as("deserialization does not display the expected result")
+        .asString()
+        .isEqualTo(result.get(0).toString());
+    assertThat(r2)
+        .as("deserialization does not display the expected result")
+        .asString()
+        .isEqualTo(result.get(1).toString());
   }
 
   @Test
@@ -649,7 +635,7 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       private void validate(Object value, int repetitionLevel, int definitionLevel) {
         String actual = Arrays.toString(path.getPath()) + ": " + value + ", r:" + repetitionLevel + ", d:"
             + definitionLevel;
-        assertEquals("event #" + counter, expected[counter], actual);
+        assertThat(actual).isEqualTo(expected[counter]);
         ++counter;
       }
 
@@ -699,7 +685,7 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
   }
 
   public void validate() {
-    assertEquals("read all events", expected.length, counter);
+    assertThat(counter).as("read all events").isEqualTo(expected.length);
   }
 
   @Override

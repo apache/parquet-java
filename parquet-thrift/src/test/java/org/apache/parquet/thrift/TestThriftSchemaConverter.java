@@ -20,8 +20,8 @@ package org.apache.parquet.thrift;
 
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.thrift.struct.ThriftField.Requirement.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Person;
@@ -64,7 +64,7 @@ public class TestThriftSchemaConverter {
         + "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType converted = schemaConverter.convert(AddressBook.class);
-    assertEquals(MessageTypeParser.parseMessageType(expected), converted);
+    assertThat(converted).isEqualTo(MessageTypeParser.parseMessageType(expected));
   }
 
   @Test
@@ -232,24 +232,16 @@ public class TestThriftSchemaConverter {
 
   private void shouldThrowWhenProjectionFilterMatchesNothing(
       String filters, String unmatchedFilter, Class<? extends TBase<?, ?>> thriftClass) {
-    try {
-      getDeprecatedFilteredSchema(filters, thriftClass);
-      fail("should throw projection exception when filter matches nothing");
-    } catch (ThriftProjectionException e) {
-      assertEquals(
-          "The following projection patterns did not match any columns in this schema:\n" + unmatchedFilter
-              + "\n",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> getDeprecatedFilteredSchema(filters, thriftClass))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("The following projection patterns did not match any columns in this schema:\n"
+            + unmatchedFilter + "\n");
   }
 
   private void shouldThrowWhenNoColumnsAreSelected(String filters, Class<? extends TBase<?, ?>> thriftClass) {
-    try {
-      getDeprecatedFilteredSchema(filters, thriftClass);
-      fail("should throw projection exception when no columns are selected");
-    } catch (ThriftProjectionException e) {
-      assertEquals("No columns have been selected", e.getMessage());
-    }
+    assertThatThrownBy(() -> getDeprecatedFilteredSchema(filters, thriftClass))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("No columns have been selected");
   }
 
   @Test
@@ -269,37 +261,23 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testProjectOnlyValueInMap() {
-    try {
-      getDeprecatedFilteredSchema("name;names/value/**", TestStructInMap.class);
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals(
-          "Cannot select only the values of a map, you must keep the keys as well: names", e.getMessage());
-    }
+    assertThatThrownBy(() -> getDeprecatedFilteredSchema("name;names/value/**", TestStructInMap.class))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Cannot select only the values of a map, you must keep the keys as well: names");
 
-    try {
-      getStrictFilteredSchema("name;names.value", TestStructInMap.class);
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals(
-          "Cannot select only the values of a map, you must keep the keys as well: names", e.getMessage());
-    }
+    assertThatThrownBy(() -> getStrictFilteredSchema("name;names.value", TestStructInMap.class))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Cannot select only the values of a map, you must keep the keys as well: names");
   }
 
   private void doTestPartialKeyProjection(String deprecated, String strict) {
-    try {
-      getDeprecatedFilteredSchema(deprecated, MapStructV2.class);
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals("Cannot select only a subset of the fields in a map key, for path map1", e.getMessage());
-    }
+    assertThatThrownBy(() -> getDeprecatedFilteredSchema(deprecated, MapStructV2.class))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Cannot select only a subset of the fields in a map key, for path map1");
 
-    try {
-      getStrictFilteredSchema(strict, MapStructV2.class);
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals("Cannot select only a subset of the fields in a map key, for path map1", e.getMessage());
-    }
+    assertThatThrownBy(() -> getStrictFilteredSchema(strict, MapStructV2.class))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Cannot select only a subset of the fields in a map key, for path map1");
   }
 
   @Test
@@ -310,19 +288,13 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testSetPartialProjection() {
-    try {
-      getDeprecatedFilteredSchema("set1/age", SetStructV2.class);
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals("Cannot select only a subset of the fields in a set, for path set1", e.getMessage());
-    }
+    assertThatThrownBy(() -> getDeprecatedFilteredSchema("set1/age", SetStructV2.class))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Cannot select only a subset of the fields in a set, for path set1");
 
-    try {
-      getStrictFilteredSchema("set1.age", SetStructV2.class);
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals("Cannot select only a subset of the fields in a set, for path set1", e.getMessage());
-    }
+    assertThatThrownBy(() -> getStrictFilteredSchema("set1.age", SetStructV2.class))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Cannot select only a subset of the fields in a set, for path set1");
   }
 
   @Test
@@ -338,7 +310,7 @@ public class TestThriftSchemaConverter {
         new ThriftField("b", (short) 2, REQUIRED, new ThriftType.StringType())));
 
     final MessageType converted = converter.convert(structType);
-    assertEquals(MessageTypeParser.parseMessageType(expected), converted);
+    assertThat(converted).isEqualTo(MessageTypeParser.parseMessageType(expected));
   }
 
   public static void shouldGetProjectedSchema(
@@ -349,8 +321,8 @@ public class TestThriftSchemaConverter {
     MessageType depRequestedSchema = getDeprecatedFilteredSchema(deprecatedFilterDesc, thriftClass);
     MessageType strictRequestedSchema = getStrictFilteredSchema(strictFilterDesc, thriftClass);
     MessageType expectedSchema = parseMessageType(expectedSchemaStr);
-    assertEquals(expectedSchema, depRequestedSchema);
-    assertEquals(expectedSchema, strictRequestedSchema);
+    assertThat(depRequestedSchema).isEqualTo(expectedSchema);
+    assertThat(strictRequestedSchema).isEqualTo(expectedSchema);
   }
 
   private static MessageType getDeprecatedFilteredSchema(
@@ -371,7 +343,7 @@ public class TestThriftSchemaConverter {
     final StructType converted = ThriftSchemaConverter.toStructType(AddressBook.class);
     final String json = converted.toJSON();
     final ThriftType fromJSON = StructType.fromJSON(json);
-    assertEquals(json, fromJSON.toJSON());
+    assertThat(fromJSON.toJSON()).isEqualTo(json);
   }
 
   @Test
@@ -381,6 +353,6 @@ public class TestThriftSchemaConverter {
         + "}\n";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType converted = schemaConverter.convert(TestLogicalType.class);
-    assertEquals(MessageTypeParser.parseMessageType(expected), converted);
+    assertThat(converted).isEqualTo(MessageTypeParser.parseMessageType(expected));
   }
 }

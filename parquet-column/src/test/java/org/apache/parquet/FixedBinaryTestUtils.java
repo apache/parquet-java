@@ -19,8 +19,7 @@
 
 package org.apache.parquet;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -67,27 +66,16 @@ public class FixedBinaryTestUtils {
 
   @Test
   public void testGetFixedBinary() {
-    assertArrayEquals(
-        b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00, 0x00, 0x00),
-        getFixedBinary(10, BigInteger.valueOf(Integer.MIN_VALUE)).getBytes());
-    assertArrayEquals(
-        b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF),
-        getFixedBinary(11, BigInteger.valueOf(-1)).getBytes());
-    assertArrayEquals(
-        b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
-        getFixedBinary(12, BigInteger.valueOf(0)).getBytes());
-    assertArrayEquals(
-        b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
-        getFixedBinary(13, BigInteger.valueOf(1)).getBytes());
-    assertArrayEquals(
-        b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF),
-        getFixedBinary(14, BigInteger.valueOf(Integer.MAX_VALUE)).getBytes());
-  }
-
-  public void assertCorrectBytes(byte[] expectedBytes, int length, BigInteger bigInt) {
-    byte[] actualBytes = getFixedBinary(length, bigInt).getBytes();
-    assertArrayEquals(expectedBytes, actualBytes);
-    assertEquals(bigInt, new BigInteger(actualBytes));
+    assertThat(getFixedBinary(10, BigInteger.valueOf(Integer.MIN_VALUE)).getBytes())
+        .isEqualTo(b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00, 0x00, 0x00));
+    assertThat(getFixedBinary(11, BigInteger.valueOf(-1)).getBytes())
+        .isEqualTo(b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF));
+    assertThat(getFixedBinary(12, BigInteger.valueOf(0)).getBytes())
+        .isEqualTo(b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+    assertThat(getFixedBinary(13, BigInteger.valueOf(1)).getBytes())
+        .isEqualTo(b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
+    assertThat(getFixedBinary(14, BigInteger.valueOf(Integer.MAX_VALUE)).getBytes())
+        .isEqualTo(b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF));
   }
 
   private static byte[] b(int... bytes) {

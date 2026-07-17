@@ -19,7 +19,7 @@
 
 package org.apache.parquet.cli.commands;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,9 +34,9 @@ public class ShowFooterCommandTest extends ParquetFileTest {
     command.target = file.getAbsolutePath();
     command.raw = false;
     command.setConf(new Configuration());
-    assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
 
     command.raw = true;
-    assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 }

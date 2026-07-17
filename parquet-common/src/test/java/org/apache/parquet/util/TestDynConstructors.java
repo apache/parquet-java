@@ -19,10 +19,10 @@
 
 package org.apache.parquet.util;
 
-import java.util.concurrent.Callable;
-import org.apache.parquet.TestUtils;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.apache.parquet.util.Concatenator.SomeCheckedException;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestDynConstructors {
@@ -30,24 +30,26 @@ public class TestDynConstructors {
   public void testNoImplCall() {
     final DynConstructors.Builder builder = new DynConstructors.Builder();
 
-    TestUtils.assertThrows(
-        "Checked build should throw NoSuchMethodException", NoSuchMethodException.class, (Callable)
-            builder::buildChecked);
+    assertThatThrownBy(builder::buildChecked)
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining("Cannot find constructor for null");
 
-    TestUtils.assertThrows(
-        "Normal build should throw RuntimeException", RuntimeException.class, (Runnable) builder::build);
+    assertThatThrownBy(builder::build)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Cannot find constructor for null");
   }
 
   @Test
   public void testMissingClass() {
     final DynConstructors.Builder builder = new DynConstructors.Builder().impl("not.a.RealClass");
 
-    TestUtils.assertThrows(
-        "Checked build should throw NoSuchMethodException", NoSuchMethodException.class, (Callable)
-            builder::buildChecked);
+    assertThatThrownBy(builder::buildChecked)
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining("Cannot find constructor for null");
 
-    TestUtils.assertThrows(
-        "Normal build should throw RuntimeException", RuntimeException.class, (Callable) builder::build);
+    assertThatThrownBy(builder::build)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Cannot find constructor for null");
   }
 
   @Test
@@ -55,12 +57,15 @@ public class TestDynConstructors {
     final DynConstructors.Builder builder =
         new DynConstructors.Builder().impl(Concatenator.class, String.class, String.class);
 
-    TestUtils.assertThrows(
-        "Checked build should throw NoSuchMethodException", NoSuchMethodException.class, (Callable)
-            builder::buildChecked);
+    assertThatThrownBy(builder::buildChecked)
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining(
+            "Missing org.apache.parquet.util.Concatenator(java.lang.String,java.lang.String)");
 
-    TestUtils.assertThrows(
-        "Normal build should throw RuntimeException", RuntimeException.class, (Callable) builder::build);
+    assertThatThrownBy(builder::build)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining(
+            "Missing org.apache.parquet.util.Concatenator(java.lang.String,java.lang.String)");
   }
 
   @Test
@@ -72,17 +77,17 @@ public class TestDynConstructors {
         .buildChecked();
 
     Concatenator dashCat = sepCtor.newInstanceChecked("-");
-    Assert.assertEquals("Should construct with the 1-arg version", "a-b", dashCat.concat("a", "b"));
+    assertThat(dashCat.concat("a", "b"))
+        .as("Should construct with the 1-arg version")
+        .isEqualTo("a-b");
 
-    TestUtils.assertThrows(
-        "Should complain about extra arguments",
-        IllegalArgumentException.class,
-        () -> sepCtor.newInstanceChecked("/", "-"));
+    assertThatThrownBy(() -> sepCtor.newInstanceChecked("/", "-"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("wrong number of arguments");
 
-    TestUtils.assertThrows(
-        "Should complain about extra arguments",
-        IllegalArgumentException.class,
-        () -> sepCtor.newInstance("/", "-"));
+    assertThatThrownBy(() -> sepCtor.newInstance("/", "-"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("wrong number of arguments");
 
     DynConstructors.Ctor<Concatenator> defaultCtor = new DynConstructors.Builder()
         .impl("not.a.RealClass", String.class)
@@ -91,7 +96,9 @@ public class TestDynConstructors {
         .buildChecked();
 
     Concatenator cat = defaultCtor.newInstanceChecked();
-    Assert.assertEquals("Should construct with the no-arg version", "ab", cat.concat("a", "b"));
+    assertThat(cat.concat("a", "b"))
+        .as("Should construct with the no-arg version")
+        .isEqualTo("ab");
   }
 
   @Test
@@ -102,13 +109,11 @@ public class TestDynConstructors {
         .impl(Concatenator.class, Exception.class)
         .buildChecked();
 
-    TestUtils.assertThrows(
-        "Should re-throw the exception", SomeCheckedException.class, () -> sepCtor.newInstanceChecked(exc));
+    assertThatThrownBy(() -> sepCtor.newInstanceChecked(exc)).isInstanceOf(SomeCheckedException.class);
 
-    TestUtils.assertThrows(
-        "Should wrap the exception in RuntimeException",
-        RuntimeException.class,
-        () -> sepCtor.newInstance(exc));
+    assertThatThrownBy(() -> sepCtor.newInstance(exc))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("org.apache.parquet.util.Concatenator$SomeCheckedException");
   }
 
   @Test
@@ -117,26 +122,26 @@ public class TestDynConstructors {
         .impl(Concatenator.class.getName(), String.class)
         .buildChecked();
 
-    Assert.assertNotNull("Should find 1-arg constructor", sepCtor.newInstance("-"));
+    assertThat(sepCtor.newInstance("-")).as("Should find 1-arg constructor").isNotNull();
   }
 
   @Test
   public void testHiddenMethod() throws Exception {
-    TestUtils.assertThrows(
-        "Should fail to find hidden method", NoSuchMethodException.class, () -> new DynMethods.Builder(
-                "setSeparator")
+    assertThatThrownBy(() -> new DynMethods.Builder("setSeparator")
             .impl(Concatenator.class, char.class)
-            .buildChecked());
+            .buildChecked())
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining("Cannot find method: setSeparator");
 
     final DynConstructors.Ctor<Concatenator> sepCtor = new DynConstructors.Builder()
         .hiddenImpl(Concatenator.class.getName(), char.class)
         .buildChecked();
 
-    Assert.assertNotNull("Should find hidden ctor with hiddenImpl", sepCtor);
+    assertThat(sepCtor).as("Should find hidden ctor with hiddenImpl").isNotNull();
 
     Concatenator slashCat = sepCtor.newInstanceChecked('/');
 
-    Assert.assertEquals("Should use separator /", "a/b", slashCat.concat("a", "b"));
+    assertThat(slashCat.concat("a", "b")).as("Should use separator /").isEqualTo("a/b");
   }
 
   @Test
@@ -144,10 +149,11 @@ public class TestDynConstructors {
     final DynConstructors.Ctor<Concatenator> ctor =
         new DynConstructors.Builder().impl(Concatenator.class.getName()).buildChecked();
 
-    Assert.assertTrue("Should always be static", ctor.isStatic());
+    assertThat(ctor.isStatic()).as("Should always be static").isTrue();
 
-    TestUtils.assertThrows(
-        "Should complain that method is static", IllegalStateException.class, () -> ctor.bind(null));
+    assertThatThrownBy(() -> ctor.bind(null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot bind constructors");
   }
 
   @Test
@@ -155,15 +161,78 @@ public class TestDynConstructors {
     final DynMethods.UnboundMethod ctor =
         new DynConstructors.Builder().impl(Concatenator.class.getName()).buildChecked();
 
-    TestUtils.assertThrows(
-        "Should complain that target must be null",
-        IllegalArgumentException.class,
-        () -> ctor.invokeChecked("a"));
+    assertThatThrownBy(() -> ctor.invokeChecked("a"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid call to constructor: target must be null");
 
-    TestUtils.assertThrows(
-        "Should complain that target must be null", IllegalArgumentException.class, () -> ctor.invoke("a"));
+    assertThatThrownBy(() -> ctor.invoke("a"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid call to constructor: target must be null");
 
-    Assert.assertNotNull("Should allow invokeChecked(null, ...)", ctor.invokeChecked(null));
-    Assert.assertNotNull("Should allow invoke(null, ...)", ctor.invoke(null));
+    assertThat((Object) ctor.invokeChecked(null))
+        .as("Should allow invokeChecked(null, ...)")
+        .isNotNull();
+    assertThat((Object) ctor.invoke(null))
+        .as("Should allow invoke(null, ...)")
+        .isNotNull();
   }
+
+  @Test
+  public void implWithNoClassDefFoundError() throws Exception {
+    ClassLoader errorLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        if ("org.apache.parquet.MissingDependencyClass".equals(name)) {
+          throw new NoClassDefFoundError("some/TransitiveDependency");
+        }
+
+        return super.loadClass(name, resolve);
+      }
+    };
+
+    assertThatThrownBy(() -> new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .impl("org.apache.parquet.MissingDependencyClass")
+            .buildChecked())
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageStartingWith("Cannot find constructor for interface")
+        .hasMessageContaining("Missing org.apache.parquet.MissingDependencyClass");
+
+    assertThat(new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .impl("org.apache.parquet.MissingDependencyClass")
+            .impl(MyClass.class)
+            .buildChecked()
+            .newInstance())
+        .isInstanceOf(MyClass.class);
+
+    assertThat(new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .hiddenImpl("org.apache.parquet.MissingDependencyClass")
+            .impl(MyClass.class)
+            .buildChecked()
+            .newInstance())
+        .isInstanceOf(MyClass.class);
+  }
+
+  @Test
+  public void implWithExceptionInInitializerError() {
+    ClassLoader errorLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name, boolean resolve) {
+        throw new ExceptionInInitializerError("static initializer failed");
+      }
+    };
+
+    assertThatThrownBy(() -> new DynConstructors.Builder(MyInterface.class)
+            .loader(errorLoader)
+            .impl("org.apache.parquet.FailingInitClass")
+            .buildChecked())
+        .isInstanceOf(ExceptionInInitializerError.class)
+        .hasMessage("static initializer failed");
+  }
+
+  public interface MyInterface {}
+
+  public static class MyClass implements MyInterface {}
 }

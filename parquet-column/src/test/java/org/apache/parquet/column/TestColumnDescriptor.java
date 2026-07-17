@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column;
 
-import static junit.framework.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
@@ -30,23 +30,21 @@ public class TestColumnDescriptor {
   }
 
   @Test
-  public void testComparesTo() throws Exception {
-    assertEquals(column("a").compareTo(column("a")), 0);
-    assertEquals(column("a", "b").compareTo(column("a", "b")), 0);
+  public void testComparesTo() {
+    assertThat(column("a")).isEqualByComparingTo(column("a"));
+    assertThat(column("a", "b")).isEqualByComparingTo(column("a", "b"));
 
-    assertEquals(column("a").compareTo(column("b")), -1);
-    assertEquals(column("b").compareTo(column("a")), 1);
-    assertEquals(column("a", "a").compareTo(column("a", "b")), -1);
-    assertEquals(column("b", "a").compareTo(column("a", "a")), 1);
+    assertThat(column("a")).isLessThan(column("b"));
+    assertThat(column("b")).isGreaterThan(column("a"));
+    assertThat(column("a", "a")).isLessThan(column("a", "b"));
+    assertThat(column("b", "a")).isGreaterThan(column("a", "a"));
 
-    assertEquals(column("a").compareTo(column("a", "b")), -1);
-    assertEquals(column("b").compareTo(column("a", "b")), 1);
+    assertThat(column("a")).isLessThan(column("a", "b"));
+    assertThat(column("b")).isGreaterThan(column("a", "b"));
 
-    assertEquals(column("a", "b").compareTo(column("a")), 1);
-    assertEquals(column("a", "b").compareTo(column("b")), -1);
+    assertThat(column("a", "b")).isGreaterThan(column("a")).isLessThan(column("b"));
 
-    assertEquals(column("").compareTo(column("")), 0);
-    assertEquals(column("").compareTo(column("a")), -1);
-    assertEquals(column("a").compareTo(column("")), 1);
+    assertThat(column("")).isEqualByComparingTo(column("")).isLessThan(column("a"));
+    assertThat(column("a")).isGreaterThan(column(""));
   }
 }

@@ -19,9 +19,7 @@
 
 package org.apache.parquet.column;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
@@ -43,28 +41,28 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN);
     EncodingStats stats2 = builder.build();
 
-    assertEquals("Dictionary stats should be correct", 0, stats2.dictStats.size());
-    assertEquals("Data stats size should be correct", 1, stats2.dataStats.size());
-    assertEquals(
-        "Data stats content should be correct",
-        4,
-        stats2.dataStats.get(Encoding.PLAIN).intValue());
+    assertThat(stats2.dictStats).as("Dictionary stats should be correct").isEmpty();
+    assertThat(stats2.dataStats).as("Data stats size should be correct").hasSize(1);
+    assertThat(stats2.dataStats.get(Encoding.PLAIN).intValue())
+        .as("Data stats content should be correct")
+        .isEqualTo(4);
 
-    assertEquals("Dictionary stats size should be correct after reuse", 1, stats1.dictStats.size());
-    assertEquals(
-        "Dictionary stats content should be correct",
-        1,
-        stats1.dictStats.get(Encoding.PLAIN).intValue());
+    assertThat(stats1.dictStats)
+        .as("Dictionary stats size should be correct after reuse")
+        .hasSize(1);
+    assertThat(stats1.dictStats.get(Encoding.PLAIN).intValue())
+        .as("Dictionary stats content should be correct")
+        .isEqualTo(1);
 
-    assertEquals("Data stats size should be correct after reuse", 2, stats1.dataStats.size());
-    assertEquals(
-        "Data stats content should be correct",
-        3,
-        stats1.dataStats.get(Encoding.RLE_DICTIONARY).intValue());
-    assertEquals(
-        "Data stats content should be correct",
-        2,
-        stats1.dataStats.get(Encoding.DELTA_BYTE_ARRAY).intValue());
+    assertThat(stats1.dataStats)
+        .as("Data stats size should be correct after reuse")
+        .hasSize(2);
+    assertThat(stats1.dataStats.get(Encoding.RLE_DICTIONARY).intValue())
+        .as("Data stats content should be correct")
+        .isEqualTo(3);
+    assertThat(stats1.dataStats.get(Encoding.DELTA_BYTE_ARRAY).intValue())
+        .as("Data stats content should be correct")
+        .isEqualTo(2);
   }
 
   @Test
@@ -72,10 +70,16 @@ public class TestEncodingStats {
     EncodingStats.Builder builder = new EncodingStats.Builder();
     EncodingStats stats = builder.build();
 
-    assertFalse(stats.usesV2Pages());
-    assertFalse("Should not have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertFalse("Should not have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertFalse("Should not have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isFalse();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should not have dictionary-encoded pages")
+        .isFalse();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should not have non-dictionary pages")
+        .isFalse();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should not have dictionary pages")
+        .isFalse();
   }
 
   @Test
@@ -84,10 +88,16 @@ public class TestEncodingStats {
     builder.addDictEncoding(Encoding.PLAIN_DICTIONARY);
     EncodingStats stats = builder.build();
 
-    assertFalse(stats.usesV2Pages());
-    assertFalse("Should not have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertFalse("Should not have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertTrue("Should have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isFalse();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should not have dictionary-encoded pages")
+        .isFalse();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should not have non-dictionary pages")
+        .isFalse();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should have dictionary pages")
+        .isTrue();
   }
 
   @Test
@@ -98,10 +108,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN_DICTIONARY);
     EncodingStats stats = builder.build();
 
-    assertFalse(stats.usesV2Pages());
-    assertTrue("Should have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertFalse("Should not have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertTrue("Should have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isFalse();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should have dictionary-encoded pages")
+        .isTrue();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should not have non-dictionary pages")
+        .isFalse();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should have dictionary pages")
+        .isTrue();
   }
 
   @Test
@@ -110,10 +126,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN);
     EncodingStats stats = builder.build();
 
-    assertFalse(stats.usesV2Pages());
-    assertFalse("Should not have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertTrue("Should have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertFalse("Should not have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isFalse();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should not have dictionary-encoded pages")
+        .isFalse();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should have non-dictionary pages")
+        .isTrue();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should not have dictionary pages")
+        .isFalse();
   }
 
   @Test
@@ -125,10 +147,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN);
     EncodingStats stats = builder.build();
 
-    assertFalse(stats.usesV2Pages());
-    assertTrue("Should have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertTrue("Should have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertTrue("Should have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isFalse();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should have dictionary-encoded pages")
+        .isTrue();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should have non-dictionary pages")
+        .isTrue();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should have dictionary pages")
+        .isTrue();
   }
 
   @Test
@@ -139,10 +167,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.RLE_DICTIONARY);
     EncodingStats stats = builder.build();
 
-    assertTrue(stats.usesV2Pages());
-    assertTrue("Should have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertFalse("Should not have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertTrue("Should have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isTrue();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should have dictionary-encoded pages")
+        .isTrue();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should not have non-dictionary pages")
+        .isFalse();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should have dictionary pages")
+        .isTrue();
   }
 
   @Test
@@ -153,10 +187,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.DELTA_BINARY_PACKED);
     EncodingStats stats = builder.build();
 
-    assertTrue(stats.usesV2Pages());
-    assertFalse("Should not have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertTrue("Should have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertFalse("Should not have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isTrue();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should not have dictionary-encoded pages")
+        .isFalse();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should have non-dictionary pages")
+        .isTrue();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should not have dictionary pages")
+        .isFalse();
   }
 
   @Test
@@ -169,10 +209,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.DELTA_BYTE_ARRAY);
     EncodingStats stats = builder.build();
 
-    assertTrue(stats.usesV2Pages());
-    assertTrue("Should have dictionary-encoded pages", stats.hasDictionaryEncodedPages());
-    assertTrue("Should have non-dictionary pages", stats.hasNonDictionaryEncodedPages());
-    assertTrue("Should have dictionary pages", stats.hasDictionaryPages());
+    assertThat(stats.usesV2Pages()).isTrue();
+    assertThat(stats.hasDictionaryEncodedPages())
+        .as("Should have dictionary-encoded pages")
+        .isTrue();
+    assertThat(stats.hasNonDictionaryEncodedPages())
+        .as("Should have non-dictionary pages")
+        .isTrue();
+    assertThat(stats.hasDictionaryPages())
+        .as("Should have dictionary pages")
+        .isTrue();
   }
 
   @Test
@@ -186,21 +232,51 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.DELTA_BYTE_ARRAY);
     EncodingStats stats = builder.build();
 
-    assertEquals("Count should match", 1, stats.getNumDictionaryPagesEncodedAs(Encoding.PLAIN));
-    assertEquals("Count should match", 0, stats.getNumDictionaryPagesEncodedAs(Encoding.PLAIN_DICTIONARY));
-    assertEquals("Count should match", 0, stats.getNumDictionaryPagesEncodedAs(Encoding.RLE));
-    assertEquals("Count should match", 0, stats.getNumDictionaryPagesEncodedAs(Encoding.BIT_PACKED));
-    assertEquals("Count should match", 0, stats.getNumDictionaryPagesEncodedAs(Encoding.DELTA_BYTE_ARRAY));
-    assertEquals("Count should match", 0, stats.getNumDictionaryPagesEncodedAs(Encoding.DELTA_BINARY_PACKED));
-    assertEquals("Count should match", 0, stats.getNumDictionaryPagesEncodedAs(Encoding.DELTA_LENGTH_BYTE_ARRAY));
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.PLAIN))
+        .as("Count should match")
+        .isEqualTo(1);
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.PLAIN_DICTIONARY))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.RLE))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.BIT_PACKED))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.DELTA_BYTE_ARRAY))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.DELTA_BINARY_PACKED))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDictionaryPagesEncodedAs(Encoding.DELTA_LENGTH_BYTE_ARRAY))
+        .as("Count should match")
+        .isEqualTo(0);
 
-    assertEquals("Count should match", 5, stats.getNumDataPagesEncodedAs(Encoding.RLE_DICTIONARY));
-    assertEquals("Count should match", 2, stats.getNumDataPagesEncodedAs(Encoding.DELTA_BYTE_ARRAY));
-    assertEquals("Count should match", 0, stats.getNumDataPagesEncodedAs(Encoding.RLE));
-    assertEquals("Count should match", 0, stats.getNumDataPagesEncodedAs(Encoding.BIT_PACKED));
-    assertEquals("Count should match", 0, stats.getNumDataPagesEncodedAs(Encoding.PLAIN));
-    assertEquals("Count should match", 0, stats.getNumDataPagesEncodedAs(Encoding.PLAIN_DICTIONARY));
-    assertEquals("Count should match", 0, stats.getNumDataPagesEncodedAs(Encoding.DELTA_BINARY_PACKED));
-    assertEquals("Count should match", 0, stats.getNumDataPagesEncodedAs(Encoding.DELTA_LENGTH_BYTE_ARRAY));
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.RLE_DICTIONARY))
+        .as("Count should match")
+        .isEqualTo(5);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.DELTA_BYTE_ARRAY))
+        .as("Count should match")
+        .isEqualTo(2);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.RLE))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.BIT_PACKED))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.PLAIN))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.PLAIN_DICTIONARY))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.DELTA_BINARY_PACKED))
+        .as("Count should match")
+        .isEqualTo(0);
+    assertThat(stats.getNumDataPagesEncodedAs(Encoding.DELTA_LENGTH_BYTE_ARRAY))
+        .as("Count should match")
+        .isEqualTo(0);
   }
 }

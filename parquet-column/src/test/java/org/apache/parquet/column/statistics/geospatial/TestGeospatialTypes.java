@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.column.statistics.geospatial;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.Assert;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateXYZM;
@@ -44,16 +45,13 @@ public class TestGeospatialTypes {
     // Test with Point (type code 1)
     Point point = gf.createPoint(new Coordinate(1, 1));
     geospatialTypes.update(point);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(1));
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactly(1);
 
     // Test with LineString (type code 2)
     Coordinate[] lineCoords = new Coordinate[] {new Coordinate(1, 1), new Coordinate(2, 2)};
     LineString line = gf.createLineString(lineCoords);
     geospatialTypes.update(line);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(1));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(2));
-    Assert.assertEquals(2, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactlyInAnyOrder(1, 2);
 
     // Test with Polygon (type code 3)
     Coordinate[] polygonCoords = new Coordinate[] {
@@ -64,10 +62,7 @@ public class TestGeospatialTypes {
     LinearRing shell = gf.createLinearRing(polygonCoords);
     Polygon polygon = gf.createPolygon(shell);
     geospatialTypes.update(polygon);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(1));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(2));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(3));
-    Assert.assertEquals(3, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactlyInAnyOrder(1, 2, 3);
   }
 
   @Test
@@ -79,8 +74,7 @@ public class TestGeospatialTypes {
     Point[] points = new Point[] {gf.createPoint(new Coordinate(1, 1)), gf.createPoint(new Coordinate(2, 2))};
     MultiPoint multiPoint = gf.createMultiPoint(points);
     geospatialTypes.update(multiPoint);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(4));
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactly(4);
 
     // MultiLineString (type code 5)
     LineString[] lines = new LineString[] {
@@ -89,9 +83,7 @@ public class TestGeospatialTypes {
     };
     MultiLineString multiLine = gf.createMultiLineString(lines);
     geospatialTypes.update(multiLine);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(4));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(5));
-    Assert.assertEquals(2, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactlyInAnyOrder(4, 5);
 
     // MultiPolygon (type code 6)
     Polygon[] polygons = new Polygon[] {
@@ -103,20 +95,13 @@ public class TestGeospatialTypes {
     };
     MultiPolygon multiPolygon = gf.createMultiPolygon(polygons);
     geospatialTypes.update(multiPolygon);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(4));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(5));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(6));
-    Assert.assertEquals(3, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactlyInAnyOrder(4, 5, 6);
 
     // GeometryCollection (type code 7)
     GeometryCollection collection = gf.createGeometryCollection(
         new org.locationtech.jts.geom.Geometry[] {multiPoint, multiLine, multiPolygon});
     geospatialTypes.update(collection);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(4));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(5));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(6));
-    Assert.assertTrue(geospatialTypes.getTypes().contains(7));
-    Assert.assertEquals(4, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactlyInAnyOrder(4, 5, 6, 7);
   }
 
   @Test
@@ -127,8 +112,7 @@ public class TestGeospatialTypes {
     // Create a 3D point (XYZ) - should be type code 1001
     Point pointXYZ = gf.createPoint(new Coordinate(1, 1, 1));
     geospatialTypes.update(pointXYZ);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(1001));
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactly(1001);
   }
 
   @Test
@@ -140,8 +124,7 @@ public class TestGeospatialTypes {
     CoordinateXYZM coord = new CoordinateXYZM(1, 1, Double.NaN, 10);
     Point pointXYM = gf.createPoint(coord);
     geospatialTypes.update(pointXYM);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(2001));
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactly(2001);
   }
 
   @Test
@@ -153,8 +136,7 @@ public class TestGeospatialTypes {
     CoordinateXYZM coord = new CoordinateXYZM(1, 1, 1, 10);
     Point pointXYZM = gf.createPoint(coord);
     geospatialTypes.update(pointXYZM);
-    Assert.assertTrue(geospatialTypes.getTypes().contains(3001));
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactly(3001);
   }
 
   @Test
@@ -174,9 +156,7 @@ public class TestGeospatialTypes {
     types1.merge(types2);
 
     // Check merged result
-    Assert.assertTrue(types1.getTypes().contains(1)); // Point
-    Assert.assertTrue(types1.getTypes().contains(2)); // LineString
-    Assert.assertEquals(2, types1.getTypes().size());
+    assertThat(types1.getTypes()).containsExactlyInAnyOrder(1, 2);
 
     // Create third set of types with Z dimension
     GeospatialTypes types3 = new GeospatialTypes();
@@ -186,10 +166,7 @@ public class TestGeospatialTypes {
     types1.merge(types3);
 
     // Check merged result
-    Assert.assertTrue(types1.getTypes().contains(1)); // Point XY
-    Assert.assertTrue(types1.getTypes().contains(2)); // LineString XY
-    Assert.assertTrue(types1.getTypes().contains(1001)); // Point XYZ
-    Assert.assertEquals(3, types1.getTypes().size());
+    assertThat(types1.getTypes()).containsExactlyInAnyOrder(1, 2, 1001);
   }
 
   @Test
@@ -199,21 +176,19 @@ public class TestGeospatialTypes {
     // Create set with types
     GeospatialTypes types1 = new GeospatialTypes();
     types1.update(gf.createPoint(new Coordinate(1, 1))); // Type 1
-    Assert.assertEquals(1, types1.getTypes().size());
+    assertThat(types1.getTypes()).containsExactly(1);
 
     // Create empty set
     GeospatialTypes emptyTypes = new GeospatialTypes();
-    Assert.assertEquals(0, emptyTypes.getTypes().size());
+    assertThat(emptyTypes.getTypes()).isEmpty();
 
     // Merge empty into non-empty
     types1.merge(emptyTypes);
-    Assert.assertEquals(1, types1.getTypes().size());
-    Assert.assertTrue(types1.getTypes().contains(1));
+    assertThat(types1.getTypes()).containsExactly(1);
 
     // Merge non-empty into empty
     emptyTypes.merge(types1);
-    Assert.assertEquals(1, emptyTypes.getTypes().size());
-    Assert.assertTrue(emptyTypes.getTypes().contains(1));
+    assertThat(emptyTypes.getTypes()).containsExactly(1);
   }
 
   @Test
@@ -222,18 +197,18 @@ public class TestGeospatialTypes {
 
     // Update with null geometry
     geospatialTypes.update(null);
-    Assert.assertEquals(0, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).isEmpty();
 
     // Update with empty point
     GeometryFactory gf = new GeometryFactory();
     Point emptyPoint = gf.createPoint((Coordinate) null);
     geospatialTypes.update(emptyPoint);
-    Assert.assertEquals(0, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).isEmpty();
 
     // Update with empty linestring
     LineString emptyLine = gf.createLineString((Coordinate[]) null);
     geospatialTypes.update(emptyLine);
-    Assert.assertEquals(0, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).isEmpty();
   }
 
   @Test
@@ -244,16 +219,15 @@ public class TestGeospatialTypes {
     // Add some types
     geospatialTypes.update(gf.createPoint(new Coordinate(1, 1)));
     geospatialTypes.update(gf.createLineString(new Coordinate[] {new Coordinate(1, 1), new Coordinate(2, 2)}));
-    Assert.assertEquals(2, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).containsExactlyInAnyOrder(1, 2);
 
     // Reset the types
     geospatialTypes.reset();
-    Assert.assertEquals(0, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.getTypes()).isEmpty();
 
     // Add new types after reset
     geospatialTypes.update(gf.createPoint(new Coordinate(3, 3, 3))); // XYZ point (1001)
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(1001));
+    assertThat(geospatialTypes.getTypes()).containsExactly(1001);
   }
 
   @Test
@@ -263,18 +237,18 @@ public class TestGeospatialTypes {
 
     // Add some types
     geospatialTypes.update(gf.createPoint(new Coordinate(1, 1)));
-    Assert.assertTrue(geospatialTypes.isValid());
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.isValid()).isTrue();
+    assertThat(geospatialTypes.getTypes()).containsExactly(1);
 
     // Abort the set
     geospatialTypes.abort();
-    Assert.assertFalse(geospatialTypes.isValid());
-    Assert.assertEquals(0, geospatialTypes.getTypes().size());
+    assertThat(geospatialTypes.isValid()).isFalse();
+    assertThat(geospatialTypes.getTypes()).isEmpty();
 
     // Update after abort shouldn't add anything
     geospatialTypes.update(gf.createPoint(new Coordinate(2, 2)));
-    Assert.assertEquals(0, geospatialTypes.getTypes().size());
-    Assert.assertFalse(geospatialTypes.isValid());
+    assertThat(geospatialTypes.getTypes()).isEmpty();
+    assertThat(geospatialTypes.isValid()).isFalse();
   }
 
   @Test
@@ -290,17 +264,13 @@ public class TestGeospatialTypes {
     GeospatialTypes copy = original.copy();
 
     // Verify the copy has the same types
-    Assert.assertEquals(original.getTypes().size(), copy.getTypes().size());
-    for (Integer typeId : original.getTypes()) {
-      Assert.assertTrue(copy.getTypes().contains(typeId));
-    }
+    assertThat(copy.getTypes()).hasSameSizeAs(original.getTypes()).containsExactlyInAnyOrder(1, 2);
 
     // Modify copy and verify it doesn't affect the original
     copy.update(gf.createPoint(new Coordinate(3, 3, 3))); // Add XYZ point (1001)
-    Assert.assertEquals(2, original.getTypes().size());
-    Assert.assertEquals(3, copy.getTypes().size());
-    Assert.assertTrue(copy.getTypes().contains(1001));
-    Assert.assertFalse(original.getTypes().contains(1001));
+    assertThat(original.getTypes()).containsExactlyInAnyOrder(1, 2);
+    assertThat(copy.getTypes()).containsExactlyInAnyOrder(1, 2, 1001);
+    assertThat(original.getTypes()).doesNotContain(1001);
   }
 
   @Test
@@ -310,13 +280,13 @@ public class TestGeospatialTypes {
 
     // Add a type
     types.update(gf.createPoint(new Coordinate(1, 1)));
-    Assert.assertEquals(1, types.getTypes().size());
-    Assert.assertTrue(types.isValid());
+    assertThat(types.getTypes()).containsExactly(1);
+    assertThat(types.isValid()).isTrue();
 
     // Merge with null
     types.merge(null);
-    Assert.assertEquals(0, types.getTypes().size());
-    Assert.assertFalse(types.isValid());
+    assertThat(types.getTypes()).isEmpty();
+    assertThat(types.isValid()).isFalse();
   }
 
   @Test
@@ -326,18 +296,18 @@ public class TestGeospatialTypes {
     // Create valid types
     GeospatialTypes validTypes = new GeospatialTypes();
     validTypes.update(gf.createPoint(new Coordinate(1, 1)));
-    Assert.assertTrue(validTypes.isValid());
-    Assert.assertEquals(1, validTypes.getTypes().size());
+    assertThat(validTypes.isValid()).isTrue();
+    assertThat(validTypes.getTypes()).containsExactly(1);
 
     // Create invalid types
     GeospatialTypes invalidTypes = new GeospatialTypes();
     invalidTypes.abort(); // Mark as invalid
-    Assert.assertFalse(invalidTypes.isValid());
+    assertThat(invalidTypes.isValid()).isFalse();
 
     // Merge invalid into valid
     validTypes.merge(invalidTypes);
-    Assert.assertFalse(validTypes.isValid());
-    Assert.assertEquals(0, validTypes.getTypes().size());
+    assertThat(validTypes.isValid()).isFalse();
+    assertThat(validTypes.getTypes()).isEmpty();
 
     // Create new valid types
     GeospatialTypes newValidTypes = new GeospatialTypes();
@@ -345,8 +315,8 @@ public class TestGeospatialTypes {
 
     // Merge valid into invalid
     invalidTypes.merge(newValidTypes);
-    Assert.assertFalse(invalidTypes.isValid());
-    Assert.assertEquals(0, invalidTypes.getTypes().size());
+    assertThat(invalidTypes.isValid()).isFalse();
+    assertThat(invalidTypes.getTypes()).isEmpty();
   }
 
   @Test
@@ -361,11 +331,8 @@ public class TestGeospatialTypes {
     GeospatialTypes types = new GeospatialTypes(typeSet);
 
     // Verify types were properly set
-    Assert.assertEquals(3, types.getTypes().size());
-    Assert.assertTrue(types.getTypes().contains(1));
-    Assert.assertTrue(types.getTypes().contains(1001));
-    Assert.assertTrue(types.getTypes().contains(2));
-    Assert.assertTrue(types.isValid());
+    assertThat(types.getTypes()).containsExactlyInAnyOrder(1, 1001, 2);
+    assertThat(types.isValid()).isTrue();
   }
 
   @Test
@@ -375,30 +342,21 @@ public class TestGeospatialTypes {
 
     // Add Point XY
     types.update(gf.createPoint(new Coordinate(1, 1)));
-    Assert.assertTrue(types.getTypes().contains(1));
+    assertThat(types.getTypes()).containsExactly(1);
 
     // Add Point XYZ
     types.update(gf.createPoint(new Coordinate(2, 2, 2)));
-    Assert.assertTrue(types.getTypes().contains(1));
-    Assert.assertTrue(types.getTypes().contains(1001));
-    Assert.assertEquals(2, types.getTypes().size());
+    assertThat(types.getTypes()).containsExactlyInAnyOrder(1, 1001);
 
     // Add Point XYM
     CoordinateXYZM coordXYM = new CoordinateXYZM(3, 3, Double.NaN, 10);
     types.update(gf.createPoint(coordXYM));
-    Assert.assertTrue(types.getTypes().contains(1));
-    Assert.assertTrue(types.getTypes().contains(1001));
-    Assert.assertTrue(types.getTypes().contains(2001));
-    Assert.assertEquals(3, types.getTypes().size());
+    assertThat(types.getTypes()).containsExactlyInAnyOrder(1, 1001, 2001);
 
     // Add Point XYZM
     CoordinateXYZM coordXYZM = new CoordinateXYZM(4, 4, 4, 10);
     types.update(gf.createPoint(coordXYZM));
-    Assert.assertTrue(types.getTypes().contains(1));
-    Assert.assertTrue(types.getTypes().contains(1001));
-    Assert.assertTrue(types.getTypes().contains(2001));
-    Assert.assertTrue(types.getTypes().contains(3001));
-    Assert.assertEquals(4, types.getTypes().size());
+    assertThat(types.getTypes()).containsExactlyInAnyOrder(1, 1001, 2001, 3001);
   }
 
   @Test
@@ -412,21 +370,18 @@ public class TestGeospatialTypes {
     GeospatialTypes rowGroup1 = new GeospatialTypes();
     rowGroup1.update(gf.createPoint(new Coordinate(1, 1))); // Point XY (1)
     rowGroup1.update(gf.createPoint(new Coordinate(2, 2, 2))); // Point XYZ (1001)
-    Assert.assertEquals(2, rowGroup1.getTypes().size());
-    Assert.assertTrue(rowGroup1.getTypes().contains(1));
-    Assert.assertTrue(rowGroup1.getTypes().contains(1001));
+    assertThat(rowGroup1.getTypes()).containsExactlyInAnyOrder(1, 1001);
 
     // Row Group 2: LineStrings XY
     GeospatialTypes rowGroup2 = new GeospatialTypes();
     LineString lineXY = gf.createLineString(new Coordinate[] {new Coordinate(1, 1), new Coordinate(2, 2)});
     rowGroup2.update(lineXY); // LineString XY (2)
-    Assert.assertEquals(1, rowGroup2.getTypes().size());
-    Assert.assertTrue(rowGroup2.getTypes().contains(2));
+    assertThat(rowGroup2.getTypes()).containsExactly(2);
 
     // Row Group 3: Invalid types (aborted)
     GeospatialTypes rowGroup3 = new GeospatialTypes();
     rowGroup3.abort();
-    Assert.assertFalse(rowGroup3.isValid());
+    assertThat(rowGroup3.isValid()).isFalse();
 
     // Merge row groups into file-level types
     fileTypes.merge(rowGroup1);
@@ -434,8 +389,8 @@ public class TestGeospatialTypes {
     fileTypes.merge(rowGroup3); // This should invalidate fileTypes
 
     // Verify file level types after merge
-    Assert.assertFalse(fileTypes.isValid());
-    Assert.assertEquals(0, fileTypes.getTypes().size());
+    assertThat(fileTypes.isValid()).isFalse();
+    assertThat(fileTypes.getTypes()).isEmpty();
 
     // Test with different merge order - abort last
     fileTypes = new GeospatialTypes();
@@ -444,8 +399,8 @@ public class TestGeospatialTypes {
     fileTypes.merge(rowGroup2); // This shouldn't change anything since fileTypes is already invalid
 
     // Verify file level types after second merge sequence
-    Assert.assertFalse(fileTypes.isValid());
-    Assert.assertEquals(0, fileTypes.getTypes().size());
+    assertThat(fileTypes.isValid()).isFalse();
+    assertThat(fileTypes.getTypes()).isEmpty();
 
     // Test without the invalid row group
     fileTypes = new GeospatialTypes();
@@ -453,11 +408,8 @@ public class TestGeospatialTypes {
     fileTypes.merge(rowGroup2);
 
     // Verify file level types - should have 3 types: Point XY, Point XYZ, LineString XY
-    Assert.assertTrue(fileTypes.isValid());
-    Assert.assertEquals(3, fileTypes.getTypes().size());
-    Assert.assertTrue(fileTypes.getTypes().contains(1));
-    Assert.assertTrue(fileTypes.getTypes().contains(1001));
-    Assert.assertTrue(fileTypes.getTypes().contains(2));
+    assertThat(fileTypes.isValid()).isTrue();
+    assertThat(fileTypes.getTypes()).containsExactlyInAnyOrder(1, 1001, 2);
   }
 
   @Test
@@ -468,16 +420,14 @@ public class TestGeospatialTypes {
     // Test Point (type code 1)
     Point point = gf.createPoint(new Coordinate(1, 1));
     geospatialTypes.update(point);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(1));
+    assertThat(geospatialTypes.getTypes()).containsExactly(1);
 
     geospatialTypes.reset();
 
     // Test LineString (type code 2)
     LineString line = gf.createLineString(new Coordinate[] {new Coordinate(1, 1), new Coordinate(2, 2)});
     geospatialTypes.update(line);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(2));
+    assertThat(geospatialTypes.getTypes()).containsExactly(2);
 
     geospatialTypes.reset();
 
@@ -489,8 +439,7 @@ public class TestGeospatialTypes {
     });
     Polygon polygon = gf.createPolygon(shell);
     geospatialTypes.update(polygon);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(3));
+    assertThat(geospatialTypes.getTypes()).containsExactly(3);
 
     geospatialTypes.reset();
 
@@ -498,8 +447,7 @@ public class TestGeospatialTypes {
     MultiPoint multiPoint = gf.createMultiPoint(
         new Point[] {gf.createPoint(new Coordinate(1, 1)), gf.createPoint(new Coordinate(2, 2))});
     geospatialTypes.update(multiPoint);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(4));
+    assertThat(geospatialTypes.getTypes()).containsExactly(4);
 
     geospatialTypes.reset();
 
@@ -509,16 +457,14 @@ public class TestGeospatialTypes {
       gf.createLineString(new Coordinate[] {new Coordinate(3, 3), new Coordinate(4, 4)})
     });
     geospatialTypes.update(multiLine);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(5));
+    assertThat(geospatialTypes.getTypes()).containsExactly(5);
 
     geospatialTypes.reset();
 
     // Test MultiPolygon (type code 6)
     MultiPolygon multiPolygon = gf.createMultiPolygon(new Polygon[] {gf.createPolygon(shell)});
     geospatialTypes.update(multiPolygon);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(6));
+    assertThat(geospatialTypes.getTypes()).containsExactly(6);
 
     geospatialTypes.reset();
 
@@ -526,8 +472,7 @@ public class TestGeospatialTypes {
     GeometryCollection collection =
         gf.createGeometryCollection(new org.locationtech.jts.geom.Geometry[] {point, line});
     geospatialTypes.update(collection);
-    Assert.assertEquals(1, geospatialTypes.getTypes().size());
-    Assert.assertTrue(geospatialTypes.getTypes().contains(7));
+    assertThat(geospatialTypes.getTypes()).containsExactly(7);
   }
 
   @Test
@@ -537,23 +482,23 @@ public class TestGeospatialTypes {
     // Test XY (standard 2D, no prefix = 0)
     GeospatialTypes types2D = new GeospatialTypes();
     types2D.update(gf.createPoint(new Coordinate(1, 1)));
-    Assert.assertTrue(types2D.getTypes().contains(1)); // Point XY
+    assertThat(types2D.getTypes()).containsExactly(1); // Point XY
 
     // Test XYZ (Z dimension, prefix = 1000)
     GeospatialTypes types3D = new GeospatialTypes();
     types3D.update(gf.createPoint(new Coordinate(1, 1, 1)));
-    Assert.assertTrue(types3D.getTypes().contains(1001)); // Point XYZ
+    assertThat(types3D.getTypes()).containsExactly(1001); // Point XYZ
 
     // Test XYM (M dimension, prefix = 2000)
     GeospatialTypes typesXYM = new GeospatialTypes();
     CoordinateXYZM coordXYM = new CoordinateXYZM(1, 1, Double.NaN, 10);
     typesXYM.update(gf.createPoint(coordXYM));
-    Assert.assertTrue(typesXYM.getTypes().contains(2001)); // Point XYM
+    assertThat(typesXYM.getTypes()).containsExactly(2001); // Point XYM
 
     // Test XYZM (Z and M dimensions, prefix = 3000)
     GeospatialTypes typesXYZM = new GeospatialTypes();
     CoordinateXYZM coordXYZM = new CoordinateXYZM(1, 1, 1, 10);
     typesXYZM.update(gf.createPoint(coordXYZM));
-    Assert.assertTrue(typesXYZM.getTypes().contains(3001)); // Point XYZM
+    assertThat(typesXYZM.getTypes()).containsExactly(3001); // Point XYZM
   }
 }
