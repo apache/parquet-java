@@ -78,22 +78,20 @@ public class TestIndexCache {
     String file = createTestFile("DocID");
 
     ParquetReadOptions options = ParquetReadOptions.builder().build();
-    try (ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options)) {
-      IndexCache indexCache =
-          IndexCache.create(fileReader, new HashSet<>(), IndexCache.CacheStrategy.NONE, false);
-      Assert.assertTrue(indexCache instanceof NoneIndexCache);
-      List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
-      for (BlockMetaData blockMetaData : blocks) {
-        indexCache.setBlockMetadata(blockMetaData);
-        for (ColumnChunkMetaData chunk : blockMetaData.getColumns()) {
-          validateColumnIndex(fileReader.readColumnIndex(chunk), indexCache.getColumnIndex(chunk));
-          validateOffsetIndex(fileReader.readOffsetIndex(chunk), indexCache.getOffsetIndex(chunk));
+    ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
+    IndexCache indexCache = IndexCache.create(fileReader, new HashSet<>(), IndexCache.CacheStrategy.NONE, false);
+    Assert.assertTrue(indexCache instanceof NoneIndexCache);
+    List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
+    for (BlockMetaData blockMetaData : blocks) {
+      indexCache.setBlockMetadata(blockMetaData);
+      for (ColumnChunkMetaData chunk : blockMetaData.getColumns()) {
+        validateColumnIndex(fileReader.readColumnIndex(chunk), indexCache.getColumnIndex(chunk));
+        validateOffsetIndex(fileReader.readOffsetIndex(chunk), indexCache.getOffsetIndex(chunk));
 
-          Assert.assertEquals(
-              "BloomFilter should match",
-              fileReader.readBloomFilter(chunk),
-              indexCache.getBloomFilter(chunk));
-        }
+        Assert.assertEquals(
+            "BloomFilter should match",
+            fileReader.readBloomFilter(chunk),
+            indexCache.getBloomFilter(chunk));
       }
     }
   }
@@ -103,23 +101,21 @@ public class TestIndexCache {
     String file = createTestFile("DocID", "Name");
 
     ParquetReadOptions options = ParquetReadOptions.builder().build();
-    try (ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options)) {
-      Set<ColumnPath> columns = new HashSet<>();
-      columns.add(ColumnPath.fromDotString("DocId"));
-      columns.add(ColumnPath.fromDotString("Name"));
-      columns.add(ColumnPath.fromDotString("Gender"));
-      columns.add(ColumnPath.fromDotString("Links.Backward"));
-      columns.add(ColumnPath.fromDotString("Links.Forward"));
+    ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
+    Set<ColumnPath> columns = new HashSet<>();
+    columns.add(ColumnPath.fromDotString("DocId"));
+    columns.add(ColumnPath.fromDotString("Name"));
+    columns.add(ColumnPath.fromDotString("Gender"));
+    columns.add(ColumnPath.fromDotString("Links.Backward"));
+    columns.add(ColumnPath.fromDotString("Links.Forward"));
 
-      IndexCache indexCache =
-          IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, false);
-      Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
-      validPrecacheIndexCache(fileReader, indexCache, columns, false);
+    IndexCache indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, false);
+    Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
+    validPrecacheIndexCache(fileReader, indexCache, columns, false);
 
-      indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, true);
-      Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
-      validPrecacheIndexCache(fileReader, indexCache, columns, true);
-    }
+    indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, true);
+    Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
+    validPrecacheIndexCache(fileReader, indexCache, columns, true);
   }
 
   private String createTestFile(String... bloomFilterEnabledColumns) throws IOException {

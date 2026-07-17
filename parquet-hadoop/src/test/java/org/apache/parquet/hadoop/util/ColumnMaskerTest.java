@@ -86,41 +86,41 @@ public class ColumnMaskerTest {
 
   @Test
   public void testNullColumns() throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
-        .build()) {
-      Group group = reader.read();
-      assertThatThrownBy(() -> group.getLong("DocId", 0))
-          .isInstanceOf(RuntimeException.class)
-          .hasMessage("not found 0(DocId) element number 0 in group:\n%s", group);
-    }
+        .build();
+    Group group = reader.read();
+    assertThatThrownBy(() -> group.getLong("DocId", 0))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("not found 0(DocId) element number 0 in group:\n%s", group);
+    reader.close();
   }
 
   @Test
   public void testNullNestedColumns() throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
-        .build()) {
-      Group group = reader.read();
-      Group subGroup = group.getGroup("Links", 0);
-      assertThatThrownBy(() -> subGroup.getBinary("Backward", 0).getBytes())
-          .isInstanceOf(RuntimeException.class)
-          .hasMessage("not found 0(Backward) element number 0 in group:\n%s", subGroup);
-    }
+        .build();
+    Group group = reader.read();
+    Group subGroup = group.getGroup("Links", 0);
+    assertThatThrownBy(() -> subGroup.getBinary("Backward", 0).getBytes())
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("not found 0(Backward) element number 0 in group:\n%s", subGroup);
+    reader.close();
   }
 
   @Test
   public void validateNonNuLLColumns() throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
-        .build()) {
-      for (int i = 0; i < numRecord; i++) {
-        Group group = reader.read();
-        assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
-        Group subGroup = group.getGroup("Links", 0);
-        assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
-      }
+        .build();
+    for (int i = 0; i < numRecord; i++) {
+      Group group = reader.read();
+      assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
+      Group subGroup = group.getGroup("Links", 0);
+      assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
     }
+    reader.close();
   }
 
   private void nullifyColumns(Configuration conf, String inputFile, String outputFile) throws IOException {

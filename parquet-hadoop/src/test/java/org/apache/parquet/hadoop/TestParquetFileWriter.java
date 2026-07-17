@@ -1040,10 +1040,11 @@ public class TestParquetFileWriter {
 
     // close any filesystems to ensure that the FS used by the writer picks up the configuration
     FileSystem.closeAll();
-    try (ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport())) {
-      Group r1 = new SimpleGroup(schema);
-      writer.write(r1);
-    }
+    ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
+
+    Group r1 = new SimpleGroup(schema);
+    writer.write(r1);
+    writer.close();
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
 

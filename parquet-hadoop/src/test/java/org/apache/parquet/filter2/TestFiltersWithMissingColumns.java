@@ -212,13 +212,17 @@ public class TestFiltersWithMissingColumns {
   }
 
   public static long countFilteredRecords(Path path, FilterPredicate pred) throws IOException {
-    long count = 0;
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path)
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path)
         .withFilter(FilterCompat.get(pred))
-        .build()) {
+        .build();
+
+    long count = 0;
+    try {
       while (reader.read() != null) {
         count += 1;
       }
+    } finally {
+      reader.close();
     }
     return count;
   }

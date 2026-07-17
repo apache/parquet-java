@@ -167,22 +167,21 @@ public class SchemaControlEncryptionTest {
   }
 
   private void decryptParquetFileAndValid(String file, Configuration conf) throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file))
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file))
         .withConf(conf)
-        .build()) {
-      for (int i = 0; i < numRecord; i++) {
-        Group group = reader.read();
-        assertEquals(testData.get("Name")[i], group.getBinary("Name", 0).toStringUsingUTF8());
-        assertEquals(testData.get("Age")[i], group.getLong("Age", 0));
+        .build();
+    for (int i = 0; i < numRecord; i++) {
+      Group group = reader.read();
+      assertEquals(testData.get("Name")[i], group.getBinary("Name", 0).toStringUsingUTF8());
+      assertEquals(testData.get("Age")[i], group.getLong("Age", 0));
 
-        Group subGroup = group.getGroup("WebLinks", 0);
-        assertArrayEquals(
-            subGroup.getBinary("LinkedIn", 0).getBytes(),
-            ((String) testData.get("LinkedIn")[i]).getBytes());
-        assertArrayEquals(
-            subGroup.getBinary("Twitter", 0).getBytes(), ((String) testData.get("Twitter")[i]).getBytes());
-      }
+      Group subGroup = group.getGroup("WebLinks", 0);
+      assertArrayEquals(
+          subGroup.getBinary("LinkedIn", 0).getBytes(), ((String) testData.get("LinkedIn")[i]).getBytes());
+      assertArrayEquals(
+          subGroup.getBinary("Twitter", 0).getBytes(), ((String) testData.get("Twitter")[i]).getBytes());
     }
+    reader.close();
   }
 
   private static String createTempFile(String prefix) {

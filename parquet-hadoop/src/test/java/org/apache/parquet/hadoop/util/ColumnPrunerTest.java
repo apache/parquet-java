@@ -184,31 +184,31 @@ public class ColumnPrunerTest {
   }
 
   private void validateColumns(String inputFile, List<String> prunePaths) throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(inputFile))
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(inputFile))
         .withConf(conf)
-        .build()) {
-      for (int i = 0; i < numRecord; i++) {
-        Group group = reader.read();
-        if (!prunePaths.contains("DocId")) {
-          assertEquals(1l, group.getLong("DocId", 0));
+        .build();
+    for (int i = 0; i < numRecord; i++) {
+      Group group = reader.read();
+      if (!prunePaths.contains("DocId")) {
+        assertEquals(1l, group.getLong("DocId", 0));
+      }
+      if (!prunePaths.contains("Name")) {
+        assertEquals("foo", group.getBinary("Name", 0).toStringUsingUTF8());
+      }
+      if (!prunePaths.contains("Gender")) {
+        assertEquals("male", group.getBinary("Gender", 0).toStringUsingUTF8());
+      }
+      if (!prunePaths.contains("Links")) {
+        Group subGroup = group.getGroup("Links", 0);
+        if (!prunePaths.contains("Links.Backward")) {
+          assertEquals(2l, subGroup.getLong("Backward", 0));
         }
-        if (!prunePaths.contains("Name")) {
-          assertEquals("foo", group.getBinary("Name", 0).toStringUsingUTF8());
-        }
-        if (!prunePaths.contains("Gender")) {
-          assertEquals("male", group.getBinary("Gender", 0).toStringUsingUTF8());
-        }
-        if (!prunePaths.contains("Links")) {
-          Group subGroup = group.getGroup("Links", 0);
-          if (!prunePaths.contains("Links.Backward")) {
-            assertEquals(2l, subGroup.getLong("Backward", 0));
-          }
-          if (!prunePaths.contains("Links.Forward")) {
-            assertEquals(3l, subGroup.getLong("Forward", 0));
-          }
+        if (!prunePaths.contains("Links.Forward")) {
+          assertEquals(3l, subGroup.getLong("Forward", 0));
         }
       }
     }
+    reader.close();
   }
 
   private String createParquetFile(String prefix) throws IOException {

@@ -97,35 +97,34 @@ public class TestInteropBloomFilter {
       }
     }
 
-    try (ParquetFileReader reader = new ParquetFileReader(
+    ParquetFileReader reader = new ParquetFileReader(
         HadoopInputFile.fromPath(filePath, new Configuration()),
-        ParquetReadOptions.builder().build())) {
-      List<BlockMetaData> blocks = reader.getRowGroups();
-      blocks.forEach(block -> {
-        try {
-          assertEquals(14, block.getRowCount());
-          ColumnChunkMetaData idMeta = block.getColumns().get(0);
-          BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
-          Assert.assertNotNull(bloomFilter);
-          assertEquals(192, idMeta.getBloomFilterOffset());
-          assertEquals(-1, idMeta.getBloomFilterLength());
-          for (int i = 0; i < expectedRowCount; ++i) {
-            assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))));
-          }
-          for (int i = 0; i < unexpectedValues.length; ++i) {
-            assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
-          }
-          assertEquals(152, idMeta.getTotalSize());
-          assertEquals(163, idMeta.getTotalUncompressedSize());
-          assertEquals(181, idMeta.getOffsetIndexReference().getOffset());
-          assertEquals(11, idMeta.getOffsetIndexReference().getLength());
-          assertEquals(156, idMeta.getColumnIndexReference().getOffset());
-          assertEquals(25, idMeta.getColumnIndexReference().getLength());
-        } catch (IOException e) {
-          fail("Should not throw exception: " + e.getMessage());
+        ParquetReadOptions.builder().build());
+    List<BlockMetaData> blocks = reader.getRowGroups();
+    blocks.forEach(block -> {
+      try {
+        assertEquals(14, block.getRowCount());
+        ColumnChunkMetaData idMeta = block.getColumns().get(0);
+        BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
+        Assert.assertNotNull(bloomFilter);
+        assertEquals(192, idMeta.getBloomFilterOffset());
+        assertEquals(-1, idMeta.getBloomFilterLength());
+        for (int i = 0; i < expectedRowCount; ++i) {
+          assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))));
         }
-      });
-    }
+        for (int i = 0; i < unexpectedValues.length; ++i) {
+          assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
+        }
+        assertEquals(152, idMeta.getTotalSize());
+        assertEquals(163, idMeta.getTotalUncompressedSize());
+        assertEquals(181, idMeta.getOffsetIndexReference().getOffset());
+        assertEquals(11, idMeta.getOffsetIndexReference().getLength());
+        assertEquals(156, idMeta.getColumnIndexReference().getOffset());
+        assertEquals(25, idMeta.getColumnIndexReference().getLength());
+      } catch (IOException e) {
+        fail("Should not throw exception: " + e.getMessage());
+      }
+    });
   }
 
   @Test
@@ -166,35 +165,34 @@ public class TestInteropBloomFilter {
       }
     }
 
-    try (ParquetFileReader reader = new ParquetFileReader(
+    ParquetFileReader reader = new ParquetFileReader(
         HadoopInputFile.fromPath(filePath, new Configuration()),
-        ParquetReadOptions.builder().build())) {
-      List<BlockMetaData> blocks = reader.getRowGroups();
-      blocks.forEach(block -> {
-        try {
-          assertEquals(14, block.getRowCount());
-          ColumnChunkMetaData idMeta = block.getColumns().get(0);
-          BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
-          Assert.assertNotNull(bloomFilter);
-          assertEquals(253, idMeta.getBloomFilterOffset());
-          assertEquals(2064, idMeta.getBloomFilterLength());
-          for (int i = 0; i < expectedRowCount; ++i) {
-            assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))));
-          }
-          for (int i = 0; i < unexpectedValues.length; ++i) {
-            assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
-          }
-          assertEquals(199, idMeta.getTotalSize());
-          assertEquals(199, idMeta.getTotalUncompressedSize());
-          assertEquals(2342, idMeta.getOffsetIndexReference().getOffset());
-          assertEquals(11, idMeta.getOffsetIndexReference().getLength());
-          assertEquals(2317, idMeta.getColumnIndexReference().getOffset());
-          assertEquals(25, idMeta.getColumnIndexReference().getLength());
-        } catch (Exception e) {
-          fail("Should not throw exception: " + e.getMessage());
+        ParquetReadOptions.builder().build());
+    List<BlockMetaData> blocks = reader.getRowGroups();
+    blocks.forEach(block -> {
+      try {
+        assertEquals(14, block.getRowCount());
+        ColumnChunkMetaData idMeta = block.getColumns().get(0);
+        BloomFilter bloomFilter = reader.readBloomFilter(idMeta);
+        Assert.assertNotNull(bloomFilter);
+        assertEquals(253, idMeta.getBloomFilterOffset());
+        assertEquals(2064, idMeta.getBloomFilterLength());
+        for (int i = 0; i < expectedRowCount; ++i) {
+          assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(expectedValues[i]))));
         }
-      });
-    }
+        for (int i = 0; i < unexpectedValues.length; ++i) {
+          assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
+        }
+        assertEquals(199, idMeta.getTotalSize());
+        assertEquals(199, idMeta.getTotalUncompressedSize());
+        assertEquals(2342, idMeta.getOffsetIndexReference().getOffset());
+        assertEquals(11, idMeta.getOffsetIndexReference().getLength());
+        assertEquals(2317, idMeta.getColumnIndexReference().getOffset());
+        assertEquals(25, idMeta.getColumnIndexReference().getLength());
+      } catch (Exception e) {
+        fail("Should not throw exception: " + e.getMessage());
+      }
+    });
   }
 
   private Path downloadInterOpFiles(Path rootPath, String fileName, OkHttpClient httpClient) throws IOException {
