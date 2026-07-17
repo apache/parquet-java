@@ -18,11 +18,8 @@
  */
 package org.apache.parquet.column.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -47,43 +44,58 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class TestCorruptDeltaByteArrays {
   @Test
   public void testCorruptDeltaByteArrayVersions() {
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_BYTE_ARRAY));
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.DELTA_BYTE_ARRAY));
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.DELTA_BYTE_ARRAY));
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.DELTA_BYTE_ARRAY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BINARY_PACKED));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_LENGTH_BYTE_ARRAY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.PLAIN));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.RLE));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.RLE_DICTIONARY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.PLAIN_DICTIONARY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.BIT_PACKED));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(
-        "parquet-mr version 1.8.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY))
+        .isTrue();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_BYTE_ARRAY))
+        .isTrue();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.DELTA_BYTE_ARRAY))
+        .isTrue();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.DELTA_BYTE_ARRAY))
+        .isTrue();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.DELTA_BYTE_ARRAY))
+        .isTrue();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BINARY_PACKED))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_LENGTH_BYTE_ARRAY))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.PLAIN))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.RLE))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.RLE_DICTIONARY))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.PLAIN_DICTIONARY))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.BIT_PACKED))
+        .isFalse();
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(
+            "parquet-mr version 1.8.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY))
+        .isFalse();
   }
 
   @Test
   public void testEncodingRequiresSequentialRead() {
     ParsedVersion impala = new ParsedVersion("impala", "1.2.0", "abcd");
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(impala, Encoding.DELTA_BYTE_ARRAY));
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(impala, Encoding.DELTA_BYTE_ARRAY))
+        .isFalse();
     ParsedVersion broken = new ParsedVersion("parquet-mr", "1.8.0-SNAPSHOT", "abcd");
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads(broken, Encoding.DELTA_BYTE_ARRAY));
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(broken, Encoding.DELTA_BYTE_ARRAY))
+        .isTrue();
     ParsedVersion fixed = new ParsedVersion("parquet-mr", "1.8.0", "abcd");
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(fixed, Encoding.DELTA_BYTE_ARRAY));
+    assertThat(CorruptDeltaByteArrays.requiresSequentialReads(fixed, Encoding.DELTA_BYTE_ARRAY))
+        .isFalse();
   }
 
   private DeltaByteArrayWriter getDeltaByteArrayWriter() {
@@ -112,24 +124,19 @@ public class TestCorruptDeltaByteArrays {
     DeltaByteArrayReader firstPageReader = new DeltaByteArrayReader();
     firstPageReader.initFromPage(10, ByteBufferInputStream.wrap(firstPageBytes));
     for (int i = 0; i < 10; i += 1) {
-      assertEquals(str(i), firstPageReader.readBytes().toStringUsingUTF8());
+      assertThat(firstPageReader.readBytes().toStringUsingUTF8()).isEqualTo(str(i));
     }
 
     DeltaByteArrayReader corruptPageReader = new DeltaByteArrayReader();
     corruptPageReader.initFromPage(10, ByteBufferInputStream.wrap(corruptPageBytes));
-    try {
-      corruptPageReader.readBytes();
-      fail("Corrupt page did not throw an exception when read");
-    } catch (ArrayIndexOutOfBoundsException e) {
-      // expected, this is a corrupt page
-    }
+    assertThatThrownBy(corruptPageReader::readBytes).isInstanceOf(ArrayIndexOutOfBoundsException.class);
 
     DeltaByteArrayReader secondPageReader = new DeltaByteArrayReader();
     secondPageReader.initFromPage(10, ByteBufferInputStream.wrap(corruptPageBytes));
     secondPageReader.setPreviousReader(firstPageReader);
 
     for (int i = 10; i < 20; i += 1) {
-      assertEquals(secondPageReader.readBytes().toStringUsingUTF8(), str(i));
+      assertThat(secondPageReader.readBytes().toStringUsingUTF8()).isEqualTo(str(i));
     }
   }
 
@@ -152,7 +159,7 @@ public class TestCorruptDeltaByteArrays {
     DeltaByteArrayReader firstPageReader = new DeltaByteArrayReader();
     firstPageReader.initFromPage(10, ByteBufferInputStream.wrap(firstPageBytes));
     for (int i = 0; i < 10; i += 1) {
-      assertEquals(firstPageReader.readBytes().toStringUsingUTF8(), str(i));
+      assertThat(firstPageReader.readBytes().toStringUsingUTF8()).isEqualTo(str(i));
     }
 
     DeltaByteArrayReader secondPageReader = new DeltaByteArrayReader();
@@ -160,7 +167,7 @@ public class TestCorruptDeltaByteArrays {
     secondPageReader.setPreviousReader(firstPageReader);
 
     for (int i = 10; i < 20; i += 1) {
-      assertEquals(secondPageReader.readBytes().toStringUsingUTF8(), str(i));
+      assertThat(secondPageReader.readBytes().toStringUsingUTF8()).isEqualTo(str(i));
     }
   }
 
@@ -183,14 +190,14 @@ public class TestCorruptDeltaByteArrays {
     DeltaByteArrayReader firstPageReader = new DeltaByteArrayReader();
     firstPageReader.initFromPage(10, ByteBufferInputStream.wrap(firstPageBytes));
     for (int i = 0; i < 10; i += 1) {
-      assertEquals(firstPageReader.readBytes().toStringUsingUTF8(), str(i));
+      assertThat(firstPageReader.readBytes().toStringUsingUTF8()).isEqualTo(str(i));
     }
 
     DeltaByteArrayReader secondPageReader = new DeltaByteArrayReader();
     secondPageReader.initFromPage(10, ByteBufferInputStream.wrap(secondPageBytes));
 
     for (int i = 10; i < 20; i += 1) {
-      assertEquals(secondPageReader.readBytes().toStringUsingUTF8(), str(i));
+      assertThat(secondPageReader.readBytes().toStringUsingUTF8()).isEqualTo(str(i));
     }
   }
 
@@ -262,7 +269,7 @@ public class TestCorruptDeltaByteArrays {
       columnReader.consume();
     }
 
-    Assert.assertEquals(values, actualValues);
+    assertThat(actualValues).isEqualTo(values);
   }
 
   @Test
@@ -273,13 +280,17 @@ public class TestCorruptDeltaByteArrays {
 
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
     reader.setPreviousReader(previousReader);
-    assertSame(previous, getPrevious(reader));
+    assertThat(getPrevious(reader)).isSameAs(previous);
 
     reader.setPreviousReader(null);
-    assertSame("The previous field should have not changed", previous, getPrevious(reader));
+    assertThat(getPrevious(reader))
+        .as("The previous field should have not changed")
+        .isSameAs(previous);
 
     reader.setPreviousReader(Mockito.mock(DictionaryValuesReader.class));
-    assertSame("The previous field should have not changed", previous, getPrevious(reader));
+    assertThat(getPrevious(reader))
+        .as("The previous field should have not changed")
+        .isSameAs(previous);
   }
 
   private Binary getPrevious(DeltaByteArrayReader reader) {

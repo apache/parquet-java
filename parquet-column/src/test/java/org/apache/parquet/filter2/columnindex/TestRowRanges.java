@@ -20,14 +20,9 @@ package org.apache.parquet.filter2.columnindex;
 
 import static org.apache.parquet.filter2.columnindex.RowRanges.intersection;
 import static org.apache.parquet.filter2.columnindex.RowRanges.union;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
-import java.util.Arrays;
 import java.util.PrimitiveIterator;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.junit.Test;
@@ -67,13 +62,6 @@ public class TestRowRanges {
         rowIndexes[rowIndexes.length - 1], pageIndexes, builder.build());
   }
 
-  private static void assertAllRowsEqual(PrimitiveIterator.OfLong actualIt, long... expectedValues) {
-    LongList actualList = new LongArrayList();
-    actualIt.forEachRemaining((long value) -> actualList.add(value));
-    assertArrayEquals(
-        Arrays.toString(expectedValues) + "!= " + actualList, expectedValues, actualList.toLongArray());
-  }
-
   @Test
   public void testCreate() {
     // Offset-index pages never overlap; consecutive pages are at most adjacent ([6, 7] then [8, 10]),
@@ -84,24 +72,24 @@ public class TestRowRanges {
         6, 7,
         8, 10,
         15, 17);
-    assertAllRowsEqual(ranges.iterator(), 1, 2, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17);
-    assertEquals(12, ranges.rowCount());
-    assertTrue(ranges.isOverlapping(4, 5));
-    assertFalse(ranges.isOverlapping(5, 5));
-    assertTrue(ranges.isOverlapping(10, 14));
-    assertFalse(ranges.isOverlapping(11, 14));
-    assertFalse(ranges.isOverlapping(18, Long.MAX_VALUE));
+    assertThat(ranges.iterator()).toIterable().containsExactly(1L, 2L, 3L, 4L, 6L, 7L, 8L, 9L, 10L, 15L, 16L, 17L);
+    assertThat(ranges.rowCount()).isEqualTo(12);
+    assertThat(ranges.isOverlapping(4, 5)).isTrue();
+    assertThat(ranges.isOverlapping(5, 5)).isFalse();
+    assertThat(ranges.isOverlapping(10, 14)).isTrue();
+    assertThat(ranges.isOverlapping(11, 14)).isFalse();
+    assertThat(ranges.isOverlapping(18, Long.MAX_VALUE)).isFalse();
 
     ranges = RowRanges.createSingle(5);
-    assertAllRowsEqual(ranges.iterator(), 0, 1, 2, 3, 4);
-    assertEquals(5, ranges.rowCount());
-    assertTrue(ranges.isOverlapping(0, 100));
-    assertFalse(ranges.isOverlapping(5, Long.MAX_VALUE));
+    assertThat(ranges.iterator()).toIterable().containsExactly(0L, 1L, 2L, 3L, 4L);
+    assertThat(ranges.rowCount()).isEqualTo(5);
+    assertThat(ranges.isOverlapping(0, 100)).isTrue();
+    assertThat(ranges.isOverlapping(5, Long.MAX_VALUE)).isFalse();
 
     ranges = RowRanges.EMPTY;
-    assertAllRowsEqual(ranges.iterator());
-    assertEquals(0, ranges.rowCount());
-    assertFalse(ranges.isOverlapping(0, Long.MAX_VALUE));
+    assertThat(ranges.iterator()).toIterable().isEmpty();
+    assertThat(ranges.rowCount()).isZero();
+    assertThat(ranges.isOverlapping(0, Long.MAX_VALUE)).isFalse();
   }
 
   @Test
@@ -118,17 +106,31 @@ public class TestRowRanges {
         14, 15,
         21, 22);
     RowRanges empty = buildRanges();
-    assertAllRowsEqual(
-        union(ranges1, ranges2).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(
-        union(ranges2, ranges1).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(union(ranges1, ranges1).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(union(ranges1, empty).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(union(empty, ranges1).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(union(ranges2, ranges2).iterator(), 1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
-    assertAllRowsEqual(union(ranges2, empty).iterator(), 1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
-    assertAllRowsEqual(union(empty, ranges2).iterator(), 1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
-    assertAllRowsEqual(union(empty, empty).iterator());
+    assertThat(union(ranges1, ranges2).iterator())
+        .toIterable()
+        .containsExactly(1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 11L, 12L, 14L, 15L, 20L, 21L, 22L, 23L, 24L);
+    assertThat(union(ranges2, ranges1).iterator())
+        .toIterable()
+        .containsExactly(1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 11L, 12L, 14L, 15L, 20L, 21L, 22L, 23L, 24L);
+    assertThat(union(ranges1, ranges1).iterator())
+        .toIterable()
+        .containsExactly(2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 20L, 21L, 22L, 23L, 24L);
+    assertThat(union(ranges1, empty).iterator())
+        .toIterable()
+        .containsExactly(2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 20L, 21L, 22L, 23L, 24L);
+    assertThat(union(empty, ranges1).iterator())
+        .toIterable()
+        .containsExactly(2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 20L, 21L, 22L, 23L, 24L);
+    assertThat(union(ranges2, ranges2).iterator())
+        .toIterable()
+        .containsExactly(1L, 2L, 4L, 5L, 11L, 12L, 14L, 15L, 21L, 22L);
+    assertThat(union(ranges2, empty).iterator())
+        .toIterable()
+        .containsExactly(1L, 2L, 4L, 5L, 11L, 12L, 14L, 15L, 21L, 22L);
+    assertThat(union(empty, ranges2).iterator())
+        .toIterable()
+        .containsExactly(1L, 2L, 4L, 5L, 11L, 12L, 14L, 15L, 21L, 22L);
+    assertThat(union(empty, empty).iterator()).toIterable().isEmpty();
   }
 
   @Test
@@ -146,15 +148,19 @@ public class TestRowRanges {
         14, 15,
         21, 22);
     RowRanges empty = buildRanges();
-    assertAllRowsEqual(intersection(ranges1, ranges2).iterator(), 2, 7, 9, 14, 21, 22);
-    assertAllRowsEqual(intersection(ranges2, ranges1).iterator(), 2, 7, 9, 14, 21, 22);
-    assertAllRowsEqual(intersection(ranges1, ranges1).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(intersection(ranges1, empty).iterator());
-    assertAllRowsEqual(intersection(empty, ranges1).iterator());
-    assertAllRowsEqual(intersection(ranges2, ranges2).iterator(), 1, 2, 6, 7, 9, 11, 12, 14, 15, 21, 22);
-    assertAllRowsEqual(intersection(ranges2, empty).iterator());
-    assertAllRowsEqual(intersection(empty, ranges2).iterator());
-    assertAllRowsEqual(intersection(empty, empty).iterator());
+    assertThat(intersection(ranges1, ranges2).iterator()).toIterable().containsExactly(2L, 7L, 9L, 14L, 21L, 22L);
+    assertThat(intersection(ranges2, ranges1).iterator()).toIterable().containsExactly(2L, 7L, 9L, 14L, 21L, 22L);
+    assertThat(intersection(ranges1, ranges1).iterator())
+        .toIterable()
+        .containsExactly(2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 20L, 21L, 22L, 23L, 24L);
+    assertThat(intersection(ranges1, empty).iterator()).toIterable().isEmpty();
+    assertThat(intersection(empty, ranges1).iterator()).toIterable().isEmpty();
+    assertThat(intersection(ranges2, ranges2).iterator())
+        .toIterable()
+        .containsExactly(1L, 2L, 6L, 7L, 9L, 11L, 12L, 14L, 15L, 21L, 22L);
+    assertThat(intersection(ranges2, empty).iterator()).toIterable().isEmpty();
+    assertThat(intersection(empty, ranges2).iterator()).toIterable().isEmpty();
+    assertThat(intersection(empty, empty).iterator()).toIterable().isEmpty();
   }
 
   @Test
@@ -166,8 +172,8 @@ public class TestRowRanges {
         .addSelectedRow(4)
         .addSelectedRow(5)
         .build();
-    assertAllRowsEqual(ranges.iterator(), 2, 3, 4, 5);
-    assertEquals(4, ranges.rowCount());
+    assertThat(ranges.iterator()).toIterable().containsExactly(2L, 3L, 4L, 5L);
+    assertThat(ranges.rowCount()).isEqualTo(4);
   }
 
   @Test
@@ -180,20 +186,20 @@ public class TestRowRanges {
         .addSelectedRow(6)
         .addSelectedRow(7)
         .build();
-    assertAllRowsEqual(ranges.iterator(), 1, 2, 5, 6, 7);
-    assertEquals(5, ranges.rowCount());
-    assertTrue(ranges.isOverlapping(1, 2));
-    assertTrue(ranges.isOverlapping(5, 7));
-    assertFalse(ranges.isOverlapping(3, 4));
+    assertThat(ranges.iterator()).toIterable().containsExactly(1L, 2L, 5L, 6L, 7L);
+    assertThat(ranges.rowCount()).isEqualTo(5);
+    assertThat(ranges.isOverlapping(1, 2)).isTrue();
+    assertThat(ranges.isOverlapping(5, 7)).isTrue();
+    assertThat(ranges.isOverlapping(3, 4)).isFalse();
   }
 
   @Test
   public void testBuilderEmpty() {
     // No rows selected
     RowRanges ranges = RowRanges.builder().build();
-    assertEquals(RowRanges.EMPTY, ranges);
-    assertEquals(0, ranges.rowCount());
-    assertAllRowsEqual(ranges.iterator());
+    assertThat(ranges).isEqualTo(RowRanges.EMPTY);
+    assertThat(ranges.rowCount()).isZero();
+    assertThat(ranges.iterator()).toIterable().isEmpty();
   }
 
   @Test
@@ -204,18 +210,18 @@ public class TestRowRanges {
       builder.addSelectedRow(i);
     }
     RowRanges ranges = builder.build();
-    assertAllRowsEqual(ranges.iterator(), 0, 1, 2, 3, 4);
-    assertEquals(5, ranges.rowCount());
+    assertThat(ranges.iterator()).toIterable().containsExactly(0L, 1L, 2L, 3L, 4L);
+    assertThat(ranges.rowCount()).isEqualTo(5);
   }
 
   @Test
   public void testBuilderSingleRow() {
     RowRanges ranges = RowRanges.builder().addSelectedRow(3).build();
-    assertAllRowsEqual(ranges.iterator(), 3);
-    assertEquals(1, ranges.rowCount());
-    assertTrue(ranges.isOverlapping(3, 3));
-    assertFalse(ranges.isOverlapping(0, 2));
-    assertFalse(ranges.isOverlapping(4, 10));
+    assertThat(ranges.iterator()).toIterable().containsExactly(3L);
+    assertThat(ranges.rowCount()).isEqualTo(1);
+    assertThat(ranges.isOverlapping(3, 3)).isTrue();
+    assertThat(ranges.isOverlapping(0, 2)).isFalse();
+    assertThat(ranges.isOverlapping(4, 10)).isFalse();
   }
 
   @Test
@@ -226,49 +232,40 @@ public class TestRowRanges {
       builder.addSelectedRow(i);
     }
     RowRanges ranges = builder.build();
-    assertAllRowsEqual(ranges.iterator(), 0, 2, 4, 6, 8);
-    assertEquals(5, ranges.rowCount());
+    assertThat(ranges.iterator()).toIterable().containsExactly(0L, 2L, 4L, 6L, 8L);
+    assertThat(ranges.rowCount()).isEqualTo(5);
   }
 
   @Test
   public void testBuilderFirstAndLast() {
     RowRanges ranges =
         RowRanges.builder().addSelectedRow(0).addSelectedRow(99).build();
-    assertAllRowsEqual(ranges.iterator(), 0, 99);
-    assertEquals(2, ranges.rowCount());
+    assertThat(ranges.iterator()).toIterable().containsExactly(0L, 99L);
+    assertThat(ranges.rowCount()).isEqualTo(2);
   }
 
   @Test
   public void testBuilderRejectsOutOfOrder() {
     RowRanges.Builder builder = RowRanges.builder().addSelectedRow(5).addSelectedRow(7);
-    try {
-      builder.addSelectedRow(6);
-      org.junit.Assert.fail("expected IllegalArgumentException for out-of-order index");
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    assertThatThrownBy(() -> builder.addSelectedRow(6))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("addSelectedRange requires strictly increasing ranges; got [6, 6] after 7");
   }
 
   @Test
   public void testBuilderRejectsDuplicate() {
     RowRanges.Builder builder = RowRanges.builder().addSelectedRow(3);
-    try {
-      builder.addSelectedRow(3);
-      org.junit.Assert.fail("expected IllegalArgumentException for duplicate index");
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    assertThatThrownBy(() -> builder.addSelectedRow(3))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("addSelectedRange requires strictly increasing ranges; got [3, 3] after 3");
   }
 
   @Test
   public void testBuilderRejectsNegativeRow() {
     RowRanges.Builder builder = RowRanges.builder();
-    try {
-      builder.addSelectedRow(-1);
-      org.junit.Assert.fail("expected IllegalArgumentException for negative index");
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    assertThatThrownBy(() -> builder.addSelectedRow(-1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("addSelectedRange requires a non-negative row index; got -1");
   }
 
   @Test
@@ -276,14 +273,11 @@ public class TestRowRanges {
     // After Long.MAX_VALUE, runEnd + 1 would overflow; the strictly-increasing guard must still
     // reject any follow-up index rather than silently starting a new run.
     RowRanges.Builder builder = RowRanges.builder().addSelectedRow(Long.MAX_VALUE);
-    try {
-      builder.addSelectedRow(5);
-      org.junit.Assert.fail("expected IllegalArgumentException for index after Long.MAX_VALUE");
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    assertThatThrownBy(() -> builder.addSelectedRow(5))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("addSelectedRange requires strictly increasing ranges; got [5, 5] after " + Long.MAX_VALUE);
     // Long.MAX_VALUE alone is a valid single-row selection.
-    assertAllRowsEqual(builder.build().iterator(), Long.MAX_VALUE);
+    assertThat(builder.build().iterator()).toIterable().containsExactly(Long.MAX_VALUE);
   }
 
   @Test
@@ -293,30 +287,24 @@ public class TestRowRanges {
         .addSelectedRange(3, 5) // adjacent to the previous run -> coalesced into [0, 5]
         .addSelectedRange(8, 9) // gap -> separate run
         .build();
-    assertAllRowsEqual(ranges.iterator(), 0, 1, 2, 3, 4, 5, 8, 9);
-    assertEquals(8, ranges.rowCount());
+    assertThat(ranges.iterator()).toIterable().containsExactly(0L, 1L, 2L, 3L, 4L, 5L, 8L, 9L);
+    assertThat(ranges.rowCount()).isEqualTo(8);
   }
 
   @Test
   public void testBuilderAddSelectedRangeRejectsOverlap() {
     RowRanges.Builder builder = RowRanges.builder().addSelectedRange(0, 10);
-    try {
-      builder.addSelectedRange(5, 15);
-      org.junit.Assert.fail("expected IllegalArgumentException for overlapping range");
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    assertThatThrownBy(() -> builder.addSelectedRange(5, 15))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("addSelectedRange requires strictly increasing ranges; got [5, 15] after 10");
   }
 
   @Test
   public void testBuilderAddSelectedRangeRejectsFromGreaterThanTo() {
     RowRanges.Builder builder = RowRanges.builder();
-    try {
-      builder.addSelectedRange(5, 3);
-      org.junit.Assert.fail("expected IllegalArgumentException for from > to");
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    assertThatThrownBy(() -> builder.addSelectedRange(5, 3))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("addSelectedRange requires from <= to; got [5, 3]");
   }
 
   @Test
@@ -325,17 +313,17 @@ public class TestRowRanges {
     // mutate a previously built result.
     RowRanges.Builder builder = RowRanges.builder().addSelectedRow(0).addSelectedRow(1);
     RowRanges first = builder.build();
-    assertAllRowsEqual(first.iterator(), 0, 1);
-    assertEquals(2, first.rowCount());
+    assertThat(first.iterator()).toIterable().containsExactly(0L, 1L);
+    assertThat(first.rowCount()).isEqualTo(2);
 
     builder.addSelectedRow(5);
     RowRanges second = builder.build();
 
     // The first result is unchanged.
-    assertAllRowsEqual(first.iterator(), 0, 1);
-    assertEquals(2, first.rowCount());
+    assertThat(first.iterator()).toIterable().containsExactly(0L, 1L);
+    assertThat(first.rowCount()).isEqualTo(2);
     // The second result reflects the additional row.
-    assertAllRowsEqual(second.iterator(), 0, 1, 5);
-    assertEquals(3, second.rowCount());
+    assertThat(second.iterator()).toIterable().containsExactly(0L, 1L, 5L);
+    assertThat(second.rowCount()).isEqualTo(3);
   }
 }

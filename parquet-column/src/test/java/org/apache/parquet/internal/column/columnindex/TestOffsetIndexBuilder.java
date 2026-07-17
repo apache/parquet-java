@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
@@ -30,8 +29,8 @@ public class TestOffsetIndexBuilder {
   @Test
   public void testBuilderWithSizeAndRowCount() {
     OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
-    assertNull(builder.build());
-    assertNull(builder.build(1234));
+    assertThat(builder.build()).isNull();
+    assertThat(builder.build(1234)).isNull();
 
     builder.add(1000, 10);
     builder.add(2000, 19);
@@ -48,15 +47,15 @@ public class TestOffsetIndexBuilder {
     builder.add(3, 4);
     builder.add(5, 6);
     builder.add(7, 8);
-    assertNull(builder.build());
-    assertNull(builder.build(1000));
+    assertThat(builder.build()).isNull();
+    assertThat(builder.build(1000)).isNull();
   }
 
   @Test
   public void testBuilderWithOffsetSizeIndex() {
     OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
-    assertNull(builder.build());
-    assertNull(builder.build(1234));
+    assertThat(builder.build()).isNull();
+    assertThat(builder.build(1234)).isNull();
 
     builder.add(1000, 10000, 0);
     builder.add(22000, 12000, 100);
@@ -74,28 +73,20 @@ public class TestOffsetIndexBuilder {
     builder.add(4, 5, 6);
     builder.add(7, 8, 9);
     builder.add(10, 11, 12);
-    assertNull(builder.build());
-    assertNull(builder.build(1000));
+    assertThat(builder.build()).isNull();
+    assertThat(builder.build(1000)).isNull();
   }
 
   private void assertCorrectValues(OffsetIndex offsetIndex, long... offset_size_rowIndex_triplets) {
-    assertEquals(offset_size_rowIndex_triplets.length % 3, 0);
+    assertThat(offset_size_rowIndex_triplets.length % 3).isEqualTo(0);
     int pageCount = offset_size_rowIndex_triplets.length / 3;
-    assertEquals("Invalid pageCount", pageCount, offsetIndex.getPageCount());
+    assertThat(offsetIndex.getPageCount()).as("Invalid pageCount").isEqualTo(pageCount);
     for (int i = 0; i < pageCount; ++i) {
-      assertEquals(
-          "Invalid offsetIndex at page " + i, offset_size_rowIndex_triplets[3 * i], offsetIndex.getOffset(i));
-      assertEquals(
-          "Invalid compressedPageSize at page " + i,
-          offset_size_rowIndex_triplets[3 * i + 1],
-          offsetIndex.getCompressedPageSize(i));
-      assertEquals(
-          "Invalid firstRowIndex at page " + i,
-          offset_size_rowIndex_triplets[3 * i + 2],
-          offsetIndex.getFirstRowIndex(i));
+      assertThat(offsetIndex.getOffset(i)).isEqualTo(offset_size_rowIndex_triplets[3 * i]);
+      assertThat(offsetIndex.getCompressedPageSize(i)).isEqualTo(offset_size_rowIndex_triplets[3 * i + 1]);
+      assertThat(offsetIndex.getFirstRowIndex(i)).isEqualTo(offset_size_rowIndex_triplets[3 * i + 2]);
       long expectedLastPageIndex = (i < pageCount - 1) ? (offset_size_rowIndex_triplets[3 * i + 5] - 1) : 999;
-      assertEquals(
-          "Invalid lastRowIndex at page " + i, expectedLastPageIndex, offsetIndex.getLastRowIndex(i, 1000));
+      assertThat(offsetIndex.getLastRowIndex(i, 1000)).isEqualTo(expectedLastPageIndex);
     }
   }
 }

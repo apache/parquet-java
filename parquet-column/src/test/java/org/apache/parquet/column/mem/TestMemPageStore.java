@@ -20,9 +20,7 @@ package org.apache.parquet.column.mem;
 
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import org.apache.parquet.bytes.BytesInput;
@@ -60,7 +58,9 @@ public class TestMemPageStore {
     long totalValueCount = pageReader.getTotalValueCount();
     LOG.info("Total value count: " + totalValueCount);
 
-    assertEquals("Expected total value count to be 836 (4 pages * 209 values)", 836, totalValueCount);
+    assertThat(totalValueCount)
+        .as("Expected total value count to be 836 (4 pages * 209 values)")
+        .isEqualTo(836);
 
     int total = 0;
     int pageCount = 0;
@@ -68,16 +68,24 @@ public class TestMemPageStore {
       DataPage readPage = pageReader.readPage();
 
       // Assert page was successfully read
-      assertNotNull("Page should not be null", readPage);
+      assertThat(readPage).as("Page should not be null").isNotNull();
       // Assert page has expected value count
-      assertEquals("Each page should have 209 values", 209, readPage.getValueCount());
+      assertThat(readPage.getValueCount())
+          .as("Each page should have 209 values")
+          .isEqualTo(209);
       // Assert encodings when the implementation is DataPageV1
-      assertTrue("Page should be an instance of DataPageV1", readPage instanceof DataPageV1);
+      assertThat(readPage).as("Page should be an instance of DataPageV1").isInstanceOf(DataPageV1.class);
       if (readPage instanceof DataPageV1) {
         DataPageV1 v1 = (DataPageV1) readPage;
-        assertEquals("Page repetition level encoding should be BIT_PACKED", BIT_PACKED, v1.getRlEncoding());
-        assertEquals("Page definition level encoding should be BIT_PACKED", BIT_PACKED, v1.getDlEncoding());
-        assertEquals("Page value encoding should be PLAIN", PLAIN, v1.getValueEncoding());
+        assertThat(v1.getRlEncoding())
+            .as("Page repetition level encoding should be BIT_PACKED")
+            .isEqualTo(BIT_PACKED);
+        assertThat(v1.getDlEncoding())
+            .as("Page definition level encoding should be BIT_PACKED")
+            .isEqualTo(BIT_PACKED);
+        assertThat(v1.getValueEncoding())
+            .as("Page value encoding should be PLAIN")
+            .isEqualTo(PLAIN);
       }
 
       total += readPage.getValueCount();
@@ -85,7 +93,7 @@ public class TestMemPageStore {
     } while (total < totalValueCount);
 
     // Assert we read exactly the expected number of pages and values
-    assertEquals("Should have read 4 pages", 4, pageCount);
-    assertEquals("Total values read should match totalValueCount", totalValueCount, total);
+    assertThat(pageCount).as("Should have read 4 pages").isEqualTo(4);
+    assertThat(total).as("Total values read should match totalValueCount").isEqualTo(totalValueCount);
   }
 }

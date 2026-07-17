@@ -50,16 +50,14 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestTypeBuilders {
@@ -102,7 +100,7 @@ public class TestTypeBuilders {
         .named("Url")
         .named("Name")
         .named("Document");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
   }
 
   @Test
@@ -119,7 +117,7 @@ public class TestTypeBuilders {
           .addFields(f2, f3)
           .named("g1")
           .named(name);
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
 
       switch (repetition) {
         case REQUIRED:
@@ -147,7 +145,7 @@ public class TestTypeBuilders {
               .named(name);
           break;
       }
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
     }
   }
 
@@ -155,11 +153,11 @@ public class TestTypeBuilders {
   public void testPrimitiveTypeConstruction() {
     PrimitiveTypeName[] types = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, FLOAT, DOUBLE, BINARY};
     for (PrimitiveTypeName type : types) {
-      String name = type.toString() + "_";
+      String name = type + "_";
       for (Type.Repetition repetition : Type.Repetition.values()) {
         PrimitiveType expected = new PrimitiveType(repetition, type, name);
         PrimitiveType built = Types.primitive(type, repetition).named(name);
-        Assert.assertEquals(expected, built);
+        assertThat(built).isEqualTo(expected);
         switch (repetition) {
           case REQUIRED:
             built = Types.required(type).named(name);
@@ -171,7 +169,7 @@ public class TestTypeBuilders {
             built = Types.repeated(type).named(name);
             break;
         }
-        Assert.assertEquals(expected, built);
+        assertThat(built).isEqualTo(expected);
       }
     }
   }
@@ -185,7 +183,7 @@ public class TestTypeBuilders {
       PrimitiveType built = Types.primitive(FIXED_LEN_BYTE_ARRAY, repetition)
           .length(len)
           .named(name);
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
       switch (repetition) {
         case REQUIRED:
           built = Types.required(FIXED_LEN_BYTE_ARRAY).length(len).named(name);
@@ -197,34 +195,30 @@ public class TestTypeBuilders {
           built = Types.repeated(FIXED_LEN_BYTE_ARRAY).length(len).named(name);
           break;
       }
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
     }
   }
 
   @Test
   public void testEmptyGroup() {
     // empty groups are allowed to support selecting 0 columns (counting rows)
-    Assert.assertEquals(
-        "Should not complain about an empty required group",
-        Types.requiredGroup().named("g"),
-        new GroupType(REQUIRED, "g"));
-    Assert.assertEquals(
-        "Should not complain about an empty required group",
-        Types.optionalGroup().named("g"),
-        new GroupType(OPTIONAL, "g"));
-    Assert.assertEquals(
-        "Should not complain about an empty required group",
-        Types.repeatedGroup().named("g"),
-        new GroupType(REPEATED, "g"));
+    assertThat(new GroupType(REQUIRED, "g"))
+        .as("Should not complain about an empty required group")
+        .isEqualTo(Types.requiredGroup().named("g"));
+    assertThat(new GroupType(OPTIONAL, "g"))
+        .as("Should not complain about an empty required group")
+        .isEqualTo(Types.optionalGroup().named("g"));
+    assertThat(new GroupType(REPEATED, "g"))
+        .as("Should not complain about an empty required group")
+        .isEqualTo(Types.repeatedGroup().named("g"));
   }
 
   @Test
   public void testEmptyMessage() {
     // empty groups are allowed to support selecting 0 columns (counting rows)
-    Assert.assertEquals(
-        "Should not complain about an empty required group",
-        Types.buildMessage().named("m"),
-        new MessageType("m"));
+    assertThat(new MessageType("m"))
+        .as("Should not complain about an empty required group")
+        .isEqualTo(Types.buildMessage().named("m"));
   }
 
   @Test
@@ -238,14 +232,14 @@ public class TestTypeBuilders {
   public void testFixedWithLength() {
     PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 7, "fixed");
     PrimitiveType fixed = Types.required(FIXED_LEN_BYTE_ARRAY).length(7).named("fixed");
-    Assert.assertEquals(expected, fixed);
+    assertThat(fixed).isEqualTo(expected);
   }
 
   @Test
   public void testFixedLengthEquals() {
     Type f4 = Types.required(FIXED_LEN_BYTE_ARRAY).length(4).named("f4");
     Type f8 = Types.required(FIXED_LEN_BYTE_ARRAY).length(8).named("f8");
-    Assert.assertFalse("Types with different lengths should not be equal", f4.equals(f8));
+    assertThat(f4).as("Types with different lengths should not be equal").isNotEqualTo(f8);
   }
 
   @Test
@@ -261,7 +255,7 @@ public class TestTypeBuilders {
         .scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
     // int64 primitive type
     expected = new MessageType(
         "DecimalMessage",
@@ -273,7 +267,7 @@ public class TestTypeBuilders {
         .scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
     // binary primitive type
     expected = new MessageType(
         "DecimalMessage",
@@ -285,7 +279,7 @@ public class TestTypeBuilders {
         .scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
     // fixed primitive type
     expected = new MessageType(
         "DecimalMessage",
@@ -299,7 +293,7 @@ public class TestTypeBuilders {
         .scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
   }
 
   @Test
@@ -313,7 +307,7 @@ public class TestTypeBuilders {
         .precision(9)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
 
     expected = new MessageType(
         "DecimalMessage",
@@ -324,7 +318,7 @@ public class TestTypeBuilders {
         .precision(9)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
 
     expected = new MessageType(
         "DecimalMessage",
@@ -335,7 +329,7 @@ public class TestTypeBuilders {
         .precision(9)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
 
     expected = new MessageType(
         "DecimalMessage",
@@ -348,118 +342,132 @@ public class TestTypeBuilders {
         .precision(9)
         .named("aDecimal")
         .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
+    assertThat(builderType).isEqualTo(expected);
   }
 
   @Test
   public void testDecimalAnnotationMissingPrecision() {
-    assertThrows(
-        "Should reject decimal annotation without precision", IllegalArgumentException.class, (Callable<Type>)
-            () -> Types.buildMessage()
-                .required(INT32)
-                .as(DECIMAL)
-                .scale(2)
-                .named("aDecimal")
-                .named("DecimalMessage"));
-    assertThrows(
-        "Should reject decimal annotation without precision", IllegalArgumentException.class, (Callable<Type>)
-            () -> Types.buildMessage()
-                .required(INT64)
-                .as(DECIMAL)
-                .scale(2)
-                .named("aDecimal")
-                .named("DecimalMessage"));
-    assertThrows(
-        "Should reject decimal annotation without precision", IllegalArgumentException.class, (Callable<Type>)
-            () -> Types.buildMessage()
-                .required(BINARY)
-                .as(DECIMAL)
-                .scale(2)
-                .named("aDecimal")
-                .named("DecimalMessage"));
-    assertThrows(
-        "Should reject decimal annotation without precision", IllegalArgumentException.class, (Callable<Type>)
-            () -> Types.buildMessage()
-                .required(FIXED_LEN_BYTE_ARRAY)
-                .length(7)
-                .as(DECIMAL)
-                .scale(2)
-                .named("aDecimal")
-                .named("DecimalMessage"));
+    assertThatThrownBy(() -> Types.buildMessage()
+            .required(INT32)
+            .as(DECIMAL)
+            .scale(2)
+            .named("aDecimal")
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL precision: 0");
+    assertThatThrownBy(() -> Types.buildMessage()
+            .required(INT64)
+            .as(DECIMAL)
+            .scale(2)
+            .named("aDecimal")
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL precision: 0");
+    assertThatThrownBy(() -> Types.buildMessage()
+            .required(BINARY)
+            .as(DECIMAL)
+            .scale(2)
+            .named("aDecimal")
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL precision: 0");
+    assertThatThrownBy(() -> Types.buildMessage()
+            .required(FIXED_LEN_BYTE_ARRAY)
+            .length(7)
+            .as(DECIMAL)
+            .scale(2)
+            .named("aDecimal")
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL precision: 0");
   }
 
   @Test
   public void testDecimalAnnotationPrecisionScaleBound() {
-    assertThrows("Should reject scale greater than precision", IllegalArgumentException.class, (Callable<Type>)
-        () -> Types.buildMessage()
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(INT32)
             .as(DECIMAL)
             .precision(3)
             .scale(4)
             .named("aDecimal")
-            .named("DecimalMessage"));
-    assertThrows("Should reject scale greater than precision", IllegalArgumentException.class, (Callable<Type>)
-        () -> Types.buildMessage()
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL scale: 4 cannot be greater than precision: 3");
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(INT64)
             .as(DECIMAL)
             .precision(3)
             .scale(4)
             .named("aDecimal")
-            .named("DecimalMessage"));
-    assertThrows("Should reject scale greater than precision", IllegalArgumentException.class, (Callable<Type>)
-        () -> Types.buildMessage()
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL scale: 4 cannot be greater than precision: 3");
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(BINARY)
             .as(DECIMAL)
             .precision(3)
             .scale(4)
             .named("aDecimal")
-            .named("DecimalMessage"));
-    assertThrows("Should reject scale greater than precision", IllegalArgumentException.class, (Callable<Type>)
-        () -> Types.buildMessage()
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL scale: 4 cannot be greater than precision: 3");
+    assertThatThrownBy(() -> Types.buildMessage()
             .required(FIXED_LEN_BYTE_ARRAY)
             .length(7)
             .as(DECIMAL)
             .precision(3)
             .scale(4)
             .named("aDecimal")
-            .named("DecimalMessage"));
+            .named("DecimalMessage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid DECIMAL scale: 4 cannot be greater than precision: 3");
   }
 
   @Test
   public void testDecimalAnnotationLengthCheck() {
     // maximum precision for 4 bytes is 9
-    assertThrows("should reject precision 10 with length 4", IllegalStateException.class, (Callable<Type>)
-        () -> Types.required(FIXED_LEN_BYTE_ARRAY)
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
             .length(4)
             .as(DECIMAL)
             .precision(10)
             .scale(2)
-            .named("aDecimal"));
-    assertThrows("should reject precision 10 with length 4", IllegalStateException.class, (Callable<Type>)
-        () -> Types.required(INT32).as(DECIMAL).precision(10).scale(2).named("aDecimal"));
+            .named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FIXED(4) cannot store 10 digits (max 9)");
+    assertThatThrownBy(() ->
+            Types.required(INT32).as(DECIMAL).precision(10).scale(2).named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INT32 cannot store 10 digits (max 9)");
     // maximum precision for 8 bytes is 19
-    assertThrows("should reject precision 19 with length 8", IllegalStateException.class, (Callable<Type>)
-        () -> Types.required(FIXED_LEN_BYTE_ARRAY)
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
             .length(8)
             .as(DECIMAL)
             .precision(19)
             .scale(4)
-            .named("aDecimal"));
-    assertThrows("should reject precision 19 with length 8", IllegalStateException.class, (Callable<Type>)
-        () -> Types.required(INT64)
+            .named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FIXED(8) cannot store 19 digits (max 18)");
+    assertThatThrownBy(() -> Types.required(INT64)
             .length(8)
             .as(DECIMAL)
             .precision(19)
             .scale(4)
-            .named("aDecimal"));
+            .named("aDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INT64 cannot store 19 digits (max 18)");
   }
 
   @Test
   public void testDECIMALAnnotationRejectsUnsupportedTypes() {
     PrimitiveTypeName[] unsupported = new PrimitiveTypeName[] {BOOLEAN, INT96, DOUBLE, FLOAT};
     for (final PrimitiveTypeName type : unsupported) {
-      assertThrows("Should reject non-binary type: " + type, IllegalStateException.class, (Callable<Type>)
-          () -> Types.required(type).as(DECIMAL).precision(9).scale(2).named("d"));
+      assertThatThrownBy(() -> Types.required(type)
+              .as(DECIMAL)
+              .precision(9)
+              .scale(2)
+              .named("d"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("DECIMAL can only annotate INT32, INT64, BINARY, and FIXED");
     }
   }
 
@@ -469,7 +477,7 @@ public class TestTypeBuilders {
     for (final OriginalType logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "col", logicalType);
       PrimitiveType string = Types.required(BINARY).as(logicalType).named("col");
-      Assert.assertEquals(expected, string);
+      assertThat(string).isEqualTo(expected);
     }
   }
 
@@ -479,15 +487,18 @@ public class TestTypeBuilders {
     for (final OriginalType logicalType : types) {
       PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT};
       for (final PrimitiveTypeName type : nonBinary) {
-        assertThrows("Should reject non-binary type: " + type, IllegalStateException.class, (Callable<Type>)
-            () -> Types.required(type).as(logicalType).named("col"));
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null)
+                + " can only annotate BINARY");
       }
-      assertThrows(
-          "Should reject non-binary type: FIXED_LEN_BYTE_ARRAY", IllegalStateException.class, (Callable<Type>)
-              () -> Types.required(FIXED_LEN_BYTE_ARRAY)
-                  .length(1)
-                  .as(logicalType)
-                  .named("col"));
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(1)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(
+              LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate BINARY");
     }
   }
 
@@ -497,7 +508,7 @@ public class TestTypeBuilders {
     for (OriginalType logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, INT32, "col", logicalType);
       PrimitiveType date = Types.required(INT32).as(logicalType).named("col");
-      Assert.assertEquals(expected, date);
+      assertThat(date).isEqualTo(expected);
     }
   }
 
@@ -507,15 +518,17 @@ public class TestTypeBuilders {
     for (final OriginalType logicalType : types) {
       PrimitiveTypeName[] nonInt32 = new PrimitiveTypeName[] {BOOLEAN, INT64, INT96, DOUBLE, FLOAT, BINARY};
       for (final PrimitiveTypeName type : nonInt32) {
-        assertThrows("Should reject non-int32 type: " + type, IllegalStateException.class, (Callable<Type>)
-            () -> Types.required(type).as(logicalType).named("col"));
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(
+                LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT32");
       }
-      assertThrows(
-          "Should reject non-int32 type: FIXED_LEN_BYTE_ARRAY", IllegalStateException.class, (Callable<Type>)
-              () -> Types.required(FIXED_LEN_BYTE_ARRAY)
-                  .length(1)
-                  .as(logicalType)
-                  .named("col"));
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(1)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT32");
     }
   }
 
@@ -525,7 +538,7 @@ public class TestTypeBuilders {
     for (OriginalType logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
       PrimitiveType date = Types.required(INT64).as(logicalType).named("col");
-      Assert.assertEquals(expected, date);
+      assertThat(date).isEqualTo(expected);
     }
   }
 
@@ -535,15 +548,17 @@ public class TestTypeBuilders {
     for (final OriginalType logicalType : types) {
       PrimitiveTypeName[] nonInt64 = new PrimitiveTypeName[] {BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY};
       for (final PrimitiveTypeName type : nonInt64) {
-        assertThrows("Should reject non-int64 type: " + type, IllegalStateException.class, (Callable<Type>)
-            () -> Types.required(type).as(logicalType).named("col"));
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(
+                LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
       }
-      assertThrows(
-          "Should reject non-int64 type: FIXED_LEN_BYTE_ARRAY", IllegalStateException.class, (Callable<Type>)
-              () -> Types.required(FIXED_LEN_BYTE_ARRAY)
-                  .length(1)
-                  .as(logicalType)
-                  .named("col"));
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(1)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
     }
   }
 
@@ -552,22 +567,27 @@ public class TestTypeBuilders {
     PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 12, "interval", INTERVAL);
     PrimitiveType string =
         Types.required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("interval");
-    Assert.assertEquals(expected, string);
+    assertThat(string).isEqualTo(expected);
   }
 
   @Test
   public void testIntervalAnnotationRejectsNonFixed() {
     PrimitiveTypeName[] nonFixed = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT, BINARY};
     for (final PrimitiveTypeName type : nonFixed) {
-      assertThrows("Should reject non-fixed type: " + type, IllegalStateException.class, (Callable<Type>)
-          () -> Types.required(type).as(INTERVAL).named("interval"));
+      assertThatThrownBy(() -> Types.required(type).as(INTERVAL).named("interval"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
     }
   }
 
   @Test
   public void testIntervalAnnotationRejectsNonFixed12() {
-    assertThrows("Should reject fixed with length != 12: " + 11, IllegalStateException.class, (Callable<Type>) () ->
-        Types.required(FIXED_LEN_BYTE_ARRAY).length(11).as(INTERVAL).named("interval"));
+    assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(11)
+            .as(INTERVAL)
+            .named("interval"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
   }
 
   @Test
@@ -578,7 +598,7 @@ public class TestTypeBuilders {
     GroupType expected =
         new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value", typeList));
     GroupType actual = Types.requiredMap().key(INT64).requiredValue(INT64).named("myMap");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -589,7 +609,7 @@ public class TestTypeBuilders {
     GroupType expected =
         new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value", typeList));
     GroupType actual = Types.optionalMap().key(INT64).requiredValue(INT64).named("myMap");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -606,7 +626,7 @@ public class TestTypeBuilders {
         .requiredValue(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -623,7 +643,7 @@ public class TestTypeBuilders {
         .optionalValue(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -655,7 +675,7 @@ public class TestTypeBuilders {
         .optional(INT32)
         .named("two")
         .named("myMap");
-    Assert.assertEquals(map, actual);
+    assertThat(actual).isEqualTo(map);
   }
 
   @Test
@@ -690,7 +710,7 @@ public class TestTypeBuilders {
         .named("two")
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -718,7 +738,7 @@ public class TestTypeBuilders {
         .optionalValue(DOUBLE)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -746,7 +766,7 @@ public class TestTypeBuilders {
         .requiredValue(DOUBLE)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -777,7 +797,7 @@ public class TestTypeBuilders {
         .named("two")
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -805,7 +825,7 @@ public class TestTypeBuilders {
         .named("two")
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -852,7 +872,7 @@ public class TestTypeBuilders {
         .named("two")
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -877,7 +897,7 @@ public class TestTypeBuilders {
         .optionalElement(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -902,7 +922,7 @@ public class TestTypeBuilders {
         .optionalElement(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -929,7 +949,7 @@ public class TestTypeBuilders {
         .requiredValue(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -956,7 +976,7 @@ public class TestTypeBuilders {
         .requiredValue(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -983,7 +1003,7 @@ public class TestTypeBuilders {
         .optionalElement(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1010,7 +1030,7 @@ public class TestTypeBuilders {
         .optionalElement(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1039,7 +1059,7 @@ public class TestTypeBuilders {
         .requiredValue(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1068,7 +1088,7 @@ public class TestTypeBuilders {
         .requiredValue(INT64)
         .named("myMap")
         .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1082,7 +1102,7 @@ public class TestTypeBuilders {
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
         Types.buildMessage().optionalMap().key(INT64).named("myMap").named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1095,7 +1115,7 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual = Types.buildMessage().optionalMap().named("myMap").named("mapParent");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1115,7 +1135,7 @@ public class TestTypeBuilders {
         .named("myMap")
         .named("mapParent");
 
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1127,7 +1147,7 @@ public class TestTypeBuilders {
         new GroupType(REPEATED, "list", new PrimitiveType(REQUIRED, INT64, "element")));
     Type element = Types.primitive(INT64, REQUIRED).named("element");
     Type actual = Types.requiredList().element(element).named("myList");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1138,7 +1158,7 @@ public class TestTypeBuilders {
         OriginalType.LIST,
         new GroupType(REPEATED, "list", new PrimitiveType(OPTIONAL, INT64, "element")));
     Type actual = Types.requiredList().optionalElement(INT64).named("myList");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1149,7 +1169,7 @@ public class TestTypeBuilders {
         OriginalType.LIST,
         new GroupType(REPEATED, "list", new PrimitiveType(OPTIONAL, INT64, "element")));
     Type actual = Types.optionalList().optionalElement(INT64).named("myList");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1166,7 +1186,7 @@ public class TestTypeBuilders {
         .optional(BOOLEAN)
         .named("field")
         .named("myList");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1183,7 +1203,7 @@ public class TestTypeBuilders {
         .optional(BOOLEAN)
         .named("field")
         .named("myList");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1202,7 +1222,7 @@ public class TestTypeBuilders {
         .optionalElement(DOUBLE)
         .named("myList");
 
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1221,7 +1241,7 @@ public class TestTypeBuilders {
         .optionalElement(DOUBLE)
         .named("myList");
 
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1238,7 +1258,7 @@ public class TestTypeBuilders {
         .optionalElement(INT64)
         .named("element")
         .named("topGroup");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1255,7 +1275,7 @@ public class TestTypeBuilders {
         .optionalElement(INT64)
         .named("element")
         .named("topGroup");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1272,7 +1292,7 @@ public class TestTypeBuilders {
         .requiredElement(INT64)
         .named("element")
         .named("topGroup");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1293,7 +1313,7 @@ public class TestTypeBuilders {
         .requiredValue(INT32)
         .named("myList");
 
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1314,7 +1334,7 @@ public class TestTypeBuilders {
         .requiredValue(INT32)
         .named("myList");
 
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1330,7 +1350,7 @@ public class TestTypeBuilders {
           .length(len)
           .columnOrder(ColumnOrder.undefined())
           .named(name);
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
     }
   }
 
@@ -1347,20 +1367,24 @@ public class TestTypeBuilders {
           .length(len)
           .columnOrder(ColumnOrder.typeDefined())
           .named(name);
-      Assert.assertEquals(expected, built);
+      assertThat(built).isEqualTo(expected);
     }
   }
 
   @Test
   public void testTypeConstructionWithUnsupportedColumnOrder() {
-    assertThrows(null, IllegalArgumentException.class, (Callable<PrimitiveType>) () ->
-        Types.optional(INT96).columnOrder(ColumnOrder.typeDefined()).named("int96_unsupported"));
-    assertThrows(null, IllegalArgumentException.class, (Callable<PrimitiveType>)
-        () -> Types.optional(FIXED_LEN_BYTE_ARRAY)
+    assertThatThrownBy(() -> Types.optional(INT96)
+            .columnOrder(ColumnOrder.typeDefined())
+            .named("int96_unsupported"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("The column order TYPE_DEFINED_ORDER is not supported by INT96");
+    assertThatThrownBy(() -> Types.optional(FIXED_LEN_BYTE_ARRAY)
             .length(12)
             .as(INTERVAL)
             .columnOrder(ColumnOrder.typeDefined())
-            .named("interval_unsupported"));
+            .named("interval_unsupported"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("The column order TYPE_DEFINED_ORDER is not supported by FIXED_LEN_BYTE_ARRAY (INTERVAL)");
   }
 
   @Test
@@ -1370,7 +1394,7 @@ public class TestTypeBuilders {
     PrimitiveType actual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .named("aDecimal");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1381,7 +1405,7 @@ public class TestTypeBuilders {
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .scale(3)
         .named("aDecimal");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1392,7 +1416,7 @@ public class TestTypeBuilders {
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .precision(4)
         .named("aDecimal");
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -1413,10 +1437,10 @@ public class TestTypeBuilders {
     PrimitiveType nonUtcMicrosActual =
         Types.required(INT64).as(timestampType(false, MICROS)).named("aTimestamp");
 
-    Assert.assertEquals(utcMillisExpected, utcMillisActual);
-    Assert.assertEquals(nonUtcMillisExpected, nonUtcMillisActual);
-    Assert.assertEquals(utcMicrosExpected, utcMicrosActual);
-    Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
+    assertThat(utcMillisActual).isEqualTo(utcMillisExpected);
+    assertThat(nonUtcMillisActual).isEqualTo(nonUtcMillisExpected);
+    assertThat(utcMicrosActual).isEqualTo(utcMicrosExpected);
+    assertThat(nonUtcMicrosActual).isEqualTo(nonUtcMicrosExpected);
   }
 
   @Test
@@ -1437,7 +1461,7 @@ public class TestTypeBuilders {
         .as(LogicalTypeAnnotation.variantType(specVersion))
         .named(name);
 
-    assertEquals(variantExpected, variantActual);
+    assertThat(variantActual).isEqualTo(variantExpected);
   }
 
   @Test
@@ -1462,7 +1486,7 @@ public class TestTypeBuilders {
         .as(LogicalTypeAnnotation.variantType(specVersion))
         .named(name);
 
-    assertEquals(variantExpected, variantActual);
+    assertThat(variantActual).isEqualTo(variantExpected);
   }
 
   @Test
@@ -1494,7 +1518,7 @@ public class TestTypeBuilders {
     PrimitiveType defaultCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
         .named("aGeometry");
-    Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
+    assertThat(defaultCrsActual).isEqualTo(defaultCrsExpected);
 
     // Test with custom CRS
     PrimitiveType customCrsExpected =
@@ -1502,7 +1526,7 @@ public class TestTypeBuilders {
     PrimitiveType customCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
         .named("aGeometry");
-    Assert.assertEquals(customCrsExpected, customCrsActual);
+    assertThat(customCrsActual).isEqualTo(customCrsExpected);
 
     // Test with optional repetition
     PrimitiveType optionalGeometryExpected =
@@ -1510,7 +1534,7 @@ public class TestTypeBuilders {
     PrimitiveType optionalGeometryActual = Types.optional(BINARY)
         .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
         .named("aGeometry");
-    Assert.assertEquals(optionalGeometryExpected, optionalGeometryActual);
+    assertThat(optionalGeometryActual).isEqualTo(optionalGeometryExpected);
   }
 
   @Test
@@ -1521,7 +1545,7 @@ public class TestTypeBuilders {
     PrimitiveType defaultCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geographyType("OGC:CRS84", null))
         .named("aGeography");
-    Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
+    assertThat(defaultCrsActual).isEqualTo(defaultCrsExpected);
 
     // Test with custom CRS and no edge algorithm
     PrimitiveType customCrsExpected = new PrimitiveType(
@@ -1529,7 +1553,7 @@ public class TestTypeBuilders {
     PrimitiveType customCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
         .named("aGeography");
-    Assert.assertEquals(customCrsExpected, customCrsActual);
+    assertThat(customCrsActual).isEqualTo(customCrsExpected);
 
     // Test with custom CRS and edge algorithm
     EdgeInterpolationAlgorithm greatCircle = EdgeInterpolationAlgorithm.SPHERICAL;
@@ -1538,7 +1562,7 @@ public class TestTypeBuilders {
     PrimitiveType customCrsWithEdgeAlgorithmActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geographyType("EPSG:4326", greatCircle))
         .named("aGeography");
-    Assert.assertEquals(customCrsWithEdgeAlgorithmExpected, customCrsWithEdgeAlgorithmActual);
+    assertThat(customCrsWithEdgeAlgorithmActual).isEqualTo(customCrsWithEdgeAlgorithmExpected);
 
     // Test with optional repetition
     PrimitiveType optionalGeographyExpected = new PrimitiveType(
@@ -1546,7 +1570,7 @@ public class TestTypeBuilders {
     PrimitiveType optionalGeographyActual = Types.optional(BINARY)
         .as(LogicalTypeAnnotation.geographyType("OGC:CRS84", null))
         .named("aGeography");
-    Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
+    assertThat(optionalGeographyActual).isEqualTo(optionalGeographyExpected);
   }
 
   @Test
@@ -1556,7 +1580,7 @@ public class TestTypeBuilders {
         new PrimitiveType(REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
     PrimitiveType defaultCrsActual =
         Types.required(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
-    Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
+    assertThat(defaultCrsActual).isEqualTo(defaultCrsExpected);
 
     // Test with custom CRS and no edge algorithm
     PrimitiveType customCrsExpected = new PrimitiveType(
@@ -1564,7 +1588,7 @@ public class TestTypeBuilders {
     PrimitiveType customCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
         .named("aGeography");
-    Assert.assertEquals(customCrsExpected, customCrsActual);
+    assertThat(customCrsActual).isEqualTo(customCrsExpected);
 
     // Test with custom CRS and edge algorithm
     PrimitiveType customCrsWithEdgeAlgorithmExpected = new PrimitiveType(
@@ -1572,29 +1596,13 @@ public class TestTypeBuilders {
     PrimitiveType customCrsWithEdgeAlgorithmActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
         .named("aGeography");
-    Assert.assertEquals(customCrsWithEdgeAlgorithmExpected, customCrsWithEdgeAlgorithmActual);
+    assertThat(customCrsWithEdgeAlgorithmActual).isEqualTo(customCrsWithEdgeAlgorithmExpected);
 
     // Test with optional repetition
     PrimitiveType optionalGeographyExpected =
         new PrimitiveType(OPTIONAL, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
     PrimitiveType optionalGeographyActual =
         Types.optional(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
-    Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
-  }
-
-  /**
-   * A convenience method to avoid a large number of @Test(expected=...) tests
-   *
-   * @param message  A String message to describe this assertion
-   * @param expected An Exception class that the Runnable should throw
-   * @param callable A Callable that is expected to throw the exception
-   */
-  public static void assertThrows(String message, Class<? extends Exception> expected, Callable callable) {
-    try {
-      callable.call();
-      Assert.fail("No exception was thrown (" + message + "), expected: " + expected.getName());
-    } catch (Exception actual) {
-      Assert.assertEquals(message, expected, actual.getClass());
-    }
+    assertThat(optionalGeographyActual).isEqualTo(optionalGeographyExpected);
   }
 }

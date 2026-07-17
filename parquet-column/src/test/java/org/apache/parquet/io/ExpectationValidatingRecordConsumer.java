@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.io;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Deque;
 import org.apache.parquet.io.api.Binary;
@@ -33,7 +33,7 @@ public final class ExpectationValidatingRecordConsumer extends RecordConsumer {
   }
 
   private void validate(String got) {
-    assertEquals("event #" + count, expectations.pop(), got);
+    assertThat(got).isEqualTo(expectations.pop());
     ++count;
   }
 
