@@ -57,7 +57,6 @@ import org.junit.rules.TestName;
  * <p>Set {@link #SAVE_GENERATED_FILES} to true to enable file preservation under
  * {@code parquet-variant/target/test-hardened-reader}; return it to false to
  * restore cleanup. Each file will be saved with the name of the test.
- * .
  */
 public class TestHardenedReader {
 
@@ -107,6 +106,33 @@ public class TestHardenedReader {
     // Set offset[0] to 0xFF — far outside the 1-byte data region.
     value[2] = (byte) 0xFF;
     expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "child offset");
+  }
+
+  /**
+   * A zero-length child element is not a valid encoded Variant value. The spec requires every
+   * array/object element to carry a mandatory 1-byte value header (value_data may be empty, but the
+   * header may not). An offset that leaves no bytes for the child has no header to read, so the
+   * top-level array constructs, but materializing the empty element fails to parse.
+   */
+  @Test
+  public void testEmptyChildElement() {
+    // Array, numElements=1, offsets [0, 0], empty data region.
+    //   [0] 0b0011 arrayHeader(largeSize=false, offsetSize=1)
+    //   [1] 0x01   numElements = 1
+    //   [2] 0x00   offset[0] = 0
+    //   [3] 0x00   offset[1] = 0  (terminator: data region length = 0)
+    // The single element points at offset 0 of a zero-length data region: no header byte exists.
+    byte[] value = {0b0011, 0x01, 0x00, 0x00};
+    Variant top = new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(EMPTY_METADATA));
+
+    // The container itself is well-formed and constructs.
+    assertThat(top.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThat(top.numArrayElements()).isEqualTo(1);
+
+    // Materializing the empty element fails: there is no value header to read.
+    assertThatThrownBy(() -> top.getElementAtIndex(0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("variant value is empty");
   }
 
   /**
