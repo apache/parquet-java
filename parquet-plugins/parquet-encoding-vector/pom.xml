@@ -34,11 +34,6 @@
   <name>Apache Parquet Encodings Vector</name>
   <url>https://parquet.apache.org</url>
 
-  <properties>
-    <!-- Those properties prevent Java 11 to try and compile this code -->
-    <maven.compiler.release>17</maven.compiler.release>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
