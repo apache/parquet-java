@@ -1190,10 +1190,18 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    readAllPartsVectoredOrNormal(allParts, builder);
-    rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      rowGroup.setReleaser(builder.releaser);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+    } catch (RuntimeException | IOException e) {
+      // If we fail before the releaser is transferred to the row group (e.g. a vectored range
+      // times out after earlier ranges already registered their buffers), release any buffers
+      // that were registered so far so that partially-read row groups do not leak.
+      builder.releaser.close();
+      throw e;
     }
 
     return rowGroup;
@@ -1464,10 +1472,18 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    readAllPartsVectoredOrNormal(allParts, builder);
-    rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      rowGroup.setReleaser(builder.releaser);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+    } catch (RuntimeException | IOException e) {
+      // If we fail before the releaser is transferred to the row group (e.g. a vectored range
+      // times out after earlier ranges already registered their buffers), release any buffers
+      // that were registered so far so that partially-read row groups do not leak.
+      builder.releaser.close();
+      throw e;
     }
 
     return rowGroup;
