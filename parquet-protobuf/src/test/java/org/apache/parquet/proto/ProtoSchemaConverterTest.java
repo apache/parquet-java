@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.proto;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.base.Joiner;
 import com.google.protobuf.Message;
@@ -56,7 +56,7 @@ public class ProtoSchemaConverterTest {
       Class<? extends Message> pbClass, String parquetSchemaString, ProtoSchemaConverter converter) {
     MessageType schema = converter.convert(pbClass);
     MessageType expectedMT = MessageTypeParser.parseMessageType(parquetSchemaString);
-    assertEquals(expectedMT.toString(), schema.toString());
+    assertThat(schema).asString().isEqualTo(expectedMT.toString());
   }
 
   private void testConversion(
@@ -588,16 +588,16 @@ public class ProtoSchemaConverterTest {
     for (int i = 0; i < 10; ++i) {
       MessageType deepSchema = new ProtoSchemaConverter(true, i, false).convert(Trees.WideTree.class);
       // 3, 5, 7, 9, 11, 13, 15, 17, 19, 21
-      assertEquals(2 * i + 3, deepSchema.getPaths().size());
+      assertThat(deepSchema.getPaths()).hasSize(2 * i + 3);
 
       deepSchema = new ProtoSchemaConverter(true, i, false).convert(Trees.BinaryTree.class);
       // 4, 10, 22, 46, 94, 190, 382, 766, 1534, 3070
-      assertEquals(expectedBinaryTreeSize, deepSchema.getPaths().size());
+      assertThat(deepSchema.getPaths()).hasSize((int) expectedBinaryTreeSize);
       expectedBinaryTreeSize = 2 * expectedBinaryTreeSize + 2;
 
       deepSchema = new ProtoSchemaConverter(true, i, false).convert(Struct.class);
       // 7, 18, 40, 84, 172, 348, 700, 1404, 2812, 5628
-      assertEquals(expectedStructSize, deepSchema.getPaths().size());
+      assertThat(deepSchema.getPaths()).hasSize((int) expectedStructSize);
       expectedStructSize = 2 * expectedStructSize + 4;
     }
   }

@@ -18,121 +18,172 @@
  */
 package org.apache.parquet.glob;
 
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
 public class TestWildcardPath {
 
-  private static void assertMatches(WildcardPath wp, String... strings) {
-    for (String s : strings) {
-      if (!wp.matches(s)) {
-        fail(String.format("String '%s' was expected to match '%s'", s, wp));
-      }
-    }
-  }
-
-  private static void assertDoesNotMatch(WildcardPath wp, String... strings) {
-    for (String s : strings) {
-      if (wp.matches(s)) {
-        fail(String.format("String '%s' was not expected to match '%s'", s, wp));
-      }
-    }
-  }
-
   @Test
   public void testNoWildcards() {
     WildcardPath wp = new WildcardPath("", "foo", '.');
-    assertMatches(wp, "foo", "foo.x", "foo.x.y");
-    assertDoesNotMatch(wp, "xfoo", "xfoox", "fooa.x.y");
+
+    assertThat(wp.matches("foo")).isTrue();
+    assertThat(wp.matches("foo.x")).isTrue();
+    assertThat(wp.matches("foo.x.y")).isTrue();
+
+    assertThat(wp.matches("xfoo")).isFalse();
+    assertThat(wp.matches("xfoox")).isFalse();
+    assertThat(wp.matches("fooa.x.y")).isFalse();
   }
 
   @Test
   public void testStarMatchesEverything() {
     WildcardPath wp = new WildcardPath("", "*", '.');
-    assertMatches(wp, "", ".", "hi", "foo.bar", "*", "foo.");
+
+    assertThat(wp.matches("")).isTrue();
+    assertThat(wp.matches(".")).isTrue();
+    assertThat(wp.matches("hi")).isTrue();
+    assertThat(wp.matches("foo.bar")).isTrue();
+    assertThat(wp.matches("*")).isTrue();
+    assertThat(wp.matches("foo.")).isTrue();
   }
 
   @Test
   public void testChildrenPathsMatch() {
     WildcardPath wp = new WildcardPath("", "x.y.z", '.');
-    assertMatches(wp, "x.y.z", "x.y.z.bar", "x.y.z.bar.baz.bop");
-    assertDoesNotMatch(wp, "x.y.zzzz", "x.y.b", "x.y.a.z", "x.y.zhi.z");
+
+    assertThat(wp.matches("x.y.z")).isTrue();
+    assertThat(wp.matches("x.y.z.bar")).isTrue();
+    assertThat(wp.matches("x.y.z.bar.baz.bop")).isTrue();
+
+    assertThat(wp.matches("x.y.zzzz")).isFalse();
+    assertThat(wp.matches("x.y.b")).isFalse();
+    assertThat(wp.matches("x.y.a.z")).isFalse();
+    assertThat(wp.matches("x.y.zhi.z")).isFalse();
   }
 
   @Test
   public void testEmptyString() {
     WildcardPath wp = new WildcardPath("", "", '.');
-    assertMatches(wp, "");
-    assertDoesNotMatch(wp, "x");
+
+    assertThat(wp.matches("")).isTrue();
+    assertThat(wp.matches("x")).isFalse();
   }
 
   @Test
   public void testDoubleStarsIgnored() {
     WildcardPath wp = new WildcardPath("", "foo**bar", '.');
-    assertMatches(wp, "foobar", "fooxyzbar", "foo.x.y.z.bar");
-    assertDoesNotMatch(wp, "fobar", "hi", "foobazr");
+
+    assertThat(wp.matches("foobar")).isTrue();
+    assertThat(wp.matches("fooxyzbar")).isTrue();
+    assertThat(wp.matches("foo.x.y.z.bar")).isTrue();
+
+    assertThat(wp.matches("fobar")).isFalse();
+    assertThat(wp.matches("hi")).isFalse();
+    assertThat(wp.matches("foobazr")).isFalse();
 
     wp = new WildcardPath("", "foo********bar", '.');
-    assertMatches(wp, "foobar", "fooxyzbar", "foo.x.y.z.bar");
-    assertDoesNotMatch(wp, "fobar", "hi", "foobazr");
+
+    assertThat(wp.matches("foobar")).isTrue();
+    assertThat(wp.matches("fooxyzbar")).isTrue();
+    assertThat(wp.matches("foo.x.y.z.bar")).isTrue();
+
+    assertThat(wp.matches("fobar")).isFalse();
+    assertThat(wp.matches("hi")).isFalse();
+    assertThat(wp.matches("foobazr")).isFalse();
   }
 
   @Test
   public void testStarsAtBeginAndEnd() {
     WildcardPath wp = new WildcardPath("", "*x.y.z", '.');
-    assertMatches(wp, "a.b.c.x.y.z", "x.y.z", "zoopx.y.z", "zoopx.y.z.child");
-    assertDoesNotMatch(wp, "a.b.c.x.y", "xy.z", "hi");
+
+    assertThat(wp.matches("a.b.c.x.y.z")).isTrue();
+    assertThat(wp.matches("x.y.z")).isTrue();
+    assertThat(wp.matches("zoopx.y.z")).isTrue();
+    assertThat(wp.matches("zoopx.y.z.child")).isTrue();
+
+    assertThat(wp.matches("a.b.c.x.y")).isFalse();
+    assertThat(wp.matches("xy.z")).isFalse();
+    assertThat(wp.matches("hi")).isFalse();
 
     wp = new WildcardPath("", "*.x.y.z", '.');
-    assertMatches(wp, "a.b.c.x.y.z", "foo.x.y.z", "foo.x.y.z.child");
-    assertDoesNotMatch(wp, "x.y.z", "a.b.c.x.y", "xy.z", "hi", "zoopx.y.z", "zoopx.y.z.child");
+
+    assertThat(wp.matches("a.b.c.x.y.z")).isTrue();
+    assertThat(wp.matches("foo.x.y.z")).isTrue();
+    assertThat(wp.matches("foo.x.y.z.child")).isTrue();
+
+    assertThat(wp.matches("x.y.z")).isFalse();
+    assertThat(wp.matches("a.b.c.x.y")).isFalse();
+    assertThat(wp.matches("xy.z")).isFalse();
+    assertThat(wp.matches("hi")).isFalse();
+    assertThat(wp.matches("zoopx.y.z")).isFalse();
+    assertThat(wp.matches("zoopx.y.z.child")).isFalse();
 
     wp = new WildcardPath("", "x.y.z*", '.');
-    assertMatches(wp, "x.y.z", "x.y.z.foo", "x.y.zoo", "x.y.zoo.bar");
-    assertDoesNotMatch(wp, "a.b.c.x.y.z", "foo.x.y.z", "hi");
+
+    assertThat(wp.matches("x.y.z")).isTrue();
+    assertThat(wp.matches("x.y.z.foo")).isTrue();
+    assertThat(wp.matches("x.y.zoo")).isTrue();
+    assertThat(wp.matches("x.y.zoo.bar")).isTrue();
+
+    assertThat(wp.matches("a.b.c.x.y.z")).isFalse();
+    assertThat(wp.matches("foo.x.y.z")).isFalse();
+    assertThat(wp.matches("hi")).isFalse();
 
     wp = new WildcardPath("", "x.y.z.*", '.');
-    assertMatches(wp, "x.y.z.foo", "x.y.z.bar.baz");
-    assertDoesNotMatch(wp, "x.y.z", "a.b.c.x.y.z", "x.y.zoo", "foo.x.y.z", "hi", "x.y.zoo.bar");
+
+    assertThat(wp.matches("x.y.z.foo")).isTrue();
+    assertThat(wp.matches("x.y.z.bar.baz")).isTrue();
+
+    assertThat(wp.matches("x.y.z")).isFalse();
+    assertThat(wp.matches("a.b.c.x.y.z")).isFalse();
+    assertThat(wp.matches("x.y.zoo")).isFalse();
+    assertThat(wp.matches("foo.x.y.z")).isFalse();
+    assertThat(wp.matches("hi")).isFalse();
+    assertThat(wp.matches("x.y.zoo.bar")).isFalse();
   }
 
   @Test
   public void testComplex() {
     WildcardPath wp = new WildcardPath("", "*.street", '.');
-    assertMatches(
-        wp,
-        "home.address.street",
-        "home.address.street.number",
-        "work.address.street",
-        "work.address.street.foo",
-        "street.street",
-        "street.street.street.street",
-        "thing.street.thing");
 
-    assertDoesNotMatch(
-        wp,
-        "home.address.street_2",
-        "home.address.street_2.number",
-        "work.addressstreet",
-        "work.addressstreet.foo",
-        "",
-        "x.y.z.street2",
-        "x.y.z.street2.z");
+    assertThat(wp.matches("home.address.street")).isTrue();
+    assertThat(wp.matches("home.address.street.number")).isTrue();
+    assertThat(wp.matches("work.address.street")).isTrue();
+    assertThat(wp.matches("work.address.street.foo")).isTrue();
+    assertThat(wp.matches("street.street")).isTrue();
+    assertThat(wp.matches("street.street.street.street")).isTrue();
+    assertThat(wp.matches("thing.street.thing")).isTrue();
+
+    assertThat(wp.matches("home.address.street_2")).isFalse();
+    assertThat(wp.matches("home.address.street_2.number")).isFalse();
+    assertThat(wp.matches("work.addressstreet")).isFalse();
+    assertThat(wp.matches("work.addressstreet.foo")).isFalse();
+    assertThat(wp.matches("")).isFalse();
+    assertThat(wp.matches("x.y.z.street2")).isFalse();
+    assertThat(wp.matches("x.y.z.street2.z")).isFalse();
 
     wp = new WildcardPath("", "x.y.*_stat.average", '.');
-    assertMatches(
-        wp,
-        "x.y.z_stat.average",
-        "x.y.foo_stat.average",
-        "x.y.z.a.b_stat.average",
-        "x.y.z.a.b_stat.average.child",
-        "x.y.z._stat.average");
-    assertDoesNotMatch(
-        wp, "x.y.z_stats.average", "x.y.z_stat.averages", "x.y_stat.average", "x.yyy.foo_stat.average");
+
+    assertThat(wp.matches("x.y.z_stat.average")).isTrue();
+    assertThat(wp.matches("x.y.foo_stat.average")).isTrue();
+    assertThat(wp.matches("x.y.z.a.b_stat.average")).isTrue();
+    assertThat(wp.matches("x.y.z.a.b_stat.average.child")).isTrue();
+    assertThat(wp.matches("x.y.z._stat.average")).isTrue();
+
+    assertThat(wp.matches("x.y.z_stats.average")).isFalse();
+    assertThat(wp.matches("x.y.z_stat.averages")).isFalse();
+    assertThat(wp.matches("x.y_stat.average")).isFalse();
+    assertThat(wp.matches("x.yyy.foo_stat.average")).isFalse();
 
     wp = new WildcardPath("", "x.y.pre*.bar", '.');
-    assertMatches(wp, "x.y.pre.bar", "x.y.preabc.bar", "x.y.prebar.bar");
-    assertDoesNotMatch(wp, "x.y.pre.baraaaa", "x.y.preabc.baraaaa");
+
+    assertThat(wp.matches("x.y.pre.bar")).isTrue();
+    assertThat(wp.matches("x.y.preabc.bar")).isTrue();
+    assertThat(wp.matches("x.y.prebar.bar")).isTrue();
+
+    assertThat(wp.matches("x.y.pre.baraaaa")).isFalse();
+    assertThat(wp.matches("x.y.preabc.baraaaa")).isFalse();
   }
 }

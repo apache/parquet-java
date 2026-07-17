@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -25,7 +28,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +48,7 @@ public class TestVariantScalar {
         ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(1)}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getBoolean());
+      assertThat(v.getBoolean()).isTrue();
     });
   }
 
@@ -56,7 +58,7 @@ public class TestVariantScalar {
         ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(2)}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertFalse(v.getBoolean());
+      assertThat(v.getBoolean()).isFalse();
     });
   }
 
@@ -77,7 +79,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.LONG);
-      Assert.assertEquals(1234567890987654321L, v.getLong());
+      assertThat(v.getLong()).isEqualTo(1234567890987654321L);
     });
   }
 
@@ -98,7 +100,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.LONG);
-      Assert.assertEquals(-1L, v.getLong());
+      assertThat(v.getLong()).isEqualTo(-1L);
     });
   }
 
@@ -109,7 +111,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getInt());
+      assertThat(v.getInt()).isEqualTo(1234567890);
     });
   }
 
@@ -122,7 +124,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(-1, v.getInt());
+      assertThat(v.getInt()).isEqualTo(-1);
     });
   }
 
@@ -133,7 +135,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-      Assert.assertEquals((short) 1234, v.getShort());
+      assertThat(v.getShort()).isEqualTo((short) 1234);
     });
   }
 
@@ -144,7 +146,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-      Assert.assertEquals((short) -1, v.getShort());
+      assertThat(v.getShort()).isEqualTo((short) -1);
     });
   }
 
@@ -154,7 +156,7 @@ public class TestVariantScalar {
         ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(3), 34}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-      Assert.assertEquals((byte) 34, v.getByte());
+      assertThat(v.getByte()).isEqualTo((byte) 34);
     });
   }
 
@@ -165,7 +167,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-      Assert.assertEquals((byte) -1, v.getByte());
+      assertThat(v.getByte()).isEqualTo((byte) -1);
     });
   }
 
@@ -176,7 +178,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.FLOAT);
-      Assert.assertEquals(Float.intBitsToFloat(1234567890), v.getFloat(), 0);
+      assertThat(v.getFloat()).isEqualTo(Float.intBitsToFloat(1234567890));
     });
   }
 
@@ -187,7 +189,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.FLOAT);
-      Assert.assertEquals(-0.0F, v.getFloat(), 0);
+      assertThat(v.getFloat()).isEqualTo(-0.0F);
     });
   }
 
@@ -208,7 +210,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DOUBLE);
-      Assert.assertEquals(Double.longBitsToDouble(1234567890987654321L), v.getDouble(), 0);
+      assertThat(v.getDouble()).isEqualTo(Double.longBitsToDouble(1234567890987654321L));
     });
   }
 
@@ -221,7 +223,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DOUBLE);
-      Assert.assertEquals(-0.0D, v.getDouble(), 0);
+      assertThat(v.getDouble()).isEqualTo(-0.0D);
     });
   }
 
@@ -233,7 +235,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
-      Assert.assertEquals(new BigDecimal("123456.7890"), v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(new BigDecimal("123456.7890"));
     });
   }
 
@@ -246,7 +248,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
-      Assert.assertEquals(new BigDecimal("-0.0001"), v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(new BigDecimal("-0.0001"));
     });
   }
 
@@ -268,7 +270,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
-      Assert.assertEquals(new BigDecimal("1234567890.987654321"), v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(new BigDecimal("1234567890.987654321"));
     });
   }
 
@@ -290,7 +292,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
-      Assert.assertEquals(new BigDecimal("-0.000000001"), v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(new BigDecimal("-0.000000001"));
     });
   }
 
@@ -320,7 +322,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL16);
-      Assert.assertEquals(new BigDecimal("9876543210.123456789"), v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(new BigDecimal("9876543210.123456789"));
     });
   }
 
@@ -350,7 +352,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL16);
-      Assert.assertEquals(new BigDecimal("-9876543210.123456789"), v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(new BigDecimal("-9876543210.123456789"));
     });
   }
 
@@ -361,7 +363,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DATE);
-      Assert.assertEquals(LocalDate.parse("2025-04-17"), LocalDate.ofEpochDay(v.getInt()));
+      assertThat(LocalDate.ofEpochDay(v.getInt())).isEqualTo(LocalDate.parse("2025-04-17"));
     });
   }
 
@@ -374,7 +376,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DATE);
-      Assert.assertEquals(LocalDate.parse("1969-12-31"), LocalDate.ofEpochDay(v.getInt()));
+      assertThat(LocalDate.ofEpochDay(v.getInt())).isEqualTo(LocalDate.parse("1969-12-31"));
     });
   }
 
@@ -395,8 +397,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_TZ);
-      Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS))
+          .isEqualTo(Instant.parse("2025-04-17T08:09:10.123456Z"));
     });
   }
 
@@ -417,8 +419,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_TZ);
-      Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS))
+          .isEqualTo(Instant.parse("1969-12-31T23:59:59.999999Z"));
     });
   }
 
@@ -439,8 +441,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NTZ);
-      Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS))
+          .isEqualTo(Instant.parse("2025-04-17T08:09:10.123456Z"));
     });
   }
 
@@ -461,8 +463,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NTZ);
-      Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS))
+          .isEqualTo(Instant.parse("1969-12-31T23:59:59.999999Z"));
     });
   }
 
@@ -475,7 +477,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BINARY);
-      Assert.assertEquals(ByteBuffer.wrap(new byte[] {'a', 'b', 'c', 'd', 'e'}), v.getBinary());
+      assertThat(v.getBinary()).isEqualTo(ByteBuffer.wrap(new byte[] {'a', 'b', 'c', 'd', 'e'}));
     });
   }
 
@@ -488,7 +490,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals("variant", v.getString());
+      assertThat(v.getString()).isEqualTo("variant");
     });
   }
 
@@ -499,7 +501,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.SHORT_STR, Variant.Type.STRING);
-      Assert.assertEquals("variant", v.getString());
+      assertThat(v.getString()).isEqualTo("variant");
     });
   }
 
@@ -520,7 +522,7 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIME);
-      Assert.assertEquals(LocalTime.parse("23:59:59.123456"), LocalTime.ofNanoOfDay(v.getLong() * 1_000));
+      assertThat(LocalTime.ofNanoOfDay(v.getLong() * 1_000)).isEqualTo(LocalTime.parse("23:59:59.123456"));
     });
   }
 
@@ -541,8 +543,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
-      Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456789Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS))
+          .isEqualTo(Instant.parse("2025-04-17T08:09:10.123456789Z"));
     });
   }
 
@@ -563,8 +565,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
-      Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS))
+          .isEqualTo(Instant.parse("1969-12-31T23:59:59.999999999Z"));
     });
   }
 
@@ -585,8 +587,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_NTZ);
-      Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456789Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS))
+          .isEqualTo(Instant.parse("2025-04-17T08:09:10.123456789Z"));
     });
   }
 
@@ -607,8 +609,8 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_NTZ);
-      Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+      assertThat(Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS))
+          .isEqualTo(Instant.parse("1969-12-31T23:59:59.999999999Z"));
     });
   }
 
@@ -637,154 +639,115 @@ public class TestVariantScalar {
         VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
-      Assert.assertEquals(UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"), v.getUUID());
+      assertThat(v.getUUID()).isEqualTo(UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"));
     });
   }
 
   @Test
   public void testInvalidType() {
-    try {
-      Variant value = new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), VariantTestUtil.EMPTY_METADATA);
-      value.getBoolean();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "Cannot read unknownType(basicType: 0, valueHeader: 63) value as BOOLEAN", e.getMessage());
-    }
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getBoolean)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read unknownType(basicType: 0, valueHeader: 63) value as BOOLEAN");
   }
 
   @Test
   public void testInvalidBoolean() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getBoolean();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as BOOLEAN", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getBoolean)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as BOOLEAN");
   }
 
   @Test
   public void testInvalidLong() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(16)}), VariantTestUtil.EMPTY_METADATA);
-      value.getLong();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "Cannot read STRING value as one of [BYTE, SHORT, INT, DATE, LONG, TIMESTAMP_TZ, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS_TZ, TIMESTAMP_NANOS_NTZ]",
-          e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(16)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getLong)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Cannot read STRING value as one of [BYTE, SHORT, INT, DATE, LONG, TIMESTAMP_TZ, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS_TZ, TIMESTAMP_NANOS_NTZ]");
   }
 
   @Test
   public void testInvalidInt() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getInt();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getInt)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]");
   }
 
   @Test
   public void testInvalidShort() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getShort();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as one of [BYTE, SHORT]", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getShort)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as one of [BYTE, SHORT]");
   }
 
   @Test
   public void testInvalidByte() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getByte();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as BYTE", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getByte)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as BYTE");
   }
 
   @Test
   public void testInvalidFloat() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getFloat();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as FLOAT", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getFloat)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as FLOAT");
   }
 
   @Test
   public void testInvalidDouble() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getDouble();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as DOUBLE", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getDouble)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as DOUBLE");
   }
 
   @Test
   public void testInvalidDecimal() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6), 0}),
-          VariantTestUtil.EMPTY_METADATA);
-      value.getDecimal();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6), 0}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getDecimal)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]");
   }
 
   @Test
   public void testInvalidUUID() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getUUID();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as UUID", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getUUID)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as UUID");
   }
 
   @Test
   public void testInvalidString() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getString();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as STRING", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getString)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as STRING");
   }
 
   @Test
   public void testInvalidBinary() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getBinary();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as BINARY", e.getMessage());
-    }
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::getBinary)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read LONG value as BINARY");
   }
 }

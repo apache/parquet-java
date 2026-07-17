@@ -25,19 +25,32 @@ github:
     - apache
     - parquet
     - parquet-java
-  
+
   enabled_merge_buttons:
     merge: false
     squash: true
     rebase: false
-  
+
   features:
     wiki: false
     issues: true
     projects: false
 
+  rulesets:
+    - name: "Default Branch Protection"
+      type: branch
+      branches:
+        includes:
+          - "~DEFAULT_BRANCH"
+          - "release/*"
+          - "rel/*"
+        excludes: []
+      bypass_teams:
+        - root
+      restrict_deletion: true
+      restrict_force_push: true
 notifications:
-  commits:      commits@parquet.apache.org
-  issues:       issues@parquet.apache.org
+  commits: commits@parquet.apache.org
+  issues: issues@parquet.apache.org
   pullrequests: issues@parquet.apache.org
   jira_options: link

@@ -21,10 +21,8 @@ package org.apache.parquet.avro;
 import static org.apache.parquet.avro.AvroTestUtil.field;
 import static org.apache.parquet.avro.AvroTestUtil.instance;
 import static org.apache.parquet.avro.AvroTestUtil.record;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
@@ -37,7 +35,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -540,12 +537,15 @@ public class TestReadVariant extends DirectWriterTest {
       AvroParquetReader<T> reader, Schema expectedSchema, T... expectedRecords) throws IOException {
     for (T expectedRecord : expectedRecords) {
       T actualRecord = reader.read();
-      assertEquals("Should match expected schema", expectedSchema, actualRecord.getSchema());
-      assertEquals("Should match the expected record", expectedRecord, actualRecord);
+      assertThat(actualRecord.getSchema())
+          .as("Should match expected schema")
+          .isEqualTo(expectedSchema);
+      assertThat(actualRecord).as("Should match the expected record").isEqualTo(expectedRecord);
     }
-    assertNull(
-        "Should only contain " + expectedRecords.length + " record" + (expectedRecords.length == 1 ? "" : "s"),
-        reader.read());
+    assertThat(reader.read())
+        .as("Should only contain " + expectedRecords.length + " record"
+            + (expectedRecords.length == 1 ? "" : "s"))
+        .isNull();
   }
 
   // We need to store two copies of the schema: one without the Variant type annotation that is used to construct the
@@ -590,7 +590,7 @@ public class TestReadVariant extends DirectWriterTest {
       GenericRecord record =
           recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
       GenericRecord actual = writeAndRead(schema, record);
-      assertEquals(actual.get("id"), 1);
+      assertThat(actual.get("id")).isEqualTo(1);
 
       GenericRecord actualVariant = (GenericRecord) actual.get("var");
       assertEquivalent(t.metadata, t.value, actualVariant);
@@ -608,7 +608,7 @@ public class TestReadVariant extends DirectWriterTest {
       GenericRecord record =
           recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
       GenericRecord actual = writeAndRead(schema, record);
-      assertEquals(actual.get("id"), 1);
+      assertThat(actual.get("id")).isEqualTo(1);
 
       GenericRecord actualVariant = (GenericRecord) actual.get("var");
       assertEquivalent(t.metadata, t.value, actualVariant);
@@ -631,7 +631,7 @@ public class TestReadVariant extends DirectWriterTest {
           recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
       GenericRecord actual = writeAndRead(schema, record);
-      assertEquals(actual.get("id"), 1);
+      assertThat(actual.get("id")).isEqualTo(1);
 
       GenericRecord actualVariant = (GenericRecord) actual.get("var");
       assertEquivalent(EMPTY_METADATA, p.value, actualVariant);
@@ -647,7 +647,7 @@ public class TestReadVariant extends DirectWriterTest {
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
     GenericRecord actual = writeAndRead(schema, record);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, NULL_VALUE, actualVariant);
@@ -677,7 +677,7 @@ public class TestReadVariant extends DirectWriterTest {
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
     GenericRecord actual = writeAndRead(schema, record);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, variant(34), actualVariant);
@@ -692,10 +692,11 @@ public class TestReadVariant extends DirectWriterTest {
         ImmutableMap.of("metadata", EMPTY_METADATA, "value", variant("str"), "typed_value", 34));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    assertThrows(
-        () -> writeAndRead(schema, record),
-        IllegalStateException.class,
-        "Cannot call multiple append() methods");
+    assertThatThrownBy(() -> writeAndRead(schema, record))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasCauseInstanceOf(IllegalStateException.class)
+        .cause()
+        .hasMessageContaining("Cannot call multiple append() methods");
   }
 
   @Test
@@ -707,10 +708,9 @@ public class TestReadVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    assertThrows(
-        () -> writeAndRead(schema, record),
-        UnsupportedOperationException.class,
-        "Unsupported shredded value type: INTEGER(32,false)");
+    assertThatThrownBy(() -> writeAndRead(schema, record))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Unsupported shredded value type: INTEGER(32,false)");
   }
 
   @Test
@@ -723,10 +723,9 @@ public class TestReadVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    assertThrows(
-        () -> writeAndRead(schema, record),
-        UnsupportedOperationException.class,
-        "Unsupported shredded value type: optional fixed_len_byte_array(4) typed_value");
+    assertThatThrownBy(() -> writeAndRead(schema, record))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Unsupported shredded value type: optional fixed_len_byte_array(4) typed_value");
   }
 
   @Test
@@ -744,7 +743,7 @@ public class TestReadVariant extends DirectWriterTest {
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
     GenericRecord actual = writeAndRead(schema, record);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -789,7 +788,7 @@ public class TestReadVariant extends DirectWriterTest {
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
     GenericRecord actual = writeAndRead(schema, record);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -821,7 +820,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -850,7 +849,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -884,7 +883,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -922,7 +921,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -957,7 +956,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -1016,7 +1015,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -1058,7 +1057,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -1099,7 +1098,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -1140,7 +1139,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     // The reader is expected to ignore fields in value that are present in the typed_value schema.
     // This matches Iceberg behaviour, but we could also consider failing with an error.
@@ -1182,7 +1181,7 @@ public class TestReadVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, record);
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     // The reader is expected to ignore fields in value that are present in the typed_value schema, even if they are
     // missing in typed_value.
@@ -1209,7 +1208,7 @@ public class TestReadVariant extends DirectWriterTest {
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
     GenericRecord actual = writeAndRead(schema, record);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(TEST_METADATA, variant(34), actualVariant);
@@ -1230,10 +1229,11 @@ public class TestReadVariant extends DirectWriterTest {
         ImmutableMap.of("metadata", TEST_METADATA, "value", variant(34), "typed_value", fields));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    assertThrows(
-        () -> writeAndRead(schema, record),
-        IllegalStateException.class,
-        "Invalid variant, conflicting value and typed_value");
+    assertThatThrownBy(() -> writeAndRead(schema, record))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasCauseInstanceOf(IllegalStateException.class)
+        .cause()
+        .hasMessageContaining("Invalid variant, conflicting value and typed_value");
   }
 
   @Test
@@ -1257,10 +1257,11 @@ public class TestReadVariant extends DirectWriterTest {
             fields));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    assertThrows(
-        () -> writeAndRead(schema, record),
-        IllegalStateException.class,
-        "Invalid variant, conflicting value and typed_value");
+    assertThatThrownBy(() -> writeAndRead(schema, record))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasCauseInstanceOf(IllegalStateException.class)
+        .cause()
+        .hasMessageContaining("Invalid variant, conflicting value and typed_value");
   }
 
   @Test
@@ -1337,24 +1338,24 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     List<GenericRecord> records = writeAndRead(schema, Arrays.asList(zero, one, two, three));
-    assertEquals(records.size(), 4);
+    assertThat(records).hasSize(4);
 
     GenericRecord actualZero = records.get(0);
-    assertEquals(actualZero.get("id"), 0);
-    assertEquals(actualZero.get("var"), null);
+    assertThat(actualZero.get("id")).isEqualTo(0);
+    assertThat(actualZero.get("var")).isNull();
 
     GenericRecord actualOne = records.get(1);
-    assertEquals(actualOne.get("id"), 1);
+    assertThat(actualOne.get("id")).isEqualTo(1);
     GenericRecord actualOneVariant = (GenericRecord) actualOne.get("var");
     assertEquivalent(TEST_METADATA, expectedOne, actualOneVariant);
 
     GenericRecord actualTwo = records.get(2);
-    assertEquals(actualTwo.get("id"), 2);
+    assertThat(actualTwo.get("id")).isEqualTo(2);
     GenericRecord actualTwoVariant = (GenericRecord) actualTwo.get("var");
     assertEquivalent(TEST_METADATA, expectedTwo, actualTwoVariant);
 
     GenericRecord actualThree = records.get(3);
-    assertEquals(actualThree.get("id"), 3);
+    assertThat(actualThree.get("id")).isEqualTo(3);
     GenericRecord actualThreeVariant = (GenericRecord) actualThree.get("var");
     assertEquivalent(TEST_METADATA, expectedThree, actualThreeVariant);
   }
@@ -1381,7 +1382,7 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     GenericRecord actual = writeAndRead(schema, row);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, expected, actualVariant);
   }
@@ -1396,7 +1397,7 @@ public class TestReadVariant extends DirectWriterTest {
     GenericRecord row = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var));
 
     GenericRecord actual = writeAndRead(schema, row);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, NULL_VALUE, actualVariant);
   }
@@ -1418,7 +1419,7 @@ public class TestReadVariant extends DirectWriterTest {
       b.endArray();
     });
 
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, emptyArray, actualVariant);
   }
@@ -1447,7 +1448,7 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     GenericRecord actual = writeAndRead(schema, row);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, expected, actualVariant);
   }
@@ -1481,7 +1482,7 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     GenericRecord actual = writeAndRead(schema, row);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, expected, actualVariant);
   }
@@ -1600,12 +1601,12 @@ public class TestReadVariant extends DirectWriterTest {
     // verify
     List<GenericRecord> actual = writeAndRead(schema, Arrays.asList(row1, row2));
     GenericRecord actual1 = actual.get(0);
-    assertEquals(actual1.get("id"), 1);
+    assertThat(actual1.get("id")).isEqualTo(1);
     GenericRecord actualVariant1 = (GenericRecord) actual1.get("var");
     assertEquivalent(TEST_METADATA, expected1, actualVariant1);
 
     GenericRecord actual2 = actual.get(1);
-    assertEquals(actual2.get("id"), 2);
+    assertThat(actual2.get("id")).isEqualTo(2);
     GenericRecord actualVariant2 = (GenericRecord) actual2.get("var");
     assertEquivalent(TEST_METADATA, expected2, actualVariant2);
   }
@@ -1666,22 +1667,22 @@ public class TestReadVariant extends DirectWriterTest {
 
     List<GenericRecord> actual = writeAndRead(schema, Arrays.asList(row1, row2, row3, row4));
     GenericRecord actual1 = actual.get(0);
-    assertEquals(actual1.get("id"), 1);
+    assertThat(actual1.get("id")).isEqualTo(1);
     GenericRecord actualVariant1 = (GenericRecord) actual1.get("var");
     assertEquivalent(EMPTY_METADATA, expectedArray1, actualVariant1);
 
     GenericRecord actual2 = actual.get(1);
-    assertEquals(actual2.get("id"), 2);
+    assertThat(actual2.get("id")).isEqualTo(2);
     GenericRecord actualVariant2 = (GenericRecord) actual2.get("var");
     assertEquivalent(EMPTY_METADATA, expectedValue2, actualVariant2);
 
     GenericRecord actual3 = actual.get(2);
-    assertEquals(actual3.get("id"), 3);
+    assertThat(actual3.get("id")).isEqualTo(3);
     GenericRecord actualVariant3 = (GenericRecord) actual3.get("var");
     assertEquivalent(TEST_METADATA, expectedObject3, actualVariant3);
 
     GenericRecord actual4 = actual.get(3);
-    assertEquals(actual4.get("id"), 4);
+    assertThat(actual4.get("id")).isEqualTo(4);
     GenericRecord actualVariant4 = (GenericRecord) actual4.get("var");
     assertEquivalent(TEST_METADATA, expectedArray4, actualVariant4);
   }
@@ -1722,7 +1723,7 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     GenericRecord actual = writeAndRead(schema, row);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, expectedArray, actualVariant);
   }
@@ -1751,7 +1752,7 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     GenericRecord actual = writeAndRead(schema, row);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, expectedArray, actualVariant);
   }
@@ -1777,7 +1778,7 @@ public class TestReadVariant extends DirectWriterTest {
     });
 
     GenericRecord actual = writeAndRead(schema, record);
-    assertEquals(actual.get("id"), 1);
+    assertThat(actual.get("id")).isEqualTo(1);
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(EMPTY_METADATA, expectedArray, actualVariant);
   }
@@ -1796,10 +1797,11 @@ public class TestReadVariant extends DirectWriterTest {
         ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", Arrays.asList(element)));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    assertThrows(
-        () -> writeAndRead(schema, record),
-        IllegalStateException.class,
-        "Invalid variant, conflicting value and typed_value");
+    assertThatThrownBy(() -> writeAndRead(schema, record))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasCauseInstanceOf(IllegalStateException.class)
+        .cause()
+        .hasMessageContaining("Invalid variant, conflicting value and typed_value");
   }
 
   /**
@@ -2082,35 +2084,12 @@ public class TestReadVariant extends DirectWriterTest {
   }
 
   /**
-   * Check for the given exception with message, possibly wrapped by a ParquetDecodingException.
-   */
-  void assertThrows(Callable callable, Class<? extends Exception> exception, String msg) {
-    try {
-      callable.call();
-      fail("No exception was thrown. Expected: " + exception.getName());
-    } catch (Exception actual) {
-      try {
-        if (actual.getClass().equals(ParquetDecodingException.class)) {
-          assertTrue(actual.getCause().getMessage().contains(msg));
-          assertEquals(actual.getCause().getClass(), exception);
-        } else {
-          assertTrue(actual.getMessage().contains(msg));
-          assertEquals(actual.getClass(), exception);
-        }
-      } catch (AssertionError e) {
-        e.addSuppressed(actual);
-        throw e;
-      }
-    }
-  }
-
-  /**
    * Assert that metadata contains identical bytes to expected, and value is logically equivalent.
    * E.g. object fields may be ordered differently in the binary.
    */
   void assertEquivalent(ByteBuffer expectedMetadata, ByteBuffer expectedValue, GenericRecord actual) {
-    assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
-    assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
+    assertThat((ByteBuffer) actual.get("metadata")).isEqualTo(expectedMetadata);
+    assertThat((ByteBuffer) actual.get("metadata")).isEqualTo(expectedMetadata);
     AvroTestUtil.assertEquivalent(
         new Variant(expectedValue, expectedMetadata),
         new Variant(((ByteBuffer) actual.get("value")), expectedMetadata));

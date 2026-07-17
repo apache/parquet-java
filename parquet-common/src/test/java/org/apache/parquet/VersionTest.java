@@ -18,8 +18,8 @@
  */
 package org.apache.parquet;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
@@ -51,72 +51,63 @@ public class VersionTest {
     ParsedVersion version = VersionParser.parse(Version.FULL_VERSION);
 
     assertVersionValid(version.version);
-    assertEquals(Version.VERSION_NUMBER, version.version);
-    assertEquals("parquet-mr", version.application);
+    assertThat(version.version).isEqualTo(Version.VERSION_NUMBER);
+    assertThat(version.application).isEqualTo("parquet-mr");
   }
 
   @Test
   public void testVersionParser() throws Exception {
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.0", "abcd"),
-        VersionParser.parse("parquet-mr version 1.6.0 (build abcd)"));
+    assertThat(VersionParser.parse("parquet-mr version 1.6.0 (build abcd)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", "abcd"));
 
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.22rc99-SNAPSHOT", "abcd"),
-        VersionParser.parse("parquet-mr version 1.6.22rc99-SNAPSHOT (build abcd)"));
+    assertThat(VersionParser.parse("parquet-mr version 1.6.22rc99-SNAPSHOT (build abcd)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.22rc99-SNAPSHOT", "abcd"));
 
-    try {
-      VersionParser.parse("unparseable string");
-      fail("this should throw");
-    } catch (VersionParseException e) {
-      //
-    }
+    assertThatThrownBy(() -> VersionParser.parse("unparseable string"))
+        .isInstanceOf(VersionParseException.class)
+        .hasMessage("Could not parse created_by: unparseable string using format: " + VersionParser.FORMAT);
 
     // missing semver
-    assertEquals(
-        new ParsedVersion("parquet-mr", null, "abcd"), VersionParser.parse("parquet-mr version (build abcd)"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", null, "abcd"), VersionParser.parse("parquet-mr version  (build abcd)"));
+    assertThat(VersionParser.parse("parquet-mr version (build abcd)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, "abcd"));
+    assertThat(VersionParser.parse("parquet-mr version  (build abcd)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, "abcd"));
 
     // missing build hash
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.0", null),
-        VersionParser.parse("parquet-mr version 1.6.0 (build )"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.0", null),
-        VersionParser.parse("parquet-mr version 1.6.0 (build)"));
-    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr version (build)"));
-    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr version (build )"));
+    assertThat(VersionParser.parse("parquet-mr version 1.6.0 (build )"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", null));
+    assertThat(VersionParser.parse("parquet-mr version 1.6.0 (build)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", null));
+    assertThat(VersionParser.parse("parquet-mr version (build)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, null));
+    assertThat(VersionParser.parse("parquet-mr version (build )"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, null));
 
     // Missing entire build section
-    assertEquals(new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr version 1.6.0"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.8.0rc4", null), VersionParser.parse("parquet-mr version 1.8.0rc4"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.8.0rc4-SNAPSHOT", null),
-        VersionParser.parse("parquet-mr version 1.8.0rc4-SNAPSHOT"));
-    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr version"));
+    assertThat(VersionParser.parse("parquet-mr version 1.6.0"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", null));
+    assertThat(VersionParser.parse("parquet-mr version 1.8.0rc4"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.8.0rc4", null));
+    assertThat(VersionParser.parse("parquet-mr version 1.8.0rc4-SNAPSHOT"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.8.0rc4-SNAPSHOT", null));
+    assertThat(VersionParser.parse("parquet-mr version")).isEqualTo(new ParsedVersion("parquet-mr", null, null));
 
     // Various spaces
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr     version    1.6.0"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.8.0rc4", null),
-        VersionParser.parse("parquet-mr     version    1.8.0rc4"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.8.0rc4-SNAPSHOT", null),
-        VersionParser.parse("parquet-mr      version    1.8.0rc4-SNAPSHOT  "));
-    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr      version"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.0", null),
-        VersionParser.parse("parquet-mr version 1.6.0 (  build )"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", "1.6.0", null),
-        VersionParser.parse("parquet-mr     version 1.6.0 (    build)"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr     version (    build)"));
-    assertEquals(
-        new ParsedVersion("parquet-mr", null, null),
-        VersionParser.parse("parquet-mr    version    (build    )"));
+    assertThat(VersionParser.parse("parquet-mr     version    1.6.0"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", null));
+    assertThat(VersionParser.parse("parquet-mr     version    1.8.0rc4"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.8.0rc4", null));
+    assertThat(VersionParser.parse("parquet-mr      version    1.8.0rc4-SNAPSHOT  "))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.8.0rc4-SNAPSHOT", null));
+    assertThat(VersionParser.parse("parquet-mr      version"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, null));
+    assertThat(VersionParser.parse("parquet-mr version 1.6.0 (  build )"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", null));
+    assertThat(VersionParser.parse("parquet-mr     version 1.6.0 (    build)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", "1.6.0", null));
+    assertThat(VersionParser.parse("parquet-mr     version (    build)"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, null));
+    assertThat(VersionParser.parse("parquet-mr    version    (build    )"))
+        .isEqualTo(new ParsedVersion("parquet-mr", null, null));
   }
 }

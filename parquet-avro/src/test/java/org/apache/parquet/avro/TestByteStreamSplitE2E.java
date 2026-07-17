@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.common.collect.Lists;
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +34,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -85,7 +86,7 @@ public class TestByteStreamSplitE2E {
       }
     }
 
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
   @Test

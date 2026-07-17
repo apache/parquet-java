@@ -300,4 +300,59 @@ public class TestCapacityByteArrayOutputStream {
       assertEquals(i, byteArray[i]);
     }
   }
+
+  // ---- Scalar write methods (writeInt, writeLong) ----
+
+  /**
+   * Reads a little-endian int from the byte array at position {@code pos}.
+   */
+  private static int readIntLE(byte[] b, int pos) {
+    return (b[pos] & 0xFF) | ((b[pos + 1] & 0xFF) << 8) | ((b[pos + 2] & 0xFF) << 16) | ((b[pos + 3] & 0xFF) << 24);
+  }
+
+  /**
+   * Reads a little-endian long from the byte array at position {@code pos}.
+   */
+  private static long readLongLE(byte[] b, int pos) {
+    return (b[pos] & 0xFFL)
+        | ((b[pos + 1] & 0xFFL) << 8)
+        | ((b[pos + 2] & 0xFFL) << 16)
+        | ((b[pos + 3] & 0xFFL) << 24)
+        | ((b[pos + 4] & 0xFFL) << 32)
+        | ((b[pos + 5] & 0xFFL) << 40)
+        | ((b[pos + 6] & 0xFFL) << 48)
+        | ((b[pos + 7] & 0xFFL) << 56);
+  }
+
+  @Test
+  public void testWriteInt() throws Throwable {
+    try (CapacityByteArrayOutputStream cbaos = newCapacityBAOS(10)) {
+      int[] values = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 42};
+      for (int v : values) {
+        cbaos.writeInt(v);
+      }
+      assertEquals(values.length * 4, cbaos.size());
+
+      byte[] bytes = BytesInput.from(cbaos).toByteArray();
+      for (int i = 0; i < values.length; i++) {
+        assertEquals("value at index " + i, values[i], readIntLE(bytes, i * 4));
+      }
+    }
+  }
+
+  @Test
+  public void testWriteLong() throws Throwable {
+    try (CapacityByteArrayOutputStream cbaos = newCapacityBAOS(10)) {
+      long[] values = {0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE, 123456789L};
+      for (long v : values) {
+        cbaos.writeLong(v);
+      }
+      assertEquals(values.length * 8, cbaos.size());
+
+      byte[] bytes = BytesInput.from(cbaos).toByteArray();
+      for (int i = 0; i < values.length; i++) {
+        assertEquals("value at index " + i, values[i], readLongLE(bytes, i * 8));
+      }
+    }
+  }
 }

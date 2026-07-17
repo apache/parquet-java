@@ -18,11 +18,12 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ShowDictionaryCommandTest extends ParquetFileTest {
@@ -33,7 +34,7 @@ public class ShowDictionaryCommandTest extends ParquetFileTest {
     command.targets = Arrays.asList(file.getAbsolutePath());
     command.column = BINARY_FIELD;
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -44,7 +45,7 @@ public class ShowDictionaryCommandTest extends ParquetFileTest {
     // the 'double_field' column does not have dictionary encoding
     command.column = DOUBLE_FIELD;
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -54,6 +55,6 @@ public class ShowDictionaryCommandTest extends ParquetFileTest {
     command.targets = Arrays.asList(file.getAbsolutePath());
     command.column = FIXED_LEN_BYTE_ARRAY_FIELD;
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 }

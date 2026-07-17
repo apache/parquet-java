@@ -19,8 +19,7 @@
 package org.apache.parquet.avro;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -126,10 +125,10 @@ public class TestInputOutputFormat {
       while ((lineOut = out.readLine()) != null) {
         lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
         GenericRecord a = nextRecord(lineNumber == 4 ? null : lineNumber);
-        assertEquals("line " + lineNumber, a.toString(), lineOut);
+        assertThat(a).as("line " + lineNumber).asString().isEqualTo(lineOut);
         ++lineNumber;
       }
-      assertNull("line " + lineNumber, out.readLine());
+      assertThat(out.readLine()).as("line " + lineNumber).isNull();
     }
   }
 

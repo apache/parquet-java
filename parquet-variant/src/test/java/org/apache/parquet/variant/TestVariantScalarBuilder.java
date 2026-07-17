@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -27,7 +30,6 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.stream.IntStream;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +43,9 @@ public class TestVariantScalarBuilder {
     vb.appendNull();
     VariantTestUtil.testVariant(vb.build(), v -> VariantTestUtil.checkType(v, VariantUtil.NULL, Variant.Type.NULL));
 
-    try {
-      vb.appendNull();
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(vb::appendNull)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -56,15 +55,12 @@ public class TestVariantScalarBuilder {
       vb.appendBoolean(b);
       VariantTestUtil.testVariant(vb.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-        Assert.assertEquals(b, v.getBoolean());
+        assertThat(v.getBoolean()).isEqualTo(b);
       });
 
-      try {
-        vb.appendBoolean(true);
-        Assert.fail("Expected Exception when appending multiple values");
-      } catch (Exception e) {
-        // expected
-      }
+      assertThatThrownBy(() -> vb.appendBoolean(true))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Cannot call multiple append() methods.");
     });
   }
 
@@ -85,15 +81,12 @@ public class TestVariantScalarBuilder {
           vb.appendLong(l);
           VariantTestUtil.testVariant(vb.build(), v -> {
             VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.LONG);
-            Assert.assertEquals((long) l, v.getLong());
+            assertThat(v.getLong()).isEqualTo((long) l);
           });
 
-          try {
-            vb.appendLong(1L);
-            Assert.fail("Expected Exception when appending multiple values");
-          } catch (Exception e) {
-            // expected
-          }
+          assertThatThrownBy(() -> vb.appendLong(1L))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessage("Cannot call multiple append() methods.");
         });
   }
 
@@ -112,15 +105,12 @@ public class TestVariantScalarBuilder {
           vb.appendInt(i);
           VariantTestUtil.testVariant(vb.build(), v -> {
             VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
-            Assert.assertEquals((int) i, v.getInt());
+            assertThat(v.getInt()).isEqualTo((int) i);
           });
 
-          try {
-            vb.appendInt(1);
-            Assert.fail("Expected Exception when appending multiple values");
-          } catch (Exception e) {
-            // expected
-          }
+          assertThatThrownBy(() -> vb.appendInt(1))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessage("Cannot call multiple append() methods.");
         });
   }
 
@@ -132,15 +122,12 @@ public class TestVariantScalarBuilder {
           vb.appendShort(s);
           VariantTestUtil.testVariant(vb.build(), v -> {
             VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-            Assert.assertEquals((short) s, v.getShort());
+            assertThat(v.getShort()).isEqualTo((short) s);
           });
 
-          try {
-            vb.appendShort((short) 1);
-            Assert.fail("Expected Exception when appending multiple values");
-          } catch (Exception e) {
-            // expected
-          }
+          assertThatThrownBy(() -> vb.appendShort((short) 1))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessage("Cannot call multiple append() methods.");
         });
   }
 
@@ -151,15 +138,12 @@ public class TestVariantScalarBuilder {
       vb.appendByte(b);
       VariantTestUtil.testVariant(vb.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-        Assert.assertEquals((byte) b, v.getByte());
+        assertThat(v.getByte()).isEqualTo((byte) b);
       });
 
-      try {
-        vb.appendByte((byte) 1);
-        Assert.fail("Expected Exception when appending multiple values");
-      } catch (Exception e) {
-        // expected
-      }
+      assertThatThrownBy(() -> vb.appendByte((byte) 1))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Cannot call multiple append() methods.");
     });
   }
 
@@ -170,15 +154,12 @@ public class TestVariantScalarBuilder {
       vb.appendFloat(f);
       VariantTestUtil.testVariant(vb.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.FLOAT);
-        Assert.assertEquals(f, v.getFloat(), 0);
+        assertThat(v.getFloat()).isEqualTo(f);
       });
 
-      try {
-        vb.appendFloat(1.2f);
-        Assert.fail("Expected Exception when appending multiple values");
-      } catch (Exception e) {
-        // expected
-      }
+      assertThatThrownBy(() -> vb.appendFloat(1.2f))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Cannot call multiple append() methods.");
     });
   }
 
@@ -200,7 +181,9 @@ public class TestVariantScalarBuilder {
     vb.appendFloat(testFloat);
 
     int writePos = (Integer) writePosField.get(vb);
-    Assert.assertEquals("writePos should be exactly 5 after appendFloat", 5, writePos);
+    assertThat(writePos)
+        .as("writePos should be exactly 5 after appendFloat")
+        .isEqualTo(5);
 
     int modifiedBytes = 0;
     for (int i = 0; i < 10; i++) {
@@ -208,15 +191,20 @@ public class TestVariantScalarBuilder {
         modifiedBytes++;
       }
     }
-    Assert.assertEquals("appendFloat should write exactly 5 bytes (1 header + 4 data)", 5, modifiedBytes);
+    assertThat(modifiedBytes)
+        .as("appendFloat should write exactly 5 bytes (1 header + 4 data)")
+        .isEqualTo(5);
 
     for (int i = 5; i < 10; i++) {
-      Assert.assertEquals(
-          "Byte at position " + i + " should not be modified by appendFloat", (byte) 0xFF, buffer[i]);
+      assertThat(buffer[i])
+          .as("Byte at position " + i + " should not be modified by appendFloat")
+          .isEqualTo((byte) 0xFF);
     }
 
     Variant variant = vb.build();
-    Assert.assertEquals("Float value should be preserved correctly", testFloat, variant.getFloat(), 0.0f);
+    assertThat(variant.getFloat())
+        .as("Float value should be preserved correctly")
+        .isEqualTo(testFloat);
   }
 
   @Test
@@ -226,15 +214,12 @@ public class TestVariantScalarBuilder {
       vb.appendDouble(d);
       VariantTestUtil.testVariant(vb.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DOUBLE);
-        Assert.assertEquals(d, v.getDouble(), 0);
+        assertThat(v.getDouble()).isEqualTo(d);
       });
 
-      try {
-        vb.appendDouble(1.2);
-        Assert.fail("Expected Exception when appending multiple values");
-      } catch (Exception e) {
-        // expected
-      }
+      assertThatThrownBy(() -> vb.appendDouble(1.2))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Cannot call multiple append() methods.");
     });
   }
 
@@ -246,7 +231,7 @@ public class TestVariantScalarBuilder {
       vb.appendDecimal(d);
       VariantTestUtil.testVariant(vb.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
-        Assert.assertEquals(d, v.getDecimal());
+        assertThat(v.getDecimal()).isEqualTo(d);
       });
     });
 
@@ -257,7 +242,7 @@ public class TestVariantScalarBuilder {
           vb.appendDecimal(d);
           VariantTestUtil.testVariant(vb.build(), v -> {
             VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
-            Assert.assertEquals(d, v.getDecimal());
+            assertThat(v.getDecimal()).isEqualTo(d);
           });
         });
 
@@ -268,18 +253,15 @@ public class TestVariantScalarBuilder {
           vb.appendDecimal(d);
           VariantTestUtil.testVariant(vb.build(), v -> {
             VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL16);
-            Assert.assertEquals(d, v.getDecimal());
+            assertThat(v.getDecimal()).isEqualTo(d);
           });
         });
 
     VariantBuilder vb = new VariantBuilder();
     vb.appendDecimal(new BigDecimal("10.2147483647"));
-    try {
-      vb.appendDecimal(new BigDecimal("10.2147483647"));
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendDecimal(new BigDecimal("10.2147483647")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -290,7 +272,7 @@ public class TestVariantScalarBuilder {
     vb1.appendDecimal(smallPrecisionLargeScale);
     VariantTestUtil.testVariant(vb1.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
-      Assert.assertEquals(smallPrecisionLargeScale, v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(smallPrecisionLargeScale);
     });
 
     BigDecimal mediumPrecisionLargeScale = new BigDecimal("1234567890").scaleByPowerOfTen(-25);
@@ -298,7 +280,7 @@ public class TestVariantScalarBuilder {
     vb2.appendDecimal(mediumPrecisionLargeScale);
     VariantTestUtil.testVariant(vb2.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
-      Assert.assertEquals(mediumPrecisionLargeScale, v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(mediumPrecisionLargeScale);
     });
 
     BigDecimal maxDecimal4Precision = new BigDecimal("123456789").scaleByPowerOfTen(-18);
@@ -306,7 +288,7 @@ public class TestVariantScalarBuilder {
     vb3.appendDecimal(maxDecimal4Precision);
     VariantTestUtil.testVariant(vb3.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
-      Assert.assertEquals(maxDecimal4Precision, v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(maxDecimal4Precision);
     });
 
     BigDecimal maxDecimal8Precision = new BigDecimal("123456789012345678").scaleByPowerOfTen(-19);
@@ -314,7 +296,7 @@ public class TestVariantScalarBuilder {
     vb4.appendDecimal(maxDecimal8Precision);
     VariantTestUtil.testVariant(vb4.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
-      Assert.assertEquals(maxDecimal8Precision, v.getDecimal());
+      assertThat(v.getDecimal()).isEqualTo(maxDecimal8Precision);
     });
   }
 
@@ -325,15 +307,12 @@ public class TestVariantScalarBuilder {
     vb.appendDate(days);
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DATE);
-      Assert.assertEquals(days, v.getInt());
+      assertThat(v.getInt()).isEqualTo(days);
     });
 
-    try {
-      vb.appendDate(123);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendDate(123))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -342,15 +321,12 @@ public class TestVariantScalarBuilder {
     vb.appendTimestampTz(1734373425321456L);
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_TZ);
-      Assert.assertEquals(1734373425321456L, v.getLong());
+      assertThat(v.getLong()).isEqualTo(1734373425321456L);
     });
 
-    try {
-      vb.appendTimestampTz(1734373425321456L);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendTimestampTz(1734373425321456L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -359,15 +335,12 @@ public class TestVariantScalarBuilder {
     vb.appendTimestampNtz(1734373425321456L);
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NTZ);
-      Assert.assertEquals(1734373425321456L, v.getLong());
+      assertThat(v.getLong()).isEqualTo(1734373425321456L);
     });
 
-    try {
-      vb.appendTimestampNtz(1734373425321456L);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendTimestampNtz(1734373425321456L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -376,15 +349,12 @@ public class TestVariantScalarBuilder {
     vb.appendBinary(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BINARY);
-      Assert.assertEquals(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}), v.getBinary());
+      assertThat(v.getBinary()).isEqualTo(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
     });
 
-    try {
-      vb.appendBinary(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendBinary(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -394,8 +364,8 @@ public class TestVariantScalarBuilder {
     int remainingBefore = buf.remaining();
     VariantBuilder vb = new VariantBuilder();
     vb.appendBinary(buf);
-    Assert.assertEquals(positionBefore, buf.position());
-    Assert.assertEquals(remainingBefore, buf.remaining());
+    assertThat(buf.position()).isEqualTo(positionBefore);
+    assertThat(buf.remaining()).isEqualTo(remainingBefore);
   }
 
   @Test
@@ -411,18 +381,15 @@ public class TestVariantScalarBuilder {
             } else {
               VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.STRING);
             }
-            Assert.assertEquals(s, v.getString());
+            assertThat(v.getString()).isEqualTo(s);
           });
         });
 
     VariantBuilder vb = new VariantBuilder();
     vb.appendString(VariantTestUtil.randomString(10));
-    try {
-      vb.appendString(VariantTestUtil.randomString(10));
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendString(VariantTestUtil.randomString(10)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -434,27 +401,20 @@ public class TestVariantScalarBuilder {
       vb.appendTime(micros);
       VariantTestUtil.testVariant(vb.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIME);
-        Assert.assertEquals(micros, v.getLong());
+        assertThat(v.getLong()).isEqualTo(micros);
       });
     }
 
     // test negative time
-    try {
-      VariantBuilder vb = new VariantBuilder();
-      vb.appendTime(-1);
-      Assert.fail("Expected Exception when adding a negative time value");
-    } catch (IllegalArgumentException e) {
-      // expected
-    }
+    assertThatThrownBy(() -> new VariantBuilder().appendTime(-1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Time value (-1) cannot be negative.");
 
     VariantBuilder vb = new VariantBuilder();
     vb.appendTime(123456);
-    try {
-      vb.appendTime(123456);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendTime(123456))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -463,15 +423,12 @@ public class TestVariantScalarBuilder {
     vb.appendTimestampNanosTz(1734373425321456987L);
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
-      Assert.assertEquals(1734373425321456987L, v.getLong());
+      assertThat(v.getLong()).isEqualTo(1734373425321456987L);
     });
 
-    try {
-      vb.appendTimestampNanosTz(1734373425321456987L);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendTimestampNanosTz(1734373425321456987L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -480,15 +437,12 @@ public class TestVariantScalarBuilder {
     vb.appendTimestampNanosNtz(1734373425321456987L);
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_NTZ);
-      Assert.assertEquals(1734373425321456987L, v.getLong());
+      assertThat(v.getLong()).isEqualTo(1734373425321456987L);
     });
 
-    try {
-      vb.appendTimestampNanosNtz(1734373425321456987L);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendTimestampNanosNtz(1734373425321456987L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -502,15 +456,12 @@ public class TestVariantScalarBuilder {
     vb.appendUUID(expected);
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
-      Assert.assertEquals(expected, v.getUUID());
+      assertThat(v.getUUID()).isEqualTo(expected);
     });
 
-    try {
-      vb.appendUUID(expected);
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendUUID(expected))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 
   @Test
@@ -524,16 +475,13 @@ public class TestVariantScalarBuilder {
     vb.appendUUIDBytes(ByteBuffer.wrap(uuid));
     VariantTestUtil.testVariant(vb.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
-      Assert.assertEquals(expected, v.getUUID());
+      assertThat(v.getUUID()).isEqualTo(expected);
     });
 
     // appendUUIDBytes must go through onAppend(), so a second append on the root builder
     // (which already holds a value) must be rejected instead of producing a multi-value buffer.
-    try {
-      vb.appendUUIDBytes(ByteBuffer.wrap(uuid));
-      Assert.fail("Expected Exception when appending multiple values");
-    } catch (Exception e) {
-      // expected
-    }
+    assertThatThrownBy(() -> vb.appendUUIDBytes(ByteBuffer.wrap(uuid)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot call multiple append() methods.");
   }
 }

@@ -37,6 +37,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDrop;
 import static org.apache.parquet.io.api.Binary.fromString;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -387,6 +388,45 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(
         notIn(intColumn, values9),
         List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+  }
+
+  @Test
+  public void testInWithNullLiteralAndUnsetNumNulls() {
+    // Reproduces the bug where StatisticsFilter drops a row group for IN (..., null) when num_nulls
+    // is unset. min/max are present but the number of nulls is unknown, so we must not fall through
+    // to the min/max-only check (which only considers the non-null literals) and drop a chunk that
+    // may contain matching null rows
+    org.apache.parquet.column.statistics.Statistics<?> statsUnsetNulls =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(
+                Types.required(PrimitiveTypeName.INT32).named("test_int32"))
+            .withMin(BytesUtils.intToBytes(10))
+            .withMax(BytesUtils.intToBytes(100))
+            .build();
+    // min/max are available but num_nulls is not
+    assertThat(statsUnsetNulls.hasNonNullValue()).isTrue();
+    assertThat(statsUnsetNulls.isNumNullsSet()).isFalse();
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(statsUnsetNulls, 177L), getDoubleColumnMeta(doubleStats, 177L));
+
+    // IN (200, null) where 200 is outside [10, 100]. The chunk might contain null rows matching the
+    // null literal, so it must NOT be dropped
+    Set<Integer> valuesNullAndOutOfRange = new HashSet<>();
+    valuesNullAndOutOfRange.add(null);
+    valuesNullAndOutOfRange.add(200);
+    assertThat(canDrop(in(intColumn, valuesNullAndOutOfRange), metas)).isFalse();
+
+    // IN (200) without a null literal can still be dropped based on min/max even if num_nulls is
+    // unknown, confirming the fix does not over-broaden pruning.
+    Set<Integer> valuesOutOfRange = new HashSet<>();
+    valuesOutOfRange.add(200);
+    assertThat(canDrop(in(intColumn, valuesOutOfRange), metas)).isTrue();
+
+    // IN (50, null) where 50 is inside [10, 100] must also not be dropped.
+    Set<Integer> valuesNullAndInRange = new HashSet<>();
+    valuesNullAndInRange.add(null);
+    valuesNullAndInRange.add(50);
+    assertThat(canDrop(in(intColumn, valuesNullAndInRange), metas)).isFalse();
   }
 
   @Test

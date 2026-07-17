@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.proto;
 
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;

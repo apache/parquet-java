@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
@@ -30,7 +33,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +141,7 @@ public class TestVariantObject {
     Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(0);
     });
   }
 
@@ -149,7 +151,7 @@ public class TestVariantObject {
         ByteBuffer.wrap(new byte[] {0b1000010, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(0);
     });
   }
 
@@ -163,13 +165,13 @@ public class TestVariantObject {
         constructMetadata(false, ImmutableList.of("c", "b", "a")));
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(3, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(3);
       VariantTestUtil.checkType(v.getFieldByKey("a"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getFieldByKey("a").getInt());
+      assertThat(v.getFieldByKey("a").getInt()).isEqualTo(1234567890);
       VariantTestUtil.checkType(v.getFieldByKey("b"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("b").getBoolean());
+      assertThat(v.getFieldByKey("b").getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getFieldByKey("c"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals("variant", v.getFieldByKey("c").getString());
+      assertThat(v.getFieldByKey("c").getString()).isEqualTo("variant");
     });
   }
 
@@ -184,19 +186,18 @@ public class TestVariantObject {
         constructMetadata(true, ImmutableList.of("a", "b", "c")));
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(3, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(3);
       VariantTestUtil.checkType(v.getFieldByKey("a"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getFieldByKey("a").getInt());
+      assertThat(v.getFieldByKey("a").getInt()).isEqualTo(1234567890);
       VariantTestUtil.checkType(v.getFieldByKey("b"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("b").getBoolean());
+      assertThat(v.getFieldByKey("b").getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getFieldByKey("c"), VariantUtil.OBJECT, Variant.Type.OBJECT);
 
       Variant nestedV = v.getFieldByKey("c");
-      Assert.assertEquals(2, nestedV.numObjectElements());
+      assertThat(nestedV.numObjectElements()).isEqualTo(2);
       VariantTestUtil.checkType(nestedV.getFieldByKey("a"), VariantUtil.PRIMITIVE, Variant.Type.DATE);
-      Assert.assertEquals(
-          LocalDate.parse("2025-04-17"),
-          LocalDate.ofEpochDay(nestedV.getFieldByKey("a").getInt()));
+      assertThat(LocalDate.ofEpochDay(nestedV.getFieldByKey("a").getInt()))
+          .isEqualTo(LocalDate.parse("2025-04-17"));
       VariantTestUtil.checkType(nestedV.getFieldByKey("c"), VariantUtil.PRIMITIVE, Variant.Type.NULL);
     });
   }
@@ -211,13 +212,13 @@ public class TestVariantObject {
         constructMetadata(true, ImmutableList.of("a", "b", "c")));
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(3, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(3);
       VariantTestUtil.checkType(v.getFieldByKey("a"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getFieldByKey("a").getInt());
+      assertThat(v.getFieldByKey("a").getInt()).isEqualTo(1234567890);
       VariantTestUtil.checkType(v.getFieldByKey("b"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("b").getBoolean());
+      assertThat(v.getFieldByKey("b").getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getFieldByKey("c"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals("variant", v.getFieldByKey("c").getString());
+      assertThat(v.getFieldByKey("c").getString()).isEqualTo("variant");
     });
   }
 
@@ -231,13 +232,13 @@ public class TestVariantObject {
         constructMetadata(true, ImmutableList.of("a", "b", "c")));
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(3, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(3);
       VariantTestUtil.checkType(v.getFieldByKey("a"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals(randomString, v.getFieldByKey("a").getString());
+      assertThat(v.getFieldByKey("a").getString()).isEqualTo(randomString);
       VariantTestUtil.checkType(v.getFieldByKey("b"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("b").getBoolean());
+      assertThat(v.getFieldByKey("b").getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getFieldByKey("c"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getFieldByKey("c").getInt());
+      assertThat(v.getFieldByKey("c").getInt()).isEqualTo(1234567890);
     });
   }
 
@@ -275,11 +276,11 @@ public class TestVariantObject {
         constructMetadata(true, fieldNames));
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(2, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(2);
       VariantTestUtil.checkType(v.getFieldByKey("z1"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("z1").getBoolean());
+      assertThat(v.getFieldByKey("z1").getBoolean()).isTrue();
       VariantTestUtil.checkType(v.getFieldByKey("z2"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getFieldByKey("z2").getInt());
+      assertThat(v.getFieldByKey("z2").getInt()).isEqualTo(1234567890);
     });
   }
 
@@ -318,28 +319,23 @@ public class TestVariantObject {
         new Variant(ByteBuffer.wrap(constructObject(keys, fields, false)), constructMetadata(true, sortedKeys));
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(1000, v.numObjectElements());
+      assertThat(v.numObjectElements()).isEqualTo(1000);
 
       for (int i = 0; i < 1000; i++) {
         String name = String.format("a%04d", i);
         VariantTestUtil.checkType(v.getFieldByKey(name), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-        Assert.assertEquals(
-            new String(fields.get(name), 5, fields.get(name).length - 5),
-            v.getFieldByKey(name).getString());
+        assertThat(v.getFieldByKey(name).getString())
+            .isEqualTo(new String(fields.get(name), 5, fields.get(name).length - 5));
       }
     });
   }
 
   @Test
   public void testInvalidObject() {
-    try {
-      // An array header
-      Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10011}), VariantTestUtil.EMPTY_METADATA);
-      value.numObjectElements();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read ARRAY value as OBJECT", e.getMessage());
-    }
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10011}), VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(value::numObjectElements)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot read ARRAY value as OBJECT");
   }
 
   @Test
@@ -348,8 +344,9 @@ public class TestVariantObject {
     // buffer is only 3 bytes, so the offset table cannot fit.
     byte[] metadata = new byte[] {0x01, (byte) 200, 0x00};
     byte[] value = new byte[] {0x00};
-    Assert.assertThrows(
-        IllegalArgumentException.class, () -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)));
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variant metadata dictionary extends past buffer: dictSize=200");
   }
 
   @Test
@@ -358,8 +355,9 @@ public class TestVariantObject {
     // to guard against int overflow in the bound check arithmetic.
     byte[] metadata = new byte[] {(byte) 0xC1, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0x7F};
     byte[] value = new byte[] {0x00};
-    Assert.assertThrows(
-        IllegalArgumentException.class, () -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)));
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variant metadata dictionary extends past buffer: dictSize=2147483647");
   }
 
   @Test
@@ -368,8 +366,9 @@ public class TestVariantObject {
     // dictSize field itself can't be read.
     byte[] metadata = new byte[] {(byte) 0xC1, 0x00, 0x00};
     byte[] value = new byte[] {0x00};
-    Assert.assertThrows(
-        IllegalArgumentException.class, () -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)));
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variant metadata truncated: offsetSize=4");
   }
 
   @Test
@@ -403,8 +402,8 @@ public class TestVariantObject {
     // With a non-zero position and read-only buffer, the else-branch is taken,
     // which previously used the wrong offset.
     ImmutableMetadata immutableMetadata = new ImmutableMetadata(offsetMetadata);
-    Assert.assertEquals(0, immutableMetadata.getOrInsert("name"));
-    Assert.assertEquals(1, immutableMetadata.getOrInsert("age"));
+    assertThat(immutableMetadata.getOrInsert("name")).isEqualTo(0);
+    assertThat(immutableMetadata.getOrInsert("age")).isEqualTo(1);
   }
 
   @Test
@@ -423,12 +422,12 @@ public class TestVariantObject {
 
     // hasArray branch
     ImmutableMetadata writable = new ImmutableMetadata(metaBuf);
-    Assert.assertEquals(0, writable.getOrInsert("élève"));
-    Assert.assertEquals(1, writable.getOrInsert("中文"));
+    assertThat(writable.getOrInsert("élève")).isEqualTo(0);
+    assertThat(writable.getOrInsert("中文")).isEqualTo(1);
 
     // read-only branch (else path in getMetadataMap): asReadOnlyBuffer() makes isReadOnly() true
     ImmutableMetadata readOnly = new ImmutableMetadata(metaBuf.asReadOnlyBuffer());
-    Assert.assertEquals(0, readOnly.getOrInsert("élève"));
-    Assert.assertEquals(1, readOnly.getOrInsert("中文"));
+    assertThat(readOnly.getOrInsert("élève")).isEqualTo(0);
+    assertThat(readOnly.getOrInsert("中文")).isEqualTo(1);
   }
 }

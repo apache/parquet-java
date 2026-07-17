@@ -26,6 +26,8 @@ import static org.apache.parquet.avro.AvroTestUtil.optional;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
 import static org.apache.parquet.avro.AvroTestUtil.record;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -41,7 +43,6 @@ import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -1046,10 +1047,9 @@ public class TestArrayCompatibility extends DirectWriterTest {
     final MessageType fileSchema;
     try (ParquetFileReader reader = ParquetFileReader.open(new Configuration(), test)) {
       fileSchema = reader.getFileMetaData().getSchema();
-      Assert.assertEquals(
-          "Converted schema should assume 2-layer structure",
-          oldSchema,
-          new AvroSchemaConverter(OLD_BEHAVIOR_CONF).convert(fileSchema));
+      assertThat(new AvroSchemaConverter(OLD_BEHAVIOR_CONF).convert(fileSchema))
+          .as("Converted schema should assume 2-layer structure")
+          .isEqualTo(oldSchema);
     }
 
     // both should default to the 2-layer structure
@@ -1066,10 +1066,9 @@ public class TestArrayCompatibility extends DirectWriterTest {
             instance(structWithElementField, "element", 34.0F)));
 
     // check the schema
-    Assert.assertEquals(
-        "Converted schema should assume 3-layer structure",
-        newSchema,
-        new AvroSchemaConverter(NEW_BEHAVIOR_CONF).convert(fileSchema));
+    assertThat(new AvroSchemaConverter(NEW_BEHAVIOR_CONF).convert(fileSchema))
+        .as("Converted schema should assume 3-layer structure")
+        .isEqualTo(newSchema);
     assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
 
     // check that this works with compatible nested schemas
@@ -1118,9 +1117,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "}");
     Schema avroSchema = new AvroSchemaConverter().convert(parquetSchema);
 
-    Assert.assertTrue(AvroRecordConverter.isElementType(
-        parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
-        avroSchema.getFields().get(0).schema()));
+    assertThat(AvroRecordConverter.isElementType(
+            parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
+            avroSchema.getFields().get(0).schema()))
+        .isTrue();
 
     // Test `array` style naming
     parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
@@ -1132,9 +1132,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "}");
     avroSchema = new AvroSchemaConverter().convert(parquetSchema);
 
-    Assert.assertTrue(AvroRecordConverter.isElementType(
-        parquetSchema.getType("list_field"),
-        avroSchema.getFields().get(0).schema()));
+    assertThat(AvroRecordConverter.isElementType(
+            parquetSchema.getType("list_field"),
+            avroSchema.getFields().get(0).schema()))
+        .isTrue();
   }
 
   @Test
@@ -1150,10 +1151,12 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "  }\n"
         + "}");
     Schema avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
-    Assert.assertTrue(AvroRecordConverter.isElementType(
-        parquetSchema.getType("list").asGroupType().getType("list"),
-        AvroSchemaConverter.getNonNull(avroSchema.getFields().get(0).schema())
-            .getElementType()));
+    assertThat(AvroRecordConverter.isElementType(
+            parquetSchema.getType("list").asGroupType().getType("list"),
+            AvroSchemaConverter.getNonNull(
+                    avroSchema.getFields().get(0).schema())
+                .getElementType()))
+        .isTrue();
   }
 
   @Test
@@ -1168,9 +1171,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "}");
     Schema avroSchema = new AvroSchemaConverter().convert(parquetSchema);
 
-    Assert.assertTrue(AvroRecordConverter.isElementType(
-        parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
-        avroSchema.getFields().get(0).schema()));
+    assertThat(AvroRecordConverter.isElementType(
+            parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
+            avroSchema.getFields().get(0).schema()))
+        .isTrue();
 
     // Test `array` style naming
     parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
@@ -1182,9 +1186,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "}");
     avroSchema = new AvroSchemaConverter().convert(parquetSchema);
 
-    Assert.assertTrue(AvroRecordConverter.isElementType(
-        parquetSchema.getType("list_field"),
-        avroSchema.getFields().get(0).schema()));
+    assertThat(AvroRecordConverter.isElementType(
+            parquetSchema.getType("list_field"),
+            avroSchema.getFields().get(0).schema()))
+        .isTrue();
   }
 
   @Test
@@ -1246,7 +1251,9 @@ public class TestArrayCompatibility extends DirectWriterTest {
     AvroReadSupport.setAvroReadSchema(oldConfWithSchema, newSchema);
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(oldConfWithSchema, test);
-    Assert.assertThrows(InvalidRecordException.class, reader::read);
+    assertThatThrownBy(reader::read)
+        .isInstanceOf(InvalidRecordException.class)
+        .hasMessage("Parquet/Avro schema mismatch. Avro field 'element' not found.");
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(Path path) throws IOException {
@@ -1275,11 +1282,14 @@ public class TestArrayCompatibility extends DirectWriterTest {
       AvroParquetReader<T> reader, Schema expectedSchema, T... expectedRecords) throws IOException {
     for (T expectedRecord : expectedRecords) {
       T actualRecord = reader.read();
-      Assert.assertEquals("Should match expected schema", expectedSchema, actualRecord.getSchema());
-      Assert.assertEquals("Should match the expected record", expectedRecord, actualRecord);
+      assertThat(actualRecord.getSchema())
+          .as("Should match expected schema")
+          .isEqualTo(expectedSchema);
+      assertThat(actualRecord).as("Should match the expected record").isEqualTo(expectedRecord);
     }
-    Assert.assertNull(
-        "Should only contain " + expectedRecords.length + " record" + (expectedRecords.length == 1 ? "" : "s"),
-        reader.read());
+    assertThat(reader.read())
+        .as("Should only contain " + expectedRecords.length + " record"
+            + (expectedRecords.length == 1 ? "" : "s"))
+        .isNull();
   }
 }

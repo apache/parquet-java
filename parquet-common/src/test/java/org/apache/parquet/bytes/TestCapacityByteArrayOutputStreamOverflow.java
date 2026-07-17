@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Field;
 import org.junit.After;
@@ -67,7 +67,7 @@ public class TestCapacityByteArrayOutputStreamOverflow {
       // Without the fix, the doubling strategy would compute nextSlabSize = bytesUsed (1024),
       // and bytesAllocated + 1024 would overflow. With the fix, nextSlabSize is capped to 100.
       cbaos.write(1);
-      assertEquals(slabSize + 1, cbaos.size());
+      assertThat(cbaos.size()).isEqualTo(slabSize + 1);
     }
   }
 
@@ -91,7 +91,9 @@ public class TestCapacityByteArrayOutputStreamOverflow {
       // Writing 200 bytes requires minimumSize=200, but only 50 bytes remain.
       // The addExact(bytesAllocated, minimumSize) check should throw OOM.
       byte[] tooLarge = new byte[200];
-      assertThrows(OutOfMemoryError.class, () -> cbaos.write(tooLarge, 0, tooLarge.length));
+      assertThatThrownBy(() -> cbaos.write(tooLarge, 0, tooLarge.length))
+          .isInstanceOf(OutOfMemoryError.class)
+          .hasMessageContaining("Size of data exceeded Integer.MAX_VALUE");
     }
   }
 }

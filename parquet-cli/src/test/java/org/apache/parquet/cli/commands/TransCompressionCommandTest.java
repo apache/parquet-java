@@ -18,10 +18,11 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TransCompressionCommandTest extends ParquetFileTest {
@@ -37,8 +38,8 @@ public class TransCompressionCommandTest extends ParquetFileTest {
     command.codec = "ZSTD";
     command.setConf(new Configuration());
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -52,7 +53,7 @@ public class TransCompressionCommandTest extends ParquetFileTest {
     command.codec = "zstd";
     command.setConf(new Configuration());
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 }

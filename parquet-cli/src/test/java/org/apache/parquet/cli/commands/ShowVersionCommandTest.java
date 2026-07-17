@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Queue;
 import org.apache.parquet.Version;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.event.LoggingEvent;
@@ -34,10 +35,10 @@ public class ShowVersionCommandTest extends FileTest {
 
   private void testVersionCommand0(Logger console, Queue<? extends LoggingEvent> loggingEvents) {
     ShowVersionCommand command = new ShowVersionCommand(console);
-    Assert.assertEquals(0, command.run());
-    Assert.assertEquals(1, loggingEvents.size());
+    assertThat(command.run()).isZero();
+    assertThat(loggingEvents).hasSize(1);
     LoggingEvent loggingEvent = loggingEvents.remove();
-    Assert.assertEquals(Version.FULL_VERSION, loggingEvent.getMessage());
+    assertThat(loggingEvent.getMessage()).isEqualTo(Version.FULL_VERSION);
     loggingEvents.clear();
   }
 }

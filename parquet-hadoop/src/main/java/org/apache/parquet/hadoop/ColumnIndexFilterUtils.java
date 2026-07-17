@@ -28,9 +28,9 @@ import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Optional;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 
 /**
  * Internal utility class to help at column index based filtering.

@@ -19,11 +19,7 @@
 package org.apache.parquet.avro;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -397,18 +393,16 @@ public class TestReflectInputOutputFormat {
       while ((car = out.read()) != null) {
         if (previousCar != null) {
           // Testing reference equality here. The "model" field should be dictionary-encoded.
-          assertTrue(car.model == previousCar.model);
+          assertThat(car.model).isSameAs(previousCar.model);
         }
         // Make sure that predicate push down worked as expected
-        if (car.engine.type == EngineType.PETROL) {
-          fail("UnboundRecordFilter failed to remove cars with PETROL engines");
-        }
+        assertThat(car.engine.type).isNotEqualTo(EngineType.PETROL);
         // Note we use lineNumber * 2 because of predicate push down
         Car expectedCar = nextRecord(lineNumber * 2);
         // We removed the optional extra field using projection so we shouldn't
         // see it here...
         expectedCar.optionalExtra = null;
-        assertEquals("line " + lineNumber, expectedCar, car);
+        assertThat(car).as("line " + lineNumber).isEqualTo(expectedCar);
         ++lineNumber;
         previousCar = car;
       }
@@ -459,10 +453,10 @@ public class TestReflectInputOutputFormat {
         // Note we use lineNumber * 2 because of predicate push down
         Car expectedCar = nextRecord(lineNumber * 2);
         // We removed the optional extra field using projection so we shouldn't see it here...
-        assertNull(car.make);
-        assertEquals(car.engine, expectedCar.engine);
-        assertEquals(car.year, expectedCar.year);
-        assertArrayEquals(car.vin, expectedCar.vin);
+        assertThat(car.make).isNull();
+        assertThat(car.engine).isEqualTo(expectedCar.engine);
+        assertThat(car.year).isEqualTo(expectedCar.year);
+        assertThat(car.vin).isEqualTo(expectedCar.vin);
         ++lineNumber;
       }
     }

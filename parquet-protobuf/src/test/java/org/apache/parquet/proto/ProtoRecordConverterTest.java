@@ -20,10 +20,8 @@ package org.apache.parquet.proto;
 
 import static org.apache.parquet.proto.TestUtils.testData;
 import static org.apache.parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import com.google.protobuf.ByteString;
 import java.util.List;
@@ -65,25 +63,25 @@ public class ProtoRecordConverterTest {
 
     // data are fully checked in testData function. Lets do one more check.
     SchemaConverterAllDatatypes o = result.get(0);
-    assertEquals("Good Will Hunting", o.getOptionalString());
+    assertThat(o.getOptionalString()).isEqualTo("Good Will Hunting");
 
-    assertEquals(true, o.getOptionalBool());
-    assertEquals(ByteString.copyFrom("someText", "UTF-8"), o.getOptionalBytes());
-    assertEquals(0.577, o.getOptionalDouble(), 0.00001);
-    assertEquals(3.1415f, o.getOptionalFloat(), 0.00001);
-    assertEquals(SchemaConverterAllDatatypes.TestEnum.FIRST, o.getOptionalEnum());
-    assertEquals(1000 * 1000 * 1, o.getOptionalFixed32());
-    assertEquals(1000 * 1000 * 1000 * 2, o.getOptionalFixed64());
-    assertEquals(1000 * 1000 * 3, o.getOptionalInt32());
-    assertEquals(1000L * 1000 * 1000 * 4, o.getOptionalInt64());
-    assertEquals(1000 * 1000 * 5, o.getOptionalSFixed32());
-    assertEquals(1000L * 1000 * 1000 * 6, o.getOptionalSFixed64());
-    assertEquals(1000 * 1000 * 56, o.getOptionalSInt32());
-    assertEquals(1000L * 1000 * 1000 * 7, o.getOptionalSInt64());
-    assertEquals(1000 * 1000 * 8, o.getOptionalUInt32());
-    assertEquals(1000L * 1000 * 1000 * 9, o.getOptionalUInt64());
-    assertEquals(1984, o.getOptionalMessage().getSomeId());
-    assertEquals(1492, o.getPbGroup().getGroupInt());
+    assertThat(o.getOptionalBool()).isTrue();
+    assertThat(o.getOptionalBytes()).isEqualTo(ByteString.copyFrom("someText", "UTF-8"));
+    assertThat(o.getOptionalDouble()).isCloseTo(0.577, offset(0.00001));
+    assertThat(o.getOptionalFloat()).isCloseTo(3.1415f, offset(0.00001f));
+    assertThat(o.getOptionalEnum()).isEqualTo(SchemaConverterAllDatatypes.TestEnum.FIRST);
+    assertThat(o.getOptionalFixed32()).isEqualTo(1000 * 1000 * 1);
+    assertThat(o.getOptionalFixed64()).isEqualTo(1000 * 1000 * 1000 * 2);
+    assertThat(o.getOptionalInt32()).isEqualTo(1000 * 1000 * 3);
+    assertThat(o.getOptionalInt64()).isEqualTo(1000L * 1000 * 1000 * 4);
+    assertThat(o.getOptionalSFixed32()).isEqualTo(1000 * 1000 * 5);
+    assertThat(o.getOptionalSFixed64()).isEqualTo(1000L * 1000 * 1000 * 6);
+    assertThat(o.getOptionalSInt32()).isEqualTo(1000 * 1000 * 56);
+    assertThat(o.getOptionalSInt64()).isEqualTo(1000L * 1000 * 1000 * 7);
+    assertThat(o.getOptionalUInt32()).isEqualTo(1000 * 1000 * 8);
+    assertThat(o.getOptionalUInt64()).isEqualTo(1000L * 1000 * 1000 * 9);
+    assertThat(o.getOptionalMessage().getSomeId()).isEqualTo(1984);
+    assertThat(o.getPbGroup().getGroupInt()).isEqualTo(1492);
   }
 
   @Test
@@ -117,24 +115,24 @@ public class ProtoRecordConverterTest {
 
     // data are fully checked in testData function. Lets do one more check.
     TestProto3.SchemaConverterAllDatatypes o = result.get(0);
-    assertEquals("Good Will Hunting", o.getOptionalString());
+    assertThat(o.getOptionalString()).isEqualTo("Good Will Hunting");
 
-    assertEquals(true, o.getOptionalBool());
-    assertEquals(ByteString.copyFrom("someText", "UTF-8"), o.getOptionalBytes());
-    assertEquals(0.577, o.getOptionalDouble(), 0.00001);
-    assertEquals(3.1415f, o.getOptionalFloat(), 0.00001);
-    assertEquals(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST, o.getOptionalEnum());
-    assertEquals(1000 * 1000 * 1, o.getOptionalFixed32());
-    assertEquals(1000 * 1000 * 1000 * 2, o.getOptionalFixed64());
-    assertEquals(1000 * 1000 * 3, o.getOptionalInt32());
-    assertEquals(1000L * 1000 * 1000 * 4, o.getOptionalInt64());
-    assertEquals(1000 * 1000 * 5, o.getOptionalSFixed32());
-    assertEquals(1000L * 1000 * 1000 * 6, o.getOptionalSFixed64());
-    assertEquals(1000 * 1000 * 56, o.getOptionalSInt32());
-    assertEquals(1000L * 1000 * 1000 * 7, o.getOptionalSInt64());
-    assertEquals(1000 * 1000 * 8, o.getOptionalUInt32());
-    assertEquals(1000L * 1000 * 1000 * 9, o.getOptionalUInt64());
-    assertEquals(1984, o.getOptionalMessage().getSomeId());
+    assertThat(o.getOptionalBool()).isTrue();
+    assertThat(o.getOptionalBytes()).isEqualTo(ByteString.copyFrom("someText", "UTF-8"));
+    assertThat(o.getOptionalDouble()).isCloseTo(0.577, offset(0.00001));
+    assertThat(o.getOptionalFloat()).isCloseTo(3.1415f, offset(0.00001f));
+    assertThat(o.getOptionalEnum()).isEqualTo(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST);
+    assertThat(o.getOptionalFixed32()).isEqualTo(1000 * 1000 * 1);
+    assertThat(o.getOptionalFixed64()).isEqualTo(1000 * 1000 * 1000 * 2);
+    assertThat(o.getOptionalInt32()).isEqualTo(1000 * 1000 * 3);
+    assertThat(o.getOptionalInt64()).isEqualTo(1000L * 1000 * 1000 * 4);
+    assertThat(o.getOptionalSFixed32()).isEqualTo(1000 * 1000 * 5);
+    assertThat(o.getOptionalSFixed64()).isEqualTo(1000L * 1000 * 1000 * 6);
+    assertThat(o.getOptionalSInt32()).isEqualTo(1000 * 1000 * 56);
+    assertThat(o.getOptionalSInt64()).isEqualTo(1000L * 1000 * 1000 * 7);
+    assertThat(o.getOptionalUInt32()).isEqualTo(1000 * 1000 * 8);
+    assertThat(o.getOptionalUInt64()).isEqualTo(1000L * 1000 * 1000 * 9);
+    assertThat(o.getOptionalMessage().getSomeId()).isEqualTo(1984);
   }
 
   @Test
@@ -170,8 +168,8 @@ public class ProtoRecordConverterTest {
     result = testData(input);
 
     // data are fully checked in testData function. Lets do one more check.
-    assertEquals("Good Will Hunting 0", result.get(0).getOptionalString());
-    assertEquals("Good Will Hunting 90", result.get(90).getOptionalString());
+    assertThat(result.get(0).getOptionalString()).isEqualTo("Good Will Hunting 0");
+    assertThat(result.get(90).getOptionalString()).isEqualTo("Good Will Hunting 90");
   }
 
   @Test
@@ -206,8 +204,8 @@ public class ProtoRecordConverterTest {
     result = testData(input);
 
     // data are fully checked in testData function. Lets do one more check.
-    assertEquals("Good Will Hunting 0", result.get(0).getOptionalString());
-    assertEquals("Good Will Hunting 90", result.get(90).getOptionalString());
+    assertThat(result.get(0).getOptionalString()).isEqualTo("Good Will Hunting 0");
+    assertThat(result.get(90).getOptionalString()).isEqualTo("Good Will Hunting 90");
   }
 
   @Test
@@ -217,9 +215,9 @@ public class ProtoRecordConverterTest {
 
     List<SchemaConverterAllDatatypes> result = testData(data.build());
     SchemaConverterAllDatatypes message = result.get(0);
-    assertEquals("", message.getOptionalString());
-    assertEquals(false, message.getOptionalBool());
-    assertEquals(0, message.getOptionalFixed32());
+    assertThat(message.getOptionalString()).isEqualTo("");
+    assertThat(message.getOptionalBool()).isFalse();
+    assertThat(message.getOptionalFixed32()).isEqualTo(0);
   }
 
   @Test
@@ -229,9 +227,9 @@ public class ProtoRecordConverterTest {
 
     List<TestProto3.SchemaConverterAllDatatypes> result = testData(data.build());
     TestProto3.SchemaConverterAllDatatypes message = result.get(0);
-    assertEquals("", message.getOptionalString());
-    assertEquals(false, message.getOptionalBool());
-    assertEquals(0, message.getOptionalFixed32());
+    assertThat(message.getOptionalString()).isEqualTo("");
+    assertThat(message.getOptionalBool()).isFalse();
+    assertThat(message.getOptionalFixed32()).isEqualTo(0);
   }
 
   @Test
@@ -243,23 +241,23 @@ public class ProtoRecordConverterTest {
 
     TestProtobuf.TopMessage result = testData(top.build()).get(0);
 
-    assertEquals(3, result.getInnerCount());
+    assertThat(result.getInnerCount()).isEqualTo(3);
 
     TestProtobuf.InnerMessage first = result.getInner(0);
     TestProtobuf.InnerMessage second = result.getInner(1);
     TestProtobuf.InnerMessage third = result.getInner(2);
 
-    assertEquals("First inner", first.getOne());
-    assertFalse(first.hasTwo());
-    assertFalse(first.hasThree());
+    assertThat(first.getOne()).isEqualTo("First inner");
+    assertThat(first.hasTwo()).isFalse();
+    assertThat(first.hasThree()).isFalse();
 
-    assertEquals("Second inner", second.getTwo());
-    assertFalse(second.hasOne());
-    assertFalse(second.hasThree());
+    assertThat(second.getTwo()).isEqualTo("Second inner");
+    assertThat(second.hasOne()).isFalse();
+    assertThat(second.hasThree()).isFalse();
 
-    assertEquals("Third inner", third.getThree());
-    assertFalse(third.hasOne());
-    assertFalse(third.hasTwo());
+    assertThat(third.getThree()).isEqualTo("Third inner");
+    assertThat(third.hasOne()).isFalse();
+    assertThat(third.hasTwo()).isFalse();
   }
 
   @Test
@@ -271,23 +269,23 @@ public class ProtoRecordConverterTest {
 
     TestProto3.TopMessage result = testData(top.build()).get(0);
 
-    assertEquals(3, result.getInnerCount());
+    assertThat(result.getInnerCount()).isEqualTo(3);
 
     TestProto3.InnerMessage first = result.getInner(0);
     TestProto3.InnerMessage second = result.getInner(1);
     TestProto3.InnerMessage third = result.getInner(2);
 
-    assertEquals("First inner", first.getOne());
-    assertTrue(first.getTwo().isEmpty());
-    assertTrue(first.getThree().isEmpty());
+    assertThat(first.getOne()).isEqualTo("First inner");
+    assertThat(first.getTwo()).isEmpty();
+    assertThat(first.getThree()).isEmpty();
 
-    assertEquals("Second inner", second.getTwo());
-    assertTrue(second.getOne().isEmpty());
-    assertTrue(second.getThree().isEmpty());
+    assertThat(second.getTwo()).isEqualTo("Second inner");
+    assertThat(second.getOne()).isEmpty();
+    assertThat(second.getThree()).isEmpty();
 
-    assertEquals("Third inner", third.getThree());
-    assertTrue(third.getOne().isEmpty());
-    assertTrue(third.getTwo().isEmpty());
+    assertThat(third.getThree()).isEqualTo("Third inner");
+    assertThat(third.getOne()).isEmpty();
+    assertThat(third.getTwo()).isEmpty();
   }
 
   @Test
@@ -300,11 +298,11 @@ public class ProtoRecordConverterTest {
 
     TestProtobuf.RepeatedIntMessage result = testData(top.build()).get(0);
 
-    assertEquals(3, result.getRepeatedIntCount());
+    assertThat(result.getRepeatedIntCount()).isEqualTo(3);
 
-    assertEquals(1, result.getRepeatedInt(0));
-    assertEquals(2, result.getRepeatedInt(1));
-    assertEquals(3, result.getRepeatedInt(2));
+    assertThat(result.getRepeatedInt(0)).isEqualTo(1);
+    assertThat(result.getRepeatedInt(1)).isEqualTo(2);
+    assertThat(result.getRepeatedInt(2)).isEqualTo(3);
   }
 
   @Test
@@ -317,11 +315,11 @@ public class ProtoRecordConverterTest {
 
     TestProto3.RepeatedIntMessage result = testData(top.build()).get(0);
 
-    assertEquals(3, result.getRepeatedIntCount());
+    assertThat(result.getRepeatedIntCount()).isEqualTo(3);
 
-    assertEquals(1, result.getRepeatedInt(0));
-    assertEquals(2, result.getRepeatedInt(1));
-    assertEquals(3, result.getRepeatedInt(2));
+    assertThat(result.getRepeatedInt(0)).isEqualTo(1);
+    assertThat(result.getRepeatedInt(1)).isEqualTo(2);
+    assertThat(result.getRepeatedInt(2)).isEqualTo(3);
   }
 
   @Test
@@ -356,7 +354,7 @@ public class ProtoRecordConverterTest {
 
     // data are fully checked in testData function. Lets do one more check.
     TestProto3.SchemaConverterAllDatatypes o = result.get(0);
-    assertSame(o.getOptionalEnum(), TestProto3.SchemaConverterAllDatatypes.TestEnum.UNRECOGNIZED);
-    assertEquals(o.getOptionalEnumValue(), 42);
+    assertThat(o.getOptionalEnum()).isSameAs(TestProto3.SchemaConverterAllDatatypes.TestEnum.UNRECOGNIZED);
+    assertThat(o.getOptionalEnumValue()).isEqualTo(42);
   }
 }

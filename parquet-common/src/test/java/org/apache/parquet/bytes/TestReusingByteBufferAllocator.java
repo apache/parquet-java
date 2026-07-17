@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
@@ -99,7 +99,7 @@ public class TestReusingByteBufferAllocator {
   @Test
   public void normalUseCase() {
     try (ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
-      assertEquals(innerAllocator.isDirect(), reusingAllocator.isDirect());
+      assertThat(reusingAllocator.isDirect()).isEqualTo(innerAllocator.isDirect());
       for (int i = 0; i < 10; ++i) {
         try (ByteBufferReleaser releaser = reusingAllocator.getReleaser()) {
           int size = RANDOM.nextInt(1024);
@@ -121,11 +121,11 @@ public class TestReusingByteBufferAllocator {
   }
 
   private void validateBuffer(ByteBuffer buf, int size) {
-    assertEquals(0, buf.position());
-    assertEquals(size, buf.capacity());
-    assertEquals(size, buf.remaining());
-    assertEquals(allocator.isDirect(), buf.isDirect());
-    assertThrows(InvalidMarkException.class, buf::reset);
+    assertThat(buf.position()).isEqualTo(0);
+    assertThat(buf.capacity()).isEqualTo(size);
+    assertThat(buf.remaining()).isEqualTo(size);
+    assertThat(buf.isDirect()).isEqualTo(allocator.isDirect());
+    assertThatThrownBy(buf::reset).isInstanceOf(InvalidMarkException.class);
   }
 
   @Test
@@ -135,14 +135,20 @@ public class TestReusingByteBufferAllocator {
       ByteBuffer fromOther = allocator.allocate(10);
       releaser.releaseLater(fromOther);
 
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromOther));
+      assertThatThrownBy(() -> reusingAllocator.release(fromOther))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("The single buffer has already been released or never allocated");
 
       ByteBuffer fromReusing = reusingAllocator.allocate(10);
 
-      assertThrows(IllegalArgumentException.class, () -> reusingAllocator.release(fromOther));
+      assertThatThrownBy(() -> reusingAllocator.release(fromOther))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("The buffer to be released is not the one allocated by this allocator");
       switch (type) {
         case STRICT:
-          assertThrows(IllegalStateException.class, () -> reusingAllocator.allocate(5));
+          assertThatThrownBy(() -> reusingAllocator.allocate(5))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessage("The single buffer is not yet released");
           break;
         case UNSAFE:
           fromReusing = reusingAllocator.allocate(5);
@@ -152,8 +158,12 @@ public class TestReusingByteBufferAllocator {
 
       reusingAllocator.release(fromReusing);
       ByteBuffer fromReusingFinal = fromReusing;
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromOther));
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromReusingFinal));
+      assertThatThrownBy(() -> reusingAllocator.release(fromOther))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("The single buffer has already been released or never allocated");
+      assertThatThrownBy(() -> reusingAllocator.release(fromReusingFinal))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("The single buffer has already been released or never allocated");
     }
   }
 }

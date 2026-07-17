@@ -17,6 +17,8 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,7 +34,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.util.Utf8;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -361,16 +362,26 @@ public class TestCircularReferences {
     Record actual = records.get(0);
 
     // because the record is a recursive structure, equals won't work
-    Assert.assertEquals("Should correctly read back the parent id", 1L, actual.get("id"));
-    Assert.assertEquals("Should correctly read back the parent data", new Utf8("parent data!"), actual.get("p"));
+    assertThat(actual.get("id"))
+        .as("Should correctly read back the parent id")
+        .isEqualTo(1L);
+    assertThat(actual.get("p"))
+        .as("Should correctly read back the parent data")
+        .isEqualTo(new Utf8("parent data!"));
 
     Record actualChild = (Record) actual.get("child");
-    Assert.assertEquals("Should correctly read back the child data", new Utf8("child data!"), actualChild.get("c"));
+    assertThat(actualChild.get("c"))
+        .as("Should correctly read back the child data")
+        .isEqualTo(new Utf8("child data!"));
     Object childParent = actualChild.get("parent");
-    Assert.assertTrue("Should have a parent Record object", childParent instanceof Record);
+    assertThat(childParent).as("Should have a parent Record object").isInstanceOf(Record.class);
 
     Record childParentRecord = (Record) actualChild.get("parent");
-    Assert.assertEquals("Should have the right parent id", 1L, childParentRecord.get("id"));
-    Assert.assertEquals("Should have the right parent data", new Utf8("parent data!"), childParentRecord.get("p"));
+    assertThat(childParentRecord.get("id"))
+        .as("Should have the right parent id")
+        .isEqualTo(1L);
+    assertThat(childParentRecord.get("p"))
+        .as("Should have the right parent data")
+        .isEqualTo(new Utf8("parent data!"));
   }
 }

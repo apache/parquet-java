@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.google.protobuf.Message;
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +36,6 @@ import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class CatCommandTest extends ParquetFileTest {
@@ -43,7 +45,7 @@ public class CatCommandTest extends ParquetFileTest {
     CatCommand command = new CatCommand(createLogger(), 0);
     command.sourceFiles = Arrays.asList(file.getAbsolutePath());
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -52,7 +54,7 @@ public class CatCommandTest extends ParquetFileTest {
     CatCommand command = new CatCommand(createLogger(), 0);
     command.sourceFiles = Arrays.asList(file.getAbsolutePath(), file.getAbsolutePath());
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -62,17 +64,19 @@ public class CatCommandTest extends ParquetFileTest {
     command.sourceFiles = Arrays.asList(file.getAbsolutePath());
     command.columns = Arrays.asList(INT32_FIELD, INT64_FIELD);
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testCatCommandWithInvalidColumn() throws IOException {
+  @Test
+  public void testCatCommandWithInvalidColumn() {
     File file = parquetFile();
     CatCommand command = new CatCommand(createLogger(), 0);
     command.sourceFiles = Arrays.asList(file.getAbsolutePath());
     command.columns = Arrays.asList("invalid_field");
     command.setConf(new Configuration());
-    command.run();
+    assertThatThrownBy(command::run)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Cannot find field 'invalid_field' in schema");
   }
 
   @Test
@@ -85,7 +89,7 @@ public class CatCommandTest extends ParquetFileTest {
     cmd.setConf(new Configuration());
 
     int result = cmd.run();
-    Assert.assertEquals(0, result);
+    assertThat(result).isZero();
   }
 
   @Test
@@ -100,7 +104,7 @@ public class CatCommandTest extends ParquetFileTest {
     cmd.setConf(conf);
 
     int result = cmd.run();
-    Assert.assertEquals(0, result);
+    assertThat(result).isZero();
   }
 
   @Test
@@ -113,7 +117,7 @@ public class CatCommandTest extends ParquetFileTest {
     cmd.setConf(new Configuration());
 
     int result = cmd.run();
-    Assert.assertEquals(0, result);
+    assertThat(result).isZero();
   }
 
   private static void writeParquetWithHyphenatedFields(File file) throws IOException {

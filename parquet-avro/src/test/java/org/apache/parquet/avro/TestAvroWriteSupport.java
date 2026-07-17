@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.common.io.Resources;
 import java.io.IOException;
 import org.apache.avro.Schema;
@@ -27,7 +29,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestAvroWriteSupport {
@@ -46,8 +47,9 @@ public class TestAvroWriteSupport {
     int idx = actual.getFieldIndex(listField);
     ColumnDescriptor columnDescriptor = actual.getColumns().get(idx);
     PrimitiveType primitiveType = columnDescriptor.getPrimitiveType();
-    Assert.assertEquals(
-        "Confirm that old list type was not used", AvroWriteSupport.LIST_ELEMENT_NAME, primitiveType.getName());
+    assertThat(primitiveType.getName())
+        .as("Confirm that old list type was not used")
+        .isEqualTo(AvroWriteSupport.LIST_ELEMENT_NAME);
     // Default configuration
     configuration = new Configuration();
     AvroWriteSupport.setSchema(configuration, schema);
@@ -57,6 +59,8 @@ public class TestAvroWriteSupport {
     idx = actual.getFieldIndex(listField);
     columnDescriptor = actual.getColumns().get(idx);
     primitiveType = columnDescriptor.getPrimitiveType();
-    Assert.assertEquals("Confirm that old list type was used if not specified", "array", primitiveType.getName());
+    assertThat(primitiveType.getName())
+        .as("Confirm that old list type was used if not specified")
+        .isEqualTo("array");
   }
 }

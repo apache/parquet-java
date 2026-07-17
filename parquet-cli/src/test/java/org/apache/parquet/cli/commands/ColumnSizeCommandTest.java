@@ -21,8 +21,7 @@ package org.apache.parquet.cli.commands;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +35,6 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ColumnSizeCommandTest extends ParquetFileTest {
@@ -51,17 +49,17 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
     ColumnSizeCommand command = new ColumnSizeCommand(createLogger());
     command.target = file.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
   public void testColumnSize() throws Exception {
     String inputFile = createParquetFile();
     Map<String, Long> columnSizeInBytes = command.getColumnSizeInBytes(new Path(inputFile));
-    assertEquals(columnSizeInBytes.size(), 2);
-    assertTrue(columnSizeInBytes.get("DocId") > columnSizeInBytes.get("Num"));
+    assertThat(columnSizeInBytes).hasSize(2);
+    assertThat(columnSizeInBytes.get("DocId")).isGreaterThan(columnSizeInBytes.get("Num"));
     Map<String, Float> columnRatio = command.getColumnRatio(columnSizeInBytes);
-    assertTrue(columnRatio.get("DocId") > columnRatio.get("Num"));
+    assertThat(columnRatio.get("DocId")).isGreaterThan(columnRatio.get("Num"));
   }
 
   private String createParquetFile() throws IOException {

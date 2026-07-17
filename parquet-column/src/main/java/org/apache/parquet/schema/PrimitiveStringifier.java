@@ -33,7 +33,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
-import javax.naming.OperationNotSupportedException;
 import org.apache.parquet.io.api.Binary;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
@@ -42,7 +41,7 @@ import org.locationtech.jts.io.WKBReader;
 /**
  * Class that provides string representations for the primitive values. These string values are to be used for
  * logging/debugging purposes. The method {@code stringify} is overloaded for each primitive types. The overloaded
- * methods not implemented for the related types throw {@link OperationNotSupportedException}.
+ * methods not implemented for the related types throw {@link UnsupportedOperationException}.
  */
 public abstract class PrimitiveStringifier {
   private final String name;

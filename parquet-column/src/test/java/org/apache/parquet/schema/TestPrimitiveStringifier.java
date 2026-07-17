@@ -40,6 +40,7 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UNSIGNED_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UTF8_STRINGIFIER;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -51,7 +52,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-import org.apache.parquet.TestUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
@@ -416,11 +416,9 @@ public class TestPrimitiveStringifier {
             0x00, 0x00, 0x00)));
 
     // As there is no validation implemented, if the 16 bytes is not available, the array will be over-indexed
-    TestUtils.assertThrows(
-        "Expected exception for over-indexing",
-        ArrayIndexOutOfBoundsException.class,
-        () -> stringifier.stringify(toBinary(
-            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee)));
+    assertThatThrownBy(() -> stringifier.stringify(toBinary(
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee)))
+        .isInstanceOf(ArrayIndexOutOfBoundsException.class);
 
     checkThrowingUnsupportedException(stringifier, Binary.class);
   }

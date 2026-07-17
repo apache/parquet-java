@@ -25,6 +25,7 @@ import static org.apache.parquet.avro.AvroTestUtil.instance;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.read;
 import static org.apache.parquet.avro.AvroTestUtil.record;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,7 +44,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -87,7 +87,9 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(stringSchema, "uuid", u2.get("uuid").toString());
 
     File test = write(stringSchema, s1, s2);
-    Assert.assertEquals("Should convert Strings to UUIDs", Arrays.asList(u1, u2), read(GENERIC, uuidSchema, test));
+    assertThat(read(GENERIC, uuidSchema, test))
+        .as("Should convert Strings to UUIDs")
+        .containsExactly(u1, u2);
   }
 
   @Test
@@ -97,13 +99,16 @@ public class TestGenericLogicalTypes {
     GenericRecord u2 = instance(uuidSchema, "uuid", UUID.randomUUID());
     File test = write(conf(AvroWriteSupport.WRITE_PARQUET_UUID, true), uuidSchema, u1, u2);
 
-    Assert.assertEquals("Should read UUID objects", Arrays.asList(u1, u2), read(GENERIC, uuidSchema, test));
+    assertThat(read(GENERIC, uuidSchema, test))
+        .as("Should read UUID objects")
+        .containsExactly(u1, u2);
 
     GenericRecord s1 = instance(uuidSchema, "uuid", u1.get("uuid").toString());
     GenericRecord s2 = instance(uuidSchema, "uuid", u2.get("uuid").toString());
 
-    Assert.assertEquals(
-        "Should read UUID as Strings", Arrays.asList(s1, s2), read(GenericData.get(), uuidSchema, test));
+    assertThat(read(GenericData.get(), uuidSchema, test))
+        .as("Should read UUID as Strings")
+        .containsExactly(s1, s2);
   }
 
   @Test
@@ -119,7 +124,9 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(stringSchema, "uuid", u2.get("uuid").toString());
 
     File test = write(GENERIC, uuidSchema, u1, u2);
-    Assert.assertEquals("Should read UUIDs as Strings", Arrays.asList(s1, s2), read(GENERIC, stringSchema, test));
+    assertThat(read(GENERIC, stringSchema, test))
+        .as("Should read UUIDs as Strings")
+        .containsExactly(s1, s2);
   }
 
   @Test
@@ -132,8 +139,9 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(uuidSchema, "uuid", new Utf8(u2.get("uuid").toString()));
 
     File test = write(GENERIC, uuidSchema, u1, u2);
-    Assert.assertEquals(
-        "Should read UUIDs as Strings", Arrays.asList(s1, s2), read(GenericData.get(), uuidSchema, test));
+    assertThat(read(GenericData.get(), uuidSchema, test))
+        .as("Should read UUIDs as Strings")
+        .containsExactly(s1, s2);
   }
 
   @Test
@@ -150,8 +158,9 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(nullableStringSchema, "uuid", null);
 
     File test = write(GENERIC, nullableUuidSchema, u1, u2);
-    Assert.assertEquals(
-        "Should read UUIDs as Strings", Arrays.asList(s1, s2), read(GENERIC, nullableStringSchema, test));
+    assertThat(read(GENERIC, nullableStringSchema, test))
+        .as("Should read UUIDs as Strings")
+        .containsExactly(s1, s2);
   }
 
   @Test
@@ -165,10 +174,9 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(nullableUuidSchema, "uuid", null);
 
     File test = write(GENERIC, nullableUuidSchema, u1, u2);
-    Assert.assertEquals(
-        "Should read UUIDs as Strings",
-        Arrays.asList(s1, s2),
-        read(GenericData.get(), nullableUuidSchema, test));
+    assertThat(read(GenericData.get(), nullableUuidSchema, test))
+        .as("Should read UUIDs as Strings")
+        .containsExactly(s1, s2);
   }
 
   @Test
@@ -189,7 +197,9 @@ public class TestGenericLogicalTypes {
     GenericRecord r2fixed = instance(fixedRecord, "dec", conversion.toFixed(D2, fixedSchema, DECIMAL_9_2));
 
     File test = write(fixedRecord, r1fixed, r2fixed);
-    Assert.assertEquals("Should convert fixed to BigDecimals", expected, read(GENERIC, decimalRecord, test));
+    assertThat(read(GENERIC, decimalRecord, test))
+        .as("Should convert fixed to BigDecimals")
+        .containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -210,7 +220,9 @@ public class TestGenericLogicalTypes {
     List<GenericRecord> expected = Arrays.asList(r1fixed, r2fixed);
 
     File test = write(GENERIC, decimalRecord, r1, r2);
-    Assert.assertEquals("Should read BigDecimals as fixed", expected, read(GENERIC, fixedRecord, test));
+    assertThat(read(GENERIC, fixedRecord, test))
+        .as("Should read BigDecimals as fixed")
+        .containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -231,7 +243,9 @@ public class TestGenericLogicalTypes {
     GenericRecord r2bytes = instance(bytesRecord, "dec", conversion.toBytes(D2, bytesSchema, DECIMAL_9_2));
 
     File test = write(bytesRecord, r1bytes, r2bytes);
-    Assert.assertEquals("Should convert bytes to BigDecimals", expected, read(GENERIC, decimalRecord, test));
+    assertThat(read(GENERIC, decimalRecord, test))
+        .as("Should convert bytes to BigDecimals")
+        .containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -253,7 +267,9 @@ public class TestGenericLogicalTypes {
     List<GenericRecord> expected = Arrays.asList(r1bytes, r2bytes);
 
     File test = write(GENERIC, decimalRecord, r1, r2);
-    Assert.assertEquals("Should read BigDecimals as bytes", expected, read(GENERIC, bytesRecord, test));
+    assertThat(read(GENERIC, bytesRecord, test))
+        .as("Should read BigDecimals as bytes")
+        .containsExactlyElementsOf(expected);
   }
 
   private <D> File write(Schema schema, D... data) throws IOException {

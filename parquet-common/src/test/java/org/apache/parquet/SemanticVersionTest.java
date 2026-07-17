@@ -18,8 +18,7 @@
  */
 package org.apache.parquet;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.junit.Test;
@@ -27,25 +26,21 @@ import org.junit.Test;
 public class SemanticVersionTest {
   @Test
   public void testCompare() {
-    assertTrue(new SemanticVersion(1, 8, 1).compareTo(new SemanticVersion(1, 8, 1)) == 0);
-    assertTrue(new SemanticVersion(1, 8, 0).compareTo(new SemanticVersion(1, 8, 1)) < 0);
-    assertTrue(new SemanticVersion(1, 8, 2).compareTo(new SemanticVersion(1, 8, 1)) > 0);
+    assertThat(new SemanticVersion(1, 8, 1)).isEqualByComparingTo(new SemanticVersion(1, 8, 1));
+    assertThat(new SemanticVersion(1, 8, 0)).isLessThan(new SemanticVersion(1, 8, 1));
+    assertThat(new SemanticVersion(1, 8, 2)).isGreaterThan(new SemanticVersion(1, 8, 1));
 
-    assertTrue(new SemanticVersion(1, 8, 1).compareTo(new SemanticVersion(1, 8, 1)) == 0);
-    assertTrue(new SemanticVersion(1, 8, 0).compareTo(new SemanticVersion(1, 8, 1)) < 0);
-    assertTrue(new SemanticVersion(1, 8, 2).compareTo(new SemanticVersion(1, 8, 1)) > 0);
+    assertThat(new SemanticVersion(1, 7, 0)).isLessThan(new SemanticVersion(1, 8, 0));
+    assertThat(new SemanticVersion(1, 9, 0)).isGreaterThan(new SemanticVersion(1, 8, 0));
 
-    assertTrue(new SemanticVersion(1, 7, 0).compareTo(new SemanticVersion(1, 8, 0)) < 0);
-    assertTrue(new SemanticVersion(1, 9, 0).compareTo(new SemanticVersion(1, 8, 0)) > 0);
+    assertThat(new SemanticVersion(0, 0, 0)).isLessThan(new SemanticVersion(1, 0, 0));
+    assertThat(new SemanticVersion(2, 0, 0)).isGreaterThan(new SemanticVersion(1, 0, 0));
 
-    assertTrue(new SemanticVersion(0, 0, 0).compareTo(new SemanticVersion(1, 0, 0)) < 0);
-    assertTrue(new SemanticVersion(2, 0, 0).compareTo(new SemanticVersion(1, 0, 0)) > 0);
+    assertThat(new SemanticVersion(1, 8, 100)).isLessThan(new SemanticVersion(1, 9, 0));
 
-    assertTrue(new SemanticVersion(1, 8, 100).compareTo(new SemanticVersion(1, 9, 0)) < 0);
-
-    assertTrue(new SemanticVersion(1, 8, 0).compareTo(new SemanticVersion(1, 8, 0, true)) > 0);
-    assertTrue(new SemanticVersion(1, 8, 0, true).compareTo(new SemanticVersion(1, 8, 0, true)) == 0);
-    assertTrue(new SemanticVersion(1, 8, 0, true).compareTo(new SemanticVersion(1, 8, 0)) < 0);
+    assertThat(new SemanticVersion(1, 8, 0)).isGreaterThan(new SemanticVersion(1, 8, 0, true));
+    assertThat(new SemanticVersion(1, 8, 0, true)).isEqualByComparingTo(new SemanticVersion(1, 8, 0, true));
+    assertThat(new SemanticVersion(1, 8, 0, true)).isLessThan(new SemanticVersion(1, 8, 0));
   }
 
   @Test
@@ -97,19 +92,24 @@ public class SemanticVersionTest {
 
   @Test
   public void testParse() throws Exception {
-    assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0"));
-    assertEquals(new SemanticVersion(1, 8, 0, true), SemanticVersion.parse("1.8.0rc3"));
-    assertEquals(new SemanticVersion(1, 8, 0, "rc3", "SNAPSHOT", null), SemanticVersion.parse("1.8.0rc3-SNAPSHOT"));
-    assertEquals(new SemanticVersion(1, 8, 0, null, "SNAPSHOT", null), SemanticVersion.parse("1.8.0-SNAPSHOT"));
-    assertEquals(new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null), SemanticVersion.parse("1.5.0-cdh5.5.0"));
+    assertThat(SemanticVersion.parse("1.8.0")).isEqualTo(new SemanticVersion(1, 8, 0));
+    assertThat(SemanticVersion.parse("1.8.0rc3")).isEqualTo(new SemanticVersion(1, 8, 0, true));
+    assertThat(SemanticVersion.parse("1.8.0rc3-SNAPSHOT"))
+        .isEqualTo(new SemanticVersion(1, 8, 0, "rc3", "SNAPSHOT", null));
+    assertThat(SemanticVersion.parse("1.8.0-SNAPSHOT"))
+        .isEqualTo(new SemanticVersion(1, 8, 0, null, "SNAPSHOT", null));
+    assertThat(SemanticVersion.parse("1.5.0-cdh5.5.0"))
+        .isEqualTo(new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null));
   }
 
   private static void assertLessThan(String a, String b) throws SemanticVersion.SemanticVersionParseException {
-    assertTrue(a + " should be < " + b, SemanticVersion.parse(a).compareTo(SemanticVersion.parse(b)) < 0);
-    assertTrue(b + " should be > " + a, SemanticVersion.parse(b).compareTo(SemanticVersion.parse(a)) > 0);
+    assertThat(SemanticVersion.parse(a)).as(a + " should be < " + b).isLessThan(SemanticVersion.parse(b));
+    assertThat(SemanticVersion.parse(b)).as(b + " should be > " + a).isGreaterThan(SemanticVersion.parse(a));
   }
 
   private static void assertEqualTo(String a, String b) throws SemanticVersion.SemanticVersionParseException {
-    assertTrue(a + " should equal " + b, SemanticVersion.parse(a).compareTo(SemanticVersion.parse(b)) == 0);
+    assertThat(SemanticVersion.parse(a))
+        .as(a + " should equal " + b)
+        .isEqualByComparingTo(SemanticVersion.parse(b));
   }
 }

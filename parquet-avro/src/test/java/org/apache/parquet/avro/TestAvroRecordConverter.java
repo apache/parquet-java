@@ -18,10 +18,7 @@
  */
 package org.apache.parquet.avro;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 import com.google.common.collect.Lists;
@@ -61,16 +58,16 @@ public class TestAvroRecordConverter {
 
     // Test that model is generated correctly
     Collection<Conversion<?>> conversions = model.getConversions();
-    assertEquals(conversions.size(), 3);
-    assertNotNull(model.getConversionByClass(Instant.class));
-    assertNotNull(model.getConversionByClass(LocalDate.class));
-    assertNotNull(model.getConversionByClass(LocalTime.class));
+    assertThat(conversions).hasSize(3);
+    assertThat(model.getConversionByClass(Instant.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalDate.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalTime.class)).isNotNull();
   }
 
   @Test
   public void testModelForSpecificRecordWithoutLogicalTypes() {
     SpecificData model = AvroRecordConverter.getModelForSchema(Car.SCHEMA$);
-    assertTrue(model.getConversions().isEmpty());
+    assertThat(model.getConversions()).isEmpty();
   }
 
   @Test
@@ -83,7 +80,7 @@ public class TestAvroRecordConverter {
         Lists.newArrayList(new Schema.Field("strField", Schema.create(Schema.Type.STRING)))));
 
     // There is no class "someSchema" on the classpath, so should return null
-    assertNull(model);
+    assertThat(model).isNull();
   }
 
   // Test logical type support for older Avro versions
@@ -95,18 +92,18 @@ public class TestAvroRecordConverter {
     SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
     // Test that model is generated correctly
     Collection<Conversion<?>> conversions = model.getConversions();
-    assertEquals(3, conversions.size());
-    assertNotNull(model.getConversionByClass(Instant.class));
-    assertNotNull(model.getConversionByClass(LocalDate.class));
-    assertNotNull(model.getConversionByClass(LocalTime.class));
+    assertThat(conversions).hasSize(3);
+    assertThat(model.getConversionByClass(Instant.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalDate.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalTime.class)).isNotNull();
 
     // Test that model is generated correctly when record contains only nested logical types
     model = AvroRecordConverter.getModelForSchema(NestedOnlyLogicalTypesDeprecated.SCHEMA$);
     // Test that model is generated correctly
     conversions = model.getConversions();
-    assertEquals(2, conversions.size());
-    assertNotNull(model.getConversionByClass(LocalDate.class));
-    assertNotNull(model.getConversionByClass(LocalTime.class));
+    assertThat(conversions).hasSize(2);
+    assertThat(model.getConversionByClass(LocalDate.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalTime.class)).isNotNull();
   }
 
   @Test
@@ -117,10 +114,10 @@ public class TestAvroRecordConverter {
     final SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
     // Test that model is generated correctly
     Collection<Conversion<?>> conversions = model.getConversions();
-    assertEquals(conversions.size(), 3);
-    assertNotNull(model.getConversionByClass(Instant.class));
-    assertNotNull(model.getConversionByClass(LocalDate.class));
-    assertNotNull(model.getConversionByClass(LocalTime.class));
+    assertThat(conversions).hasSize(3);
+    assertThat(model.getConversionByClass(Instant.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalDate.class)).isNotNull();
+    assertThat(model.getConversionByClass(LocalTime.class)).isNotNull();
   }
 
   // Pseudo generated code with bug from avro compiler < 1.8

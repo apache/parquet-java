@@ -19,16 +19,14 @@
 
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
-import org.junit.Assert;
 import org.junit.Test;
 
 public abstract class TestByteBufferInputStreams {
@@ -44,12 +42,14 @@ public abstract class TestByteBufferInputStreams {
 
     ByteBufferInputStream stream = newStream();
 
-    Assert.assertEquals("Should read 0 bytes", 0, stream.read(bytes));
+    assertThat(stream.read(bytes)).as("Should read 0 bytes").isEqualTo(0);
 
     int bytesRead = stream.read(new byte[100]);
-    Assert.assertTrue("Should read to end of stream", bytesRead < 100);
+    assertThat(bytesRead).as("Should read to end of stream").isLessThan(100);
 
-    Assert.assertEquals("Should read 0 bytes at end of stream", 0, stream.read(bytes));
+    assertThat(stream.read(bytes))
+        .as("Should read 0 bytes at end of stream")
+        .isEqualTo(0);
   }
 
   @Test
@@ -59,18 +59,22 @@ public abstract class TestByteBufferInputStreams {
     ByteBufferInputStream stream = newStream();
 
     int bytesRead = stream.read(bytes);
-    Assert.assertEquals("Should read the entire buffer", bytes.length, bytesRead);
+    assertThat(bytesRead).as("Should read the entire buffer").isEqualTo(bytes.length);
 
     for (int i = 0; i < bytes.length; i += 1) {
-      Assert.assertEquals("Byte i should be i", i, bytes[i]);
-      Assert.assertEquals("Should advance position", 35, stream.position());
+      assertThat(bytes[i]).as("Byte i should be i").isEqualTo((byte) i);
+      assertThat(stream.position()).as("Should advance position").isEqualTo(35);
     }
 
-    Assert.assertEquals("Should have no more remaining content", 0, stream.available());
+    assertThat(stream.available())
+        .as("Should have no more remaining content")
+        .isEqualTo(0);
 
-    Assert.assertEquals("Should return -1 at end of stream", -1, stream.read(bytes));
+    assertThat(stream.read(bytes)).as("Should return -1 at end of stream").isEqualTo(-1);
 
-    Assert.assertEquals("Should have no more remaining content", 0, stream.available());
+    assertThat(stream.available())
+        .as("Should have no more remaining content")
+        .isEqualTo(0);
 
     checkOriginalData();
   }
@@ -85,26 +89,33 @@ public abstract class TestByteBufferInputStreams {
 
       int lastBytesRead = bytes.length;
       for (int offset = 0; offset < length; offset += bytes.length) {
-        Assert.assertEquals("Should read requested len", bytes.length, lastBytesRead);
+        assertThat(lastBytesRead).as("Should read requested len").isEqualTo(bytes.length);
 
         lastBytesRead = stream.read(bytes, 0, bytes.length);
 
-        Assert.assertEquals("Should advance position", offset + lastBytesRead, stream.position());
+        assertThat(stream.position()).as("Should advance position").isEqualTo(offset + lastBytesRead);
 
         // validate the bytes that were read
         for (int i = 0; i < lastBytesRead; i += 1) {
-          Assert.assertEquals("Byte i should be i", offset + i, bytes[i]);
+          assertThat(bytes[i]).as("Byte i should be i").isEqualTo((byte) (offset + i));
         }
       }
 
-      Assert.assertEquals(
-          "Should read fewer bytes at end of buffer", length % bytes.length, lastBytesRead % bytes.length);
+      assertThat(lastBytesRead % bytes.length)
+          .as("Should read fewer bytes at end of buffer")
+          .isEqualTo(length % bytes.length);
 
-      Assert.assertEquals("Should have no more remaining content", 0, stream.available());
+      assertThat(stream.available())
+          .as("Should have no more remaining content")
+          .isEqualTo(0);
 
-      Assert.assertEquals("Should return -1 at end of stream", -1, stream.read(bytes));
+      assertThat(stream.read(bytes))
+          .as("Should return -1 at end of stream")
+          .isEqualTo(-1);
 
-      Assert.assertEquals("Should have no more remaining content", 0, stream.available());
+      assertThat(stream.available())
+          .as("Should have no more remaining content")
+          .isEqualTo(0);
     }
 
     checkOriginalData();
@@ -119,31 +130,40 @@ public abstract class TestByteBufferInputStreams {
 
       int lastBytesRead = size;
       for (int offset = 0; offset < bytes.length; offset += size) {
-        Assert.assertEquals("Should read requested len", size, lastBytesRead);
+        assertThat(lastBytesRead).as("Should read requested len").isEqualTo(size);
 
         lastBytesRead = stream.read(bytes, offset, Math.min(size, bytes.length - offset));
 
-        Assert.assertEquals(
-            "Should advance position",
-            lastBytesRead > 0 ? offset + lastBytesRead : offset,
-            stream.position());
+        assertThat(stream.position())
+            .as("Should advance position")
+            .isEqualTo(lastBytesRead > 0 ? offset + lastBytesRead : offset);
       }
 
-      Assert.assertEquals("Should read fewer bytes at end of buffer", bytes.length % size, lastBytesRead % size);
+      assertThat(lastBytesRead % size)
+          .as("Should read fewer bytes at end of buffer")
+          .isEqualTo(bytes.length % size);
 
       for (int i = 0; i < bytes.length; i += 1) {
-        Assert.assertEquals("Byte i should be i", i, bytes[i]);
+        assertThat(bytes[i]).as("Byte i should be i").isEqualTo((byte) i);
       }
 
-      Assert.assertEquals("Should have no more remaining content", 2, stream.available());
+      assertThat(stream.available())
+          .as("Should have no more remaining content")
+          .isEqualTo(2);
 
-      Assert.assertEquals("Should return 2 more bytes", 2, stream.read(bytes));
+      assertThat(stream.read(bytes)).as("Should return 2 more bytes").isEqualTo(2);
 
-      Assert.assertEquals("Should have no more remaining content", 0, stream.available());
+      assertThat(stream.available())
+          .as("Should have no more remaining content")
+          .isEqualTo(0);
 
-      Assert.assertEquals("Should return -1 at end of stream", -1, stream.read(bytes));
+      assertThat(stream.read(bytes))
+          .as("Should return -1 at end of stream")
+          .isEqualTo(-1);
 
-      Assert.assertEquals("Should have no more remaining content", 0, stream.available());
+      assertThat(stream.available())
+          .as("Should have no more remaining content")
+          .isEqualTo(0);
     }
 
     checkOriginalData();
@@ -155,12 +175,11 @@ public abstract class TestByteBufferInputStreams {
     int length = stream.available();
 
     for (int i = 0; i < length; i += 1) {
-      Assert.assertEquals("Position should increment", i, stream.position());
-      Assert.assertEquals(i, stream.read());
+      assertThat(stream.position()).as("Position should increment").isEqualTo(i);
+      assertThat(stream.read()).isEqualTo(i);
     }
 
-    assertThrows(
-        "Should throw EOFException at end of stream", EOFException.class, (Callable<Integer>) stream::read);
+    assertThatThrownBy(stream::read).isInstanceOf(EOFException.class);
 
     checkOriginalData();
   }
@@ -171,10 +190,12 @@ public abstract class TestByteBufferInputStreams {
     int length = stream.available();
 
     ByteBuffer empty = stream.slice(0);
-    Assert.assertNotNull("slice(0) should produce a non-null buffer", empty);
-    Assert.assertEquals("slice(0) should produce an empty buffer", 0, empty.remaining());
+    assertThat(empty).as("slice(0) should produce a non-null buffer").isNotNull();
+    assertThat(empty.remaining())
+        .as("slice(0) should produce an empty buffer")
+        .isEqualTo(0);
 
-    Assert.assertEquals("Position should be at start", 0, stream.position());
+    assertThat(stream.position()).as("Position should be at start").isEqualTo(0);
 
     int i = 0;
     while (stream.available() > 0) {
@@ -182,13 +203,13 @@ public abstract class TestByteBufferInputStreams {
       ByteBuffer buffer = stream.slice(bytesToSlice);
 
       for (int j = 0; j < bytesToSlice; j += 1) {
-        Assert.assertEquals("Data should be correct", i + j, buffer.get());
+        assertThat((int) buffer.get()).as("Data should be correct").isEqualTo(i + j);
       }
 
       i += bytesToSlice;
     }
 
-    Assert.assertEquals("Position should be at end", length, stream.position());
+    assertThat(stream.position()).as("Position should be at end").isEqualTo(length);
 
     checkOriginalData();
   }
@@ -197,7 +218,7 @@ public abstract class TestByteBufferInputStreams {
   public void testSliceBuffers0() throws Exception {
     ByteBufferInputStream stream = newStream();
 
-    Assert.assertEquals("Should return an empty list", Collections.emptyList(), stream.sliceBuffers(0));
+    assertThat(stream.sliceBuffers(0)).as("Should return an empty list").isEmpty();
   }
 
   @Test
@@ -207,14 +228,13 @@ public abstract class TestByteBufferInputStreams {
 
     List<ByteBuffer> buffers = stream.sliceBuffers(stream.available());
 
-    Assert.assertEquals("Should consume all buffers", length, stream.position());
+    assertThat(stream.position()).as("Should consume all buffers").isEqualTo(length);
 
-    assertThrows("Should throw EOFException when empty", EOFException.class, (Callable<List<ByteBuffer>>)
-        () -> stream.sliceBuffers(length));
+    assertThatThrownBy(() -> stream.sliceBuffers(length)).isInstanceOf(EOFException.class);
 
     ByteBufferInputStream copy = ByteBufferInputStream.wrap(buffers);
     for (int i = 0; i < length; i += 1) {
-      Assert.assertEquals("Slice should have identical data", i, copy.read());
+      assertThat(copy.read()).as("Slice should have identical data").isEqualTo(i);
     }
 
     checkOriginalData();
@@ -231,12 +251,12 @@ public abstract class TestByteBufferInputStreams {
         buffers.addAll(stream.sliceBuffers(Math.min(size, stream.available())));
       }
 
-      Assert.assertEquals("Should consume all content", length, stream.position());
+      assertThat(stream.position()).as("Should consume all content").isEqualTo(length);
 
       ByteBufferInputStream newStream = new MultiBufferInputStream(buffers);
 
       for (int i = 0; i < length; i += 1) {
-        Assert.assertEquals("Data should be correct", i, newStream.read());
+        assertThat(newStream.read()).as("Data should be correct").isEqualTo(i);
       }
     }
 
@@ -250,23 +270,29 @@ public abstract class TestByteBufferInputStreams {
 
     int sliceLength = 5;
     List<ByteBuffer> buffers = stream.sliceBuffers(sliceLength);
-    Assert.assertEquals("Should advance the original stream", length - sliceLength, stream.available());
-    Assert.assertEquals("Should advance the original stream position", sliceLength, stream.position());
+    assertThat(stream.available()).as("Should advance the original stream").isEqualTo(length - sliceLength);
+    assertThat(stream.position())
+        .as("Should advance the original stream position")
+        .isEqualTo(sliceLength);
 
-    Assert.assertEquals("Should return a slice of the first buffer", 1, buffers.size());
+    assertThat(buffers).as("Should return a slice of the first buffer").hasSize(1);
 
     ByteBuffer buffer = buffers.get(0);
-    Assert.assertEquals("Should have requested bytes", sliceLength, buffer.remaining());
+    assertThat(buffer.remaining()).as("Should have requested bytes").isEqualTo(sliceLength);
 
     // read the buffer one past the returned limit. this should not change the
     // next value in the original stream
     buffer.limit(sliceLength + 1);
     for (int i = 0; i < sliceLength + 1; i += 1) {
-      Assert.assertEquals("Should have correct data", i, buffer.get());
+      assertThat((int) buffer.get()).as("Should have correct data").isEqualTo(i);
     }
 
-    Assert.assertEquals("Reading a slice shouldn't advance the original stream", sliceLength, stream.position());
-    Assert.assertEquals("Reading a slice shouldn't change the underlying data", sliceLength, stream.read());
+    assertThat(stream.position())
+        .as("Reading a slice shouldn't advance the original stream")
+        .isEqualTo(sliceLength);
+    assertThat(stream.read())
+        .as("Reading a slice shouldn't change the underlying data")
+        .isEqualTo(sliceLength);
 
     // change the underlying data buffer
     buffer.limit(sliceLength + 2);
@@ -276,9 +302,12 @@ public abstract class TestByteBufferInputStreams {
     try {
       buffer.put((byte) 255);
 
-      Assert.assertEquals(
-          "Writing to a slice shouldn't advance the original stream", sliceLength + 1, stream.position());
-      Assert.assertEquals("Writing to a slice should change the underlying data", 255, stream.read());
+      assertThat(stream.position())
+          .as("Writing to a slice shouldn't advance the original stream")
+          .isEqualTo(sliceLength + 1);
+      assertThat(stream.read())
+          .as("Writing to a slice should change the underlying data")
+          .isEqualTo(255);
     } finally {
       undoBuffer.put((byte) originalValue);
     }
@@ -290,16 +319,19 @@ public abstract class TestByteBufferInputStreams {
 
     while (stream.available() > 0) {
       int bytesToSkip = Math.min(stream.available(), 10);
-      Assert.assertEquals(
-          "Should skip all, regardless of backing buffers", bytesToSkip, stream.skip(bytesToSkip));
+      assertThat(stream.skip(bytesToSkip))
+          .as("Should skip all, regardless of backing buffers")
+          .isEqualTo(bytesToSkip);
     }
 
     stream = newStream();
-    Assert.assertEquals(0, stream.skip(0));
+    assertThat(stream.skip(0)).isEqualTo(0);
 
     int length = stream.available();
-    Assert.assertEquals("Should stop at end when out of bytes", length, stream.skip(length + 10));
-    Assert.assertEquals("Should return -1 when at end", -1, stream.skip(10));
+    assertThat(stream.skip(length + 10))
+        .as("Should stop at end when out of bytes")
+        .isEqualTo(length);
+    assertThat(stream.skip(10)).as("Should return -1 when at end").isEqualTo(-1);
   }
 
   @Test
@@ -312,21 +344,21 @@ public abstract class TestByteBufferInputStreams {
 
       stream.skipFully(bytesToSkip);
 
-      Assert.assertEquals(
-          "Should skip all, regardless of backing buffers", bytesToSkip, stream.position() - lastPosition);
+      assertThat(stream.position() - lastPosition)
+          .as("Should skip all, regardless of backing buffers")
+          .isEqualTo(bytesToSkip);
 
       lastPosition = stream.position();
     }
 
     final ByteBufferInputStream stream2 = newStream();
     stream2.skipFully(0);
-    Assert.assertEquals(0, stream2.position());
+    assertThat(stream2.position()).isEqualTo(0);
 
     final int length = stream2.available();
-    assertThrows("Should throw when out of bytes", EOFException.class, () -> {
-      stream2.skipFully(length + 10);
-      return null;
-    });
+    assertThatThrownBy(() -> stream2.skipFully(length + 10))
+        .isInstanceOf(EOFException.class)
+        .hasMessage("Not enough bytes to skip: 35 < 45");
   }
 
   @Test
@@ -345,16 +377,18 @@ public abstract class TestByteBufferInputStreams {
 
     stream.reset();
 
-    Assert.assertEquals("Position should return to the mark", mark, stream.position());
+    assertThat(stream.position()).as("Position should return to the mark").isEqualTo(mark);
 
     byte[] afterReset = new byte[100];
     int bytesReadAfterReset = stream.read(afterReset);
 
-    Assert.assertEquals("Should read the same number of bytes", expectedBytesRead, bytesReadAfterReset);
+    assertThat(bytesReadAfterReset)
+        .as("Should read the same number of bytes")
+        .isEqualTo(expectedBytesRead);
 
-    Assert.assertEquals("Read should end at the same position", end, stream.position());
+    assertThat(stream.position()).as("Read should end at the same position").isEqualTo(end);
 
-    Assert.assertArrayEquals("Content should be equal", expected, afterReset);
+    assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
   @Test
@@ -374,16 +408,18 @@ public abstract class TestByteBufferInputStreams {
 
     stream.reset();
 
-    Assert.assertEquals("Position should return to the mark", mark, stream.position());
+    assertThat(stream.position()).as("Position should return to the mark").isEqualTo(mark);
 
     byte[] afterReset = new byte[100];
     int bytesReadAfterReset = stream.read(afterReset);
 
-    Assert.assertEquals("Should read the same number of bytes", expectedBytesRead, bytesReadAfterReset);
+    assertThat(bytesReadAfterReset)
+        .as("Should read the same number of bytes")
+        .isEqualTo(expectedBytesRead);
 
-    Assert.assertEquals("Read should end at the same position", end, stream.position());
+    assertThat(stream.position()).as("Read should end at the same position").isEqualTo(end);
 
-    Assert.assertArrayEquals("Content should be equal", expected, afterReset);
+    assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
   @Test
@@ -395,20 +431,20 @@ public abstract class TestByteBufferInputStreams {
     long mark = stream.position();
 
     byte[] expected = new byte[10];
-    Assert.assertEquals("Should read 10 bytes", 10, stream.read(expected));
+    assertThat(stream.read(expected)).as("Should read 10 bytes").isEqualTo(10);
 
     long end = stream.position();
 
     stream.reset();
 
-    Assert.assertEquals("Position should return to the mark", mark, stream.position());
+    assertThat(stream.position()).as("Position should return to the mark").isEqualTo(mark);
 
     byte[] afterReset = new byte[10];
-    Assert.assertEquals("Should read 10 bytes", 10, stream.read(afterReset));
+    assertThat(stream.read(afterReset)).as("Should read 10 bytes").isEqualTo(10);
 
-    Assert.assertEquals("Read should end at the same position", end, stream.position());
+    assertThat(stream.position()).as("Read should end at the same position").isEqualTo(end);
 
-    Assert.assertArrayEquals("Content should be equal", expected, afterReset);
+    assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
   @Test
@@ -416,37 +452,34 @@ public abstract class TestByteBufferInputStreams {
     ByteBufferInputStream stream = newStream();
 
     int bytesRead = stream.read(new byte[100]);
-    Assert.assertTrue("Should read to end of stream", bytesRead < 100);
+    assertThat(bytesRead).as("Should read to end of stream").isLessThan(100);
 
     stream.mark(100);
 
     long mark = stream.position();
 
     byte[] expected = new byte[10];
-    Assert.assertEquals("Should read 0 bytes", -1, stream.read(expected));
+    assertThat(stream.read(expected)).as("Should read 0 bytes").isEqualTo(-1);
 
     long end = stream.position();
 
     stream.reset();
 
-    Assert.assertEquals("Position should return to the mark", mark, stream.position());
+    assertThat(stream.position()).as("Position should return to the mark").isEqualTo(mark);
 
     byte[] afterReset = new byte[10];
-    Assert.assertEquals("Should read 0 bytes", -1, stream.read(afterReset));
+    assertThat(stream.read(afterReset)).as("Should read 0 bytes").isEqualTo(-1);
 
-    Assert.assertEquals("Read should end at the same position", end, stream.position());
+    assertThat(stream.position()).as("Read should end at the same position").isEqualTo(end);
 
-    Assert.assertArrayEquals("Content should be equal", expected, afterReset);
+    assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
   @Test
   public void testMarkUnset() {
     final ByteBufferInputStream stream = newStream();
 
-    assertThrows("Should throw an error for reset() without mark()", IOException.class, () -> {
-      stream.reset();
-      return null;
-    });
+    assertThatThrownBy(stream::reset).isInstanceOf(IOException.class).hasMessageContaining("No mark defined");
   }
 
   @Test
@@ -455,22 +488,22 @@ public abstract class TestByteBufferInputStreams {
 
     byte[] expected = new byte[6];
     stream.mark(10);
-    Assert.assertEquals("Should read expected bytes", expected.length, stream.read(expected));
+    assertThat(stream.read(expected)).as("Should read expected bytes").isEqualTo(expected.length);
 
     stream.reset();
     stream.mark(10);
 
     byte[] firstRead = new byte[6];
-    Assert.assertEquals("Should read firstRead bytes", firstRead.length, stream.read(firstRead));
+    assertThat(stream.read(firstRead)).as("Should read firstRead bytes").isEqualTo(firstRead.length);
 
     stream.reset();
 
     byte[] secondRead = new byte[6];
-    Assert.assertEquals("Should read secondRead bytes", secondRead.length, stream.read(secondRead));
+    assertThat(stream.read(secondRead)).as("Should read secondRead bytes").isEqualTo(secondRead.length);
 
-    Assert.assertArrayEquals("First read should be correct", expected, firstRead);
+    assertThat(firstRead).as("First read should be correct").isEqualTo(expected);
 
-    Assert.assertArrayEquals("Second read should be correct", expected, secondRead);
+    assertThat(secondRead).as("Second read should be correct").isEqualTo(expected);
   }
 
   @Test
@@ -478,16 +511,13 @@ public abstract class TestByteBufferInputStreams {
     final ByteBufferInputStream stream = newStream();
 
     stream.mark(5);
-    Assert.assertEquals("Should read 5 bytes", 5, stream.read(new byte[5]));
+    assertThat(stream.read(new byte[5])).as("Should read 5 bytes").isEqualTo(5);
 
     stream.reset();
 
-    Assert.assertEquals("Should read 6 bytes", 6, stream.read(new byte[6]));
+    assertThat(stream.read(new byte[6])).as("Should read 6 bytes").isEqualTo(6);
 
-    assertThrows("Should throw an error for reset() after limit", IOException.class, () -> {
-      stream.reset();
-      return null;
-    });
+    assertThatThrownBy(stream::reset).isInstanceOf(IOException.class).hasMessageContaining("No mark defined");
   }
 
   @Test
@@ -495,14 +525,11 @@ public abstract class TestByteBufferInputStreams {
     final ByteBufferInputStream stream = newStream();
 
     stream.mark(5);
-    Assert.assertEquals("Should read 5 bytes", 5, stream.read(new byte[5]));
+    assertThat(stream.read(new byte[5])).as("Should read 5 bytes").isEqualTo(5);
 
     stream.reset();
 
-    assertThrows("Should throw an error for double reset()", IOException.class, () -> {
-      stream.reset();
-      return null;
-    });
+    assertThatThrownBy(stream::reset).isInstanceOf(IOException.class).hasMessageContaining("No mark defined");
   }
 
   @Test
@@ -511,28 +538,7 @@ public abstract class TestByteBufferInputStreams {
 
     ByteBuffer buffer = stream.toByteBuffer();
     for (int i = 0; i < DATA_LENGTH; ++i) {
-      assertEquals(i, buffer.get());
-    }
-  }
-
-  /**
-   * A convenience method to avoid a large number of @Test(expected=...) tests
-   *
-   * @param message  A String message to describe this assertion
-   * @param expected An Exception class that the Runnable should throw
-   * @param callable A Callable that is expected to throw the exception
-   */
-  public static void assertThrows(String message, Class<? extends Exception> expected, Callable callable) {
-    try {
-      callable.call();
-      Assert.fail("No exception was thrown (" + message + "), expected: " + expected.getName());
-    } catch (Exception actual) {
-      try {
-        Assert.assertEquals(message, expected, actual.getClass());
-      } catch (AssertionError e) {
-        e.addSuppressed(actual);
-        throw e;
-      }
+      assertThat((int) buffer.get()).isEqualTo(i);
     }
   }
 }

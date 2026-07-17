@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.io;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.EOFException;
 import java.io.File;
@@ -46,8 +45,8 @@ public class TestLocalInputOutput {
     }
     InputFile read = new LocalInputFile(path);
     try (SeekableInputStream stream = read.newStream()) {
-      assertEquals(stream.read(), 124);
-      assertEquals(stream.read(), -1);
+      assertThat(stream.read()).isEqualTo(124);
+      assertThat(stream.read()).isEqualTo(-1);
     }
   }
 
@@ -56,7 +55,9 @@ public class TestLocalInputOutput {
     Path path = Paths.get(createTempFile().getPath());
     OutputFile write = new LocalOutputFile(path);
     write.create(512).close();
-    assertThrows(FileAlreadyExistsException.class, () -> write.create(512).close());
+    assertThatThrownBy(() -> write.create(512).close())
+        .isInstanceOf(FileAlreadyExistsException.class)
+        .hasMessage(path.toString());
   }
 
   @Test
@@ -68,8 +69,8 @@ public class TestLocalInputOutput {
     }
     InputFile read = new LocalInputFile(path);
     try (SeekableInputStream stream = read.newStream()) {
-      assertEquals(stream.read(), 255);
-      assertEquals(stream.read(), -1);
+      assertThat(stream.read()).isEqualTo(255);
+      assertThat(stream.read()).isEqualTo(-1);
     }
   }
 
@@ -82,8 +83,8 @@ public class TestLocalInputOutput {
     }
     InputFile read = new LocalInputFile(path);
     try (SeekableInputStream stream = read.newStream()) {
-      assertEquals(stream.read(), 2);
-      assertEquals(stream.read(), -1);
+      assertThat(stream.read()).isEqualTo(2);
+      assertThat(stream.read()).isEqualTo(-1);
     }
   }
 
@@ -100,11 +101,11 @@ public class TestLocalInputOutput {
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(5);
       stream.readFully(buf);
-      assertEquals(5, buf.position());
+      assertThat(buf.position()).isEqualTo(5);
       buf.flip();
       byte[] out = new byte[5];
       buf.get(out);
-      assertArrayEquals(new byte[] {1, 2, 3, 4, 5}, out);
+      assertThat(out).isEqualTo(new byte[] {1, 2, 3, 4, 5});
     }
   }
 
@@ -115,11 +116,11 @@ public class TestLocalInputOutput {
       ByteBuffer buf = ByteBuffer.allocate(6);
       buf.put(new byte[] {99, 99}); // advance position to 2
       stream.readFully(buf);
-      assertEquals(6, buf.position());
+      assertThat(buf.position()).isEqualTo(6);
       buf.flip();
       byte[] out = new byte[6];
       buf.get(out);
-      assertArrayEquals(new byte[] {99, 99, 10, 20, 30, 40}, out);
+      assertThat(out).isEqualTo(new byte[] {99, 99, 10, 20, 30, 40});
     }
   }
 
@@ -129,11 +130,11 @@ public class TestLocalInputOutput {
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocateDirect(3);
       stream.readFully(buf);
-      assertEquals(3, buf.position());
+      assertThat(buf.position()).isEqualTo(3);
       buf.flip();
       byte[] out = new byte[3];
       buf.get(out);
-      assertArrayEquals(new byte[] {7, 8, 9}, out);
+      assertThat(out).isEqualTo(new byte[] {7, 8, 9});
     }
   }
 
@@ -143,7 +144,7 @@ public class TestLocalInputOutput {
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer backing = ByteBuffer.allocate(3);
       ByteBuffer buf = backing.asReadOnlyBuffer();
-      assertThrows(ReadOnlyBufferException.class, () -> stream.readFully(buf));
+      assertThatThrownBy(() -> stream.readFully(buf)).isInstanceOf(ReadOnlyBufferException.class);
     }
   }
 
@@ -153,12 +154,12 @@ public class TestLocalInputOutput {
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(4);
       int read = stream.read(buf);
-      assertEquals(4, read);
-      assertEquals(4, buf.position());
+      assertThat(read).isEqualTo(4);
+      assertThat(buf.position()).isEqualTo(4);
       buf.flip();
       byte[] out = new byte[4];
       buf.get(out);
-      assertArrayEquals(new byte[] {1, 2, 3, 4}, out);
+      assertThat(out).isEqualTo(new byte[] {1, 2, 3, 4});
     }
   }
 
@@ -168,8 +169,8 @@ public class TestLocalInputOutput {
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(10);
       int read = stream.read(buf);
-      assertEquals(3, read);
-      assertEquals(3, buf.position());
+      assertThat(read).isEqualTo(3);
+      assertThat(buf.position()).isEqualTo(3);
     }
   }
 
@@ -177,11 +178,11 @@ public class TestLocalInputOutput {
   public void readIntoByteBufferReturnsMinusOneAtEof() throws IOException {
     Path path = writeBytes(new byte[] {1});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
-      assertEquals(1, stream.read());
+      assertThat(stream.read()).isEqualTo(1);
       ByteBuffer buf = ByteBuffer.allocate(4);
       int read = stream.read(buf);
-      assertEquals(-1, read);
-      assertEquals(0, buf.position());
+      assertThat(read).isEqualTo(-1);
+      assertThat(buf.position()).isEqualTo(0);
     }
   }
 
@@ -191,12 +192,12 @@ public class TestLocalInputOutput {
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocateDirect(3);
       int read = stream.read(buf);
-      assertEquals(3, read);
-      assertEquals(3, buf.position());
+      assertThat(read).isEqualTo(3);
+      assertThat(buf.position()).isEqualTo(3);
       buf.flip();
       byte[] out = new byte[3];
       buf.get(out);
-      assertArrayEquals(new byte[] {7, 8, 9}, out);
+      assertThat(out).isEqualTo(new byte[] {7, 8, 9});
     }
   }
 
@@ -207,12 +208,12 @@ public class TestLocalInputOutput {
       ByteBuffer buf = ByteBuffer.allocate(5);
       buf.put(new byte[] {99, 99}); // advance position to 2
       int read = stream.read(buf);
-      assertEquals(3, read);
-      assertEquals(5, buf.position());
+      assertThat(read).isEqualTo(3);
+      assertThat(buf.position()).isEqualTo(5);
       buf.flip();
       byte[] out = new byte[5];
       buf.get(out);
-      assertArrayEquals(new byte[] {99, 99, 10, 20, 30}, out);
+      assertThat(out).isEqualTo(new byte[] {99, 99, 10, 20, 30});
     }
   }
 
@@ -221,7 +222,7 @@ public class TestLocalInputOutput {
     Path path = writeBytes(new byte[] {1, 2});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(10);
-      assertThrows(EOFException.class, () -> stream.readFully(buf));
+      assertThatThrownBy(() -> stream.readFully(buf)).isInstanceOf(EOFException.class);
     }
   }
 

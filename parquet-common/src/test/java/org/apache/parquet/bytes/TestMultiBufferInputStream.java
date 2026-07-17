@@ -19,10 +19,11 @@
 
 package org.apache.parquet.bytes;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
@@ -43,8 +44,8 @@ public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
   @Override
   protected void checkOriginalData() {
     for (ByteBuffer buffer : DATA) {
-      Assert.assertEquals("Position should not change", 0, buffer.position());
-      Assert.assertEquals("Limit should not change", buffer.array().length, buffer.limit());
+      assertThat(buffer.position()).as("Position should not change").isEqualTo(0);
+      assertThat(buffer.limit()).as("Limit should not change").isEqualTo(buffer.array().length);
     }
   }
 
@@ -60,67 +61,65 @@ public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
       buffers.add(stream.slice(bytesToSlice));
     }
 
-    Assert.assertEquals("Position should be at end", length, stream.position());
-    Assert.assertEquals("Should produce 5 buffers", 5, buffers.size());
+    assertThat(stream.position()).as("Position should be at end").isEqualTo(length);
+    assertThat(buffers).as("Should produce 5 buffers").hasSize(5);
 
     int i = 0;
 
     // one is a view of the first buffer because it is smaller
     ByteBuffer one = buffers.get(0);
-    Assert.assertSame(
-        "Should be a duplicate of the first array",
-        one.array(),
-        DATA.get(0).array());
-    Assert.assertEquals(8, one.remaining());
-    Assert.assertEquals(0, one.position());
-    Assert.assertEquals(8, one.limit());
-    Assert.assertEquals(9, one.capacity());
+    assertThat(one.array())
+        .as("Should be a duplicate of the first array")
+        .isSameAs(DATA.get(0).array());
+    assertThat(one.remaining()).isEqualTo(8);
+    assertThat(one.position()).isEqualTo(0);
+    assertThat(one.limit()).isEqualTo(8);
+    assertThat(one.capacity()).isEqualTo(9);
     for (; i < 8; i += 1) {
-      Assert.assertEquals("Should produce correct values", i, one.get());
+      assertThat((int) one.get()).as("Should produce correct values").isEqualTo(i);
     }
 
     // two should be a copy of the next 8 bytes
     ByteBuffer two = buffers.get(1);
-    Assert.assertEquals(8, two.remaining());
-    Assert.assertEquals(0, two.position());
-    Assert.assertEquals(8, two.limit());
-    Assert.assertEquals(8, two.capacity());
+    assertThat(two.remaining()).isEqualTo(8);
+    assertThat(two.position()).isEqualTo(0);
+    assertThat(two.limit()).isEqualTo(8);
+    assertThat(two.capacity()).isEqualTo(8);
     for (; i < 16; i += 1) {
-      Assert.assertEquals("Should produce correct values", i, two.get());
+      assertThat((int) two.get()).as("Should produce correct values").isEqualTo(i);
     }
 
     // three is a copy of part of the 4th buffer
     ByteBuffer three = buffers.get(2);
-    Assert.assertSame(
-        "Should be a duplicate of the fourth array",
-        three.array(),
-        DATA.get(3).array());
-    Assert.assertEquals(8, three.remaining());
-    Assert.assertEquals(3, three.position());
-    Assert.assertEquals(11, three.limit());
-    Assert.assertEquals(12, three.capacity());
+    assertThat(three.array())
+        .as("Should be a duplicate of the fourth array")
+        .isSameAs(DATA.get(3).array());
+    assertThat(three.remaining()).isEqualTo(8);
+    assertThat(three.position()).isEqualTo(3);
+    assertThat(three.limit()).isEqualTo(11);
+    assertThat(three.capacity()).isEqualTo(12);
     for (; i < 24; i += 1) {
-      Assert.assertEquals("Should produce correct values", i, three.get());
+      assertThat((int) three.get()).as("Should produce correct values").isEqualTo(i);
     }
 
     // four should be a copy of the next 8 bytes
     ByteBuffer four = buffers.get(3);
-    Assert.assertEquals(8, four.remaining());
-    Assert.assertEquals(0, four.position());
-    Assert.assertEquals(8, four.limit());
-    Assert.assertEquals(8, four.capacity());
+    assertThat(four.remaining()).isEqualTo(8);
+    assertThat(four.position()).isEqualTo(0);
+    assertThat(four.limit()).isEqualTo(8);
+    assertThat(four.capacity()).isEqualTo(8);
     for (; i < 32; i += 1) {
-      Assert.assertEquals("Should produce correct values", i, four.get());
+      assertThat((int) four.get()).as("Should produce correct values").isEqualTo(i);
     }
 
     // five should be a copy of the next 8 bytes
     ByteBuffer five = buffers.get(4);
-    Assert.assertEquals(3, five.remaining());
-    Assert.assertEquals(0, five.position());
-    Assert.assertEquals(3, five.limit());
-    Assert.assertEquals(3, five.capacity());
+    assertThat(five.remaining()).isEqualTo(3);
+    assertThat(five.position()).isEqualTo(0);
+    assertThat(five.limit()).isEqualTo(3);
+    assertThat(five.capacity()).isEqualTo(3);
     for (; i < 35; i += 1) {
-      Assert.assertEquals("Should produce correct values", i, five.get());
+      assertThat((int) five.get()).as("Should produce correct values").isEqualTo(i);
     }
   }
 
@@ -136,6 +135,8 @@ public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
       }
     }
 
-    Assert.assertEquals("Should return duplicates of all non-empty buffers", nonEmptyBuffers, buffers);
+    assertThat(buffers)
+        .as("Should return duplicates of all non-empty buffers")
+        .isEqualTo(nonEmptyBuffers);
   }
 }
