@@ -65,7 +65,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -1191,32 +1190,13 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    readChunkPagesForBlock(block, allParts, builder, rowGroup);
+    readAllPartsVectoredOrNormal(allParts, builder);
+    rowGroup.setReleaser(builder.releaser);
+    for (Chunk chunk : builder.build()) {
+      readChunkPages(chunk, block, rowGroup);
+    }
 
     return rowGroup;
-  }
-
-  /**
-   * Reads all parts into {@code builder}, transfers ownership of the acquired buffers to {@code rowGroup} and reads
-   * the pages for every chunk. If anything fails before ownership is fully transferred, the buffers already acquired
-   * by the builder are released so a partially-read row group does not leak them.
-   */
-  private void readChunkPagesForBlock(
-      BlockMetaData block,
-      List<ConsecutivePartList> allParts,
-      ChunkListBuilder builder,
-      ColumnChunkPageReadStore rowGroup)
-      throws IOException {
-    try {
-      readAllPartsVectoredOrNormal(allParts, builder);
-      rowGroup.setReleaser(builder.releaser);
-      for (Chunk chunk : builder.build()) {
-        readChunkPages(chunk, block, rowGroup);
-      }
-    } catch (RuntimeException | IOException e) {
-      builder.releaser.close();
-      throw e;
-    }
   }
 
   /**
@@ -1397,23 +1377,12 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    // Wrap the allocator so we release the exact buffers Hadoop allocates, regardless of what the
-    // futures return. With checksum verification enabled, ChecksumFileSystem hands back a sliced view
-    // of the allocated buffer and allocates additional checksum buffers it never releases; both would
-    // otherwise leak or trip strict allocators such as TrackingByteBufferAllocator.
-    RecordingByteBufferAllocator recordingAllocator = new RecordingByteBufferAllocator(options.getAllocator());
     // Request a vectored read;
-    f.readVectored(ranges, recordingAllocator);
-    try {
-      int k = 0;
-      for (ConsecutivePartList consecutivePart : allParts) {
-        ParquetFileRange currRange = ranges.get(k++);
-        consecutivePart.readFromVectoredRange(currRange, builder);
-      }
-    } finally {
-      // Register every buffer Hadoop allocated for this read, even if a later range fails, so that a
-      // partially-completed vectored read still releases the buffers already acquired for it.
-      builder.addBuffersToRelease(recordingAllocator.getAllocatedBuffers());
+    f.readVectored(ranges, options.getAllocator());
+    int k = 0;
+    for (ConsecutivePartList consecutivePart : allParts) {
+      ParquetFileRange currRange = ranges.get(k++);
+      consecutivePart.readFromVectoredRange(currRange, builder);
     }
   }
 
@@ -1495,7 +1464,11 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    readChunkPagesForBlock(block, allParts, builder, rowGroup);
+    readAllPartsVectoredOrNormal(allParts, builder);
+    rowGroup.setReleaser(builder.releaser);
+    for (Chunk chunk : builder.build()) {
+      readChunkPages(chunk, block, rowGroup);
+    }
 
     return rowGroup;
   }
@@ -1889,42 +1862,6 @@ public class ParquetFileReader implements Closeable {
     } finally {
       AutoCloseables.uncheckedClose(nextDictionaryReader, crcAllocator);
       options.getCodecFactory().release();
-    }
-  }
-
-  /**
-   * A {@link ByteBufferAllocator} decorator that records every buffer it hands out so the caller can release the
-   * exact allocations later. This is used for vectored IO, where the buffers returned by the read futures may be
-   * sliced views of the allocated buffers (e.g. when {@code ChecksumFileSystem} verifies checksums), and where
-   * additional buffers (such as checksum buffers) may be allocated that are not otherwise visible to the caller.
-   */
-  private static class RecordingByteBufferAllocator implements ByteBufferAllocator {
-    private final ByteBufferAllocator delegate;
-    private final List<ByteBuffer> allocated = new ArrayList<>();
-
-    RecordingByteBufferAllocator(ByteBufferAllocator delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override
-    public synchronized ByteBuffer allocate(int size) {
-      ByteBuffer buffer = delegate.allocate(size);
-      allocated.add(buffer);
-      return buffer;
-    }
-
-    @Override
-    public void release(ByteBuffer b) {
-      delegate.release(b);
-    }
-
-    @Override
-    public boolean isDirect() {
-      return delegate.isDirect();
-    }
-
-    synchronized List<ByteBuffer> getAllocatedBuffers() {
-      return new ArrayList<>(allocated);
     }
   }
 
@@ -2431,10 +2368,10 @@ public class ParquetFileReader implements Closeable {
         LOG.error(error, e);
         throw new IOException(error, e);
       }
-      // Note: the buffers acquired from the allocator are registered for release by
-      // readVectored() via the RecordingByteBufferAllocator. We must not register {@code buffer}
-      // here: with checksum verification enabled Hadoop returns a sliced view of the allocated
-      // buffer, so releasing {@code buffer} would either fail or leak the underlying allocation.
+      // Release the vectored-read buffer back to the allocator when the row group is closed.
+      // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
+      // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
+      builder.addBuffersToRelease(Collections.singletonList(buffer));
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
