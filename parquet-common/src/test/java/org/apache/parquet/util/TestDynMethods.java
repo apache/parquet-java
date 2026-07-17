@@ -22,10 +22,7 @@ package org.apache.parquet.util;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.concurrent.Callable;
-import org.apache.parquet.TestUtils;
 import org.apache.parquet.util.Concatenator.SomeCheckedException;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestDynMethods {
@@ -33,12 +30,13 @@ public class TestDynMethods {
   public void testNoImplCall() {
     final DynMethods.Builder builder = new DynMethods.Builder("concat");
 
-    TestUtils.assertThrows(
-        "Checked build should throw NoSuchMethodException", NoSuchMethodException.class, (Callable)
-            builder::buildChecked);
+    assertThatThrownBy(builder::buildChecked)
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessage("Cannot find method: concat");
 
-    TestUtils.assertThrows(
-        "Normal build should throw RuntimeException", RuntimeException.class, (Callable) builder::build);
+    assertThatThrownBy(builder::build)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Cannot find method: concat");
   }
 
   @Test
@@ -46,12 +44,13 @@ public class TestDynMethods {
     final DynMethods.Builder builder =
         new DynMethods.Builder("concat").impl("not.a.RealClass", String.class, String.class);
 
-    TestUtils.assertThrows(
-        "Checked build should throw NoSuchMethodException", NoSuchMethodException.class, (Callable)
-            builder::buildChecked);
+    assertThatThrownBy(builder::buildChecked)
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining("Cannot find method: concat");
 
-    TestUtils.assertThrows(
-        "Normal build should throw RuntimeException", RuntimeException.class, (Runnable) builder::build);
+    assertThatThrownBy(builder::build)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Cannot find method: concat");
   }
 
   @Test
@@ -59,12 +58,13 @@ public class TestDynMethods {
     final DynMethods.Builder builder =
         new DynMethods.Builder("concat").impl(Concatenator.class, "cat2strings", String.class, String.class);
 
-    TestUtils.assertThrows(
-        "Checked build should throw NoSuchMethodException", NoSuchMethodException.class, (Callable)
-            builder::buildChecked);
+    assertThatThrownBy(builder::buildChecked)
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining("Cannot find method: concat");
 
-    TestUtils.assertThrows(
-        "Normal build should throw RuntimeException", RuntimeException.class, (Runnable) builder::build);
+    assertThatThrownBy(builder::build)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Cannot find method: concat");
   }
 
   @Test
@@ -76,9 +76,13 @@ public class TestDynMethods {
         .impl(Concatenator.class, String.class, String.class, String.class)
         .buildChecked();
 
-    Assert.assertEquals("Should call the 2-arg version successfully", "a-b", cat2.invoke(obj, "a", "b"));
+    assertThat((String) cat2.invoke(obj, "a", "b"))
+        .as("Should call the 2-arg version successfully")
+        .isEqualTo("a-b");
 
-    Assert.assertEquals("Should ignore extra arguments", "a-b", cat2.invoke(obj, "a", "b", "c"));
+    assertThat((String) cat2.invoke(obj, "a", "b", "c"))
+        .as("Should ignore extra arguments")
+        .isEqualTo("a-b");
 
     DynMethods.UnboundMethod cat3 = new DynMethods.Builder("concat")
         .impl("not.a.RealClass", String.class, String.class)
@@ -86,9 +90,13 @@ public class TestDynMethods {
         .impl(Concatenator.class, String.class, String.class)
         .build();
 
-    Assert.assertEquals("Should call the 3-arg version successfully", "a-b-c", cat3.invoke(obj, "a", "b", "c"));
+    assertThat((String) cat3.invoke(obj, "a", "b", "c"))
+        .as("Should call the 3-arg version successfully")
+        .isEqualTo("a-b-c");
 
-    Assert.assertEquals("Should call the 3-arg version null padding", "a-b-null", cat3.invoke(obj, "a", "b"));
+    assertThat((String) cat3.invoke(obj, "a", "b"))
+        .as("Should call the 3-arg version null padding")
+        .isEqualTo("a-b-null");
   }
 
   @Test
@@ -97,13 +105,13 @@ public class TestDynMethods {
         .impl(Concatenator.class, String[].class)
         .buildChecked();
 
-    Assert.assertEquals("Should use the varargs version", "abcde", cat.invokeChecked(new Concatenator(), (Object)
-        new String[] {"a", "b", "c", "d", "e"}));
+    assertThat((String) cat.invokeChecked(new Concatenator(), (Object) new String[] {"a", "b", "c", "d", "e"}))
+        .as("Should use the varargs version")
+        .isEqualTo("abcde");
 
-    Assert.assertEquals(
-        "Should use the varargs version",
-        "abcde",
-        cat.bind(new Concatenator()).invokeChecked((Object) new String[] {"a", "b", "c", "d", "e"}));
+    assertThat((String) cat.bind(new Concatenator()).invokeChecked((Object) new String[] {"a", "b", "c", "d", "e"}))
+        .as("Should use the varargs version")
+        .isEqualTo("abcde");
   }
 
   @Test
@@ -114,15 +122,13 @@ public class TestDynMethods {
         .impl(Concatenator.class, String.class, String.class)
         .buildChecked();
 
-    TestUtils.assertThrows(
-        "Should fail if non-string arguments are passed",
-        IllegalArgumentException.class,
-        () -> cat.invoke(obj, 3, 4));
+    assertThatThrownBy(() -> cat.invoke(obj, 3, 4))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("argument type mismatch");
 
-    TestUtils.assertThrows(
-        "Should fail if non-string arguments are passed",
-        IllegalArgumentException.class,
-        () -> cat.invokeChecked(obj, 3, 4));
+    assertThatThrownBy(() -> cat.invokeChecked(obj, 3, 4))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("argument type mismatch");
   }
 
   @Test
@@ -134,11 +140,11 @@ public class TestDynMethods {
         .impl(Concatenator.class, Exception.class)
         .buildChecked();
 
-    TestUtils.assertThrows(
-        "Should re-throw the exception", SomeCheckedException.class, () -> cat.invokeChecked(obj, exc));
+    assertThatThrownBy(() -> cat.invokeChecked(obj, exc)).isInstanceOf(SomeCheckedException.class);
 
-    TestUtils.assertThrows(
-        "Should wrap the exception in RuntimeException", RuntimeException.class, () -> cat.invoke(obj, exc));
+    assertThatThrownBy(() -> cat.invoke(obj, exc))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("org.apache.parquet.util.Concatenator$SomeCheckedException");
   }
 
   @Test
@@ -148,7 +154,9 @@ public class TestDynMethods {
         .impl(Concatenator.class, "concat", String.class, String.class)
         .buildChecked();
 
-    Assert.assertEquals("Should find 2-arg concat method", "a-b", cat.invoke(obj, "a", "b"));
+    assertThat((String) cat.invoke(obj, "a", "b"))
+        .as("Should find 2-arg concat method")
+        .isEqualTo("a-b");
   }
 
   @Test
@@ -158,28 +166,32 @@ public class TestDynMethods {
         .impl(Concatenator.class.getName(), String.class, String.class)
         .buildChecked();
 
-    Assert.assertEquals("Should find 2-arg concat method", "a-b", cat.invoke(obj, "a", "b"));
+    assertThat((String) cat.invoke(obj, "a", "b"))
+        .as("Should find 2-arg concat method")
+        .isEqualTo("a-b");
   }
 
   @Test
   public void testHiddenMethod() throws Exception {
     Concatenator obj = new Concatenator("-");
 
-    TestUtils.assertThrows(
-        "Should fail to find hidden method", NoSuchMethodException.class, () -> new DynMethods.Builder(
-                "setSeparator")
+    assertThatThrownBy(() -> new DynMethods.Builder("setSeparator")
             .impl(Concatenator.class, String.class)
-            .buildChecked());
+            .buildChecked())
+        .isInstanceOf(NoSuchMethodException.class)
+        .hasMessageContaining("Cannot find method: setSeparator");
 
     DynMethods.UnboundMethod changeSep = new DynMethods.Builder("setSeparator")
         .hiddenImpl(Concatenator.class, String.class)
         .buildChecked();
 
-    Assert.assertNotNull("Should find hidden method with hiddenImpl", changeSep);
+    assertThat(changeSep).as("Should find hidden method with hiddenImpl").isNotNull();
 
     changeSep.invokeChecked(obj, "/");
 
-    Assert.assertEquals("Should use separator / instead of -", "a/b", obj.concat("a", "b"));
+    assertThat(obj.concat("a", "b"))
+        .as("Should use separator / instead of -")
+        .isEqualTo("a/b");
   }
 
   @Test
@@ -192,37 +204,40 @@ public class TestDynMethods {
     DynMethods.BoundMethod dashCat = cat.bind(new Concatenator("-"));
     DynMethods.BoundMethod underCat = cat.bind(new Concatenator("_"));
 
-    Assert.assertEquals("Should use '-' object without passing", "a-b", dashCat.invoke("a", "b"));
-    Assert.assertEquals("Should use '_' object without passing", "a_b", underCat.invoke("a", "b"));
+    assertThat((String) dashCat.invoke("a", "b"))
+        .as("Should use '-' object without passing")
+        .isEqualTo("a-b");
+    assertThat((String) underCat.invoke("a", "b"))
+        .as("Should use '_' object without passing")
+        .isEqualTo("a_b");
 
     DynMethods.BoundMethod slashCat = new DynMethods.Builder("concat")
         .impl(Concatenator.class, String.class, String.class)
         .buildChecked(new Concatenator("/"));
 
-    Assert.assertEquals("Should use bound object from builder without passing", "a/b", slashCat.invoke("a", "b"));
+    assertThat((String) slashCat.invoke("a", "b"))
+        .as("Should use bound object from builder without passing")
+        .isEqualTo("a/b");
   }
 
   @Test
   public void testBindStaticMethod() throws Exception {
     final DynMethods.Builder builder = new DynMethods.Builder("cat").impl(Concatenator.class, String[].class);
 
-    TestUtils.assertThrows(
-        "Should complain that method is static",
-        IllegalStateException.class,
-        () -> builder.buildChecked(new Concatenator()));
+    assertThatThrownBy(() -> builder.buildChecked(new Concatenator()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Cannot bind static method");
 
-    TestUtils.assertThrows(
-        "Should complain that method is static",
-        IllegalStateException.class,
-        () -> builder.build(new Concatenator()));
+    assertThatThrownBy(() -> builder.build(new Concatenator()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Cannot bind static method");
 
     final DynMethods.UnboundMethod staticCat = builder.buildChecked();
-    Assert.assertTrue("Should be static", staticCat.isStatic());
+    assertThat(staticCat.isStatic()).as("Should be static").isTrue();
 
-    TestUtils.assertThrows(
-        "Should complain that method is static",
-        IllegalStateException.class,
-        () -> staticCat.bind(new Concatenator()));
+    assertThatThrownBy(() -> staticCat.bind(new Concatenator()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Cannot bind static method");
   }
 
   @Test
@@ -231,9 +246,9 @@ public class TestDynMethods {
         .impl(Concatenator.class, String[].class)
         .buildStaticChecked();
 
-    Assert.assertEquals(
-        "Should call varargs static method cat(String...)", "abcde", staticCat.invokeChecked((Object)
-            new String[] {"a", "b", "c", "d", "e"}));
+    assertThat((String) staticCat.invokeChecked((Object) new String[] {"a", "b", "c", "d", "e"}))
+        .as("Should call varargs static method cat(String...)")
+        .isEqualTo("abcde");
   }
 
   @Test
@@ -241,17 +256,22 @@ public class TestDynMethods {
     final DynMethods.Builder builder =
         new DynMethods.Builder("concat").impl(Concatenator.class, String.class, String.class);
 
-    TestUtils.assertThrows(
-        "Should complain that method is not static", IllegalStateException.class, builder::buildStatic);
+    assertThatThrownBy(builder::buildStatic)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Method is not static");
 
-    TestUtils.assertThrows(
-        "Should complain that method is not static", IllegalStateException.class, builder::buildStaticChecked);
+    assertThatThrownBy(builder::buildStaticChecked)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Method is not static");
 
     final DynMethods.UnboundMethod cat2 = builder.buildChecked();
-    Assert.assertFalse("concat(String,String) should not be static", cat2.isStatic());
+    assertThat(cat2.isStatic())
+        .as("concat(String,String) should not be static")
+        .isFalse();
 
-    TestUtils.assertThrows(
-        "Should complain that method is not static", IllegalStateException.class, cat2::asStatic);
+    assertThatThrownBy(cat2::asStatic)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Method is not static");
   }
 
   @Test
@@ -261,25 +281,33 @@ public class TestDynMethods {
         .impl(Concatenator.class, String.class);
 
     DynMethods.UnboundMethod newConcatenator = builder.buildChecked();
-    Assert.assertTrue("Should find constructor implementation", newConcatenator instanceof DynConstructors.Ctor);
-    Assert.assertTrue("Constructor should be a static method", newConcatenator.isStatic());
-    Assert.assertFalse("Constructor should not be NOOP", newConcatenator.isNoop());
+    assertThat(newConcatenator)
+        .as("Should find constructor implementation")
+        .isInstanceOf(DynConstructors.Ctor.class);
+    assertThat(newConcatenator.isStatic())
+        .as("Constructor should be a static method")
+        .isTrue();
+    assertThat(newConcatenator.isNoop())
+        .as("Constructor should not be NOOP")
+        .isFalse();
 
     // constructors cannot be bound
-    TestUtils.assertThrows(
-        "Should complain that ctor method is static",
-        IllegalStateException.class,
-        () -> builder.buildChecked(new Concatenator()));
-    TestUtils.assertThrows(
-        "Should complain that ctor method is static",
-        IllegalStateException.class,
-        () -> builder.build(new Concatenator()));
+    assertThatThrownBy(() -> builder.buildChecked(new Concatenator()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot bind constructors");
+    assertThatThrownBy(() -> builder.build(new Concatenator()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Cannot bind constructors");
 
     Concatenator concatenator = newConcatenator.asStatic().invoke("*");
-    Assert.assertEquals("Should function as a concatenator", "a*b", concatenator.concat("a", "b"));
+    assertThat(concatenator.concat("a", "b"))
+        .as("Should function as a concatenator")
+        .isEqualTo("a*b");
 
     concatenator = newConcatenator.asStatic().invokeChecked("@");
-    Assert.assertEquals("Should function as a concatenator", "a@b", concatenator.concat("a", "b"));
+    assertThat(concatenator.concat("a", "b"))
+        .as("Should function as a concatenator")
+        .isEqualTo("a@b");
   }
 
   @Test
@@ -289,9 +317,9 @@ public class TestDynMethods {
         .ctorImpl(Concatenator.class, String.class)
         .buildChecked();
 
-    Assert.assertFalse(
-        "Should find factory method before constructor method",
-        newConcatenator instanceof DynConstructors.Ctor);
+    assertThat(newConcatenator)
+        .as("Should find factory method before constructor method")
+        .isNotInstanceOf(DynConstructors.Ctor.class);
   }
 
   @Test
@@ -302,12 +330,24 @@ public class TestDynMethods {
         .orNoop()
         .buildChecked();
 
-    Assert.assertTrue("No implementation found, should return NOOP", noop.isNoop());
-    Assert.assertNull("NOOP should always return null", noop.invoke(new Concatenator(), "a"));
-    Assert.assertNull("NOOP can be called with null", noop.invoke(null, "a"));
-    Assert.assertNull("NOOP can be bound", noop.bind(new Concatenator()).invoke("a"));
-    Assert.assertNull("NOOP can be bound to null", noop.bind(null).invoke("a"));
-    Assert.assertNull("NOOP can be static", noop.asStatic().invoke("a"));
+    assertThat(noop.isNoop())
+        .as("No implementation found, should return NOOP")
+        .isTrue();
+    assertThat((Object) noop.invoke(new Concatenator(), "a"))
+        .as("NOOP should always return null")
+        .isNull();
+    assertThat((Object) noop.invoke(null, "a"))
+        .as("NOOP can be called with null")
+        .isNull();
+    assertThat((Object) noop.bind(new Concatenator()).invoke("a"))
+        .as("NOOP can be bound")
+        .isNull();
+    assertThat((Object) noop.bind(null).invoke("a"))
+        .as("NOOP can be bound to null")
+        .isNull();
+    assertThat((Object) noop.asStatic().invoke("a"))
+        .as("NOOP can be static")
+        .isNull();
   }
 
   static class Available {

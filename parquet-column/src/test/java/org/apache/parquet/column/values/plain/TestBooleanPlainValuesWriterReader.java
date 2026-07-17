@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.plain;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,7 +42,7 @@ public class TestBooleanPlainValuesWriterReader {
   @Test
   public void testEncoding() {
     try (BooleanPlainValuesWriter writer = new BooleanPlainValuesWriter()) {
-      assertEquals(Encoding.PLAIN, writer.getEncoding());
+      assertThat(writer.getEncoding()).isEqualTo(Encoding.PLAIN);
     }
   }
 
@@ -60,7 +60,7 @@ public class TestBooleanPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertEquals("value at index " + i, expected[i], reader.readBoolean());
+        assertThat(reader.readBoolean()).as("value at index " + i).isEqualTo(expected[i]);
       }
     }
   }
@@ -79,7 +79,7 @@ public class TestBooleanPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertEquals("value at index " + i, expected[i], reader.readBoolean());
+        assertThat(reader.readBoolean()).as("value at index " + i).isEqualTo(expected[i]);
       }
     }
   }
@@ -98,9 +98,9 @@ public class TestBooleanPlainValuesWriterReader {
       reader.initFromPage(values.length, wrapForReading(writer));
 
       reader.skip(); // skip true
-      assertEquals(false, reader.readBoolean());
+      assertThat(reader.readBoolean()).isFalse();
       reader.skip(2); // skip true, false
-      assertEquals(true, reader.readBoolean());
+      assertThat(reader.readBoolean()).isTrue();
     }
   }
 
@@ -114,7 +114,7 @@ public class TestBooleanPlainValuesWriterReader {
       BooleanPlainValuesReader reader = new BooleanPlainValuesReader();
       reader.initFromPage(1, wrapForReading(writer));
 
-      assertEquals(true, reader.readBoolean());
+      assertThat(reader.readBoolean()).isTrue();
     }
   }
 
@@ -126,7 +126,7 @@ public class TestBooleanPlainValuesWriterReader {
       writer.writeBoolean(true);
       writer.writeBoolean(false);
       writer.reset();
-      assertEquals(0, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isZero();
 
       writer.writeBoolean(false);
       writer.writeBoolean(true);
@@ -134,8 +134,8 @@ public class TestBooleanPlainValuesWriterReader {
       BooleanPlainValuesReader reader = new BooleanPlainValuesReader();
       reader.initFromPage(2, wrapForReading(writer));
 
-      assertEquals(false, reader.readBoolean());
-      assertEquals(true, reader.readBoolean());
+      assertThat(reader.readBoolean()).isFalse();
+      assertThat(reader.readBoolean()).isTrue();
     }
   }
 }

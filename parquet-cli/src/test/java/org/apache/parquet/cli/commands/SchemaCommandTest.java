@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
@@ -26,7 +27,6 @@ import java.util.Arrays;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class SchemaCommandTest extends ParquetFileTest {
@@ -36,7 +36,7 @@ public class SchemaCommandTest extends ParquetFileTest {
     SchemaCommand command = new SchemaCommand(createLogger());
     command.targets = Arrays.asList(file.getAbsolutePath());
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 
   @Test
@@ -44,14 +44,14 @@ public class SchemaCommandTest extends ParquetFileTest {
     File inputFile = parquetFile();
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avsc");
     FileUtils.touch(outputFile);
-    Assert.assertEquals(0, outputFile.length());
+    assertThat(outputFile.length()).isZero();
     SchemaCommand command = new SchemaCommand(createLogger());
     command.targets = Arrays.asList(inputFile.getAbsolutePath());
     command.outputPath = outputFile.getAbsolutePath();
     command.overwrite = true;
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(0 < outputFile.length());
+    assertThat(command.run()).isZero();
+    assertThat(outputFile.length()).isPositive();
   }
 
   @Test

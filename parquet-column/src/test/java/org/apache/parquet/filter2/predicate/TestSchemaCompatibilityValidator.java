@@ -31,8 +31,8 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator.validate;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
@@ -100,64 +100,47 @@ public class TestSchemaCompatibilityValidator {
 
   @Test
   public void testFindsInvalidTypes() {
-    try {
-      validate(complexWrongType, schema);
-      fail("this should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "FilterPredicate column: x.bar's declared type (java.lang.Long) does not match the schema found in file metadata. "
-              + "Column x.bar is of type: INT32\n"
-              + "Valid types for this column are: [class java.lang.Integer]",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> validate(complexWrongType, schema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "FilterPredicate column: x.bar's declared type (java.lang.Long) does not match the schema found in file metadata. "
+                + "Column x.bar is of type: INT32\n"
+                + "Valid types for this column are: [class java.lang.Integer]");
   }
 
   @Test
   public void testTwiceDeclaredColumn() {
     validate(eq(stringC, Binary.fromString("larry")), schema);
 
-    try {
-      validate(complexMixedType, schema);
-      fail("this should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "Column: x.bar was provided with different types in the same predicate. Found both: (class java.lang.Integer, class java.lang.Long)",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> validate(complexMixedType, schema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Column: x.bar was provided with different types in the same predicate. Found both: (class java.lang.Integer, class java.lang.Long)");
   }
 
   @Test
   public void testRepeatedNotSupportedForPrimitivePredicates() {
-    try {
-      validate(eq(lotsOfLongs, 10l), schema);
-      fail("this should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "FilterPredicates do not currently support repeated columns. Column lotsOfLongs is repeated.",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> validate(eq(lotsOfLongs, 10l), schema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "FilterPredicates do not currently support repeated columns. Column lotsOfLongs is repeated.");
   }
 
   @Test
   public void testRepeatedSupportedForContainsPredicates() {
-    try {
-      validate(contains(eq(lotsOfLongs, 10L)), schema);
-      validate(and(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
-      validate(or(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
-    } catch (IllegalArgumentException e) {
-      fail("Valid repeated column predicates should not throw exceptions");
-    }
+    assertThatCode(() -> {
+          validate(contains(eq(lotsOfLongs, 10L)), schema);
+          validate(and(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
+          validate(or(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
+        })
+        .doesNotThrowAnyException();
   }
 
   @Test
   public void testNonRepeatedNotSupportedForContainsPredicates() {
-    try {
-      validate(contains(eq(longBar, 10L)), schema);
-      fail("Non-repeated field " + longBar + " should fail to validate a containsEq() predicate");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "FilterPredicate for column x.bar requires a repeated schema, but found max repetition level 0",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> validate(contains(eq(longBar, 10L)), schema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "FilterPredicate for column x.bar requires a repeated schema, but found max repetition level 0");
   }
 }

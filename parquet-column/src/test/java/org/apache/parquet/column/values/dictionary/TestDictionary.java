@@ -25,9 +25,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.data.Offset.offset;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,7 +53,6 @@ import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -144,38 +141,38 @@ public class TestDictionary {
     try (ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(1000, 10000)) {
       writeRepeated(100, cw, "a");
       writeDistinct(100, cw, "b");
-      assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
+      assertThat(cw.getEncoding()).isEqualTo(PLAIN_DICTIONARY);
 
       // Test skip and skip-n with dictionary encoding
       ByteBufferInputStream stream = cw.getBytes().toInputStream();
       DictionaryValuesReader cr = initDicReader(cw, BINARY);
       cr.initFromPage(200, stream);
       for (int i = 0; i < 100; i += 2) {
-        assertEquals(Binary.fromString("a" + i % 10), cr.readBytes());
+        assertThat(cr.readBytes()).isEqualTo(Binary.fromString("a" + i % 10));
         cr.skip();
       }
       int skipCount;
       for (int i = 0; i < 100; i += skipCount + 1) {
         skipCount = (100 - i) / 2;
-        assertEquals(Binary.fromString("b" + i), cr.readBytes());
+        assertThat(cr.readBytes()).isEqualTo(Binary.fromString("b" + i));
         cr.skip(skipCount);
       }
 
       // Ensure fallback
       writeDistinct(1000, cw, "c");
-      assertEquals(PLAIN, cw.getEncoding());
+      assertThat(cw.getEncoding()).isEqualTo(PLAIN);
 
       // Test skip and skip-n with plain encoding (after fallback)
       ValuesReader plainReader = new BinaryPlainValuesReader();
       plainReader.initFromPage(1200, cw.getBytes().toInputStream());
       plainReader.skip(200);
       for (int i = 0; i < 100; i += 2) {
-        assertEquals("c" + i, plainReader.readBytes().toStringUsingUTF8());
+        assertThat(plainReader.readBytes().toStringUsingUTF8()).isEqualTo("c" + i);
         plainReader.skip();
       }
       for (int i = 100; i < 1000; i += skipCount + 1) {
         skipCount = (1000 - i) / 2;
-        assertEquals(Binary.fromString("c" + i), plainReader.readBytes());
+        assertThat(plainReader.readBytes()).isEqualTo(Binary.fromString("c" + i));
         plainReader.skip(skipCount);
       }
     }
@@ -193,9 +190,9 @@ public class TestDictionary {
         cw.writeBytes(binary);
         dataSize += (binary.length() + 4);
         if (dataSize < fallBackThreshold) {
-          assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
+          assertThat(cw.getEncoding()).isEqualTo(PLAIN_DICTIONARY);
         } else {
-          assertEquals(PLAIN, cw.getEncoding());
+          assertThat(cw.getEncoding()).isEqualTo(PLAIN);
         }
       }
 
@@ -204,12 +201,12 @@ public class TestDictionary {
       reader.initFromPage(100, cw.getBytes().toInputStream());
 
       for (long i = 0; i < 100; i++) {
-        assertEquals(Binary.fromString("str" + i), reader.readBytes());
+        assertThat(reader.readBytes()).isEqualTo(Binary.fromString("str" + i));
       }
 
       // simulate cutting the page
       cw.reset();
-      assertEquals(0, cw.getBufferedSize());
+      assertThat(cw.getBufferedSize()).isEqualTo(0);
     }
   }
 
@@ -224,7 +221,7 @@ public class TestDictionary {
       cw.writeBytes(Binary.fromString("hello"));
       cw.writeBytes(mock);
 
-      assertEquals(PLAIN, cw.getEncoding());
+      assertThat(cw.getEncoding()).isEqualTo(PLAIN);
     }
   }
 
@@ -357,26 +354,26 @@ public class TestDictionary {
         cw.writeLong(i % 50);
       }
       BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       for (long i = COUNT2; i > 0; i--) {
         cw.writeLong(i % 50);
       }
       BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       DictionaryValuesReader cr = initDicReader(cw, PrimitiveTypeName.INT64);
 
       cr.initFromPage(COUNT, bytes1.toInputStream());
       for (long i = 0; i < COUNT; i++) {
         long back = cr.readLong();
-        assertEquals(i % 50, back);
+        assertThat(back).isEqualTo(i % 50);
       }
 
       cr.initFromPage(COUNT2, bytes2.toInputStream());
       for (long i = COUNT2; i > 0; i--) {
         long back = cr.readLong();
-        assertEquals(i % 50, back);
+        assertThat(back).isEqualTo(i % 50);
       }
     }
   }
@@ -390,22 +387,22 @@ public class TestDictionary {
     for (long i = 0; i < 100; i++) {
       cw.writeLong(i);
       if (i < fallBackThreshold) {
-        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN_DICTIONARY);
       } else {
-        assertEquals(cw.getEncoding(), PLAIN);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN);
       }
     }
 
     reader.initFromPage(100, cw.getBytes().toInputStream());
 
     for (long i = 0; i < 100; i++) {
-      assertEquals(i, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(i);
     }
 
     // Test skip with plain encoding
     reader.initFromPage(100, cw.getBytes().toInputStream());
     for (int i = 0; i < 100; i += 2) {
-      assertEquals(i, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(i);
       reader.skip();
     }
 
@@ -414,7 +411,7 @@ public class TestDictionary {
     int skipCount;
     for (int i = 0; i < 100; i += skipCount + 1) {
       skipCount = (100 - i) / 2;
-      assertEquals(i, reader.readLong());
+      assertThat(reader.readLong()).isEqualTo(i);
       reader.skip(skipCount);
     }
   }
@@ -431,7 +428,7 @@ public class TestDictionary {
       roundTripLong(cw, reader, maxDictionaryByteSize);
       // simulate cutting the page
       cw.reset();
-      assertEquals(0, cw.getBufferedSize());
+      assertThat(cw.getBufferedSize()).isEqualTo(0);
       cw.resetDictionary();
 
       roundTripLong(cw, reader, maxDictionaryByteSize);
@@ -451,26 +448,26 @@ public class TestDictionary {
       }
 
       BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       for (double i = COUNT2; i > 0; i--) {
         cw.writeDouble(i % 50);
       }
       BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
 
       cr.initFromPage(COUNT, bytes1.toInputStream());
       for (double i = 0; i < COUNT; i++) {
         double back = cr.readDouble();
-        assertEquals(i % 50, back, 0.0);
+        assertThat(back).isCloseTo(i % 50, offset(0.0));
       }
 
       cr.initFromPage(COUNT2, bytes2.toInputStream());
       for (double i = COUNT2; i > 0; i--) {
         double back = cr.readDouble();
-        assertEquals(i % 50, back, 0.0);
+        assertThat(back).isCloseTo(i % 50, offset(0.0));
       }
     }
   }
@@ -494,13 +491,14 @@ public class TestDictionary {
       }
 
       BytesInput bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(dictionaryValues.length, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(dictionaryValues.length);
 
       final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
       cr.initFromPage(dictionaryValues.length * 10, bytes.toInputStream());
       for (int i = 0; i < 10; i++) {
         for (double expected : dictionaryValues) {
-          assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(cr.readDouble()));
+          assertThat(Double.doubleToRawLongBits(cr.readDouble()))
+              .isEqualTo(Double.doubleToRawLongBits(expected));
         }
       }
     }
@@ -515,22 +513,22 @@ public class TestDictionary {
     for (double i = 0; i < 100; i++) {
       cw.writeDouble(i);
       if (i < fallBackThreshold) {
-        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN_DICTIONARY);
       } else {
-        assertEquals(cw.getEncoding(), PLAIN);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN);
       }
     }
 
     reader.initFromPage(100, cw.getBytes().toInputStream());
 
     for (double i = 0; i < 100; i++) {
-      assertEquals(i, reader.readDouble(), 0.00001);
+      assertThat(reader.readDouble()).isCloseTo(i, offset(0.00001));
     }
 
     // Test skip with plain encoding
     reader.initFromPage(100, cw.getBytes().toInputStream());
     for (int i = 0; i < 100; i += 2) {
-      assertEquals(i, reader.readDouble(), 0.0);
+      assertThat(reader.readDouble()).isCloseTo(i, offset(0.0));
       reader.skip();
     }
 
@@ -539,7 +537,7 @@ public class TestDictionary {
     int skipCount;
     for (int i = 0; i < 100; i += skipCount + 1) {
       skipCount = (100 - i) / 2;
-      assertEquals(i, reader.readDouble(), 0.0);
+      assertThat(reader.readDouble()).isCloseTo(i, offset(0.0));
       reader.skip(skipCount);
     }
   }
@@ -557,7 +555,7 @@ public class TestDictionary {
       roundTripDouble(cw, reader, maxDictionaryByteSize);
       // simulate cutting the page
       cw.reset();
-      assertEquals(0, cw.getBufferedSize());
+      assertThat(cw.getBufferedSize()).isEqualTo(0);
       cw.resetDictionary();
 
       roundTripDouble(cw, reader, maxDictionaryByteSize);
@@ -576,26 +574,26 @@ public class TestDictionary {
         cw.writeInteger(i % 50);
       }
       BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       for (int i = COUNT2; i > 0; i--) {
         cw.writeInteger(i % 50);
       }
       BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       DictionaryValuesReader cr = initDicReader(cw, INT32);
 
       cr.initFromPage(COUNT, bytes1.toInputStream());
       for (int i = 0; i < COUNT; i++) {
         int back = cr.readInteger();
-        assertEquals(i % 50, back);
+        assertThat(back).isEqualTo(i % 50);
       }
 
       cr.initFromPage(COUNT2, bytes2.toInputStream());
       for (int i = COUNT2; i > 0; i--) {
         int back = cr.readInteger();
-        assertEquals(i % 50, back);
+        assertThat(back).isEqualTo(i % 50);
       }
     }
   }
@@ -609,22 +607,22 @@ public class TestDictionary {
     for (int i = 0; i < 100; i++) {
       cw.writeInteger(i);
       if (i < fallBackThreshold) {
-        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN_DICTIONARY);
       } else {
-        assertEquals(cw.getEncoding(), PLAIN);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN);
       }
     }
 
     reader.initFromPage(100, cw.getBytes().toInputStream());
 
     for (int i = 0; i < 100; i++) {
-      assertEquals(i, reader.readInteger());
+      assertThat(reader.readInteger()).isEqualTo(i);
     }
 
     // Test skip with plain encoding
     reader.initFromPage(100, cw.getBytes().toInputStream());
     for (int i = 0; i < 100; i += 2) {
-      assertEquals(i, reader.readInteger());
+      assertThat(reader.readInteger()).isEqualTo(i);
       reader.skip();
     }
 
@@ -633,7 +631,7 @@ public class TestDictionary {
     int skipCount;
     for (int i = 0; i < 100; i += skipCount + 1) {
       skipCount = (100 - i) / 2;
-      assertEquals(i, reader.readInteger());
+      assertThat(reader.readInteger()).isEqualTo(i);
       reader.skip(skipCount);
     }
   }
@@ -651,7 +649,7 @@ public class TestDictionary {
       roundTripInt(cw, reader, maxDictionaryByteSize);
       // simulate cutting the page
       cw.reset();
-      assertEquals(0, cw.getBufferedSize());
+      assertThat(cw.getBufferedSize()).isEqualTo(0);
       cw.resetDictionary();
 
       roundTripInt(cw, reader, maxDictionaryByteSize);
@@ -670,26 +668,26 @@ public class TestDictionary {
         cw.writeFloat(i % 50);
       }
       BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       for (float i = COUNT2; i > 0; i--) {
         cw.writeFloat(i % 50);
       }
       BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(50, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(50);
 
       DictionaryValuesReader cr = initDicReader(cw, FLOAT);
 
       cr.initFromPage(COUNT, bytes1.toInputStream());
       for (float i = 0; i < COUNT; i++) {
         float back = cr.readFloat();
-        assertEquals(i % 50, back, 0.0f);
+        assertThat(back).isCloseTo(i % 50, offset(0.0f));
       }
 
       cr.initFromPage(COUNT2, bytes2.toInputStream());
       for (float i = COUNT2; i > 0; i--) {
         float back = cr.readFloat();
-        assertEquals(i % 50, back, 0.0f);
+        assertThat(back).isCloseTo(i % 50, offset(0.0f));
       }
     }
   }
@@ -713,13 +711,13 @@ public class TestDictionary {
       }
 
       BytesInput bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-      assertEquals(dictionaryValues.length, cw.initialWriter.getDictionarySize());
+      assertThat(cw.initialWriter.getDictionarySize()).isEqualTo(dictionaryValues.length);
 
       final DictionaryValuesReader cr = initDicReader(cw, FLOAT);
       cr.initFromPage(dictionaryValues.length * 10, bytes.toInputStream());
       for (int i = 0; i < 10; i++) {
         for (float expected : dictionaryValues) {
-          assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(cr.readFloat()));
+          assertThat(Float.floatToRawIntBits(cr.readFloat())).isEqualTo(Float.floatToRawIntBits(expected));
         }
       }
     }
@@ -734,22 +732,22 @@ public class TestDictionary {
     for (float i = 0; i < 100; i++) {
       cw.writeFloat(i);
       if (i < fallBackThreshold) {
-        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN_DICTIONARY);
       } else {
-        assertEquals(cw.getEncoding(), PLAIN);
+        assertThat(cw.getEncoding()).isEqualTo(PLAIN);
       }
     }
 
     reader.initFromPage(100, cw.getBytes().toInputStream());
 
     for (float i = 0; i < 100; i++) {
-      assertEquals(i, reader.readFloat(), 0.00001);
+      assertThat(reader.readFloat()).isCloseTo(i, offset(0.00001f));
     }
 
     // Test skip with plain encoding
     reader.initFromPage(100, cw.getBytes().toInputStream());
     for (int i = 0; i < 100; i += 2) {
-      assertEquals(i, reader.readFloat(), 0.0f);
+      assertThat(reader.readFloat()).isCloseTo(i, offset(0.0f));
       reader.skip();
     }
 
@@ -758,7 +756,7 @@ public class TestDictionary {
     int skipCount;
     for (int i = 0; i < 100; i += skipCount + 1) {
       skipCount = (100 - i) / 2;
-      assertEquals(i, reader.readFloat(), 0.0f);
+      assertThat(reader.readFloat()).isCloseTo(i, offset(0.0f));
       reader.skip(skipCount);
     }
   }
@@ -776,7 +774,7 @@ public class TestDictionary {
       roundTripFloat(cw, reader, maxDictionaryByteSize);
       // simulate cutting the page
       cw.reset();
-      assertEquals(0, cw.getBufferedSize());
+      assertThat(cw.getBufferedSize()).isEqualTo(0);
       cw.resetDictionary();
 
       roundTripFloat(cw, reader, maxDictionaryByteSize);
@@ -815,9 +813,9 @@ public class TestDictionary {
     PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
 
     // Verify dictionary decoding
-    assertFalse(dictionary.decodeToBoolean(0));
-    assertTrue(dictionary.decodeToBoolean(1));
-    assertEquals(1, dictionary.getMaxId());
+    assertThat(dictionary.decodeToBoolean(0)).isFalse();
+    assertThat(dictionary.decodeToBoolean(1)).isTrue();
+    assertThat(dictionary.getMaxId()).isEqualTo(1);
   }
 
   @Test
@@ -829,8 +827,8 @@ public class TestDictionary {
 
     PlainBooleanDictionary dictionaryTrue = new PlainBooleanDictionary(dictionaryPageTrue);
 
-    assertTrue(dictionaryTrue.decodeToBoolean(0));
-    assertEquals(0, dictionaryTrue.getMaxId());
+    assertThat(dictionaryTrue.decodeToBoolean(0)).isTrue();
+    assertThat(dictionaryTrue.getMaxId()).isEqualTo(0);
 
     // Test dictionary with only false value
     // Bit-packed: bit 0 = false (0) => byte = 0b00000000 = 0x00
@@ -839,8 +837,8 @@ public class TestDictionary {
 
     PlainBooleanDictionary dictionaryFalse = new PlainBooleanDictionary(dictionaryPageFalse);
 
-    assertFalse(dictionaryFalse.decodeToBoolean(0));
-    assertEquals(0, dictionaryFalse.getMaxId());
+    assertThat(dictionaryFalse.decodeToBoolean(0)).isFalse();
+    assertThat(dictionaryFalse.getMaxId()).isEqualTo(0);
   }
 
   @Test
@@ -852,9 +850,9 @@ public class TestDictionary {
     PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
 
     String str = dictionary.toString();
-    Assert.assertTrue(str.contains("PlainBooleanDictionary"));
-    Assert.assertTrue(str.contains("0 => false"));
-    Assert.assertTrue(str.contains("1 => true"));
+    assertThat(str).contains("PlainBooleanDictionary");
+    assertThat(str).contains("0 => false");
+    assertThat(str).contains("1 => true");
   }
 
   @Test
@@ -866,9 +864,9 @@ public class TestDictionary {
 
     PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
 
-    assertEquals(true, dictionary.decodeToBoolean(0));
-    assertEquals(false, dictionary.decodeToBoolean(1));
-    assertEquals(1, dictionary.getMaxId());
+    assertThat(dictionary.decodeToBoolean(0)).isTrue();
+    assertThat(dictionary.decodeToBoolean(1)).isFalse();
+    assertThat(dictionary.getMaxId()).isEqualTo(1);
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type) throws IOException {
@@ -882,7 +880,7 @@ public class TestDictionary {
   private void checkDistinct(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
     cr.initFromPage(COUNT, bytes.toInputStream());
     for (int i = 0; i < COUNT; i++) {
-      Assert.assertEquals(prefix + i, cr.readBytes().toStringUsingUTF8());
+      assertThat(cr.readBytes().toStringUsingUTF8()).isEqualTo(prefix + i);
     }
   }
 

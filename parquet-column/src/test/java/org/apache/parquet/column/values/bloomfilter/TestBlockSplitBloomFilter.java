@@ -18,10 +18,8 @@
  */
 package org.apache.parquet.column.values.bloomfilter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,7 +30,6 @@ import java.util.Set;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -42,9 +39,9 @@ public class TestBlockSplitBloomFilter {
   @Test
   public void testConstructor() {
     BloomFilter bloomFilter1 = new BlockSplitBloomFilter(0);
-    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.LOWER_BOUND_BYTES);
+    assertThat(bloomFilter1.getBitsetSize()).isEqualTo(BlockSplitBloomFilter.LOWER_BOUND_BYTES);
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
-    assertEquals(bloomFilter3.getBitsetSize(), 1024);
+    assertThat(bloomFilter3.getBitsetSize()).isEqualTo(1024);
   }
 
   @Rule
@@ -68,7 +65,8 @@ public class TestBlockSplitBloomFilter {
     }
 
     for (String testString : testStrings) {
-      assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testString))));
+      assertThat(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testString))))
+          .isTrue();
     }
   }
 
@@ -113,9 +111,9 @@ public class TestBlockSplitBloomFilter {
     }
 
     for (Object v : values) {
-      assertTrue(
-          String.format("the value %s should not be filtered, seed = %d", v, seed),
-          bloomFilter.findHash(bloomFilter.hash(v)));
+      assertThat(bloomFilter.findHash(bloomFilter.hash(v)))
+          .as(String.format("the value %s should not be filtered, seed = %d", v, seed))
+          .isTrue();
     }
   }
 
@@ -146,7 +144,7 @@ public class TestBlockSplitBloomFilter {
     }
 
     // The exist should be probably less than 1000 according FPP 0.01. Add 20% here for error space.
-    assertTrue(exist < totalCount * (FPP * 1.2));
+    assertThat((double) exist).isLessThan(totalCount * (FPP * 1.2));
   }
 
   @Test
@@ -160,12 +158,12 @@ public class TestBlockSplitBloomFilter {
       bloomFilterTwo.insertHash(bloomFilterTwo.hash(Binary.fromString(word)));
     }
 
-    assertEquals(bloomFilterOne, bloomFilterTwo);
+    assertThat(bloomFilterTwo).isEqualTo(bloomFilterOne);
 
     BloomFilter bloomFilterThree = new BlockSplitBloomFilter(1024);
     bloomFilterThree.insertHash(bloomFilterThree.hash(Binary.fromString("parquet")));
 
-    assertNotEquals(bloomFilterTwo, bloomFilterThree);
+    assertThat(bloomFilterThree).isNotEqualTo(bloomFilterTwo);
   }
 
   @Test
@@ -177,13 +175,13 @@ public class TestBlockSplitBloomFilter {
     // the optimal value formula
     double numBits = -8 * ndv / Math.log(1 - Math.pow(0.01, 1.0 / 8));
     int bytes = (int) numBits / 8;
-    assertTrue(bytes < 20 * 1024 * 1024);
+    assertThat(bytes).isLessThan(20 * 1024 * 1024);
 
     // a row group of 128MB with one column of UUID type
     ndv = 128 * 1024 * 1024 / java.util.UUID.randomUUID().toString().length();
     numBits = -8 * ndv / Math.log(1 - Math.pow(fpp, 1.0 / 8));
     bytes = (int) numBits / 8;
-    assertTrue(bytes < 5 * 1024 * 1024);
+    assertThat(bytes).isLessThan(5 * 1024 * 1024);
   }
 
   @Test
@@ -193,7 +191,7 @@ public class TestBlockSplitBloomFilter {
     AdaptiveBlockSplitBloomFilter adaptiveBloomFilter =
         new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, candidateNumber, 0.01, null);
 
-    assertEquals(candidateNumber, adaptiveBloomFilter.getCandidates().size());
+    assertThat(adaptiveBloomFilter.getCandidates()).hasSize(candidateNumber);
 
     Set<String> existedValue = new HashSet<>();
     while (existedValue.size() < 10000) {
@@ -202,11 +200,12 @@ public class TestBlockSplitBloomFilter {
       existedValue.add(str);
     }
     // removed some small bloom filter
-    assertEquals(7, adaptiveBloomFilter.getCandidates().size());
+    assertThat(adaptiveBloomFilter.getCandidates()).hasSize(7);
     BlockSplitBloomFilter optimalCandidate =
         adaptiveBloomFilter.optimalCandidate().getBloomFilter();
     for (String value : existedValue) {
-      assertTrue(optimalCandidate.findHash(optimalCandidate.hash(Binary.fromString(value))));
+      assertThat(optimalCandidate.findHash(optimalCandidate.hash(Binary.fromString(value))))
+          .isTrue();
     }
 
     int maxCandidateNDV = adaptiveBloomFilter.getCandidates().stream()
@@ -220,7 +219,7 @@ public class TestBlockSplitBloomFilter {
     }
     // the number of distinct value exceeds the maximum candidate's expected NDV, so only the maximum candidate is
     // kept
-    assertEquals(1, adaptiveBloomFilter.getCandidates().size());
+    assertThat(adaptiveBloomFilter.getCandidates()).hasSize(1);
   }
 
   @Test
@@ -234,16 +233,16 @@ public class TestBlockSplitBloomFilter {
     for (int i = 1024; i < 2048; i++) {
       otherBloomFilter.insertHash(otherBloomFilter.hash(i));
       // Before merging BloomFilter, `mergedBloomFilter` doesn't have any value in `otherBloomFilter`
-      assertFalse(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
+      assertThat(mergedBloomFilter.findHash(mergedBloomFilter.hash(i))).isFalse();
     }
     mergedBloomFilter.merge(otherBloomFilter);
     // After merging BloomFilter, `mergedBloomFilter` should have all values in `otherBloomFilter`
     for (int i = 0; i < 2048; i++) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
+      assertThat(mergedBloomFilter.findHash(mergedBloomFilter.hash(i))).isTrue();
     }
     for (int i = 2048; i < 3096; i++) {
-      assertFalse(otherBloomFilter.findHash(otherBloomFilter.hash(i)));
-      assertFalse(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
+      assertThat(otherBloomFilter.findHash(otherBloomFilter.hash(i))).isFalse();
+      assertThat(mergedBloomFilter.findHash(mergedBloomFilter.hash(i))).isFalse();
     }
   }
 
@@ -252,12 +251,9 @@ public class TestBlockSplitBloomFilter {
     int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 5, 0.01) / 8;
     BloomFilter mergedBloomFilter = new BlockSplitBloomFilter(numBytes);
     BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes * 1024);
-    try {
-      mergedBloomFilter.merge(otherBloomFilter);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      // expected, BloomFilters should have the same size of bitsets
-    }
+    assertThatThrownBy(() -> mergedBloomFilter.merge(otherBloomFilter))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("BloomFilters must have the same size of bitset, hashStrategy and algorithm.");
   }
 
   /**
@@ -316,13 +312,9 @@ public class TestBlockSplitBloomFilter {
       data[i] = (byte) i;
 
       ByteBuffer input = ByteBuffer.wrap(data, 0, i).order(ByteOrder.nativeOrder());
-      assertEquals(
-          HASHES_OF_LOOPING_BYTES_WITH_SEED_0[i],
-          LongHashFunction.xx(0).hashBytes(input));
+      assertThat(LongHashFunction.xx(0).hashBytes(input)).isEqualTo(HASHES_OF_LOOPING_BYTES_WITH_SEED_0[i]);
 
-      assertEquals(
-          HASHES_OF_LOOPING_BYTES_WITH_SEED_42[i],
-          LongHashFunction.xx(42).hashBytes(input));
+      assertThat(LongHashFunction.xx(42).hashBytes(input)).isEqualTo(HASHES_OF_LOOPING_BYTES_WITH_SEED_42[i]);
     }
   }
 }

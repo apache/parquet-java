@@ -22,10 +22,7 @@ import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter.ColumnRecordFilter.column;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
@@ -77,11 +74,11 @@ public class TestSpecificReadWrite {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
-        assertEquals(getBmwMini().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+        assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -90,11 +87,11 @@ public class TestSpecificReadWrite {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
-        assertEquals(getBmwMini().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+        assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -104,10 +101,10 @@ public class TestSpecificReadWrite {
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       for (int i = 0; i < 10; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -118,10 +115,10 @@ public class TestSpecificReadWrite {
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       for (int i = 0; i < 10000; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -130,7 +127,7 @@ public class TestSpecificReadWrite {
     Path path = writeCarsToParquetFile(
         10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Bogus")))) {
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -161,8 +158,8 @@ public class TestSpecificReadWrite {
     }
 
     try (ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("BMW")))) {
-      assertEquals(getBmwMini().toString(), reader.read().toString());
-      assertNull(reader.read());
+      assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -171,9 +168,9 @@ public class TestSpecificReadWrite {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, true);
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
-      assertNull(reader.read());
+      assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+      assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -183,16 +180,16 @@ public class TestSpecificReadWrite {
 
     ParquetReader<Car> reader =
         new AvroParquetReader<Car>(testConf, path, column("engine.type", equalTo(EngineType.DIESEL)));
-    assertEquals(reader.read().toString(), getVwPassat().toString());
-    assertNull(reader.read());
+    assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+    assertThat(reader.read()).isNull();
 
     reader = new AvroParquetReader<Car>(testConf, path, column("engine.capacity", equalTo(1.4f)));
-    assertEquals(getVwPolo().toString(), reader.read().toString());
-    assertNull(reader.read());
+    assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+    assertThat(reader.read()).isNull();
 
     reader = new AvroParquetReader<Car>(testConf, path, column("engine.hasTurboCharger", equalTo(true)));
-    assertEquals(getBmwMini().toString(), reader.read().toString());
-    assertNull(reader.read());
+    assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
+    assertThat(reader.read()).isNull();
   }
 
   @Test
@@ -223,14 +220,14 @@ public class TestSpecificReadWrite {
 
     try (ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
-        assertTrue(car.getDoors() == 4 || car.getDoors() == 5);
-        assertNotNull(car.getEngine());
-        assertNotNull(car.getMake());
-        assertNotNull(car.getModel());
-        assertEquals(2010, car.getYear());
-        assertNotNull(car.getVin());
-        assertNull(car.getOptionalExtra());
-        assertNull(car.getServiceHistory());
+        assertThat(car.getDoors()).isIn(4, 5);
+        assertThat(car.getEngine()).isNotNull();
+        assertThat(car.getMake()).isNotNull();
+        assertThat(car.getModel()).isNotNull();
+        assertThat(car.getYear()).isEqualTo(2010);
+        assertThat(car.getVin()).isNotNull();
+        assertThat(car.getOptionalExtra()).isNull();
+        assertThat(car.getServiceHistory()).isNull();
       }
     }
   }
@@ -264,10 +261,10 @@ public class TestSpecificReadWrite {
 
     try (ParquetReader<Car> reader = new AvroParquetReader<>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
-        assertNotNull(car.getServiceHistory());
+        assertThat(car.getServiceHistory()).isNotNull();
         car.getServiceHistory().forEach(service -> {
-          assertNotNull(service.getMechanic());
-          assertEquals(0L, service.getDate());
+          assertThat(service.getMechanic()).isNotNull();
+          assertThat(service.getDate()).isEqualTo(0L);
         });
       }
     }
@@ -281,12 +278,12 @@ public class TestSpecificReadWrite {
 
     try (ParquetReader<NewCar> reader = new AvroParquetReader<>(conf, path)) {
       for (NewCar car = reader.read(); car != null; car = reader.read()) {
-        assertNotNull(car.getEngine());
-        assertNotNull(car.getBrand());
-        assertEquals(2010, car.getYear());
-        assertNotNull(car.getVin());
-        assertNull(car.getDescription());
-        assertEquals(5, car.getOpt());
+        assertThat(car.getEngine()).isNotNull();
+        assertThat(car.getBrand()).isNotNull();
+        assertThat(car.getYear()).isEqualTo(2010);
+        assertThat(car.getVin()).isNotNull();
+        assertThat(car.getDescription()).isNull();
+        assertThat(car.getOpt()).isEqualTo(5);
       }
     }
   }
@@ -328,7 +325,7 @@ public class TestSpecificReadWrite {
       }
     }
 
-    assertEquals(records, output);
+    assertThat(output).containsExactlyElementsOf(records);
   }
 
   private Path writeCarsToParquetFile(int num, CompressionCodecName compression, boolean enableDictionary)

@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.common.io.Resources;
 import java.io.IOException;
 import org.apache.avro.generic.GenericRecord;
@@ -25,7 +27,6 @@ import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestBackwardCompatibility {
@@ -43,7 +44,7 @@ public class TestBackwardCompatibility {
         .build();
     GenericRecord r;
     while ((r = reader.read()) != null) {
-      Assert.assertTrue("Should read value into a String", r.get("text") instanceof String);
+      assertThat(r.get("text")).as("Should read value into a String").isInstanceOf(String.class);
     }
   }
 
@@ -57,7 +58,7 @@ public class TestBackwardCompatibility {
         .build();
     GenericRecord r;
     while ((r = reader.read()) != null) {
-      Assert.assertTrue("Should read value into a String", r.get("text") instanceof Utf8);
+      assertThat(r.get("text")).as("Should read value into a String").isInstanceOf(Utf8.class);
     }
   }
 }

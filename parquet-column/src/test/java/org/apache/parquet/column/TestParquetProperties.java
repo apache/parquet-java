@@ -21,9 +21,8 @@ package org.apache.parquet.column;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -49,20 +48,20 @@ public class TestParquetProperties {
   @Test
   public void columnCodec_notSet_returnsNull() {
     ParquetProperties props = ParquetProperties.builder().build();
-    assertNull(props.getColumnCodec(colA));
+    assertThat(props.getColumnCodec(colA)).isNull();
   }
 
   @Test
   public void columnLevel_notSet_returnsNull() {
     ParquetProperties props = ParquetProperties.builder().build();
-    assertNull(props.getColumnCompressionLevel(colA));
+    assertThat(props.getColumnCompressionLevel(colA)).isNull();
   }
 
   @Test
   public void columnCodec_setForColumn_returnsConfiguredCodec() {
     ParquetProperties props =
         ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
-    assertEquals(ZSTD, props.getColumnCodec(colA));
+    assertThat(props.getColumnCodec(colA)).isEqualTo(ZSTD);
   }
 
   @Test
@@ -71,29 +70,29 @@ public class TestParquetProperties {
         .withCompressionCodec("col_a", ZSTD)
         .withCompressionCodec("col_a", SNAPPY)
         .build();
-    assertEquals(SNAPPY, props.getColumnCodec(colA));
+    assertThat(props.getColumnCodec(colA)).isEqualTo(SNAPPY);
   }
 
   @Test
   public void columnCodec_otherColumnsUnaffected() {
     ParquetProperties props =
         ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
-    assertNull(props.getColumnCodec(colB));
-    assertNull(props.getColumnCodec(colC));
+    assertThat(props.getColumnCodec(colB)).isNull();
+    assertThat(props.getColumnCodec(colC)).isNull();
   }
 
   @Test
   public void columnLevel_setForColumn_returnsConfiguredLevel() {
     ParquetProperties props =
         ParquetProperties.builder().withCompressionLevel("col_a", 10).build();
-    assertEquals(Integer.valueOf(10), props.getColumnCompressionLevel(colA));
+    assertThat(props.getColumnCompressionLevel(colA)).isEqualTo(10);
   }
 
   @Test
   public void columnLevel_otherColumnsUnaffected() {
     ParquetProperties props =
         ParquetProperties.builder().withCompressionLevel("col_a", 10).build();
-    assertNull(props.getColumnCompressionLevel(colB));
+    assertThat(props.getColumnCompressionLevel(colB)).isNull();
   }
 
   @Test
@@ -106,20 +105,21 @@ public class TestParquetProperties {
         .withCompressionLevel("col_c", 5)
         .build();
 
-    assertEquals(ZSTD, props.getColumnCodec(colA));
-    assertEquals(Integer.valueOf(10), props.getColumnCompressionLevel(colA));
+    assertThat(props.getColumnCodec(colA)).isEqualTo(ZSTD);
+    assertThat(props.getColumnCompressionLevel(colA)).isEqualTo(10);
 
-    assertEquals(SNAPPY, props.getColumnCodec(colB));
-    assertNull(props.getColumnCompressionLevel(colB));
+    assertThat(props.getColumnCodec(colB)).isEqualTo(SNAPPY);
+    assertThat(props.getColumnCompressionLevel(colB)).isNull();
 
-    assertEquals(GZIP, props.getColumnCodec(colC));
-    assertEquals(Integer.valueOf(5), props.getColumnCompressionLevel(colC));
+    assertThat(props.getColumnCodec(colC)).isEqualTo(GZIP);
+    assertThat(props.getColumnCompressionLevel(colC)).isEqualTo(5);
   }
 
   @Test
   public void withCompressionCodec_nullCodec_throwsNullPointerException() {
-    assertThrows(
-        NullPointerException.class, () -> ParquetProperties.builder().withCompressionCodec("col_a", null));
+    assertThatThrownBy(() -> ParquetProperties.builder().withCompressionCodec("col_a", null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("codec cannot be null");
   }
 
   @Test
@@ -132,10 +132,10 @@ public class TestParquetProperties {
 
     ParquetProperties copy = ParquetProperties.copy(original).build();
 
-    assertEquals(ZSTD, copy.getColumnCodec(colA));
-    assertEquals(Integer.valueOf(7), copy.getColumnCompressionLevel(colA));
-    assertEquals(SNAPPY, copy.getColumnCodec(colB));
-    assertNull(copy.getColumnCompressionLevel(colB));
-    assertNull(copy.getColumnCodec(colC));
+    assertThat(copy.getColumnCodec(colA)).isEqualTo(ZSTD);
+    assertThat(copy.getColumnCompressionLevel(colA)).isEqualTo(7);
+    assertThat(copy.getColumnCodec(colB)).isEqualTo(SNAPPY);
+    assertThat(copy.getColumnCompressionLevel(colB)).isNull();
+    assertThat(copy.getColumnCodec(colC)).isNull();
   }
 }

@@ -26,7 +26,6 @@ import java.net.URI;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,19 +49,19 @@ public class BaseCommandTest {
   @Test
   public void qualifiedPathTest() throws IOException {
     Path path = this.command.qualifiedPath(FILE_PATH);
-    Assert.assertEquals("test.parquet", path.getName());
+    assertThat(path.getName()).isEqualTo("test.parquet");
   }
 
   @Test
   public void qualifiedURITest() throws IOException {
     URI uri = this.command.qualifiedURI(FILE_PATH);
-    Assert.assertEquals("/var/tmp/test.parquet", uri.getPath());
+    assertThat(uri.getPath()).isEqualTo("/var/tmp/test.parquet");
   }
 
   @Test
   public void qualifiedURIResourceURITest() throws IOException {
     URI uri = this.command.qualifiedURI("resource:/a");
-    Assert.assertEquals("/a", uri.getPath());
+    assertThat(uri.getPath()).isEqualTo("/a");
   }
 
   @Test
@@ -93,14 +92,14 @@ public class BaseCommandTest {
   public void qualifiedPathTestForWindows() throws IOException {
     Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
     Path path = this.command.qualifiedPath(WIN_FILE_PATH);
-    Assert.assertEquals("test.parquet", path.getName());
+    assertThat(path.getName()).isEqualTo("test.parquet");
   }
 
   @Test
   public void qualifiedURITestForWindows() throws IOException {
     Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
     URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
-    Assert.assertEquals("/C:/Test/Downloads/test.parquet", uri.getPath());
+    assertThat(uri.getPath()).isEqualTo("/C:/Test/Downloads/test.parquet");
   }
 
   class TestCommand extends BaseCommand {

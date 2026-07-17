@@ -19,11 +19,12 @@
 
 package org.apache.parquet.column.statistics.geospatial;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Test;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBWriter;
@@ -43,9 +44,9 @@ public class TestGeospatialStatistics {
     builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
     builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (2 2)"))));
     GeospatialStatistics statistics = builder.build();
-    Assert.assertTrue(statistics.isValid());
-    Assert.assertNotNull(statistics.getBoundingBox());
-    Assert.assertNotNull(statistics.getGeospatialTypes());
+    assertThat(statistics.isValid()).isTrue();
+    assertThat(statistics.getBoundingBox()).isNotNull();
+    assertThat(statistics.getGeospatialTypes()).isNotNull();
   }
 
   @Test
@@ -66,13 +67,13 @@ public class TestGeospatialStatistics {
     GeospatialStatistics statistics2 = builder2.build();
 
     statistics1.merge(statistics2);
-    Assert.assertTrue(statistics1.isValid());
-    Assert.assertNotNull(statistics1.getBoundingBox());
-    Assert.assertNotNull(statistics1.getGeospatialTypes());
+    assertThat(statistics1.isValid()).isTrue();
+    assertThat(statistics1.getBoundingBox()).isNotNull();
+    assertThat(statistics1.getGeospatialTypes()).isNotNull();
   }
 
   @Test
-  public void testMergeNullGeospatialStatistics() {
+  public void testMergeNullGeospatialStatistics() throws ParseException {
     // Create a valid stats object
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.geometryType(null))
@@ -82,42 +83,38 @@ public class TestGeospatialStatistics {
     WKBWriter wkbWriter = new WKBWriter();
 
     GeospatialStatistics.Builder validBuilder = GeospatialStatistics.newBuilder(type);
-    try {
-      validBuilder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
-    } catch (ParseException e) {
-      Assert.fail("Failed to parse valid WKT: " + e.getMessage());
-    }
+    validBuilder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
     GeospatialStatistics validStats = validBuilder.build();
-    Assert.assertTrue(validStats.isValid());
+    assertThat(validStats.isValid()).isTrue();
 
     // Create stats with null components
     GeospatialStatistics nullStats = new GeospatialStatistics(null, null);
-    Assert.assertFalse(nullStats.isValid());
+    assertThat(nullStats.isValid()).isFalse();
 
     // Test merging valid with null
     GeospatialStatistics validCopy = validStats.copy();
     validCopy.merge(nullStats);
-    Assert.assertFalse(validCopy.isValid());
-    Assert.assertNotNull(validCopy.getBoundingBox());
-    Assert.assertNotNull(validCopy.getGeospatialTypes());
+    assertThat(validCopy.isValid()).isFalse();
+    assertThat(validCopy.getBoundingBox()).isNotNull();
+    assertThat(validCopy.getGeospatialTypes()).isNotNull();
 
     // Test merging null with valid
     nullStats = new GeospatialStatistics(null, null);
     nullStats.merge(validStats);
-    Assert.assertFalse(nullStats.isValid());
-    Assert.assertNull(nullStats.getBoundingBox());
-    Assert.assertNull(nullStats.getGeospatialTypes());
+    assertThat(nullStats.isValid()).isFalse();
+    assertThat(nullStats.getBoundingBox()).isNull();
+    assertThat(nullStats.getGeospatialTypes()).isNull();
 
     // Create stats with null bounding box only
     GeospatialStatistics nullBboxStats = new GeospatialStatistics(null, new GeospatialTypes());
-    Assert.assertTrue(nullBboxStats.isValid());
+    assertThat(nullBboxStats.isValid()).isTrue();
 
     // Test merging valid with null bounding box
     validCopy = validStats.copy();
     validCopy.merge(nullBboxStats);
-    Assert.assertTrue(validCopy.isValid());
-    Assert.assertNotNull(validCopy.getBoundingBox());
-    Assert.assertNotNull(validCopy.getGeospatialTypes());
+    assertThat(validCopy.isValid()).isTrue();
+    assertThat(validCopy.getBoundingBox()).isNotNull();
+    assertThat(validCopy.getGeospatialTypes()).isNotNull();
   }
 
   @Test
@@ -129,13 +126,13 @@ public class TestGeospatialStatistics {
     builder.update(Binary.fromString("POINT (1 1)"));
     GeospatialStatistics statistics = builder.build();
     GeospatialStatistics copy = statistics.copy();
-    Assert.assertTrue(copy.isValid());
-    Assert.assertNotNull(copy.getBoundingBox());
-    Assert.assertNotNull(copy.getGeospatialTypes());
+    assertThat(copy.isValid()).isTrue();
+    assertThat(copy.getBoundingBox()).isNotNull();
+    assertThat(copy.getGeospatialTypes()).isNotNull();
   }
 
   @Test
-  public void testInvalidGeometryMakesStatisticsInvalid() {
+  public void testInvalidGeometryMakesStatisticsInvalid() throws ParseException {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.geometryType(null))
         .named("a");
@@ -144,15 +141,11 @@ public class TestGeospatialStatistics {
     // First add a valid geometry
     WKTReader wktReader = new WKTReader();
     WKBWriter wkbWriter = new WKBWriter();
-    try {
-      builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
-    } catch (ParseException e) {
-      Assert.fail("Failed to parse valid WKT: " + e.getMessage());
-    }
+    builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
 
     // Valid at this point
     GeospatialStatistics validStats = builder.build();
-    Assert.assertTrue(validStats.isValid());
+    assertThat(validStats.isValid()).isTrue();
 
     // Now add invalid data - corrupt WKB bytes
     byte[] invalidBytes = new byte[] {0x01, 0x02, 0x03}; // Invalid WKB format
@@ -160,13 +153,13 @@ public class TestGeospatialStatistics {
 
     // After adding invalid data, omit it from stats
     GeospatialStatistics invalidStats = builder.build();
-    Assert.assertTrue(invalidStats.isValid());
+    assertThat(invalidStats.isValid()).isTrue();
   }
 
   @Test
   public void testNoopBuilder() {
     GeospatialStatistics.Builder builder = GeospatialStatistics.noopBuilder();
     GeospatialStatistics statistics = builder.build();
-    Assert.assertFalse(statistics.isValid());
+    assertThat(statistics.isValid()).isFalse();
   }
 }

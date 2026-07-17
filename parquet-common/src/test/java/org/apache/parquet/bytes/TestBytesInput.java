@@ -18,10 +18,8 @@
  */
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -136,7 +134,9 @@ public class TestBytesInput {
     RANDOM.nextBytes(data);
     BytesInput bi = BytesInput.from(data, 0, data.length);
     byte[] result = bi.toByteArray();
-    assertSame("toByteArray() should return the backing array when offset=0 and length=full", data, result);
+    assertThat(result)
+        .as("toByteArray() should return the backing array when offset=0 and length=full")
+        .isSameAs(data);
   }
 
   @Test
@@ -148,7 +148,7 @@ public class TestBytesInput {
     byte[] result = bi.toByteArray();
     byte[] expected = new byte[500];
     System.arraycopy(input, 10, expected, 0, 500);
-    assertArrayEquals(expected, result);
+    assertThat(result).isEqualTo(expected);
   }
 
   @Test
@@ -369,7 +369,7 @@ public class TestBytesInput {
   }
 
   private void validate(byte[] data, Supplier<BytesInput> factory) throws IOException {
-    assertEquals(data.length, factory.get().size());
+    assertThat(factory.get().size()).isEqualTo(data.length);
     validateToByteBuffer(data, factory);
     validateCopy(data, factory);
     validateToInputStream(data, factory);
@@ -407,14 +407,14 @@ public class TestBytesInput {
   private void assertContentEquals(byte[] expected, InputStream is) throws IOException {
     byte[] actual = new byte[expected.length];
     is.read(actual);
-    assertArrayEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   private void validateWriteAllTo(byte[] data, Supplier<BytesInput> factory) throws IOException {
     BytesInput bi = factory.get();
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       bi.writeAllTo(baos);
-      assertArrayEquals(data, baos.toByteArray());
+      assertThat(baos.toByteArray()).isEqualTo(data);
     }
   }
 

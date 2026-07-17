@@ -31,9 +31,8 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.Operators.NotEq;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -69,44 +68,41 @@ public class TestFilterApiMethods {
   public void testFilterPredicateCreation() {
     FilterPredicate outerAnd = predicate;
 
-    assertTrue(outerAnd instanceof And);
+    assertThat(outerAnd).isInstanceOf(And.class);
 
     FilterPredicate not = ((And) outerAnd).getLeft();
     FilterPredicate gt = ((And) outerAnd).getRight();
-    assertTrue(not instanceof Not);
+    assertThat(not).isInstanceOf(Not.class);
 
     FilterPredicate or = ((Not) not).getPredicate();
-    assertTrue(or instanceof Or);
+    assertThat(or).isInstanceOf(Or.class);
 
     FilterPredicate leftEq = ((Or) or).getLeft();
     FilterPredicate rightNotEq = ((Or) or).getRight();
-    assertTrue(leftEq instanceof Eq);
-    assertTrue(rightNotEq instanceof NotEq);
-    assertEquals(7, ((Eq) leftEq).getValue());
-    assertEquals(17, ((NotEq) rightNotEq).getValue());
-    assertEquals(ColumnPath.get("a", "b", "c"), ((Eq) leftEq).getColumn().getColumnPath());
-    assertEquals(
-        ColumnPath.get("a", "b", "c"), ((NotEq) rightNotEq).getColumn().getColumnPath());
+    assertThat(leftEq).isInstanceOf(Eq.class);
+    assertThat(rightNotEq).isInstanceOf(NotEq.class);
+    assertThat(((Eq) leftEq).getValue()).isEqualTo(7);
+    assertThat(((NotEq) rightNotEq).getValue()).isEqualTo(17);
+    assertThat(((Eq) leftEq).getColumn().getColumnPath()).isEqualTo(ColumnPath.get("a", "b", "c"));
+    assertThat(((NotEq) rightNotEq).getColumn().getColumnPath()).isEqualTo(ColumnPath.get("a", "b", "c"));
 
-    assertTrue(gt instanceof Gt);
-    assertEquals(100.0, ((Gt) gt).getValue());
-    assertEquals(ColumnPath.get("x", "y", "z"), ((Gt) gt).getColumn().getColumnPath());
+    assertThat(gt).isInstanceOf(Gt.class);
+    assertThat(((Gt) gt).getValue()).isEqualTo(100.0);
+    assertThat(((Gt) gt).getColumn().getColumnPath()).isEqualTo(ColumnPath.get("x", "y", "z"));
   }
 
   @Test
   public void testContainsCreation() {
-    assertThrows(
-        "Contains predicate does not support null element value",
-        IllegalArgumentException.class,
-        () -> contains(eq(binColumn, null)));
+    assertThatThrownBy(() -> contains(eq(binColumn, null)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Contains predicate does not support null element value(s)");
 
     // Assert that a single Contains predicate referencing multiple columns throws an error
-    assertThrows(
-        "Composed Contains predicates must reference the same column name; found [a.b.c, b.c.d]",
-        IllegalArgumentException.class,
-        () -> contains(eq(binaryColumn("a.b.c"), Binary.fromString("foo")))
+    assertThatThrownBy(() -> contains(eq(binaryColumn("a.b.c"), Binary.fromString("foo")))
             .and(contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))))
-            .and(contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar")))));
+            .and(contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar")))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Composed Contains predicates must reference the same column name; found [a.b.c, b.c.d]");
 
     // Assert that a Contains predicate referencing multiple columns is allowed when composed with and() or or()
     final FilterPredicate rewritten = ContainsRewriter.rewrite(or(
@@ -114,41 +110,42 @@ public class TestFilterApiMethods {
         and(
             contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))),
             contains(eq(binaryColumn("b.c.d"), Binary.fromString("baz"))))));
-    assertTrue(rewritten instanceof Or);
+    assertThat(rewritten).isInstanceOf(Or.class);
 
     // Assert that the predicates for column b.c.d have been combined into a single Contains predicate,
     // while the predicate for column a.b.c is separate
     final Or or = (Or) rewritten;
-    assertEquals(binaryColumn("a.b.c"), ((Operators.Contains) or.getLeft()).getColumn());
-    assertEquals(binaryColumn("b.c.d"), ((Operators.Contains) or.getRight()).getColumn());
+    assertThat(((Operators.Contains) or.getLeft()).getColumn()).isEqualTo(binaryColumn("a.b.c"));
+    assertThat(((Operators.Contains) or.getRight()).getColumn()).isEqualTo(binaryColumn("b.c.d"));
   }
 
   @Test
   public void testToString() {
     FilterPredicate pred = or(predicate, notEq(binColumn, Binary.fromString("foobarbaz")));
-    assertEquals(
-        "or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
-            + "noteq(a.string.column, Binary{\"foobarbaz\"}))",
-        pred.toString());
+    assertThat(pred)
+        .asString()
+        .isEqualTo("or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
+            + "noteq(a.string.column, Binary{\"foobarbaz\"}))");
 
     pred = ContainsRewriter.rewrite(or(
         contains(eq(binColumn, Binary.fromString("foo"))),
         and(
             contains(eq(binColumn, Binary.fromString("bar"))),
             not(contains(eq(binColumn, Binary.fromString("baz")))))));
-    assertEquals(
-        "or(contains(eq(a.string.column, Binary{\"foo\"})), and(contains(eq(a.string.column, Binary{\"bar\"})), not(contains(eq(a.string.column, Binary{\"baz\"})))))",
-        pred.toString());
+    assertThat(pred)
+        .asString()
+        .isEqualTo(
+            "or(contains(eq(a.string.column, Binary{\"foo\"})), and(contains(eq(a.string.column, Binary{\"bar\"})), not(contains(eq(a.string.column, Binary{\"baz\"})))))");
   }
 
   @Test
   public void testUdp() {
     FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
-    assertTrue(predicate instanceof Or);
+    assertThat(predicate).isInstanceOf(Or.class);
     FilterPredicate ud = ((Or) predicate).getRight();
-    assertTrue(ud instanceof UserDefinedByClass);
-    assertEquals(DummyUdp.class, ((UserDefinedByClass) ud).getUserDefinedPredicateClass());
-    assertTrue(((UserDefined) ud).getUserDefinedPredicate() instanceof DummyUdp);
+    assertThat(ud).isInstanceOf(UserDefinedByClass.class);
+    assertThat(((UserDefinedByClass) ud).getUserDefinedPredicateClass()).isEqualTo(DummyUdp.class);
+    assertThat(((UserDefined) ud).getUserDefinedPredicate()).isInstanceOf(DummyUdp.class);
   }
 
   @Test
@@ -164,7 +161,7 @@ public class TestFilterApiMethods {
 
     ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
     FilterPredicate read = (FilterPredicate) is.readObject();
-    assertEquals(p, read);
+    assertThat(read).isEqualTo(p);
   }
 
   public static class IsMultipleOf extends UserDefinedPredicate<Long> implements Serializable {

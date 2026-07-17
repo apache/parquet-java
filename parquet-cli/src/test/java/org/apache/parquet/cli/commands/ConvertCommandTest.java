@@ -18,11 +18,12 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ConvertCommandTest extends AvroFileTest {
@@ -34,8 +35,8 @@ public class ConvertCommandTest extends AvroFileTest {
     File output = new File(getTempFolder(), "converted.avro");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -51,8 +52,8 @@ public class ConvertCommandTest extends AvroFileTest {
     conf.set("test.property", "test.value");
     command.setConf(conf);
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -68,8 +69,8 @@ public class ConvertCommandTest extends AvroFileTest {
     conf.set("parquet.avro.write-old-list-structure", "false");
     command.setConf(conf);
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
 
     File output2 = new File(getTempFolder(), "converted_with_config_validation2.parquet");
     command.outputPath = output2.getAbsolutePath();
@@ -78,7 +79,7 @@ public class ConvertCommandTest extends AvroFileTest {
     conf2.set("parquet.avro.write-old-list-structure", "true");
     command.setConf(conf2);
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output2.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output2).exists();
   }
 }

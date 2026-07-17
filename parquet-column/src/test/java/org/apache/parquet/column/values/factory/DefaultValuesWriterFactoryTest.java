@@ -23,8 +23,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Types.required;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -795,10 +794,7 @@ public class DefaultValuesWriterFactoryTest {
   }
 
   private void validateWriterType(ValuesWriter writer, Class<? extends ValuesWriter> valuesWriterClass) {
-    assertTrue(
-        "Not instance of " + valuesWriterClass.getName() + ": actual class is "
-            + writer.getClass().getName(),
-        valuesWriterClass.isInstance(writer));
+    assertThat(writer).isInstanceOf(valuesWriterClass);
   }
 
   private void validateFallbackWriter(
@@ -841,14 +837,17 @@ public class DefaultValuesWriterFactoryTest {
     ValuesWriter writerA2 = propsA.getValuesWriterFactory().newValuesWriter(col);
 
     // All writers from propsA should use allocatorA
-    assertSame("writerA should use allocatorA", allocatorA, getDictionaryWriterAllocator(writerA));
-    assertSame(
-        "writerA2 should use allocatorA (not allocatorB from later initialization)",
-        allocatorA,
-        getDictionaryWriterAllocator(writerA2));
+    assertThat(getDictionaryWriterAllocator(writerA))
+        .as("writerA should use allocatorA")
+        .isSameAs(allocatorA);
+    assertThat(getDictionaryWriterAllocator(writerA2))
+        .as("writerA2 should use allocatorA (not allocatorB from later initialization)")
+        .isSameAs(allocatorA);
 
     // Writers from propsB should use allocatorB
-    assertSame("writerB should use allocatorB", allocatorB, getDictionaryWriterAllocator(writerB));
+    assertThat(getDictionaryWriterAllocator(writerB))
+        .as("writerB should use allocatorB")
+        .isSameAs(allocatorB);
   }
 
   private static ByteBufferAllocator getDictionaryWriterAllocator(ValuesWriter writer) throws Exception {

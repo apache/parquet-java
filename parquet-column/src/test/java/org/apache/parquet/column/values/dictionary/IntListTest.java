@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.column.values.dictionary;
 
-import junit.framework.Assert;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.Test;
 
 public class IntListTest {
@@ -58,7 +59,7 @@ public class IntListTest {
     verifyIteratorResults(testSize, testList);
 
     // confirm the size of the current slab
-    Assert.assertEquals(expectedSlabSize, testList.getCurrentSlabSize());
+    assertThat(testList.getCurrentSlabSize()).isEqualTo(expectedSlabSize);
   }
 
   private void populateList(IntList testList, int size) {
@@ -73,11 +74,11 @@ public class IntListTest {
 
     while (iterator.hasNext()) {
       int val = iterator.next();
-      Assert.assertEquals(expected, val);
+      assertThat(val).isEqualTo(expected);
       expected++;
     }
 
     // ensure we have the correct final value of expected
-    Assert.assertEquals(testSize, expected);
+    assertThat(expected).isEqualTo(testSize);
   }
 }

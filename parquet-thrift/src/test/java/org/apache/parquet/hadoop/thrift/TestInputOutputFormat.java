@@ -19,8 +19,7 @@
 package org.apache.parquet.hadoop.thrift;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -48,7 +47,6 @@ import org.apache.parquet.thrift.test.compat.StructV1;
 import org.apache.parquet.thrift.test.compat.StructV2;
 import org.apache.parquet.thrift.test.compat.StructV3;
 import org.apache.thrift.TBase;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,10 +133,10 @@ public class TestInputOutputFormat {
     while ((lineOut = out.readLine()) != null) {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       AddressBook a = nextAddressbook(lineNumber);
-      assertEquals("line " + lineNumber, a.toString(), lineOut);
+      assertThat(lineOut).as("line " + lineNumber).isEqualTo(a.toString());
       ++lineNumber;
     }
-    assertNull("line " + lineNumber, out.readLine());
+    assertThat(out.readLine()).as("line " + lineNumber).isNull();
     out.close();
   }
 
@@ -253,7 +251,7 @@ public class TestInputOutputFormat {
       ++lineNumber;
     }
     out.close();
-    Assert.assertEquals(expected, lineNumber);
+    assertThat(lineNumber).isEqualTo(expected);
   }
 
   private void write(

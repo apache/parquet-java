@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -126,7 +124,7 @@ public class TestColumnIndexBuilderNaN {
     builder.add(floatStats(FLOAT_TYPE, 1.0f, 2.0f));
     builder.add(floatStats(FLOAT_TYPE, Float.NaN));
     builder.add(floatStats(FLOAT_TYPE, 3.0f, 4.0f));
-    assertNull(builder.build());
+    assertThat(builder.build()).isNull();
   }
 
   @Test
@@ -135,7 +133,7 @@ public class TestColumnIndexBuilderNaN {
     builder.add(doubleStats(DOUBLE_TYPE, 1.0, 2.0));
     builder.add(doubleStats(DOUBLE_TYPE, Double.NaN));
     builder.add(doubleStats(DOUBLE_TYPE, 3.0, 4.0));
-    assertNull(builder.build());
+    assertThat(builder.build()).isNull();
   }
 
   @Test
@@ -144,7 +142,7 @@ public class TestColumnIndexBuilderNaN {
     builder.add(binaryStats(FLOAT16_TYPE, FLOAT16_ONE, FLOAT16_TWO));
     builder.add(binaryStats(FLOAT16_TYPE, FLOAT16_NAN));
     builder.add(binaryStats(FLOAT16_TYPE, FLOAT16_ONE));
-    assertNull(builder.build());
+    assertThat(builder.build()).isNull();
   }
 
   // IEEE_754_TOTAL_ORDER: build column index with NaN
@@ -156,8 +154,8 @@ public class TestColumnIndexBuilderNaN {
     builder.add(floatStats(FLOAT_IEEE754_TYPE, Float.NaN, 2.5f, Float.NaN));
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 3.0f, Float.NaN, 4.0f));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
-    assertEquals(List.of(0L, 2L, 1L), ci.getNanCounts());
+    assertThat(ci).isNotNull();
+    assertThat(ci.getNanCounts()).containsExactly(0L, 2L, 1L);
   }
 
   @Test
@@ -167,8 +165,8 @@ public class TestColumnIndexBuilderNaN {
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, Double.NaN, 2.5, Double.NaN));
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 3.0, Double.NaN, 4.0));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
-    assertEquals(List.of(0L, 2L, 1L), ci.getNanCounts());
+    assertThat(ci).isNotNull();
+    assertThat(ci.getNanCounts()).containsExactly(0L, 2L, 1L);
   }
 
   @Test
@@ -178,8 +176,8 @@ public class TestColumnIndexBuilderNaN {
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN, FLOAT16_TWO, FLOAT16_NAN));
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_ONE));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
-    assertEquals(List.of(1L, 2L, 0L), ci.getNanCounts());
+    assertThat(ci).isNotNull();
+    assertThat(ci.getNanCounts()).containsExactly(1L, 2L, 0L);
   }
 
   @Test
@@ -190,14 +188,12 @@ public class TestColumnIndexBuilderNaN {
     builder.add(floatStats(FLOAT_IEEE754_TYPE, maxNaN, minNaN));
 
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
-    assertEquals(1, ci.getMinValues().size());
-    assertEquals(
-        0x7fc00001,
-        ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getInt(0));
-    assertEquals(
-        0x7fffffff,
-        ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getInt(0));
+    assertThat(ci).isNotNull();
+    assertThat(ci.getMinValues()).hasSize(1);
+    assertThat(ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getInt(0))
+        .isEqualTo(0x7fc00001);
+    assertThat(ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getInt(0))
+        .isEqualTo(0x7fffffff);
   }
 
   @Test
@@ -208,14 +204,12 @@ public class TestColumnIndexBuilderNaN {
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, maxNaN, minNaN));
 
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
-    assertEquals(1, ci.getMinValues().size());
-    assertEquals(
-        0x7ff0000000000001L,
-        ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getLong(0));
-    assertEquals(
-        0x7fffffffffffffffL,
-        ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getLong(0));
+    assertThat(ci).isNotNull();
+    assertThat(ci.getMinValues()).hasSize(1);
+    assertThat(ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getLong(0))
+        .isEqualTo(0x7ff0000000000001L);
+    assertThat(ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getLong(0))
+        .isEqualTo(0x7fffffffffffffffL);
   }
 
   @Test
@@ -224,14 +218,12 @@ public class TestColumnIndexBuilderNaN {
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN_LARGE, FLOAT16_NAN_SMALL));
 
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
-    assertEquals(1, ci.getMinValues().size());
-    assertEquals(
-        FLOAT16_NAN_SMALL.get2BytesLittleEndian(),
-        ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getShort(0));
-    assertEquals(
-        FLOAT16_NAN_LARGE.get2BytesLittleEndian(),
-        ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getShort(0));
+    assertThat(ci).isNotNull();
+    assertThat(ci.getMinValues()).hasSize(1);
+    assertThat(ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getShort(0))
+        .isEqualTo(FLOAT16_NAN_SMALL.get2BytesLittleEndian());
+    assertThat(ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getShort(0))
+        .isEqualTo(FLOAT16_NAN_LARGE.get2BytesLittleEndian());
   }
 
   // Column index filtering for float
@@ -243,25 +235,27 @@ public class TestColumnIndexBuilderNaN {
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 1.0f, 2.0f));
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 3.0f, 4.0f));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
     // Non-NaN literal (1.5 within page 0 range; ASCENDING boundary order)
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.lt(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT_COL, 1.5f)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT_COL, 1.5f)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT_COL, 1.5f)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT_COL, 1.5f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT_COL, 1.5f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))))
+        .containsExactly(0);
 
     // NaN literal: nanCounts all zero, so eq returns empty and notEq returns all
-    assertEquals(List.of(), toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(Float.NaN))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN)))).isEmpty();
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT_COL, Float.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT_COL, Float.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(Float.NaN))))))
+        .isEmpty();
   }
 
   @Test
@@ -276,12 +270,12 @@ public class TestColumnIndexBuilderNaN {
         List.of(floatBuffer(2.0f), floatBuffer(4.0f)),
         null,
         null);
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT_COL, 0.0f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(FLOAT_COL, 5.0f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT_COL, 0.0f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT_COL, 5.0f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f)))).containsExactly(0, 1);
   }
 
   @Test
@@ -292,23 +286,25 @@ public class TestColumnIndexBuilderNaN {
     builder.add(floatStats(FLOAT_IEEE754_TYPE, Float.NaN, 2.5f));
     builder.add(floatStats(FLOAT_IEEE754_TYPE, 3.0f, 4.0f));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(FLOAT_COL, 1.5f))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT_COL, 1.5f)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT_COL, 1.5f)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT_COL, 1.5f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT_COL, 1.5f)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT_COL, 1.5f)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT_COL, 1.5f)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))))
+        .containsExactly(0);
 
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.lt(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(Float.NaN))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN)))).containsExactly(1);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT_COL, Float.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT_COL, Float.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT_COL, Float.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(Float.NaN))))))
+        .containsExactly(1);
   }
 
   // Column index filtering for double
@@ -320,23 +316,25 @@ public class TestColumnIndexBuilderNaN {
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 1.0, 2.0));
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 3.0, 4.0));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.lt(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(1.5))))));
+    assertThat(toList(ci.visit(FilterApi.eq(DOUBLE_COL, 1.5)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.notEq(DOUBLE_COL, 1.5)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(DOUBLE_COL, 1.5)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, 1.5)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.gt(DOUBLE_COL, 1.5)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, 1.5)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(1.5))))))
+        .containsExactly(0);
 
-    assertEquals(List.of(), toList(ci.visit(FilterApi.eq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(), toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(Double.NaN))))));
+    assertThat(toList(ci.visit(FilterApi.eq(DOUBLE_COL, Double.NaN)))).isEmpty();
+    assertThat(toList(ci.visit(FilterApi.notEq(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(Double.NaN))))))
+        .isEmpty();
   }
 
   @Test
@@ -347,23 +345,25 @@ public class TestColumnIndexBuilderNaN {
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, Double.NaN, 2.5));
     builder.add(doubleStats(DOUBLE_IEEE754_TYPE, 3.0, 4.0));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, 1.5))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(1.5))))));
+    assertThat(toList(ci.visit(FilterApi.eq(DOUBLE_COL, 1.5)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.notEq(DOUBLE_COL, 1.5)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.lt(DOUBLE_COL, 1.5)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, 1.5)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(DOUBLE_COL, 1.5)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, 1.5)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(1.5))))))
+        .containsExactly(0);
 
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.eq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.lt(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(Double.NaN))))));
+    assertThat(toList(ci.visit(FilterApi.eq(DOUBLE_COL, Double.NaN)))).containsExactly(1);
+    assertThat(toList(ci.visit(FilterApi.notEq(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.lt(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gt(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gtEq(DOUBLE_COL, Double.NaN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(Double.NaN))))))
+        .containsExactly(1);
   }
 
   // Column index filtering for float16
@@ -375,23 +375,25 @@ public class TestColumnIndexBuilderNaN {
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_ONE, FLOAT16_TWO));
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_THREE, FLOAT16_FOUR));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_ONE))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_ONE)))).isEmpty();
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_ONE))))))
+        .containsExactly(0);
 
-    assertEquals(List.of(), toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(), toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_NAN))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_NAN)))).isEmpty();
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_NAN))))))
+        .isEmpty();
   }
 
   @Test
@@ -402,22 +404,24 @@ public class TestColumnIndexBuilderNaN {
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN, FLOAT16_TWO));
     builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_THREE, FLOAT16_FOUR));
     ColumnIndex ci = builder.build();
-    assertNotNull(ci);
+    assertThat(ci).isNotNull();
 
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_ONE))));
-    assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_ONE))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(1);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_ONE)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_ONE))))))
+        .containsExactly(0);
 
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(1), toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_NAN))))));
+    assertThat(toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(1);
+    assertThat(toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.gtEq(FLOAT16_COL, FLOAT16_NAN)))).containsExactly(0, 1, 2);
+    assertThat(toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_NAN))))))
+        .containsExactly(1);
   }
 }

@@ -25,8 +25,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.ValidTypeMap.assertTypeValid;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.BooleanColumn;
@@ -71,30 +70,20 @@ public class TestValidTypeMap {
 
   @Test
   public void testMismatchedTypes() {
-    try {
-      assertTypeValid(intColumn, PrimitiveTypeName.DOUBLE);
-      fail("This should throw!");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "FilterPredicate column: int.column's declared type (java.lang.Integer) does not match the "
-              + "schema found in file metadata. Column int.column is of type: "
-              + "DOUBLE\n"
-              + "Valid types for this column are: [class java.lang.Double]",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> assertTypeValid(intColumn, PrimitiveTypeName.DOUBLE))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "FilterPredicate column: int.column's declared type (java.lang.Integer) does not match the schema found in file metadata. "
+                + "Column int.column is of type: DOUBLE\n"
+                + "Valid types for this column are: [class java.lang.Double]");
   }
 
   @Test
   public void testUnsupportedType() {
-    try {
-      assertTypeValid(invalidColumn, PrimitiveTypeName.INT32);
-      fail("This should throw!");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "Column invalid.column was declared as type: "
-              + "org.apache.parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported "
-              + "in FilterPredicates. Supported types for this column are: [class java.lang.Integer]",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> assertTypeValid(invalidColumn, PrimitiveTypeName.INT32))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Column invalid.column was declared as type: "
+            + "org.apache.parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported in FilterPredicates."
+            + " Supported types for this column are: [class java.lang.Integer]");
   }
 }

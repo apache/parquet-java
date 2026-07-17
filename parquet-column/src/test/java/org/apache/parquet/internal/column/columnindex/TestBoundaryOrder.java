@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.nio.ByteBuffer;
@@ -32,7 +34,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnI
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -276,7 +277,7 @@ public class TestBoundaryOrder {
     IntList expected = stats.measureLinear(validatorOp, comparator);
     IntList actual = stats.measureBinary(actualOp, comparator);
 
-    Assert.assertEquals(msg, expected, actual);
+    assertThat(actual.toIntArray()).isEqualTo(expected.toIntArray());
 
     return stats;
   }

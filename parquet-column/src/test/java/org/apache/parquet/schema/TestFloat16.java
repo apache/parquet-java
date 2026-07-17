@@ -19,9 +19,8 @@
 
 package org.apache.parquet.schema;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
@@ -47,236 +46,193 @@ public class TestFloat16 {
   @Test
   public void testFloat16ToFloat() {
     // Zeroes
-    assertEquals(0.0f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {0x00, 0x00})), 0.0f);
-    assertEquals(-0.0f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80})), 0.0f);
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {0x00, 0x00})))
+        .isCloseTo(0.0f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80})))
+        .isCloseTo(-0.0f, offset(0.0f));
     // NaN
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xc0, (byte) 0x7f})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7e})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7f})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfe})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xff})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x7f, (byte) 0x7e})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x7f, (byte) 0xfe})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xfe})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7f})), 0.0f);
-    assertEquals(
-        Float.NaN, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xff})), 0.0f);
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xc0, (byte) 0x7f})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7e})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7f})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfe})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xff})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x7f, (byte) 0x7e})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x7f, (byte) 0xfe})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xfe})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7f})))
+        .isCloseTo(Float.NaN, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xff})))
+        .isCloseTo(Float.NaN, offset(0.0f));
     // infinities
-    assertEquals(
-        Float.POSITIVE_INFINITY,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7c})),
-        0.0f);
-    assertEquals(
-        Float.NEGATIVE_INFINITY,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc})),
-        0.0f);
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7c})))
+        .isCloseTo(Float.POSITIVE_INFINITY, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc})))
+        .isCloseTo(Float.NEGATIVE_INFINITY, offset(0.0f));
     // subnormals
-    assertEquals(
-        5.9604645E-8f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00})),
-        0.0f);
-    assertEquals(
-        -65504.0f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xfb})), 0.0f);
-    assertEquals(
-        +65504.0f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b})), 0.0f);
-    assertEquals(
-        -6.097555E-5f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x83})),
-        0.0f);
-    assertEquals(
-        -5.9604645E-8f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x80})),
-        0.0f);
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00})))
+        .isCloseTo(5.9604645E-8f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xfb})))
+        .isCloseTo(-65504.0f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b})))
+        .isCloseTo(+65504.0f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x83})))
+        .isCloseTo(-6.097555E-5f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x80})))
+        .isCloseTo(-5.9604645E-8f, offset(0.0f));
     // Known values
-    assertEquals(
-        1.0009765625f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x3c})),
-        0.0f);
-    assertEquals(-2.0f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0})), 0.0f);
-    assertEquals(
-        6.1035156e-5f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x04})),
-        0.0f); // Inexact
-    assertEquals(
-        65504.0f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b})), 0.0f);
-    assertEquals(
-        0.33325195f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x55, (byte) 0x35})),
-        0.0f); // Inexact
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x3c})))
+        .isCloseTo(1.0009765625f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0})))
+        .isCloseTo(-2.0f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x04})))
+        .isCloseTo(6.1035156e-5f, offset(0.0f)); // Inexact
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b})))
+        .isCloseTo(65504.0f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x55, (byte) 0x35})))
+        .isCloseTo(0.33325195f, offset(0.0f)); // Inexact
     // Denormals (flushed to +/-0)
-    assertEquals(
-        6.097555e-5f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x03})),
-        0.0f);
-    assertEquals(
-        5.9604645e-8f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00})),
-        0.0f); // Inexact
-    assertEquals(
-        -6.097555e-5f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x83})),
-        0.0f);
-    assertEquals(
-        -5.9604645e-8f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x80})),
-        0.0f); // Inexact
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x03})))
+        .isCloseTo(6.097555e-5f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00})))
+        .isCloseTo(5.9604645e-8f, offset(0.0f)); // Inexact
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x83})))
+        .isCloseTo(-6.097555e-5f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x80})))
+        .isCloseTo(-5.9604645e-8f, offset(0.0f)); // Inexact
     // Miscellaneous values. In general, they're chosen to test the sign/exponent and
     // exponent/mantissa boundaries
-    assertEquals(
-        +0.00050163269043f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x10})),
-        0.0f);
-    assertEquals(
-        -0.00050163269043f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x90})),
-        0.0f);
-    assertEquals(
-        +0.000502109527588f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1d, (byte) 0x10})),
-        0.0f);
-    assertEquals(
-        -0.000502109527588f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1d, (byte) 0x90})),
-        0.0f);
-    assertEquals(
-        +0.00074577331543f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x12})),
-        0.0f);
-    assertEquals(
-        -0.00074577331543f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x92})),
-        0.0f);
-    assertEquals(
-        +0.00100326538086f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x14})),
-        0.0f);
-    assertEquals(
-        -0.00100326538086f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x94})),
-        0.0f);
-    assertEquals(
-        +32.875f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x50})), 0.0f);
-    assertEquals(
-        -32.875f, Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0xd0})), 0.0f);
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x10})))
+        .isCloseTo(+0.00050163269043f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x90})))
+        .isCloseTo(-0.00050163269043f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1d, (byte) 0x10})))
+        .isCloseTo(+0.000502109527588f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1d, (byte) 0x90})))
+        .isCloseTo(-0.000502109527588f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x12})))
+        .isCloseTo(+0.00074577331543f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x92})))
+        .isCloseTo(-0.00074577331543f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x14})))
+        .isCloseTo(+0.00100326538086f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x94})))
+        .isCloseTo(-0.00100326538086f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x50})))
+        .isCloseTo(+32.875f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0xd0})))
+        .isCloseTo(-32.875f, offset(0.0f));
     // A few subnormals for good measure
-    assertEquals(
-        +1.66893005371e-06f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x00})),
-        0.0f);
-    assertEquals(
-        -1.66893005371e-06f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x80})),
-        0.0f);
-    assertEquals(
-        +3.21865081787e-05f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x02})),
-        0.0f);
-    assertEquals(
-        -3.21865081787e-05f,
-        Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x82})),
-        0.0f);
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x00})))
+        .isCloseTo(+1.66893005371e-06f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x80})))
+        .isCloseTo(-1.66893005371e-06f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x02})))
+        .isCloseTo(+3.21865081787e-05f, offset(0.0f));
+    assertThat(Float16.toFloat(Binary.fromConstantByteArray(new byte[] {(byte) 0x1c, (byte) 0x82})))
+        .isCloseTo(-3.21865081787e-05f, offset(0.0f));
   }
 
   @Test
   public void testFloatToFloat16() {
     // Zeroes, NaN and infinities
-    assertEquals(POSITIVE_ZERO, Float16.toFloat16(0.0f));
-    assertEquals(NEGATIVE_ZERO, Float16.toFloat16(-0.0f));
-    assertEquals(NaN, Float16.toFloat16(Float.NaN));
-    assertEquals(POSITIVE_INFINITY, Float16.toFloat16(Float.POSITIVE_INFINITY));
-    assertEquals(NEGATIVE_INFINITY, Float16.toFloat16(Float.NEGATIVE_INFINITY));
+    assertThat(Float16.toFloat16(0.0f)).isEqualTo(POSITIVE_ZERO);
+    assertThat(Float16.toFloat16(-0.0f)).isEqualTo(NEGATIVE_ZERO);
+    assertThat(Float16.toFloat16(Float.NaN)).isEqualTo(NaN);
+    assertThat(Float16.toFloat16(Float.POSITIVE_INFINITY)).isEqualTo(POSITIVE_INFINITY);
+    assertThat(Float16.toFloat16(Float.NEGATIVE_INFINITY)).isEqualTo(NEGATIVE_INFINITY);
     // Known values
-    assertEquals((short) 0x3c01, Float16.toFloat16(1.0009765625f));
-    assertEquals((short) 0xc000, Float16.toFloat16(-2.0f));
-    assertEquals((short) 0x0400, Float16.toFloat16(6.10352e-5f));
-    assertEquals((short) 0x7bff, Float16.toFloat16(65504.0f));
-    assertEquals((short) 0x3555, Float16.toFloat16(1.0f / 3.0f));
+    assertThat(Float16.toFloat16(1.0009765625f)).isEqualTo((short) 0x3c01);
+    assertThat(Float16.toFloat16(-2.0f)).isEqualTo((short) 0xc000);
+    assertThat(Float16.toFloat16(6.10352e-5f)).isEqualTo((short) 0x0400);
+    assertThat(Float16.toFloat16(65504.0f)).isEqualTo((short) 0x7bff);
+    assertThat(Float16.toFloat16(1.0f / 3.0f)).isEqualTo((short) 0x3555);
     // Subnormals
-    assertEquals((short) 0x03ff, Float16.toFloat16(6.09756e-5f));
-    assertEquals(MIN_VALUE, Float16.toFloat16(5.96046e-8f));
-    assertEquals((short) 0x83ff, Float16.toFloat16(-6.09756e-5f));
-    assertEquals((short) 0x8001, Float16.toFloat16(-5.96046e-8f));
+    assertThat(Float16.toFloat16(6.09756e-5f)).isEqualTo((short) 0x03ff);
+    assertThat(Float16.toFloat16(5.96046e-8f)).isEqualTo(MIN_VALUE);
+    assertThat(Float16.toFloat16(-6.09756e-5f)).isEqualTo((short) 0x83ff);
+    assertThat(Float16.toFloat16(-5.96046e-8f)).isEqualTo((short) 0x8001);
     // Subnormals (flushed to +/-0)
-    assertEquals(POSITIVE_ZERO, Float16.toFloat16(5.96046e-9f));
-    assertEquals(NEGATIVE_ZERO, Float16.toFloat16(-5.96046e-9f));
+    assertThat(Float16.toFloat16(5.96046e-9f)).isEqualTo(POSITIVE_ZERO);
+    assertThat(Float16.toFloat16(-5.96046e-9f)).isEqualTo(NEGATIVE_ZERO);
     // Test for values that overflow the mantissa bits into exp bits
-    assertEquals((short) 0x1000, Float16.toFloat16(Float.intBitsToFloat(0x39fff000)));
-    assertEquals((short) 0x0400, Float16.toFloat16(Float.intBitsToFloat(0x387fe000)));
+    assertThat(Float16.toFloat16(Float.intBitsToFloat(0x39fff000))).isEqualTo((short) 0x1000);
+    assertThat(Float16.toFloat16(Float.intBitsToFloat(0x387fe000))).isEqualTo((short) 0x0400);
     // Floats with absolute value above +/-65519 are rounded to +/-inf
     // when using round-to-even
-    assertEquals((short) 0x7bff, Float16.toFloat16(65519.0f));
-    assertEquals((short) 0x7bff, Float16.toFloat16(65519.9f));
-    assertEquals(POSITIVE_INFINITY, Float16.toFloat16(65520.0f));
-    assertEquals(NEGATIVE_INFINITY, Float16.toFloat16(-65520.0f));
+    assertThat(Float16.toFloat16(65519.0f)).isEqualTo((short) 0x7bff);
+    assertThat(Float16.toFloat16(65519.9f)).isEqualTo((short) 0x7bff);
+    assertThat(Float16.toFloat16(65520.0f)).isEqualTo(POSITIVE_INFINITY);
+    assertThat(Float16.toFloat16(-65520.0f)).isEqualTo(NEGATIVE_INFINITY);
     // Check if numbers are rounded to nearest even when they
     // cannot be accurately represented by Half
-    assertEquals((short) 0x6800, Float16.toFloat16(2049.0f));
-    assertEquals((short) 0x6c00, Float16.toFloat16(4098.0f));
-    assertEquals((short) 0x7000, Float16.toFloat16(8196.0f));
-    assertEquals((short) 0x7400, Float16.toFloat16(16392.0f));
-    assertEquals((short) 0x7800, Float16.toFloat16(32784.0f));
+    assertThat(Float16.toFloat16(2049.0f)).isEqualTo((short) 0x6800);
+    assertThat(Float16.toFloat16(4098.0f)).isEqualTo((short) 0x6c00);
+    assertThat(Float16.toFloat16(8196.0f)).isEqualTo((short) 0x7000);
+    assertThat(Float16.toFloat16(16392.0f)).isEqualTo((short) 0x7400);
+    assertThat(Float16.toFloat16(32784.0f)).isEqualTo((short) 0x7800);
     // Miscellaneous values. In general, they're chosen to test the sign/exponent and
     // exponent/mantissa boundaries
-    assertEquals((short) 0x101c, Float16.toFloat16(+0.00050163269043f));
-    assertEquals((short) 0x901c, Float16.toFloat16(-0.00050163269043f));
-    assertEquals((short) 0x101d, Float16.toFloat16(+0.000502109527588f));
-    assertEquals((short) 0x901d, Float16.toFloat16(-0.000502109527588f));
-    assertEquals((short) 0x121c, Float16.toFloat16(+0.00074577331543f));
-    assertEquals((short) 0x921c, Float16.toFloat16(-0.00074577331543f));
-    assertEquals((short) 0x141c, Float16.toFloat16(+0.00100326538086f));
-    assertEquals((short) 0x941c, Float16.toFloat16(-0.00100326538086f));
-    assertEquals((short) 0x501c, Float16.toFloat16(+32.875f));
-    assertEquals((short) 0xd01c, Float16.toFloat16(-32.875f));
+    assertThat(Float16.toFloat16(+0.00050163269043f)).isEqualTo((short) 0x101c);
+    assertThat(Float16.toFloat16(-0.00050163269043f)).isEqualTo((short) 0x901c);
+    assertThat(Float16.toFloat16(+0.000502109527588f)).isEqualTo((short) 0x101d);
+    assertThat(Float16.toFloat16(-0.000502109527588f)).isEqualTo((short) 0x901d);
+    assertThat(Float16.toFloat16(+0.00074577331543f)).isEqualTo((short) 0x121c);
+    assertThat(Float16.toFloat16(-0.00074577331543f)).isEqualTo((short) 0x921c);
+    assertThat(Float16.toFloat16(+0.00100326538086f)).isEqualTo((short) 0x141c);
+    assertThat(Float16.toFloat16(-0.00100326538086f)).isEqualTo((short) 0x941c);
+    assertThat(Float16.toFloat16(+32.875f)).isEqualTo((short) 0x501c);
+    assertThat(Float16.toFloat16(-32.875f)).isEqualTo((short) 0xd01c);
     // A few subnormals for good measure
-    assertEquals((short) 0x001c, Float16.toFloat16(+1.66893005371e-06f));
-    assertEquals((short) 0x801c, Float16.toFloat16(-1.66893005371e-06f));
-    assertEquals((short) 0x021c, Float16.toFloat16(+3.21865081787e-05f));
-    assertEquals((short) 0x821c, Float16.toFloat16(-3.21865081787e-05f));
+    assertThat(Float16.toFloat16(+1.66893005371e-06f)).isEqualTo((short) 0x001c);
+    assertThat(Float16.toFloat16(-1.66893005371e-06f)).isEqualTo((short) 0x801c);
+    assertThat(Float16.toFloat16(+3.21865081787e-05f)).isEqualTo((short) 0x021c);
+    assertThat(Float16.toFloat16(-3.21865081787e-05f)).isEqualTo((short) 0x821c);
   }
 
   @Test
   public void testIsNaN() {
-    assertFalse(Float16.isNaN(POSITIVE_INFINITY));
-    assertFalse(Float16.isNaN(NEGATIVE_INFINITY));
-    assertFalse(Float16.isNaN(POSITIVE_ZERO));
-    assertFalse(Float16.isNaN(NEGATIVE_ZERO));
-    assertTrue(Float16.isNaN(NaN));
-    assertTrue(Float16.isNaN((short) 0x7c01));
-    assertTrue(Float16.isNaN((short) 0x7c18));
-    assertTrue(Float16.isNaN((short) 0xfc01));
-    assertTrue(Float16.isNaN((short) 0xfc98));
-    assertFalse(Float16.isNaN(MAX_VALUE));
-    assertFalse(Float16.isNaN(LOWEST_VALUE));
-    assertFalse(Float16.isNaN(Float16.toFloat16(-128.3f)));
-    assertFalse(Float16.isNaN(Float16.toFloat16(128.3f)));
+    assertThat(Float16.isNaN(POSITIVE_INFINITY)).isFalse();
+    assertThat(Float16.isNaN(NEGATIVE_INFINITY)).isFalse();
+    assertThat(Float16.isNaN(POSITIVE_ZERO)).isFalse();
+    assertThat(Float16.isNaN(NEGATIVE_ZERO)).isFalse();
+    assertThat(Float16.isNaN(NaN)).isTrue();
+    assertThat(Float16.isNaN((short) 0x7c01)).isTrue();
+    assertThat(Float16.isNaN((short) 0x7c18)).isTrue();
+    assertThat(Float16.isNaN((short) 0xfc01)).isTrue();
+    assertThat(Float16.isNaN((short) 0xfc98)).isTrue();
+    assertThat(Float16.isNaN(MAX_VALUE)).isFalse();
+    assertThat(Float16.isNaN(LOWEST_VALUE)).isFalse();
+    assertThat(Float16.isNaN(Float16.toFloat16(-128.3f))).isFalse();
+    assertThat(Float16.isNaN(Float16.toFloat16(128.3f))).isFalse();
   }
 
   @Test
   public void testCompare() {
-    assertEquals(0, Float16.compare(NaN, NaN));
-    assertEquals(0, Float16.compare(NaN, (short) 0xfc98));
-    assertEquals(1, Float16.compare(NaN, POSITIVE_INFINITY));
-    assertEquals(-1, Float16.compare(POSITIVE_INFINITY, NaN));
-    assertEquals(0, Float16.compare(POSITIVE_INFINITY, POSITIVE_INFINITY));
-    assertEquals(0, Float16.compare(NEGATIVE_INFINITY, NEGATIVE_INFINITY));
-    assertEquals(1, Float16.compare(POSITIVE_INFINITY, NEGATIVE_INFINITY));
-    assertEquals(-1, Float16.compare(NEGATIVE_INFINITY, POSITIVE_INFINITY));
-    assertEquals(0, Float16.compare(POSITIVE_ZERO, POSITIVE_ZERO));
-    assertEquals(0, Float16.compare(NEGATIVE_ZERO, NEGATIVE_ZERO));
-    assertEquals(1, Float16.compare(POSITIVE_ZERO, NEGATIVE_ZERO));
-    assertEquals(-1, Float16.compare(NEGATIVE_ZERO, POSITIVE_ZERO));
-    assertEquals(0, Float16.compare(Float16.toFloat16(12.462f), Float16.toFloat16(12.462f)));
-    assertEquals(0, Float16.compare(Float16.toFloat16(-12.462f), Float16.toFloat16(-12.462f)));
-    assertEquals(1, Float16.compare(Float16.toFloat16(12.462f), Float16.toFloat16(-12.462f)));
-    assertEquals(-1, Float16.compare(Float16.toFloat16(-12.462f), Float16.toFloat16(12.462f)));
+    assertThat(Float16.compare(NaN, NaN)).isZero();
+    assertThat(Float16.compare(NaN, (short) 0xfc98)).isZero();
+    assertThat(Float16.compare(NaN, POSITIVE_INFINITY)).isPositive();
+    assertThat(Float16.compare(POSITIVE_INFINITY, NaN)).isNegative();
+    assertThat(Float16.compare(POSITIVE_INFINITY, POSITIVE_INFINITY)).isZero();
+    assertThat(Float16.compare(NEGATIVE_INFINITY, NEGATIVE_INFINITY)).isZero();
+    assertThat(Float16.compare(POSITIVE_INFINITY, NEGATIVE_INFINITY)).isPositive();
+    assertThat(Float16.compare(NEGATIVE_INFINITY, POSITIVE_INFINITY)).isNegative();
+    assertThat(Float16.compare(POSITIVE_ZERO, POSITIVE_ZERO)).isZero();
+    assertThat(Float16.compare(NEGATIVE_ZERO, NEGATIVE_ZERO)).isZero();
+    assertThat(Float16.compare(POSITIVE_ZERO, NEGATIVE_ZERO)).isPositive();
+    assertThat(Float16.compare(NEGATIVE_ZERO, POSITIVE_ZERO)).isNegative();
+    short twelve = Float16.toFloat16(12.462f);
+    short minusTwelve = Float16.toFloat16(-12.462f);
+    assertThat(Float16.compare(twelve, twelve)).isZero();
+    assertThat(Float16.compare(minusTwelve, minusTwelve)).isZero();
+    assertThat(Float16.compare(twelve, minusTwelve)).isPositive();
+    assertThat(Float16.compare(minusTwelve, twelve)).isNegative();
   }
 }

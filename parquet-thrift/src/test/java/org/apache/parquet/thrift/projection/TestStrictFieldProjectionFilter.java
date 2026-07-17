@@ -18,46 +18,26 @@
  */
 package org.apache.parquet.thrift.projection;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
-import java.util.List;
 import org.junit.Test;
 
 public class TestStrictFieldProjectionFilter {
 
   @Test
   public void testFromSemicolonDelimitedString() {
-    List<String> globs = StrictFieldProjectionFilter.parseSemicolonDelimitedString(";x.y.z;*.a.b.c*;;foo;;;;bar;");
-    assertEquals(Arrays.asList("x.y.z", "*.a.b.c*", "foo", "bar"), globs);
+    assertThat(StrictFieldProjectionFilter.parseSemicolonDelimitedString(";x.y.z;*.a.b.c*;;foo;;;;bar;"))
+        .containsExactly("x.y.z", "*.a.b.c*", "foo", "bar");
 
-    try {
-      StrictFieldProjectionFilter.parseSemicolonDelimitedString(";;");
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      assertEquals("Semicolon delimited string ';;' contains 0 glob strings", e.getMessage());
-    }
-  }
-
-  private static void assertMatches(StrictFieldProjectionFilter filter, String... strings) {
-    for (String s : strings) {
-      if (!filter.keep(s)) {
-        fail(String.format("String '%s' was expected to match", s));
-      }
-    }
-  }
-
-  private static void assertDoesNotMatch(StrictFieldProjectionFilter filter, String... strings) {
-    for (String s : strings) {
-      if (filter.keep(s)) {
-        fail(String.format("String '%s' was not expected to match", s));
-      }
-    }
+    assertThatThrownBy(() -> StrictFieldProjectionFilter.parseSemicolonDelimitedString(";;"))
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("Semicolon delimited string ';;' contains 0 glob strings");
   }
 
   @Test
@@ -65,31 +45,27 @@ public class TestStrictFieldProjectionFilter {
     StrictFieldProjectionFilter filter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(
         "home.phone_number;home.address;work.address.zip;base_info;*.average;a.b.c.pre{x,y,z{a,b,c}}post");
 
-    assertMatches(
-        filter,
-        "home.phone_number",
-        "home.address",
-        "work.address.zip",
-        "base_info",
-        "foo.average",
-        "bar.x.y.z.average",
-        "base_info.nested.field",
-        "a.b.c.prexpost",
-        "a.b.c.prezapost");
+    assertThat(filter.keep("home.phone_number")).isTrue();
+    assertThat(filter.keep("home.address")).isTrue();
+    assertThat(filter.keep("work.address.zip")).isTrue();
+    assertThat(filter.keep("base_info")).isTrue();
+    assertThat(filter.keep("foo.average")).isTrue();
+    assertThat(filter.keep("bar.x.y.z.average")).isTrue();
+    assertThat(filter.keep("base_info.nested.field")).isTrue();
+    assertThat(filter.keep("a.b.c.prexpost")).isTrue();
+    assertThat(filter.keep("a.b.c.prezapost")).isTrue();
 
-    assertDoesNotMatch(
-        filter,
-        "home2.phone_number",
-        "home2.address",
-        "work.address",
-        "base_info2",
-        "foo_average",
-        "bar.x.y.z_average",
-        "base_info_nested.field",
-        "hi",
-        "average",
-        "a.b.c.pre{x,y,z{a,b,c}}post",
-        "");
+    assertThat(filter.keep("home2.phone_number")).isFalse();
+    assertThat(filter.keep("home2.address")).isFalse();
+    assertThat(filter.keep("work.address")).isFalse();
+    assertThat(filter.keep("base_info2")).isFalse();
+    assertThat(filter.keep("foo_average")).isFalse();
+    assertThat(filter.keep("bar.x.y.z_average")).isFalse();
+    assertThat(filter.keep("base_info_nested.field")).isFalse();
+    assertThat(filter.keep("hi")).isFalse();
+    assertThat(filter.keep("average")).isFalse();
+    assertThat(filter.keep("a.b.c.pre{x,y,z{a,b,c}}post")).isFalse();
+    assertThat(filter.keep("")).isFalse();
   }
 
   @Test
@@ -97,18 +73,18 @@ public class TestStrictFieldProjectionFilter {
     StrictFieldProjectionFilter filter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(
         "home.phone_number;a.b.c.pre{x,y,z{a,b,c}}post;bar.*.average");
 
-    assertMatches(filter, "home.phone_number", "bar.foo.average", "a.b.c.prexpost", "a.b.c.prezcpost");
-    assertDoesNotMatch(filter, "hello");
-    try {
-      filter.assertNoUnmatchedPatterns();
-      fail("this should throw");
-    } catch (ThriftProjectionException e) {
-      String expectedMessage = "The following projection patterns did not match any columns in this schema:\n"
-          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.preypost')\n"
-          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezapost')\n"
-          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezbpost')\n";
-      assertEquals(expectedMessage, e.getMessage());
-    }
+    assertThat(filter.keep("home.phone_number")).isTrue();
+    assertThat(filter.keep("bar.foo.average")).isTrue();
+    assertThat(filter.keep("a.b.c.prexpost")).isTrue();
+    assertThat(filter.keep("a.b.c.prezcpost")).isTrue();
+    assertThat(filter.keep("hello")).isFalse();
+
+    assertThatThrownBy(filter::assertNoUnmatchedPatterns)
+        .isInstanceOf(ThriftProjectionException.class)
+        .hasMessage("The following projection patterns did not match any columns in this schema:\n"
+            + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.preypost')\n"
+            + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezapost')\n"
+            + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezbpost')\n");
   }
 
   @Test
@@ -117,8 +93,10 @@ public class TestStrictFieldProjectionFilter {
         spy(new StrictFieldProjectionFilter(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")));
     doNothing().when(filter).warn(anyString());
 
-    assertMatches(filter, "a.b.c.x_average", "a.b.c.z_average", "a.other.w_average");
-    assertDoesNotMatch(filter, "hello");
+    assertThat(filter.keep("a.b.c.x_average")).isTrue();
+    assertThat(filter.keep("a.b.c.z_average")).isTrue();
+    assertThat(filter.keep("a.other.w_average")).isTrue();
+    assertThat(filter.keep("hello")).isFalse();
 
     verify(filter)
         .warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "

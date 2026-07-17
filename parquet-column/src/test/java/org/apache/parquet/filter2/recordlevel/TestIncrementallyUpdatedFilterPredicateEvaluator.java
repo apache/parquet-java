@@ -19,10 +19,8 @@
 package org.apache.parquet.filter2.recordlevel;
 
 import static org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateEvaluator.evaluate;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Or;
@@ -84,44 +82,44 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
     // known, and set to false criteria, null considered false
     ValueInspector v = intIsEven();
     v.update(11);
-    assertFalse(evaluate(v));
+    assertThat(evaluate(v)).isFalse();
     v.reset();
 
     // known and set to true criteria, null considered false
     v.update(12);
-    assertTrue(evaluate(v));
+    assertThat(evaluate(v)).isTrue();
     v.reset();
 
     // known and set to null, null considered false
     v.updateNull();
-    assertFalse(evaluate(v));
+    assertThat(evaluate(v)).isFalse();
     v.reset();
 
     // known, and set to false criteria, null considered true
     ValueInspector intIsNull = intIsNull();
     intIsNull.update(10);
-    assertFalse(evaluate(intIsNull));
+    assertThat(evaluate(intIsNull)).isFalse();
     intIsNull.reset();
 
     // known, and set to false criteria, null considered true
     intIsNull.updateNull();
-    assertTrue(evaluate(intIsNull));
+    assertThat(evaluate(intIsNull)).isTrue();
     intIsNull.reset();
 
     // unknown, null considered false
     v.reset();
-    assertFalse(evaluate(v));
+    assertThat(evaluate(v)).isFalse();
 
     // unknown, null considered true
     intIsNull.reset();
-    assertTrue(evaluate(intIsNull));
+    assertThat(evaluate(intIsNull)).isTrue();
   }
 
   private void doOrTest(ValueInspector v1, ValueInspector v2, int v1Value, int v2Value, boolean expected) {
     v1.update(v1Value);
     v2.update(v2Value);
     IncrementallyUpdatedFilterPredicate or = new Or(v1, v2);
-    assertEquals(expected, evaluate(or));
+    assertThat(evaluate(or)).isEqualTo(expected);
     v1.reset();
     v2.reset();
   }
@@ -130,7 +128,7 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
     v1.update(v1Value);
     v2.update(v2Value);
     IncrementallyUpdatedFilterPredicate and = new And(v1, v2);
-    assertEquals(expected, evaluate(and));
+    assertThat(evaluate(and)).isEqualTo(expected);
     v1.reset();
     v2.reset();
   }
@@ -180,24 +178,21 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
       }
     };
 
-    try {
-      evaluate(neverCalled);
-      fail("this should throw");
-    } catch (ShortCircuitException e) {
-      //
-    }
+    assertThatThrownBy(() -> evaluate(neverCalled))
+        .isInstanceOf(ShortCircuitException.class)
+        .hasMessage("this was supposed to short circuit and never get here!");
 
     // T || X should evaluate to true without inspecting X
     ValueInspector v = intIsEven();
     v.update(10);
     IncrementallyUpdatedFilterPredicate or = new Or(v, neverCalled);
-    assertTrue(evaluate(or));
+    assertThat(evaluate(or)).isTrue();
     v.reset();
 
     // F && X should evaluate to false without inspecting X
     v.update(11);
     IncrementallyUpdatedFilterPredicate and = new And(v, neverCalled);
-    assertFalse(evaluate(and));
+    assertThat(evaluate(and)).isFalse();
     v.reset();
   }
 }
