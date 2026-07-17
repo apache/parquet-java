@@ -202,6 +202,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     lastUsedDictionaryByteSize = 0;
     lastUsedDictionarySize = 0;
     dictionaryTooBig = false;
+    dictionaryByteSize = 0;
     clearDictionaryContent();
   }
 

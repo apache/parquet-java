@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestAvroDataSupplier {
@@ -36,9 +37,8 @@ public class TestAvroDataSupplier {
   public void testSetSupplierMethod() {
     Configuration conf = new Configuration(false);
     AvroReadSupport.setAvroDataSupplier(conf, GenericDataSupplier.class);
-    Assert.assertEquals(
-        "Should contain the class name",
-        "org.apache.parquet.avro.TestAvroDataSupplier$GenericDataSupplier",
-        conf.get(AvroReadSupport.AVRO_DATA_SUPPLIER));
+    assertThat(conf.get(AvroReadSupport.AVRO_DATA_SUPPLIER))
+        .as("Should contain the class name")
+        .isEqualTo("org.apache.parquet.avro.TestAvroDataSupplier$GenericDataSupplier");
   }
 }

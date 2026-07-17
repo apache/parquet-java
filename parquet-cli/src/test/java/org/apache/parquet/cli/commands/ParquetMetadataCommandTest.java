@@ -18,11 +18,12 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ParquetMetadataCommandTest extends ParquetFileTest {
@@ -32,6 +33,6 @@ public class ParquetMetadataCommandTest extends ParquetFileTest {
     ParquetMetadataCommand command = new ParquetMetadataCommand(createLogger());
     command.targets = Arrays.asList(file.getAbsolutePath());
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
+    assertThat(command.run()).isZero();
   }
 }

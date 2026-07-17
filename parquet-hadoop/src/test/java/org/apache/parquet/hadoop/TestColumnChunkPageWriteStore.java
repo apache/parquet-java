@@ -22,7 +22,9 @@ import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -32,16 +34,18 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.inOrder;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.util.HashMap;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -49,7 +53,6 @@ import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
-import org.apache.parquet.bytes.LittleEndianDataInputStream;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -249,12 +252,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   private int intValue(BytesInput in) throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    in.writeAllTo(baos);
-    LittleEndianDataInputStream os = new LittleEndianDataInputStream(new ByteArrayInputStream(baos.toByteArray()));
-    int i = os.readInt();
-    os.close();
-    return i;
+    return in.toByteBuffer().order(ByteOrder.LITTLE_ENDIAN).getInt();
   }
 
   @Test
@@ -318,5 +316,133 @@ public class TestColumnChunkPageWriteStore {
 
   private BytesInputCompressor compressor(CompressionCodecName codec) {
     return new CodecFactory(conf, pageSize).getCompressor(codec);
+  }
+
+  @Test
+  public void perColumnCodecDefaultUsedWhenNotSet() throws Exception {
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
+    ParquetProperties props = ParquetProperties.builder().build();
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
+
+    assertEquals(SNAPPY, codecs.get("col_a"));
+    assertEquals(SNAPPY, codecs.get("col_b"));
+  }
+
+  @Test
+  public void perColumnCodecOverridesDefaultForOneColumn() throws Exception {
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
+    ParquetProperties props =
+        ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
+
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(SNAPPY, codecs.get("col_b"));
+  }
+
+  @Test
+  public void perColumnCodecAllColumnsOverridden() throws Exception {
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
+    ParquetProperties props = ParquetProperties.builder()
+        .withCompressionCodec("col_a", ZSTD)
+        .withCompressionCodec("col_b", GZIP)
+        .build();
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
+
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(GZIP, codecs.get("col_b"));
+  }
+
+  @Test
+  public void perColumnLevelWithCodecRoundTrip() throws Exception {
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary col_a; required int32 col_b; }");
+    ParquetProperties props = ParquetProperties.builder()
+        .withCompressionCodec("col_a", ZSTD)
+        .withCompressionLevel("col_a", 10)
+        .build();
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecs(schema, SNAPPY, props);
+
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(SNAPPY, codecs.get("col_b"));
+  }
+
+  @Test
+  public void perColumnLevelInvalidZstdLevelThrows() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary col_a; }");
+    ParquetProperties props = ParquetProperties.builder()
+        .withCompressionCodec("col_a", ZSTD)
+        .withCompressionLevel("col_a", 23)
+        .build();
+
+    BadConfigurationException ex =
+        assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
+    assertTrue(ex.getMessage().contains("23"));
+  }
+
+  @Test
+  public void perColumnLevelInvalidGzipLevelThrows() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary col_a; }");
+    ParquetProperties props = ParquetProperties.builder()
+        .withCompressionCodec("col_a", GZIP)
+        .withCompressionLevel("col_a", 10)
+        .build();
+
+    BadConfigurationException ex =
+        assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
+    assertTrue(ex.getMessage().contains("10"));
+  }
+
+  private Map<String, CompressionCodecName> writeAndReadCodecs(
+      MessageType schema, CompressionCodecName defaultCodec, ParquetProperties props) throws Exception {
+    Path file = new Path("target/test/TestColumnChunkPageWriteStore/perColumnCodec.parquet");
+    FileSystem fs = file.getFileSystem(conf);
+    fs.delete(file, false);
+    fs.mkdirs(file.getParent());
+
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+    CodecFactory codecFactory = new CodecFactory(conf, pageSize);
+
+    OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
+    ParquetFileWriter writer = new ParquetFileWriter(
+        outputFile,
+        schema,
+        Mode.CREATE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        null,
+        ParquetProperties.builder().withAllocator(allocator).build());
+    writer.start();
+    writer.startBlock(1);
+
+    try (ColumnChunkPageWriteStore store = ColumnChunkPageWriteStore.builder()
+        .withCompressorProvider(ColumnChunkPageWriteStore.compressorProvider(codecFactory, defaultCodec, props))
+        .withSchema(schema)
+        .withAllocator(allocator)
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE)
+        .build()) {
+      for (ColumnDescriptor col : schema.getColumns()) {
+        Statistics<?> stats =
+            Statistics.getBuilderForReading(col.getPrimitiveType()).build();
+        store.getPageWriter(col).writePage(BytesInput.fromInt(42), 1, 1, stats, RLE, RLE, PLAIN);
+      }
+      store.flushToFileWriter(writer);
+    }
+
+    writer.endBlock();
+    writer.end(new HashMap<>());
+
+    ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
+    Map<String, CompressionCodecName> result = new HashMap<>();
+    for (ColumnChunkMetaData col : footer.getBlocks().get(0).getColumns()) {
+      result.put(col.getPath().toDotString(), col.getCodec());
+    }
+    return result;
   }
 }

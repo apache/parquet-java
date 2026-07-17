@@ -18,13 +18,15 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class RewriteCommandTest extends ParquetFileTest {
@@ -36,11 +38,11 @@ public class RewriteCommandTest extends ParquetFileTest {
     File output = new File(getTempFolder(), "converted.parquet");
     command.output = output.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
-  @Test(expected = FileAlreadyExistsException.class)
+  @Test
   public void testRewriteCommandWithoutOverwrite() throws IOException {
     File file = parquetFile();
     RewriteCommand command = new RewriteCommand(createLogger());
@@ -50,7 +52,9 @@ public class RewriteCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
 
     Files.createFile(output.toPath());
-    command.run();
+    assertThatThrownBy(command::run)
+        .isInstanceOf(FileAlreadyExistsException.class)
+        .hasMessageContaining("File already exists");
   }
 
   @Test
@@ -64,8 +68,8 @@ public class RewriteCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
 
     Files.createFile(output.toPath());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -78,8 +82,8 @@ public class RewriteCommandTest extends ParquetFileTest {
     command.codec = "GZIP";
     command.setConf(new Configuration());
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -92,7 +96,7 @@ public class RewriteCommandTest extends ParquetFileTest {
     command.codec = "gzip";
     command.setConf(new Configuration());
 
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 }

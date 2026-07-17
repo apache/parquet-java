@@ -19,6 +19,9 @@
 
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.beust.jcommander.JCommander;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,7 +29,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -38,7 +40,7 @@ public class ToAvroCommandTest extends AvroFileTest {
   @Test
   public void testToAvroCommandFromParquet() throws IOException {
     File avroFile = toAvro(parquetFile());
-    Assert.assertTrue(avroFile.exists());
+    assertThat(avroFile).exists();
   }
 
   @Test
@@ -62,57 +64,63 @@ public class ToAvroCommandTest extends AvroFileTest {
         .build()
         .parse("--overwrite", jsonInputFile.getAbsolutePath(), "--output", avroOutputFile.getAbsolutePath());
 
-    assert (cmd.run() == 0);
+    assertThat(cmd.run()).isZero();
   }
 
   @Test
   public void testToAvroCommandWithGzipCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "GZIP");
-    Assert.assertTrue(avroFile.exists());
+    assertThat(avroFile).exists();
   }
 
   @Test
   public void testToAvroCommandWithSnappyCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "SNAPPY");
-    Assert.assertTrue(avroFile.exists());
+    assertThat(avroFile).exists();
   }
 
   @Test
   public void testToAvroCommandWithZstdCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "ZSTD");
-    Assert.assertTrue(avroFile.exists());
+    assertThat(avroFile).exists();
   }
 
   @Test
   public void testToAvroCommandWithBzip2Compression() throws IOException {
     File avroFile = toAvro(parquetFile(), "bzip2");
-    Assert.assertTrue(avroFile.exists());
+    assertThat(avroFile).exists();
   }
 
   @Test
   public void testToAvroCommandWithXzCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "xz");
-    Assert.assertTrue(avroFile.exists());
+    assertThat(avroFile).exists();
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testToAvroCommandWithInvalidCompression() throws IOException {
-    toAvro(parquetFile(), "FOO");
+    File parquetFile = parquetFile();
+    assertThatThrownBy(() -> toAvro(parquetFile, "FOO"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Codec incompatible with Avro: FOO");
   }
 
   @Test
   public void testToAvroCommandOverwriteExistentFile() throws IOException {
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
     FileUtils.touch(outputFile);
-    Assert.assertEquals(0, outputFile.length());
+    assertThat(outputFile.length()).isZero();
     File avroFile = toAvro(parquetFile(), outputFile, true);
-    Assert.assertTrue(0 < avroFile.length());
+    assertThat(avroFile.length()).isPositive();
   }
 
-  @Test(expected = FileAlreadyExistsException.class)
+  @Test
   public void testToAvroCommandOverwriteExistentFileWithoutOverwriteOption() throws IOException {
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
     FileUtils.touch(outputFile);
-    toAvro(parquetFile(), outputFile, false);
+    File parquetFile = parquetFile();
+    assertThatThrownBy(() -> toAvro(parquetFile, outputFile, false))
+        .isInstanceOf(FileAlreadyExistsException.class)
+        .hasMessageContaining("File already exists");
   }
 }

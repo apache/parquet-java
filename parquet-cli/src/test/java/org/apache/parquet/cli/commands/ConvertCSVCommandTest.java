@@ -18,11 +18,13 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ConvertCSVCommandTest extends CSVFileTest {
@@ -34,8 +36,8 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
   @Test
@@ -46,12 +48,12 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testConvertCSVCommandWithDifferentSchemas() throws IOException {
+  @Test
+  public void testConvertCSVCommandWithDifferentSchemas() {
     File file = csvFile();
     File fileWithDifferentSchema = csvFileWithDifferentSchema();
     ConvertCSVCommand command = new ConvertCSVCommand(createLogger());
@@ -59,7 +61,9 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
-    command.run();
+    assertThatThrownBy(command::run)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("seems to have a different schema from others");
   }
 
   @Test
@@ -73,7 +77,7 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     conf.set("parquet.avro.write-parquet-uuid", "true");
     conf.set("parquet.avro.write-old-list-structure", "false");
     command.setConf(conf);
-    Assert.assertEquals(0, command.run());
-    Assert.assertTrue(output.exists());
+    assertThat(command.run()).isZero();
+    assertThat(output).exists();
   }
 }
