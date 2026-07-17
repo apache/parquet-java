@@ -795,6 +795,19 @@ public class TestInterOpReadAlp {
     wideD[1] = hiD; // frame maximum near +2^52
     cols.add(CornerCaseData.doubles("f64_wide_for_range", wideD));
 
+    // f64_extreme_for_64bit: exact integer-valued doubles near the ALP encoding limit (~2^63) spanning
+    // the full range, so the FOR delta needs the full 64-bit width (the signed max - min subtraction
+    // overflows) with zero exceptions. This is the extreme-value case that f64_wide_for_range (~54 bits)
+    // does not reach; it stresses 64-bit FOR packing and the reader's modular reconstruction across
+    // implementations.
+    double[] extremeD = new double[N];
+    final long loLD = -9_000_000_000_000_000_000L, hiLD = 9_000_000_000_000_000_000L;
+    for (int i = 0; i < N; i++) {
+      long off = (long) (i % 256) * (1L << 20);
+      extremeD[i] = (double) ((i % 2 == 0) ? (loLD + off) : (hiLD - off));
+    }
+    cols.add(CornerCaseData.doubles("f64_extreme_for_64bit", extremeD));
+
     // 9–15: f32 analogues
     float[] noExcF = new float[N];
     for (int i = 0; i < N; i++) noExcF[i] = (i % 1000) / 100.0f;
@@ -849,6 +862,17 @@ public class TestInterOpReadAlp {
     wideF[0] = loF; // frame minimum near -2^23
     wideF[1] = hiF; // frame maximum near +2^23
     cols.add(CornerCaseData.floats("f32_wide_for_range", wideF));
+
+    // f32_extreme_for_32bit: exact integer-valued floats near the ~2^31 float encoding limit spanning
+    // the full range, forcing the full 32-bit FOR width with zero exceptions (the int-encoded analogue
+    // of f64_extreme_for_64bit).
+    float[] extremeF = new float[N];
+    final int loIF = -2_100_000_000, hiIF = 2_100_000_000;
+    for (int i = 0; i < N; i++) {
+      int off = (i % 256) * (1 << 8);
+      extremeF[i] = (float) ((i % 2 == 0) ? (loIF + off) : (hiIF - off));
+    }
+    cols.add(CornerCaseData.floats("f32_extreme_for_32bit", extremeF));
 
     return cols;
   }

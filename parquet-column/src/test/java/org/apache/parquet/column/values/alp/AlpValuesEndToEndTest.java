@@ -199,6 +199,35 @@ public class AlpValuesEndToEndTest {
   }
 
   @Test
+  public void testDoubleExtremeForBitWidth() throws Exception {
+    // Extreme values near the ALP double encoding limit (~2^63), all exact integer-valued doubles so
+    // they encode losslessly with no exceptions, but the frame-of-reference delta spans the full range
+    // and overflows the signed subtraction, forcing 64-bit FOR packing. Verified with the encoder:
+    // scale of 1 (e == f), 0 exceptions, FOR bit width 64. Exercises 64-bit packing and the reader's
+    // modular reconstruction, which cross-language interop must match.
+    double[] values = new double[2048];
+    long lo = -9_000_000_000_000_000_000L, hi = 9_000_000_000_000_000_000L;
+    for (int i = 0; i < values.length; i++) {
+      long off = (long) (i % 256) * (1L << 20);
+      values[i] = (double) ((i % 2 == 0) ? (lo + off) : (hi - off));
+    }
+    roundTripDouble(values);
+  }
+
+  @Test
+  public void testFloatExtremeForBitWidth() throws Exception {
+    // Float analogue near the ~2^31 float encoding limit: exact integer-valued floats whose encoded
+    // ints span ~2^32, forcing the full 32-bit FOR width. Verified: e=0, f=0, 0 exceptions, bit width 32.
+    float[] values = new float[2048];
+    int lo = -2_100_000_000, hi = 2_100_000_000;
+    for (int i = 0; i < values.length; i++) {
+      int off = (i % 256) * (1 << 8);
+      values[i] = (float) ((i % 2 == 0) ? (lo + off) : (hi - off));
+    }
+    roundTripFloat(values);
+  }
+
+  @Test
   public void testFloatAllNullPage() throws Exception {
     // Every row on the page is null, so no value reaches the writer and num_elements is 0.
     // numVectors then works out to 0 and the reader ends up calling slice(0) on empty offset and
