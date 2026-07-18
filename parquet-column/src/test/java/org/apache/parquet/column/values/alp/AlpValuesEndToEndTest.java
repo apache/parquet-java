@@ -234,6 +234,79 @@ public class AlpValuesEndToEndTest {
     }
   }
 
+  // ========== Large scale + allocator leak ==========
+
+  /** Wraps an allocator and tracks outstanding (allocated but not released) buffers. */
+  private static final class CountingAllocator implements org.apache.parquet.bytes.ByteBufferAllocator {
+    private final org.apache.parquet.bytes.ByteBufferAllocator delegate;
+    final java.util.concurrent.atomic.AtomicInteger outstanding = new java.util.concurrent.atomic.AtomicInteger();
+    final java.util.concurrent.atomic.AtomicInteger peakOutstanding =
+        new java.util.concurrent.atomic.AtomicInteger();
+
+    CountingAllocator(org.apache.parquet.bytes.ByteBufferAllocator delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public ByteBuffer allocate(int size) {
+      int cur = outstanding.incrementAndGet();
+      peakOutstanding.getAndAccumulate(cur, Math::max);
+      return delegate.allocate(size);
+    }
+
+    @Override
+    public void release(ByteBuffer b) {
+      outstanding.decrementAndGet();
+      delegate.release(b);
+    }
+
+    @Override
+    public boolean isDirect() {
+      return delegate.isDirect();
+    }
+  }
+
+  @Test
+  public void testWriterReleasesAllAllocatorBuffersOverManyPages() throws Exception {
+    // Simulate many pages (write -> getBytes -> reset, repeated) then close. A per-page slab leak
+    // (the GH-3628-style unreleased-buffer bug) would leave outstanding allocations > 0 after close.
+    CountingAllocator alloc = new CountingAllocator(new DirectByteBufferAllocator());
+    AlpValuesWriter.DoubleAlpValuesWriter writer =
+        new AlpValuesWriter.DoubleAlpValuesWriter(1024, 1024, alloc, DEFAULT_VECTOR_SIZE);
+    Random rng = new Random(1);
+    try {
+      for (int page = 0; page < 200; page++) {
+        for (int i = 0; i < 5000; i++) {
+          writer.writeDouble(Math.round(rng.nextDouble() * 100000.0) / 100.0);
+        }
+        writer.getBytes();
+        writer.reset();
+      }
+    } finally {
+      writer.close();
+    }
+    assertTrue("Writer should have allocated buffers during the run", alloc.peakOutstanding.get() > 0);
+    assertEquals(
+        "Writer leaked allocator buffers: " + alloc.outstanding.get() + " outstanding after close",
+        0,
+        alloc.outstanding.get());
+  }
+
+  @Test
+  public void testLargeScaleDoubleRoundTrip() throws Exception {
+    // ~2M values across many pages/vectors: verifies correctness at scale and that nothing OOMs.
+    Random rng = new Random(2);
+    int perPage = 100_000;
+    int pages = 20;
+    for (int p = 0; p < pages; p++) {
+      double[] values = new double[perPage];
+      for (int i = 0; i < perPage; i++) {
+        values[i] = Math.round(rng.nextDouble() * 1e7) / 100.0;
+      }
+      roundTripDoubleStrict(values);
+    }
+  }
+
   private void roundTripFloat(float[] values) throws Exception {
     roundTripFloat(values, DEFAULT_VECTOR_SIZE);
   }
