@@ -1291,6 +1291,63 @@ public class TestInterOpReadAlp {
   }
 
   @Test
+  public void testAlpLargeScaleManyRowGroups() throws IOException {
+    // Half a million rows with a small row-group size, forcing many row groups, exercised through
+    // the full write/read pipeline (compression on). Verification is streaming (regenerate the
+    // expected sequence, no List accumulation) so the read side is memory-safe at scale too.
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required double d; required float f; }");
+    int n = 500_000;
+    long seed = 5;
+    java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_large.parquet");
+    java.util.Random rng = new java.util.Random(seed);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.SNAPPY)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(false)
+        .withRowGroupSize(1L << 19) // 512KB, so 500k rows span many row groups
+        .withConf(new Configuration())
+        .build()) {
+      for (int i = 0; i < n; i++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        row.add("d", Math.round(rng.nextDouble() * 1e7) / 100.0);
+        row.add("f", (float) (Math.round(rng.nextFloat() * 1e5) / 100.0));
+        writer.write(row);
+      }
+    }
+    java.util.Random verify = new java.util.Random(seed);
+    int total = 0;
+    int rowGroups = 0;
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(outPath))) {
+      MessageType s = reader.getFooter().getFileMetaData().getSchema();
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(s);
+      PageReadStore pages;
+      while ((pages = reader.readNextRowGroup()) != null) {
+        rowGroups++;
+        long rc = pages.getRowCount();
+        RecordReader<Group> rr = columnIO.getRecordReader(pages, new GroupRecordConverter(s));
+        for (long i = 0; i < rc; i++) {
+          Group g = rr.read();
+          double ed = Math.round(verify.nextDouble() * 1e7) / 100.0;
+          float ef = (float) (Math.round(verify.nextFloat() * 1e5) / 100.0);
+          assertEquals(
+              "d mismatch at row " + total,
+              Double.doubleToRawLongBits(ed),
+              Double.doubleToRawLongBits(g.getDouble("d", 0)));
+          assertEquals(
+              "f mismatch at row " + total,
+              Float.floatToRawIntBits(ef),
+              Float.floatToRawIntBits(g.getFloat("f", 0)));
+          total++;
+        }
+      }
+    }
+    assertEquals("row count", n, total);
+    assertTrue("expected multiple row groups, got " + rowGroups, rowGroups >= 2);
+  }
+
+  @Test
   public void testAlpOnRepeatedDoubleField() throws IOException {
     // ALP on a REPEATED double field, so it must interleave correctly with repetition/definition
     // levels (empty rows, varying counts). Nested/repeated columns are otherwise untested.
