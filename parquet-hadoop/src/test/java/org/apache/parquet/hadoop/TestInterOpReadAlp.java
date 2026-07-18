@@ -1124,4 +1124,219 @@ public class TestInterOpReadAlp {
       assertEquals("float null count must be 0", 0L, fStats.getNumNulls());
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Integration coverage: the production paths normal ALP tests skip (dictionary
+  // fallback, compression, adversarial statistics, repeated/nested columns).
+  // ---------------------------------------------------------------------------
+
+  private boolean columnUsesAlp(java.nio.file.Path file, String colDotPath) throws IOException {
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(file))) {
+      for (org.apache.parquet.hadoop.metadata.BlockMetaData b :
+          reader.getFooter().getBlocks()) {
+        for (org.apache.parquet.hadoop.metadata.ColumnChunkMetaData c : b.getColumns()) {
+          if ((colDotPath == null || c.getPath().toDotString().equals(colDotPath))
+              && c.getEncodings().contains(Encoding.ALP)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Test
+  public void testDictionaryOverflowFallsBackToAlp() throws IOException {
+    // Dictionary ENABLED (the real default) with a small dictionary page, so a high-cardinality
+    // double/float column overflows the dictionary and FALLS BACK to ALP mid-column. Normal ALP
+    // tests disable the dictionary, so this exercises the untested production path where the
+    // FallbackValuesWriter replays buffered values into ALP.
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required double d; required float f; }");
+    int n = 20000;
+    double[] ds = new double[n];
+    float[] fs = new float[n];
+    java.util.Random rng = new java.util.Random(3);
+    for (int i = 0; i < n; i++) {
+      ds[i] = Math.round(rng.nextDouble() * 1e9) / 100.0;
+      fs[i] = (float) (Math.round(rng.nextFloat() * 1e6) / 100.0);
+    }
+    java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_dict_fallback.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(true)
+        .withDictionaryPageSize(4096)
+        .withConf(new Configuration())
+        .build()) {
+      for (int i = 0; i < n; i++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        row.add("d", ds[i]);
+        row.add("f", fs[i]);
+        writer.write(row);
+      }
+    }
+    List<Group> rows = readAllRows(outPath);
+    assertEquals(n, rows.size());
+    for (int i = 0; i < n; i++) {
+      assertEquals(
+          "d mismatch at " + i,
+          Double.doubleToRawLongBits(ds[i]),
+          Double.doubleToRawLongBits(rows.get(i).getDouble("d", 0)));
+      assertEquals(
+          "f mismatch at " + i,
+          Float.floatToRawIntBits(fs[i]),
+          Float.floatToRawIntBits(rows.get(i).getFloat("f", 0)));
+    }
+    assertTrue("Expected dictionary overflow to fall back to ALP encoding", columnUsesAlp(outPath, null));
+  }
+
+  @Test
+  public void testAlpUnderCompressionCodecs() throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required double d; required float f; }");
+    int n = 5000;
+    double[] ds = new double[n];
+    float[] fs = new float[n];
+    for (int i = 0; i < n; i++) {
+      ds[i] = (i % 1000) / 100.0 - 5.0;
+      fs[i] = (i % 777) / 100.0f - 3.0f;
+    }
+    for (CompressionCodecName codec : new CompressionCodecName[] {
+      CompressionCodecName.SNAPPY, CompressionCodecName.GZIP, CompressionCodecName.ZSTD
+    }) {
+      java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_" + codec.name() + ".parquet");
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+          .withType(schema)
+          .withCompressionCodec(codec)
+          .withWriterVersion(WriterVersion.PARQUET_2_0)
+          .withAlpEncoding(true)
+          .withDictionaryEncoding(false)
+          .withConf(new Configuration())
+          .build()) {
+        for (int i = 0; i < n; i++) {
+          SimpleGroup row = new SimpleGroup(schema);
+          row.add("d", ds[i]);
+          row.add("f", fs[i]);
+          writer.write(row);
+        }
+      }
+      List<Group> rows = readAllRows(outPath);
+      assertEquals("row count for " + codec, n, rows.size());
+      for (int i = 0; i < n; i++) {
+        assertEquals(
+            "d mismatch " + codec + " row " + i,
+            Double.doubleToRawLongBits(ds[i]),
+            Double.doubleToRawLongBits(rows.get(i).getDouble("d", 0)));
+        assertEquals(
+            "f mismatch " + codec + " row " + i,
+            Float.floatToRawIntBits(fs[i]),
+            Float.floatToRawIntBits(rows.get(i).getFloat("f", 0)));
+      }
+      assertTrue(codec + ": column should be ALP-encoded", columnUsesAlp(outPath, "d"));
+    }
+  }
+
+  @Test
+  public void testAlpStatisticsExcludeNaNAndCountNulls() throws IOException {
+    // Optional double column mixing finite values, NaN (must be excluded from min/max), and nulls
+    // (must be counted). Combines def-level nulls (num_elements < rowCount) with ALP exceptions (NaN)
+    // and verifies the footer statistics that predicate pushdown relies on are correct.
+    MessageType schema = MessageTypeParser.parseMessageType("message m { optional double d; }");
+    Double[] vals = {1.0, Double.NaN, -2.0, 5.0, null, 3.0, Double.NaN, null, 0.0};
+    java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_stats_adv.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(false)
+        .withConf(new Configuration())
+        .build()) {
+      for (Double v : vals) {
+        SimpleGroup row = new SimpleGroup(schema);
+        if (v != null) {
+          row.add("d", v.doubleValue());
+        }
+        writer.write(row);
+      }
+    }
+    // Values also round-trip (with NaN payload preserved and nulls in the right places).
+    List<Group> rows = readAllRows(outPath);
+    assertEquals(vals.length, rows.size());
+    for (int i = 0; i < vals.length; i++) {
+      int rep = rows.get(i).getFieldRepetitionCount("d");
+      if (vals[i] == null) {
+        assertEquals("row " + i + " should be null", 0, rep);
+      } else {
+        assertEquals("row " + i + " should be present", 1, rep);
+        assertEquals(
+            "value row " + i,
+            Double.doubleToRawLongBits(vals[i]),
+            Double.doubleToRawLongBits(rows.get(i).getDouble("d", 0)));
+      }
+    }
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(outPath))) {
+      org.apache.parquet.hadoop.metadata.ColumnChunkMetaData chunk =
+          reader.getFooter().getBlocks().get(0).getColumns().get(0);
+      org.apache.parquet.column.statistics.Statistics<?> s = chunk.getStatistics();
+      assertEquals("null count", 2L, s.getNumNulls());
+      double min = (Double) s.genericGetMin();
+      double max = (Double) s.genericGetMax();
+      assertTrue("min must not be NaN", !Double.isNaN(min));
+      assertTrue("max must not be NaN", !Double.isNaN(max));
+      assertEquals("min", -2.0, min, 0.0);
+      assertEquals("max", 5.0, max, 0.0);
+    }
+  }
+
+  @Test
+  public void testAlpOnRepeatedDoubleField() throws IOException {
+    // ALP on a REPEATED double field, so it must interleave correctly with repetition/definition
+    // levels (empty rows, varying counts). Nested/repeated columns are otherwise untested.
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message m { required int64 id; repeated double vals; }");
+    int nRows = 3000;
+    java.util.Random rng = new java.util.Random(9);
+    double[][] expected = new double[nRows][];
+    for (int r = 0; r < nRows; r++) {
+      int k = rng.nextInt(5); // 0..4 values per row (exercises empty rows + varying rep levels)
+      expected[r] = new double[k];
+      for (int j = 0; j < k; j++) {
+        expected[r][j] = Math.round(rng.nextDouble() * 100000) / 100.0;
+      }
+    }
+    java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_repeated.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(false)
+        .withConf(new Configuration())
+        .build()) {
+      for (int r = 0; r < nRows; r++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        row.add("id", (long) r);
+        for (double v : expected[r]) {
+          row.add("vals", v);
+        }
+        writer.write(row);
+      }
+    }
+    List<Group> rows = readAllRows(outPath);
+    assertEquals(nRows, rows.size());
+    for (int r = 0; r < nRows; r++) {
+      Group g = rows.get(r);
+      int k = g.getFieldRepetitionCount("vals");
+      assertEquals("rep count row " + r, expected[r].length, k);
+      for (int j = 0; j < k; j++) {
+        assertEquals(
+            "val row " + r + " idx " + j,
+            Double.doubleToRawLongBits(expected[r][j]),
+            Double.doubleToRawLongBits(g.getDouble("vals", j)));
+      }
+    }
+    assertTrue("repeated double column should be ALP-encoded", columnUsesAlp(outPath, "vals"));
+  }
 }
