@@ -215,6 +215,20 @@ public class AlpValuesEndToEndTest {
   }
 
   @Test
+  public void testDoubleExtremeFor63BitWidth() throws Exception {
+    // Exact integer-valued doubles near +/- 2^61, so the frame-of-reference delta spans ~2^62.5 and
+    // needs 63 bits WITHOUT overflowing the signed max - min subtraction (the non-overflow high-bit
+    // counterpart to the 64-bit case above). Verified with the encoder: 0 exceptions, FOR bit width 63.
+    double[] values = new double[2048];
+    long lo = -3_000_000_000_000_000_000L, hi = 3_000_000_000_000_000_000L;
+    for (int i = 0; i < values.length; i++) {
+      long off = (long) (i % 256) * (1L << 20);
+      values[i] = (double) ((i % 2 == 0) ? (lo + off) : (hi - off));
+    }
+    roundTripDouble(values);
+  }
+
+  @Test
   public void testFloatExtremeForBitWidth() throws Exception {
     // Float analogue near the ~2^31 float encoding limit: exact integer-valued floats whose encoded
     // ints span ~2^32, forcing the full 32-bit FOR width. Verified: e=0, f=0, 0 exceptions, bit width 32.

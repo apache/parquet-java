@@ -808,6 +808,17 @@ public class TestInterOpReadAlp {
     }
     cols.add(CornerCaseData.doubles("f64_extreme_for_64bit", extremeD));
 
+    // f64_extreme_for_63bit: exact integer-valued doubles near +/- 2^61, so the FOR delta needs 63 bits
+    // WITHOUT overflowing the signed max - min subtraction (the non-overflow high-bit counterpart to
+    // f64_extreme_for_64bit), with zero exceptions.
+    double[] extreme63D = new double[N];
+    final long lo63 = -3_000_000_000_000_000_000L, hi63 = 3_000_000_000_000_000_000L;
+    for (int i = 0; i < N; i++) {
+      long off = (long) (i % 256) * (1L << 20);
+      extreme63D[i] = (double) ((i % 2 == 0) ? (lo63 + off) : (hi63 - off));
+    }
+    cols.add(CornerCaseData.doubles("f64_extreme_for_63bit", extreme63D));
+
     // 9–15: f32 analogues
     float[] noExcF = new float[N];
     for (int i = 0; i < N; i++) noExcF[i] = (i % 1000) / 100.0f;
