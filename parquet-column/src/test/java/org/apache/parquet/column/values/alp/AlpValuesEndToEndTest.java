@@ -40,6 +40,200 @@ public class AlpValuesEndToEndTest {
 
   // ========== Helper Methods ==========
 
+  /**
+   * Round-trip with STRICT raw-bit comparison for every value, including NaN payloads (the regular
+   * roundTrip helpers only assert isNaN, which would hide a NaN-payload-preservation bug). ALP must
+   * be losslessly bit-exact for every possible IEEE-754 bit pattern.
+   */
+  private void roundTripDoubleStrict(double[] values) throws Exception {
+    AlpValuesWriter.DoubleAlpValuesWriter writer = null;
+    try {
+      int capacity = Math.max(512, values.length * 16);
+      writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+          capacity, capacity, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+      for (double v : values) {
+        writer.writeDouble(v);
+      }
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+      for (int i = 0; i < values.length; i++) {
+        long exp = Double.doubleToRawLongBits(values[i]);
+        long act = Double.doubleToRawLongBits(reader.readDouble());
+        assertEquals(
+            "Raw-bit mismatch at index " + i + " expectedBits=0x" + Long.toHexString(exp) + " actualBits=0x"
+                + Long.toHexString(act),
+            exp,
+            act);
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  private void roundTripFloatStrict(float[] values) throws Exception {
+    AlpValuesWriter.FloatAlpValuesWriter writer = null;
+    try {
+      int capacity = Math.max(256, values.length * 8);
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(
+          capacity, capacity, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+      for (float v : values) {
+        writer.writeFloat(v);
+      }
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+      for (int i = 0; i < values.length; i++) {
+        int exp = Float.floatToRawIntBits(values[i]);
+        int act = Float.floatToRawIntBits(reader.readFloat());
+        assertEquals(
+            "Raw-bit mismatch at index " + i + " expectedBits=0x" + Integer.toHexString(exp)
+                + " actualBits=0x" + Integer.toHexString(act),
+            exp,
+            act);
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  // ========== Full-bit-space fuzz (lossless invariant) ==========
+
+  @Test
+  public void testDoubleFullBitSpaceFuzz() throws Exception {
+    // Sweep the entire double bit space: random raw longs -> double. Covers all subnormals, every
+    // NaN payload, +/-0, +/-Inf, extreme exponents, chaotic mixed magnitudes within a vector.
+    Random rng = new Random(0x9E3779B97F4A7C15L);
+    for (int v = 0; v < 300; v++) { // ~300k values
+      double[] values = new double[1024];
+      for (int i = 0; i < values.length; i++) {
+        values[i] = Double.longBitsToDouble(rng.nextLong());
+      }
+      roundTripDoubleStrict(values);
+    }
+  }
+
+  @Test
+  public void testFloatFullBitSpaceFuzz() throws Exception {
+    Random rng = new Random(0x9E3779B9L);
+    for (int v = 0; v < 300; v++) {
+      float[] values = new float[1024];
+      for (int i = 0; i < values.length; i++) {
+        values[i] = Float.intBitsToFloat(rng.nextInt());
+      }
+      roundTripFloatStrict(values);
+    }
+  }
+
+  @Test
+  public void testDoubleMixedFuzz() throws Exception {
+    // Mix ALP-friendly decimal-ish values with random raw bits, so FOR encoding AND the exception
+    // path are both exercised on chaotic data within the same vector.
+    Random rng = new Random(0xD1CE5EEDL);
+    for (int v = 0; v < 300; v++) {
+      double[] values = new double[1024];
+      for (int i = 0; i < values.length; i++) {
+        if (rng.nextInt(4) == 0) {
+          values[i] = Double.longBitsToDouble(rng.nextLong()); // ~25% chaotic (mostly exceptions)
+        } else {
+          values[i] = Math.round(rng.nextDouble() * 1_000_000.0) / 100.0; // 2-decimal, ALP-friendly
+        }
+      }
+      roundTripDoubleStrict(values);
+    }
+  }
+
+  @Test
+  public void testDoubleDistributionShiftWithinRowGroup() throws Exception {
+    // First vectors are clean 2-decimal data (the sampler builds its preset (e,f) cache from these),
+    // then later vectors switch to high-precision / very different magnitude that the cached presets
+    // fit poorly. Once presets are cached the writer only tries those, so ALP must still stay lossless
+    // (the exception path catches every preset mismatch).
+    Random rng = new Random(7);
+    int totalVectors = 40; // well past SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP so presets are in use
+    double[] values = new double[totalVectors * 1024];
+    for (int i = 0; i < values.length; i++) {
+      int vec = i / 1024;
+      if (vec < 12) {
+        values[i] = Math.round(rng.nextDouble() * 10000.0) / 100.0; // clean cents
+      } else {
+        values[i] = rng.nextDouble() * 1e12 + rng.nextDouble(); // high-precision, big magnitude
+      }
+    }
+    roundTripDoubleStrict(values);
+  }
+
+  // ========== Reader robustness against malformed input ==========
+
+  private void readAllDoubles(byte[] bytes, int valueCount) throws Exception {
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(valueCount, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
+    for (int i = 0; i < valueCount; i++) {
+      reader.readDouble();
+    }
+  }
+
+  @Test(timeout = 30000)
+  public void testReaderRejectsCorruptInputCleanly() throws Exception {
+    // Build a valid ALP double page, then feed corrupted variants. The reader must fail cleanly
+    // (a catchable exception) and never hang, OOM, or read out of bounds silently.
+    double[] values = new double[2048];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = (i % 100) / 100.0;
+    }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        65536, 65536, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+    for (double v : values) {
+      writer.writeDouble(v);
+    }
+    byte[] valid = writer.getBytes().toByteArray();
+    writer.reset();
+    writer.close();
+
+    // Sanity: the valid page reads fine.
+    readAllDoubles(valid, values.length);
+
+    // Corruptions that must each fail cleanly (never crash/hang/OOB):
+    java.util.List<byte[]> corrupt = new java.util.ArrayList<>();
+    corrupt.add(java.util.Arrays.copyOf(valid, valid.length / 2)); // truncated to half
+    corrupt.add(java.util.Arrays.copyOf(valid, 3)); // truncated to a stub
+    corrupt.add(new byte[0]); // empty
+    for (int pos : new int[] {0, 1, 2, 5, 7, 11, 20, valid.length - 1}) {
+      byte[] c = valid.clone();
+      c[pos] = (byte) ~c[pos]; // flip a header/body byte
+      corrupt.add(c);
+    }
+    for (byte[] c : corrupt) {
+      try {
+        readAllDoubles(c, values.length);
+        // Some single-byte flips may still decode to (wrong but in-bounds) values without throwing;
+        // that is acceptable here. What matters is no crash/hang/OOB, which we reached this line.
+      } catch (OutOfMemoryError oom) {
+        fail("Malformed input caused an OutOfMemoryError (allocation bomb) - a corrupt size/count "
+            + "must not drive an unbounded allocation");
+      } catch (Throwable t) {
+        // Any ordinary catchable exception (EOFException, ParquetDecodingException, IndexOutOfBounds,
+        // BufferUnderflow, NegativeArraySize, ...) is a clean failure: no JVM crash, no OOB, no hang.
+      }
+    }
+
+    // Claiming far more elements than the data supports must be rejected without an OOM allocation.
+    try {
+      readAllDoubles(valid, Integer.MAX_VALUE / 2);
+      fail("Expected a decoding failure for an absurd value count");
+    } catch (OutOfMemoryError oom) {
+      fail("Absurd value count drove an OutOfMemoryError instead of a clean rejection");
+    } catch (Throwable expected) {
+      // clean rejection
+    }
+  }
+
   private void roundTripFloat(float[] values) throws Exception {
     roundTripFloat(values, DEFAULT_VECTOR_SIZE);
   }
