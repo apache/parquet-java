@@ -33,6 +33,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -51,6 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -79,6 +81,9 @@ import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.crypto.ColumnEncryptionProperties;
+import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.Statistics;
@@ -87,6 +92,7 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ConcatenatingKeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
@@ -101,7 +107,9 @@ import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -1496,6 +1504,91 @@ public class TestParquetFileWriter {
         merged.merge(new StrictKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
     assertEquals("b", mergedValues.get("a"));
     assertEquals("d", mergedValues.get("c"));
+  }
+
+  @Test
+  public void testConstructorClosesStreamWhenEncryptedColumnMissing() throws Exception {
+    ColumnEncryptionProperties missingColumn = ColumnEncryptionProperties.builder("not_in_schema")
+        .withKey("0123456789012345".getBytes(StandardCharsets.UTF_8))
+        .build();
+    Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = new HashMap<>();
+    encryptedColumns.put(missingColumn.getPath(), missingColumn);
+    FileEncryptionProperties encryptionProperties = FileEncryptionProperties.builder(
+            "0123456789012345".getBytes(StandardCharsets.UTF_8))
+        .withEncryptedColumns(encryptedColumns)
+        .build();
+
+    RecordingOutputFile file = new RecordingOutputFile();
+    assertThatThrownBy(() -> new ParquetFileWriter(
+            file,
+            SCHEMA,
+            CREATE,
+            DEFAULT_BLOCK_SIZE,
+            MAX_PADDING_SIZE_DEFAULT,
+            ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+            ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+            ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
+            encryptionProperties))
+        .isInstanceOf(ParquetCryptoRuntimeException.class)
+        .hasMessage("Encrypted column [not_in_schema] not in file schema column list: [a.b], [c.d]");
+
+    assertTrue(
+        "The output stream opened by the constructor must be closed when validation fails",
+        file.isStreamClosed());
+  }
+
+  /**
+   * An {@link OutputFile} whose {@link PositionOutputStream} records whether it was closed, used to
+   * assert that a failed {@link ParquetFileWriter} construction does not leak the open stream.
+   */
+  private static class RecordingOutputFile implements OutputFile {
+
+    private final AtomicBoolean streamClosed = new AtomicBoolean(false);
+
+    boolean isStreamClosed() {
+      return streamClosed.get();
+    }
+
+    private PositionOutputStream newRecordingStream() {
+      return new PositionOutputStream() {
+        private long pos = 0;
+
+        @Override
+        public long getPos() {
+          return pos;
+        }
+
+        @Override
+        public void write(int b) {
+          pos++;
+        }
+
+        @Override
+        public void close() {
+          streamClosed.set(true);
+        }
+      };
+    }
+
+    @Override
+    public PositionOutputStream create(long blockSizeHint) {
+      return newRecordingStream();
+    }
+
+    @Override
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) {
+      return newRecordingStream();
+    }
+
+    @Override
+    public boolean supportsBlockSize() {
+      return false;
+    }
+
+    @Override
+    public long defaultBlockSize() {
+      return 0;
+    }
   }
 
   private org.apache.parquet.column.statistics.Statistics<?> statsC1(Binary... values) {
