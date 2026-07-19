@@ -1343,7 +1343,12 @@ public class ParquetMetadataConverter {
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
-    switch (type.getSetField()) {
+    LogicalType._Fields setField = type.getSetField();
+    if (setField == null) {
+      // Ignore unknown logical types to preserve the physical type.
+      return null;
+    }
+    switch (setField) {
       case MAP:
         return LogicalTypeAnnotation.mapType();
       case BSON:
@@ -2066,7 +2071,10 @@ public class ParquetMetadataConverter {
       }
 
       if (schemaElement.isSetLogicalType()) {
-        childBuilder.as(getLogicalTypeAnnotation(schemaElement.logicalType));
+        LogicalTypeAnnotation logicalTypeAnnotation = getLogicalTypeAnnotation(schemaElement.logicalType);
+        if (logicalTypeAnnotation != null) {
+          childBuilder.as(logicalTypeAnnotation);
+        }
       }
       if (schemaElement.isSetConverted_type()) {
         OriginalType originalType = getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement)
