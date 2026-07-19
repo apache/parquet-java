@@ -101,8 +101,6 @@ public class TestZstandardCodec {
   @Test
   public void testZstdConfWithMr() throws Exception {
     long fileSizeLowLevel = runMrWithConf(1);
-    // Clear the cache so that a new codec can be created with new configuration
-    CodecFactory.CODEC_BY_NAME.clear();
     long fileSizeHighLevel = runMrWithConf(22);
     Assert.assertTrue(fileSizeLowLevel > fileSizeHighLevel);
   }

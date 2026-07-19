@@ -426,4 +426,41 @@ public class TestBytesInput {
     verify(allocatorMock, never()).allocate(anyInt());
     verify(callbackMock, never()).accept(any());
   }
+
+  // ---- Tests for ByteArrayBytesInput.toByteArray() zero-copy optimization ----
+
+  @Test
+  public void testByteArrayBytesInputToByteArrayZeroCopyFullArray() throws IOException {
+    byte[] data = new byte[100];
+    RANDOM.nextBytes(data);
+    BytesInput bi = BytesInput.from(data, 0, data.length);
+
+    // When offset=0 and length=array.length, toByteArray() should return the same array instance
+    byte[] result = bi.toByteArray();
+    assertSame("Expected zero-copy (same array instance) for full-array BytesInput", data, result);
+  }
+
+  @Test
+  public void testByteArrayBytesInputToByteArrayCopiesForSubArray() throws IOException {
+    byte[] data = new byte[100];
+    RANDOM.nextBytes(data);
+    BytesInput bi = BytesInput.from(data, 10, 50);
+
+    byte[] result = bi.toByteArray();
+    assertEquals("Sub-array toByteArray() should have correct length", 50, result.length);
+    byte[] expected = new byte[50];
+    System.arraycopy(data, 10, expected, 0, 50);
+    assertArrayEquals("Sub-array toByteArray() content mismatch", expected, result);
+  }
+
+  @Test
+  public void testByteArrayBytesInputToByteArrayFromSimpleFactory() throws IOException {
+    byte[] data = new byte[200];
+    RANDOM.nextBytes(data);
+    // BytesInput.from(byte[]) delegates to from(byte[], 0, length)
+    BytesInput bi = BytesInput.from(data);
+
+    byte[] result = bi.toByteArray();
+    assertSame("Expected zero-copy for BytesInput.from(byte[])", data, result);
+  }
 }
