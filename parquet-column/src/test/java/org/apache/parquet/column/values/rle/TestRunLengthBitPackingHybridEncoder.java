@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.rle;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.bytes.BytesUtils;
@@ -290,12 +291,115 @@ public class TestRunLengthBitPackingHybridEncoder {
     // bit width 2.
     bytes[0] = (1 << 1) | 1;
     bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
-    ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, buffer);
     assertThat(decoder.readInt()).isEqualTo(1);
     assertThat(decoder.readInt()).isEqualTo(2);
     assertThat(decoder.readInt()).isEqualTo(3);
-    assertThat(stream.available()).isEqualTo(0);
+    assertThat(buffer.remaining()).isEqualTo(0);
+  }
+
+  // ---- Decoder-specific edge case tests ----
+
+  /**
+   * Tests the packedPaddedBuffer edge case: when the last packed run in the
+   * stream has fewer bytes available than required (bytesToRead < bytesRequired).
+   * This exercises the zero-padded ByteBuffer fallback path in readNext().
+   */
+  @Test
+  public void testDecoderPaddedBufferEdgeCase() throws Exception {
+    // Encode 5 distinct values with bitWidth=3 using scalar writeInt.
+    // The encoder will produce a bit-packed run with header indicating 1 group (8 values),
+    // but only 5 values are meaningful. The stream has exactly 3 bytes (1 group * 3 bitWidth).
+    // To create a truncated stream, we manually construct the packed data with fewer bytes
+    // than required for the group count declared in the header.
+    int bitWidth = 3;
+    RunLengthBitPackingHybridEncoder encoder = getRunLengthBitPackingHybridEncoder(bitWidth, 100, 64000);
+    // Write 5 values — encoder will pad to 8 (1 group), producing header for 1 group and 3 bytes
+    for (int i = 0; i < 5; i++) encoder.writeInt(i);
+    byte[] fullEncoded = encoder.toBytes().toByteArray();
+
+    // Decode normally and verify correctness
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(bitWidth, ByteBuffer.wrap(fullEncoded));
+    for (int i = 0; i < 5; i++) {
+      assertThat(decoder.readInt()).as("mismatch at index " + i).isEqualTo(i);
+    }
+
+    // Now construct a stream where we artificially increase the group count header
+    // to declare more groups than bytes available, forcing the padded buffer path.
+    // Header for 2 groups (16 values): (2 << 1) | 1 = 5
+    // But only provide bytes for 1 group (3 bytes), so bytesToRead < bytesRequired.
+    byte[] truncated = new byte[1 + bitWidth]; // 1 byte header + 3 bytes data
+    truncated[0] = 5; // header = 2 groups packed
+    System.arraycopy(fullEncoded, 1, truncated, 1, bitWidth); // copy the 3 data bytes
+
+    RunLengthBitPackingHybridDecoder paddedDecoder =
+        new RunLengthBitPackingHybridDecoder(bitWidth, ByteBuffer.wrap(truncated));
+    // First 5 values should decode correctly from the real bytes
+    for (int i = 0; i < 5; i++) {
+      assertThat(paddedDecoder.readInt())
+          .as("padded mismatch at index " + i)
+          .isEqualTo(i);
+    }
+    // Values 5-7 come from the real packed group's padding (encoder pads with 0s)
+    for (int i = 5; i < 8; i++) {
+      assertThat(paddedDecoder.readInt()).as("padded zero at index " + i).isEqualTo(0);
+    }
+    // Values 8-15 come from the zero-padded buffer (no real data) — all should be 0
+    for (int i = 8; i < 16; i++) {
+      assertThat(paddedDecoder.readInt())
+          .as("zero-padded value at index " + i)
+          .isEqualTo(0);
+    }
+  }
+
+  /**
+   * Tests the unpack32Values fast path by ensuring that a packed run with
+   * exactly 4 or more groups (32+ values) is decoded correctly via scalar readInt.
+   */
+  @Test
+  public void testDecoderUnpack32ValuesFastPath() throws Exception {
+    // bitWidth=3 with 40 distinct values forces 5 packed groups (40 values).
+    // The decoder should use unpack32Values for the first 4 groups, then
+    // unpack8Values for the last group.
+    int bitWidth = 3;
+    int numValues = 40;
+    int[] values = new int[numValues];
+    RunLengthBitPackingHybridEncoder encoder = getRunLengthBitPackingHybridEncoder(bitWidth, 100, 64000);
+    for (int i = 0; i < numValues; i++) {
+      values[i] = i % 7; // stay within 3-bit range
+      encoder.writeInt(values[i]);
+    }
+    byte[] encoded = encoder.toBytes().toByteArray();
+
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(bitWidth, ByteBuffer.wrap(encoded));
+    for (int i = 0; i < numValues; i++) {
+      assertThat(decoder.readInt())
+          .as("unpack32 fast path mismatch at " + i)
+          .isEqualTo(values[i]);
+    }
+  }
+
+  @Test
+  public void testDecoderUnpack32ValuesExact4Groups() throws Exception {
+    // Exactly 4 groups (32 values) — uses only the unpack32Values path, no residual
+    int bitWidth = 5;
+    int numValues = 32;
+    int[] values = new int[numValues];
+    RunLengthBitPackingHybridEncoder encoder = getRunLengthBitPackingHybridEncoder(bitWidth, 100, 64000);
+    for (int i = 0; i < numValues; i++) {
+      values[i] = i % 31;
+      encoder.writeInt(values[i]);
+    }
+    byte[] encoded = encoder.toBytes().toByteArray();
+
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(bitWidth, ByteBuffer.wrap(encoded));
+    for (int i = 0; i < numValues; i++) {
+      assertThat(decoder.readInt()).as("exact 4 groups mismatch at " + i).isEqualTo(values[i]);
+    }
   }
 
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
