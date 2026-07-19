@@ -737,6 +737,11 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
+    public SELF withDeltaLengthByteArrayForBinary(boolean enable) {
+      encodingPropsBuilder.withDeltaLengthByteArrayForBinary(enable);
+      return self();
+    }
+
     /**
      * Enable or disable dictionary encoding of the specified column for the constructed writer.
      *

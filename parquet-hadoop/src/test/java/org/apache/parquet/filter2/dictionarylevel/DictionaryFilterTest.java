@@ -326,19 +326,20 @@ public class DictionaryFilterTest {
         assertFalse(
             "Column should not have plain data pages" + name,
             column.getEncodings().contains(Encoding.PLAIN));
+      } else if (name.startsWith("fallback_binary")) {
+        assertTrue(
+            "Column should have DELTA_LENGTH_BYTE_ARRAY encoding: " + name,
+            column.getEncodings().contains(Encoding.DELTA_LENGTH_BYTE_ARRAY));
+        assertTrue(
+            "Column should have some dictionary encoding: " + name,
+            column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
       } else {
         assertTrue(
             "Column should have plain encoding: " + name,
             column.getEncodings().contains(Encoding.PLAIN));
-        if (name.startsWith("fallback")) {
-          assertTrue(
-              "Column should have some dictionary encoding: " + name,
-              column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
-        } else {
-          assertFalse(
-              "Column should have no dictionary encoding: " + name,
-              column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
-        }
+        assertFalse(
+            "Column should have no dictionary encoding: " + name,
+            column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
       }
     }
   }

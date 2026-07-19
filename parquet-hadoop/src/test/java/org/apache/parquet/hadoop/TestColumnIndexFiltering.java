@@ -352,15 +352,17 @@ public class TestColumnIndexFiltering {
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
     try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
-      PhoneBookWriter.write(
-          ExampleParquetWriter.builder(file)
-              .withAllocator(allocator)
-              .withWriteMode(OVERWRITE)
-              .withRowGroupSize(rowGroupSize)
-              .withPageSize(pageSize)
-              .withEncryption(encryptionProperties)
-              .withWriterVersion(parquetVersion),
-          DATA);
+      ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(file)
+          .withAllocator(allocator)
+          .withWriteMode(OVERWRITE)
+          .withRowGroupSize(rowGroupSize)
+          .withPageSize(pageSize)
+          .withEncryption(encryptionProperties)
+          .withWriterVersion(parquetVersion);
+      if (parquetVersion == WriterVersion.PARQUET_1_0) {
+        builder.withDeltaLengthByteArrayForBinary(false);
+      }
+      PhoneBookWriter.write(builder, DATA);
     }
   }
 
