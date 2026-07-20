@@ -40,7 +40,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.parquet.TestUtils;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
@@ -391,10 +390,9 @@ public class TestPrimitiveComparator {
     Binary valid = int96(0, 0);
     for (long invalidNanos : new long[] {-1L, Long.MIN_VALUE, 86_400_000_000_001L, Long.MAX_VALUE}) {
       Binary invalid = int96(0, invalidNanos);
-      TestUtils.assertThrows(
-          "Expected IllegalArgumentException for nanos=" + invalidNanos,
-          IllegalArgumentException.class,
-          () -> BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(valid, invalid));
+      assertThatThrownBy(() -> BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(valid, invalid))
+          .as("Expected IllegalArgumentException for nanos=" + invalidNanos)
+          .isInstanceOf(IllegalArgumentException.class);
     }
   }
 
