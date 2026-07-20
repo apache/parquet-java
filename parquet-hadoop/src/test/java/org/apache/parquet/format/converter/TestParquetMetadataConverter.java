@@ -377,8 +377,8 @@ public class TestParquetMetadataConverter {
     MessageType schema = converter.fromParquetSchema(parquetSchema, null);
 
     PrimitiveType unknown = schema.getType("unknown").asPrimitiveType();
-    assertEquals(PrimitiveTypeName.BINARY, unknown.getPrimitiveTypeName());
-    assertNull(unknown.getLogicalTypeAnnotation());
+    assertThat(unknown.getPrimitiveTypeName()).isEqualTo(PrimitiveTypeName.BINARY);
+    assertThat(unknown.getLogicalTypeAnnotation()).isNull();
   }
 
   @Test
@@ -400,8 +400,8 @@ public class TestParquetMetadataConverter {
 
     PrimitiveType unknownWithConvertedType =
         schema.getType("unknownWithConvertedType").asPrimitiveType();
-    assertEquals(PrimitiveTypeName.BINARY, unknownWithConvertedType.getPrimitiveTypeName());
-    assertEquals(decimalType(2, 9), unknownWithConvertedType.getLogicalTypeAnnotation());
+    assertThat(unknownWithConvertedType.getPrimitiveTypeName()).isEqualTo(PrimitiveTypeName.BINARY);
+    assertThat(unknownWithConvertedType.getLogicalTypeAnnotation()).isEqualTo(decimalType(2, 9));
   }
 
   @Test
