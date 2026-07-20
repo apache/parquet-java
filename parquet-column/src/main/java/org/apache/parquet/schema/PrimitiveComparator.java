@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Comparator;
 import org.apache.parquet.io.api.Binary;
 
@@ -354,4 +355,49 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
           return "BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR";
         }
       };
+
+  /**
+   * Comparator for two timestamps encoded as INT96 (12-byte little-endian) binary.
+   * Layout: first 8 bytes = nanoseconds within the day, last 4 bytes = Julian day.
+   *
+   * Two-level comparison, matching the INT96 timestamp sort order:
+   * 1. Compare the last 4 bytes (Julian day) as a signed little-endian int32.
+   * 2. If equal, compare the first 8 bytes (nanos) as a signed little-endian int64.
+   */
+  static final PrimitiveComparator<Binary> BINARY_AS_INT96_TIMESTAMP_COMPARATOR = new BinaryComparator() {
+    private static final long NANOSECONDS_PER_DAY = 86_400_000_000_000L;
+
+    @Override
+    int compareBinary(Binary b1, Binary b2) {
+      if (b1.length() != 12 || b2.length() != 12) {
+        throw new IllegalArgumentException(
+            "INT96 binary length must be 12, got " + b1.length() + " and " + b2.length());
+      }
+
+      ByteBuffer bb1 = b1.toByteBuffer().slice();
+      ByteBuffer bb2 = b2.toByteBuffer().slice();
+      bb1.order(ByteOrder.LITTLE_ENDIAN);
+      bb2.order(ByteOrder.LITTLE_ENDIAN);
+
+      int result = Integer.compare(bb1.getInt(8), bb2.getInt(8));
+      if (result != 0) return result;
+
+      long nanos1 = bb1.getLong(0);
+      long nanos2 = bb2.getLong(0);
+      if (nanos1 < 0 || nanos1 > NANOSECONDS_PER_DAY) {
+        throw new IllegalArgumentException(
+            "Invalid nanos value (must be positive and less than 1 day): " + nanos1);
+      }
+      if (nanos2 < 0 || nanos2 > NANOSECONDS_PER_DAY) {
+        throw new IllegalArgumentException(
+            "Invalid nanos value (must be positive and less than 1 day): " + nanos2);
+      }
+      return Long.compare(nanos1, nanos2);
+    }
+
+    @Override
+    public String toString() {
+      return "BINARY_AS_INT96_TIMESTAMP_COMPARATOR";
+    }
+  };
 }
