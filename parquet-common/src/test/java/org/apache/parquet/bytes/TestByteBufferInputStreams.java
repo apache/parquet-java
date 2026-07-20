@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public abstract class TestByteBufferInputStreams {
   static final int DATA_LENGTH = 35;

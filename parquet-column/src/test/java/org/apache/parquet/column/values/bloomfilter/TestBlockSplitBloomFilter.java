@@ -30,9 +30,7 @@ import java.util.Set;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
 
 public class TestBlockSplitBloomFilter {
 
@@ -43,9 +41,6 @@ public class TestBlockSplitBloomFilter {
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
     assertThat(bloomFilter3.getBitsetSize()).isEqualTo(1024);
   }
-
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
 
   /*
    * This test is used to test basic operations including inserting, finding and

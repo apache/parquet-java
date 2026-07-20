@@ -38,7 +38,7 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.test.compat.StructWithUnionV1;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestThriftRecordConverter {
   @Test

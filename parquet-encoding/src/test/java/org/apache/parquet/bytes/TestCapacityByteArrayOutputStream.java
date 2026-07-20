@@ -22,20 +22,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TestCapacityByteArrayOutputStream {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }

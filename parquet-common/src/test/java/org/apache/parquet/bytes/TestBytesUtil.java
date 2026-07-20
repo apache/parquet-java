@@ -21,7 +21,7 @@ package org.apache.parquet.bytes;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestBytesUtil {
 

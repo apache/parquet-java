@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Offset.offset;
 
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestFloat16 {
   // Smallest negative value a half-precision float may have.

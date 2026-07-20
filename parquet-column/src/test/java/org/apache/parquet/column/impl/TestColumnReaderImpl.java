@@ -38,7 +38,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestColumnReaderImpl {
 

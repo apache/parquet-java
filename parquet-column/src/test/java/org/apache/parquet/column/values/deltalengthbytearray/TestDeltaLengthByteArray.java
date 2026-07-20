@@ -26,7 +26,7 @@ import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestDeltaLengthByteArray {
 

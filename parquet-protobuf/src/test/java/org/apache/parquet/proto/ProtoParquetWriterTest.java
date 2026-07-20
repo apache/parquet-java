@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.proto.test.TestProto3;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ProtoParquetWriterTest {
   @Test

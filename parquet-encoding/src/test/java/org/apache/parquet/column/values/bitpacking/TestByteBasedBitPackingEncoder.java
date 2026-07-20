@@ -21,7 +21,7 @@ package org.apache.parquet.column.values.bitpacking;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestByteBasedBitPackingEncoder {
 

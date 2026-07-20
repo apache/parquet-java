@@ -18,7 +18,6 @@
  */
 package org.apache.parquet;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,16 +30,15 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Rule;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.io.TempDir;
 
 public class DirectWriterTest {
 
-  @Rule
-  public final TemporaryFolder tempDir = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   protected interface DirectWriter {
-    public void write(RecordConsumer consumer);
+    void write(RecordConsumer consumer);
   }
 
   protected Path writeDirect(String type, DirectWriter writer) throws IOException {
@@ -56,11 +54,7 @@ public class DirectWriterTest {
   }
 
   protected Path writeDirect(MessageType type, DirectWriter writer, Map<String, String> metadata) throws IOException {
-    File temp = tempDir.newFile(UUID.randomUUID().toString());
-    temp.deleteOnExit();
-    temp.delete();
-
-    Path path = new Path(temp.getPath());
+    Path path = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
 
     ParquetWriter<Void> parquetWriter =
         new ParquetWriter<Void>(path, new DirectWriteSupport(type, writer, metadata));

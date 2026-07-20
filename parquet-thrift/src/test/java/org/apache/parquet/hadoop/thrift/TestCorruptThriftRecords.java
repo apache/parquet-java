@@ -22,7 +22,6 @@ import static org.apache.parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,14 +41,12 @@ import org.apache.parquet.thrift.test.compat.AStructThatLooksLikeUnionV2;
 import org.apache.parquet.thrift.test.compat.StructWithAStructThatLooksLikeUnionV2;
 import org.apache.parquet.thrift.test.compat.StructWithUnionV2;
 import org.apache.parquet.thrift.test.compat.UnionV2;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestCorruptThriftRecords {
-
-  @Rule
-  public final TemporaryFolder tempDir = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   public static class ReadMapper<T> extends Mapper<Void, T, Void, Void> {
     public static List<Object> records;
@@ -124,7 +121,7 @@ public class TestCorruptThriftRecords {
     // generate a file with records that are corrupt according to thrift
     // by writing some structs that when interpreted as unions will be
     // unreadable
-    Path outputPath = new Path(new File(tempDir.getRoot(), "corrupt_out").getAbsolutePath());
+    Path outputPath = new Path(tempDir.resolve("corrupt_out").toUri());
     ParquetWriter<StructWithAStructThatLooksLikeUnionV2> writer =
         new ThriftParquetWriter<StructWithAStructThatLooksLikeUnionV2>(
             outputPath, StructWithAStructThatLooksLikeUnionV2.class, CompressionCodecName.UNCOMPRESSED);

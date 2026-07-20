@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestMessageType {
   @Test

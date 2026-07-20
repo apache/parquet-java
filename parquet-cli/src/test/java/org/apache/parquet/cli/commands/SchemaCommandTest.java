@@ -27,7 +27,7 @@ import java.util.Arrays;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class SchemaCommandTest extends ParquetFileTest {
   @Test

@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ShowFooterCommandTest extends ParquetFileTest {
   @Test

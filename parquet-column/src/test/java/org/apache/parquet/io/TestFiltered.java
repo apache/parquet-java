@@ -44,7 +44,7 @@ import org.apache.parquet.filter.ColumnPredicates.PredicateFunction;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestFiltered {
 

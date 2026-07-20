@@ -77,7 +77,7 @@ import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.Int
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests of {@link ColumnIndexFilter}

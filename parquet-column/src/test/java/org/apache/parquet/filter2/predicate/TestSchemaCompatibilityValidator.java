@@ -40,7 +40,7 @@ import org.apache.parquet.filter2.predicate.Operators.LongColumn;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestSchemaCompatibilityValidator {
   private static final BinaryColumn stringC = binaryColumn("c");

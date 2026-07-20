@@ -31,7 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestBinary {
 

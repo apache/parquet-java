@@ -39,7 +39,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestReflectReadWrite {
 

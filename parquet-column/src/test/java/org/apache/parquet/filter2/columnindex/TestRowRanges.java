@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.PrimitiveIterator;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit test for {@link RowRanges}

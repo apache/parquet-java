@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * This test doesn't do much, but it makes sure that the Version class

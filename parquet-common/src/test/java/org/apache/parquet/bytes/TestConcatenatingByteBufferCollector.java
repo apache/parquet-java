@@ -27,9 +27,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test class of {@link ConcatenatingByteBufferCollector}.
@@ -38,12 +38,12 @@ public class TestConcatenatingByteBufferCollector {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }

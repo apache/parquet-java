@@ -23,19 +23,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
 public class TestReusingByteBufferAllocator {
 
   private enum AllocatorType {
@@ -56,48 +51,37 @@ public class TestReusingByteBufferAllocator {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Parameter
-  public ByteBufferAllocator innerAllocator;
-
-  @Parameter(1)
-  public AllocatorType type;
-
-  @Parameters(name = "{0} {1}")
-  public static List<Object[]> parameters() {
-    List<Object[]> params = new ArrayList<>();
-    for (Object allocator : new Object[] {
-      new HeapByteBufferAllocator() {
-        @Override
-        public String toString() {
-          return "HEAP";
-        }
-      },
-      new DirectByteBufferAllocator() {
-        @Override
-        public String toString() {
-          return "DIRECT";
-        }
-      }
-    }) {
-      for (Object type : AllocatorType.values()) {
-        params.add(new Object[] {allocator, type});
-      }
-    }
-    return params;
+  static Stream<Arguments> parameters() {
+    return Stream.of(
+            new HeapByteBufferAllocator() {
+              @Override
+              public String toString() {
+                return "HEAP";
+              }
+            },
+            new DirectByteBufferAllocator() {
+              @Override
+              public String toString() {
+                return "DIRECT";
+              }
+            })
+        .flatMap(innerAllocator ->
+            Stream.of(AllocatorType.values()).map(type -> Arguments.of(innerAllocator, type)));
   }
 
-  @Before
-  public void initAllocator() {
+  private void initAllocator(ByteBufferAllocator innerAllocator) {
     allocator = TrackingByteBufferAllocator.wrap(innerAllocator);
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
 
-  @Test
-  public void normalUseCase() {
+  @ParameterizedTest(name = "{0} {1}")
+  @MethodSource("parameters")
+  public void normalUseCase(ByteBufferAllocator innerAllocator, AllocatorType type) {
+    initAllocator(innerAllocator);
     try (ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
       assertThat(reusingAllocator.isDirect()).isEqualTo(innerAllocator.isDirect());
       for (int i = 0; i < 10; ++i) {
@@ -128,8 +112,10 @@ public class TestReusingByteBufferAllocator {
     assertThatThrownBy(buf::reset).isInstanceOf(InvalidMarkException.class);
   }
 
-  @Test
-  public void validateExceptions() {
+  @ParameterizedTest(name = "{0} {1}")
+  @MethodSource("parameters")
+  public void validateExceptions(ByteBufferAllocator innerAllocator, AllocatorType type) {
+    initAllocator(innerAllocator);
     try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator);
         ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
       ByteBuffer fromOther = allocator.allocate(10);

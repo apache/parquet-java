@@ -36,63 +36,53 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.apache.parquet.util.AutoCloseables;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 /**
  * Unit tests for the {@link BytesInput} class and its descendants.
  */
-@RunWith(Parameterized.class)
 public class TestBytesInput {
 
   private static final Random RANDOM = new Random(2024_02_20_16_28L);
   private TrackingByteBufferAllocator allocator;
-  private final ByteBufferAllocator innerAllocator;
+  private ByteBufferAllocator innerAllocator;
 
-  @Parameters(name = "{0}")
-  public static Object[][] parameters() {
-    return new Object[][] {
-      {
-        new HeapByteBufferAllocator() {
+  static Stream<Arguments> parameters() {
+    return Stream.of(
+        Arguments.of(new HeapByteBufferAllocator() {
           @Override
           public String toString() {
             return "heap-allocator";
           }
-        }
-      },
-      {
-        new DirectByteBufferAllocator() {
+        }),
+        Arguments.of(new DirectByteBufferAllocator() {
           @Override
           public String toString() {
             return "direct-allocator";
           }
-        }
-      }
-    };
+        }));
   }
 
-  public TestBytesInput(ByteBufferAllocator innerAllocator) {
+  private void initAllocator(ByteBufferAllocator innerAllocator) {
     this.innerAllocator = innerAllocator;
-  }
-
-  @Before
-  public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(innerAllocator);
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
 
-  @Test
-  public void testFromSingleByteBuffer() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromSingleByteBuffer(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     Supplier<BytesInput> factory = () -> BytesInput.from(toByteBuffer(data));
@@ -102,8 +92,10 @@ public class TestBytesInput {
     validateToByteBufferIsInternal(factory);
   }
 
-  @Test
-  public void testFromMultipleByteBuffers() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromMultipleByteBuffers(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     Supplier<BytesInput> factory = () -> BytesInput.from(
@@ -115,8 +107,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromByteArray() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromByteArray(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     byte[] input = new byte[data.length + 20];
@@ -127,8 +121,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromByteArrayToByteArrayZeroCopy() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromByteArrayToByteArrayZeroCopy(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     // Full array (offset=0, length=array.length): toByteArray() returns the backing array directly
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
@@ -139,8 +135,10 @@ public class TestBytesInput {
         .isSameAs(data);
   }
 
-  @Test
-  public void testFromByteArrayToByteArraySubRange() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromByteArrayToByteArraySubRange(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     // Sub-range (offset != 0): toByteArray() must return a copy of the specified range
     byte[] input = new byte[1000];
     RANDOM.nextBytes(input);
@@ -151,8 +149,10 @@ public class TestBytesInput {
     assertThat(result).isEqualTo(expected);
   }
 
-  @Test
-  public void testFromInputStream() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromInputStream(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     byte[] input = new byte[data.length + 10];
@@ -163,8 +163,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromLargeAvailableAgnosticInputStream() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromLargeAvailableAgnosticInputStream(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     // allocate a bytes that large than
     // java.nio.channel.Channels.ReadableByteChannelImpl.TRANSFER_SIZE = 8192
     byte[] data = new byte[9 * 1024];
@@ -177,8 +179,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromByteArrayOutputStream() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromByteArrayOutputStream(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -188,8 +192,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromCapacityByteArrayOutputStreamOneSlab() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromCapacityByteArrayOutputStreamOneSlab(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     List<CapacityByteArrayOutputStream> toClose = new ArrayList<>();
@@ -213,8 +219,11 @@ public class TestBytesInput {
     }
   }
 
-  @Test
-  public void testFromCapacityByteArrayOutputStreamMultipleSlabs() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromCapacityByteArrayOutputStreamMultipleSlabs(ByteBufferAllocator innerAllocator)
+      throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     List<CapacityByteArrayOutputStream> toClose = new ArrayList<>();
@@ -234,8 +243,10 @@ public class TestBytesInput {
     }
   }
 
-  @Test
-  public void testFromInt() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromInt(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     int value = RANDOM.nextInt();
     ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
     BytesUtils.writeIntLittleEndian(baos, value);
@@ -245,8 +256,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromUnsignedVarInt() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromUnsignedVarInt(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     int value = RANDOM.nextInt(Short.MAX_VALUE);
     ByteArrayOutputStream baos = new ByteArrayOutputStream(2);
     BytesUtils.writeUnsignedVarInt(value, baos);
@@ -256,8 +269,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromUnsignedVarLong() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromUnsignedVarLong(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     long value = RANDOM.nextInt(Integer.MAX_VALUE);
     ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
     BytesUtils.writeUnsignedVarLong(value, baos);
@@ -267,8 +282,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromZigZagVarInt() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromZigZagVarInt(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     int value = RANDOM.nextInt() % Short.MAX_VALUE;
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     BytesUtils.writeZigZagVarInt(value, baos);
@@ -278,8 +295,10 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testFromZigZagVarLong() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFromZigZagVarLong(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     long value = RANDOM.nextInt();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     BytesUtils.writeZigZagVarLong(value, baos);
@@ -289,16 +308,20 @@ public class TestBytesInput {
     validate(data, factory);
   }
 
-  @Test
-  public void testEmpty() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testEmpty(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[0];
     Supplier<BytesInput> factory = () -> BytesInput.empty();
 
     validate(data, factory);
   }
 
-  @Test
-  public void testConcatenatingByteBufferCollectorOneSlab() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testConcatenatingByteBufferCollectorOneSlab(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     List<ConcatenatingByteBufferCollector> toClose = new ArrayList<>();
@@ -319,8 +342,11 @@ public class TestBytesInput {
     }
   }
 
-  @Test
-  public void testConcatenatingByteBufferCollectorMultipleSlabs() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testConcatenatingByteBufferCollectorMultipleSlabs(ByteBufferAllocator innerAllocator)
+      throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
     List<ConcatenatingByteBufferCollector> toClose = new ArrayList<>();
@@ -342,8 +368,10 @@ public class TestBytesInput {
     }
   }
 
-  @Test
-  public void testConcat() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testConcat(ByteBufferAllocator innerAllocator) throws IOException {
+    initAllocator(innerAllocator);
     byte[] data = new byte[1000];
     RANDOM.nextBytes(data);
 

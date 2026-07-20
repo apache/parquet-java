@@ -52,21 +52,21 @@ import org.apache.parquet.column.values.plain.PlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class TestDictionary {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }

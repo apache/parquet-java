@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,25 +45,24 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * This class is based on org.apache.avro.generic.TestGenericLogicalTypes
  */
 public class TestGenericLogicalTypes {
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   public static final GenericData GENERIC = new GenericData();
   public static final LogicalType DECIMAL_9_2 = LogicalTypes.decimal(9, 2);
   public static final BigDecimal D1 = new BigDecimal("-34.34");
   public static final BigDecimal D2 = new BigDecimal("117230.00");
 
-  @BeforeClass
+  @BeforeAll
   public static void addDecimalAndUUID() {
     GENERIC.addLogicalTypeConversion(new Conversions.DecimalConversion());
     GENERIC.addLogicalTypeConversion(new Conversions.UUIDConversion());
@@ -281,10 +281,10 @@ public class TestGenericLogicalTypes {
   }
 
   private <D> File write(GenericData model, Schema schema, D... data) throws IOException {
-    return AvroTestUtil.write(temp, model, schema, data);
+    return AvroTestUtil.write(tempDir, model, schema, data);
   }
 
   private <D> File write(Configuration conf, GenericData model, Schema schema, D... data) throws IOException {
-    return AvroTestUtil.write(temp, conf, model, schema, data);
+    return AvroTestUtil.write(tempDir, conf, model, schema, data);
   }
 }

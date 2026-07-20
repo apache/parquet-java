@@ -47,29 +47,28 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestStringBehavior {
   public static Schema SCHEMA = null;
   public static BigDecimal BIG_DECIMAL = new BigDecimal("3.14");
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  public Path parquetFile;
+  public org.apache.hadoop.fs.Path parquetFile;
   public File avroFile;
 
-  @BeforeClass
+  @BeforeAll
   public static void readSchemaFile() throws IOException {
     TestStringBehavior.SCHEMA = new Schema.Parser()
         .parse(Resources.getResource("stringBehavior.avsc").openStream());
   }
 
-  @Before
+  @BeforeEach
   public void writeDataFiles() throws IOException {
     // convert BIG_DECIMAL to string by hand so generic can write it
     GenericRecord record = new GenericRecordBuilder(SCHEMA)
@@ -81,11 +80,7 @@ public class TestStringBehavior {
         .set("stringable_map", ImmutableMap.of(BIG_DECIMAL.toString(), 36))
         .build();
 
-    File file = temp.newFile("parquet");
-    file.delete();
-    file.deleteOnExit();
-
-    parquetFile = new Path(file.getPath());
+    parquetFile = new Path(tempDir.resolve("parquet").toUri());
     try (ParquetWriter<GenericRecord> parquet = AvroParquetWriter.<GenericRecord>builder(parquetFile)
         .withDataModel(GenericData.get())
         .withSchema(SCHEMA)
@@ -93,9 +88,7 @@ public class TestStringBehavior {
       parquet.write(record);
     }
 
-    avroFile = temp.newFile("avro");
-    avroFile.delete();
-    avroFile.deleteOnExit();
+    avroFile = tempDir.resolve("avro").toFile();
     try (DataFileWriter<GenericRecord> avro =
         new DataFileWriter<GenericRecord>(new GenericDatumWriter<>(SCHEMA)).create(SCHEMA, avroFile)) {
       avro.append(record);
