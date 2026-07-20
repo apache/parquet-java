@@ -24,7 +24,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.hadoop.TestInputFormat.makeBlockFromStats;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -87,36 +87,36 @@ public class TestRowGroupFilter {
     set1.add(10);
     set1.add(50);
     List<BlockMetaData> filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(in(foo, set1)), blocks, schema);
-    assertEquals(List.of(b1, b2, b5), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b5);
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(notIn(foo, set1)), blocks, schema);
-    assertEquals(List.of(b1, b2, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b3, b4, b5, b6);
 
     Set<Integer> set2 = new HashSet<>();
     set2.add(null);
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(in(foo, set2)), blocks, schema);
-    assertEquals(List.of(b1, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b3, b4, b5, b6);
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(notIn(foo, set2)), blocks, schema);
-    assertEquals(List.of(b1, b2, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b3, b4, b5, b6);
 
     set2.add(8);
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(in(foo, set2)), blocks, schema);
-    assertEquals(List.of(b1, b2, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b3, b4, b5, b6);
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(notIn(foo, set2)), blocks, schema);
-    assertEquals(List.of(b1, b2, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b3, b4, b5, b6);
 
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(eq(foo, 50)), blocks, schema);
-    assertEquals(List.of(b1, b2, b5), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b5);
 
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(notEq(foo, 50)), blocks, schema);
-    assertEquals(List.of(b1, b2, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b3, b4, b5, b6);
 
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(eq(foo, null)), blocks, schema);
-    assertEquals(List.of(b1, b3, b4, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b3, b4, b5, b6);
 
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(notEq(foo, null)), blocks, schema);
-    assertEquals(List.of(b1, b2, b3, b5, b6), filtered);
+    assertThat(filtered).containsExactly(b1, b2, b3, b5, b6);
 
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(eq(foo, 0)), blocks, schema);
-    assertEquals(List.of(b6), filtered);
+    assertThat(filtered).containsExactly(b6);
   }
 }

@@ -20,13 +20,11 @@ package org.apache.parquet.statistics;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
@@ -170,8 +168,10 @@ public class TestFloat16ReadWriteRoundTrip {
         ColumnChunkMetaData column =
             reader.getFooter().getBlocks().get(0).getColumns().get(0);
         ColumnIndex index = reader.readColumnIndex(column);
-        assertEquals(Collections.singletonList(expectedValues.get(i)[0]), toFloat16List(index.getMinValues()));
-        assertEquals(Collections.singletonList(expectedValues.get(i)[1]), toFloat16List(index.getMaxValues()));
+        assertThat(toFloat16List(index.getMinValues()))
+            .containsExactly(expectedValues.get(i)[0]);
+        assertThat(toFloat16List(index.getMaxValues()))
+            .containsExactly(expectedValues.get(i)[1]);
       }
     }
   }
@@ -203,7 +203,7 @@ public class TestFloat16ReadWriteRoundTrip {
       ColumnChunkMetaData column =
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
       ColumnIndex index = reader.readColumnIndex(column);
-      assertNull(index);
+      assertThat(index).isNull();
     }
   }
 

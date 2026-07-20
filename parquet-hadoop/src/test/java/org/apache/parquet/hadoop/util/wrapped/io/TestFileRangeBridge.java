@@ -18,12 +18,8 @@
 
 package org.apache.parquet.hadoop.util.wrapped.io;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeNoException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThatCode;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -46,13 +42,8 @@ public class TestFileRangeBridge {
 
   @Before
   public void setUp() {
-
-    // look for the FileRange; if not found, skip
-    try {
-      this.getClass().getClassLoader().loadClass(CLASSNAME);
-    } catch (ReflectiveOperationException e) {
-      assumeNoException(e);
-    }
+    assumeThatCode(() -> this.getClass().getClassLoader().loadClass(CLASSNAME))
+        .doesNotThrowAnyException();
   }
 
   /**
@@ -71,8 +62,10 @@ public class TestFileRangeBridge {
    */
   @Test
   public void testFileRangeBridgeAvailable() throws Throwable {
-    assertNotNull("FileRangeBridge instance null", FileRangeBridge.instance());
-    assertTrue("Bridge not available", FileRangeBridge.bridgeAvailable());
+    assertThat(FileRangeBridge.instance())
+        .as("FileRangeBridge instance null")
+        .isNotNull();
+    assertThat(FileRangeBridge.bridgeAvailable()).as("Bridge not available").isTrue();
   }
 
   /**
@@ -83,14 +76,14 @@ public class TestFileRangeBridge {
     Object reference = "backref";
     FileRangeBridge.WrappedFileRange range = FileRangeBridge.instance().createFileRange(512L, 16384, reference);
     LOG.info("created range {}", range);
-    assertNotNull("null range", range);
-    assertNotNull("null range instance", range.getFileRange());
-    assertEquals("offset of " + range, 512L, range.getOffset());
-    assertEquals("length of " + range, 16384, range.getLength());
-    assertSame("backref of " + range, reference, range.getReference());
+    assertThat(range).as("null range").isNotNull();
+    assertThat(range.getFileRange()).as("null range instance").isNotNull();
+    assertThat(range.getOffset()).as("offset of " + range).isEqualTo(512L);
+    assertThat(range.getLength()).as("length of " + range).isEqualTo(16384);
+    assertThat(range.getReference()).as("backref of " + range).isSameAs(reference);
 
     // this isn't set until readVectored() is called
-    assertNull("non-null range future", range.getData());
+    assertThat(range.getData()).as("non-null range future").isNull();
   }
 
   /**

@@ -38,10 +38,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDrop;
 import static org.apache.parquet.io.api.Binary.fromString;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashSet;
 import java.util.List;
@@ -141,17 +138,17 @@ public class TestStatisticsFilter {
 
   @Test
   public void testEqNonNull() {
-    assertTrue(canDrop(eq(intColumn, 9), columnMetas));
-    assertFalse(canDrop(eq(intColumn, 10), columnMetas));
-    assertFalse(canDrop(eq(intColumn, 100), columnMetas));
-    assertTrue(canDrop(eq(intColumn, 101), columnMetas));
+    assertThat(canDrop(eq(intColumn, 9), columnMetas)).isTrue();
+    assertThat(canDrop(eq(intColumn, 10), columnMetas)).isFalse();
+    assertThat(canDrop(eq(intColumn, 100), columnMetas)).isFalse();
+    assertThat(canDrop(eq(intColumn, 101), columnMetas)).isTrue();
 
     // drop columns of all nulls when looking for non-null value
-    assertTrue(canDrop(eq(intColumn, 0), nullColumnMetas));
-    assertTrue(canDrop(eq(missingColumn, fromString("any")), columnMetas));
+    assertThat(canDrop(eq(intColumn, 0), nullColumnMetas)).isTrue();
+    assertThat(canDrop(eq(missingColumn, fromString("any")), columnMetas)).isTrue();
 
-    assertFalse(canDrop(eq(intColumn, 50), missingMinMaxColumnMetas));
-    assertFalse(canDrop(eq(doubleColumn, 50.0), missingMinMaxColumnMetas));
+    assertThat(canDrop(eq(intColumn, 50), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(eq(doubleColumn, 50.0), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
@@ -164,47 +161,53 @@ public class TestStatisticsFilter {
     statsSomeNulls.setMinMax(10, 100);
     statsSomeNulls.setNumNulls(3);
 
-    assertTrue(canDrop(
-        eq(intColumn, null),
-        List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            eq(intColumn, null),
+            List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertFalse(canDrop(
-        eq(intColumn, null),
-        List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            eq(intColumn, null),
+            List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(eq(missingColumn, null), columnMetas));
+    assertThat(canDrop(eq(missingColumn, null), columnMetas)).isFalse();
 
-    assertFalse(canDrop(eq(intColumn, null), missingMinMaxColumnMetas));
-    assertFalse(canDrop(eq(doubleColumn, null), missingMinMaxColumnMetas));
+    assertThat(canDrop(eq(intColumn, null), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(eq(doubleColumn, null), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
   public void testNotEqNonNull() {
-    assertFalse(canDrop(notEq(intColumn, 9), columnMetas));
-    assertFalse(canDrop(notEq(intColumn, 10), columnMetas));
-    assertFalse(canDrop(notEq(intColumn, 100), columnMetas));
-    assertFalse(canDrop(notEq(intColumn, 101), columnMetas));
+    assertThat(canDrop(notEq(intColumn, 9), columnMetas)).isFalse();
+    assertThat(canDrop(notEq(intColumn, 10), columnMetas)).isFalse();
+    assertThat(canDrop(notEq(intColumn, 100), columnMetas)).isFalse();
+    assertThat(canDrop(notEq(intColumn, 101), columnMetas)).isFalse();
 
     IntStatistics allSevens = new IntStatistics();
     allSevens.setMinMax(7, 7);
-    assertTrue(canDrop(
-        notEq(intColumn, 7),
-        List.of(getIntColumnMeta(allSevens, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notEq(intColumn, 7),
+            List.of(getIntColumnMeta(allSevens, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
     allSevens.setNumNulls(100L);
-    assertFalse(canDrop(
-        notEq(intColumn, 7),
-        List.of(getIntColumnMeta(allSevens, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notEq(intColumn, 7),
+            List.of(getIntColumnMeta(allSevens, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
     allSevens.setNumNulls(177L);
-    assertFalse(canDrop(
-        notEq(intColumn, 7),
-        List.of(getIntColumnMeta(allSevens, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notEq(intColumn, 7),
+            List.of(getIntColumnMeta(allSevens, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(notEq(missingColumn, fromString("any")), columnMetas));
+    assertThat(canDrop(notEq(missingColumn, fromString("any")), columnMetas))
+        .isFalse();
 
-    assertFalse(canDrop(notEq(intColumn, 50), missingMinMaxColumnMetas));
-    assertFalse(canDrop(notEq(doubleColumn, 50.0), missingMinMaxColumnMetas));
+    assertThat(canDrop(notEq(intColumn, 50), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, 50.0), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
@@ -221,86 +224,89 @@ public class TestStatisticsFilter {
     statsAllNulls.setMinMax(0, 0);
     statsAllNulls.setNumNulls(177);
 
-    assertFalse(canDrop(
-        notEq(intColumn, null),
-        List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notEq(intColumn, null),
+            List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        notEq(intColumn, null),
-        List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notEq(intColumn, null),
+            List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertTrue(canDrop(
-        notEq(intColumn, null),
-        List.of(getIntColumnMeta(statsAllNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notEq(intColumn, null),
+            List.of(getIntColumnMeta(statsAllNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertTrue(canDrop(notEq(missingColumn, null), columnMetas));
+    assertThat(canDrop(notEq(missingColumn, null), columnMetas)).isTrue();
 
-    assertFalse(canDrop(notEq(intColumn, null), missingMinMaxColumnMetas));
-    assertFalse(canDrop(notEq(doubleColumn, null), missingMinMaxColumnMetas));
+    assertThat(canDrop(notEq(intColumn, null), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, null), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
   public void testLt() {
-    assertTrue(canDrop(lt(intColumn, 9), columnMetas));
-    assertTrue(canDrop(lt(intColumn, 10), columnMetas));
-    assertFalse(canDrop(lt(intColumn, 100), columnMetas));
-    assertFalse(canDrop(lt(intColumn, 101), columnMetas));
+    assertThat(canDrop(lt(intColumn, 9), columnMetas)).isTrue();
+    assertThat(canDrop(lt(intColumn, 10), columnMetas)).isTrue();
+    assertThat(canDrop(lt(intColumn, 100), columnMetas)).isFalse();
+    assertThat(canDrop(lt(intColumn, 101), columnMetas)).isFalse();
 
-    assertTrue(canDrop(lt(intColumn, 0), nullColumnMetas));
-    assertTrue(canDrop(lt(intColumn, 7), nullColumnMetas));
+    assertThat(canDrop(lt(intColumn, 0), nullColumnMetas)).isTrue();
+    assertThat(canDrop(lt(intColumn, 7), nullColumnMetas)).isTrue();
 
-    assertTrue(canDrop(lt(missingColumn, fromString("any")), columnMetas));
+    assertThat(canDrop(lt(missingColumn, fromString("any")), columnMetas)).isTrue();
 
-    assertFalse(canDrop(lt(intColumn, 0), missingMinMaxColumnMetas));
-    assertFalse(canDrop(lt(doubleColumn, 0.0), missingMinMaxColumnMetas));
+    assertThat(canDrop(lt(intColumn, 0), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, 0.0), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
   public void testLtEq() {
-    assertTrue(canDrop(ltEq(intColumn, 9), columnMetas));
-    assertFalse(canDrop(ltEq(intColumn, 10), columnMetas));
-    assertFalse(canDrop(ltEq(intColumn, 100), columnMetas));
-    assertFalse(canDrop(ltEq(intColumn, 101), columnMetas));
+    assertThat(canDrop(ltEq(intColumn, 9), columnMetas)).isTrue();
+    assertThat(canDrop(ltEq(intColumn, 10), columnMetas)).isFalse();
+    assertThat(canDrop(ltEq(intColumn, 100), columnMetas)).isFalse();
+    assertThat(canDrop(ltEq(intColumn, 101), columnMetas)).isFalse();
 
-    assertTrue(canDrop(ltEq(intColumn, 0), nullColumnMetas));
-    assertTrue(canDrop(ltEq(intColumn, 7), nullColumnMetas));
+    assertThat(canDrop(ltEq(intColumn, 0), nullColumnMetas)).isTrue();
+    assertThat(canDrop(ltEq(intColumn, 7), nullColumnMetas)).isTrue();
 
-    assertTrue(canDrop(ltEq(missingColumn, fromString("any")), columnMetas));
+    assertThat(canDrop(ltEq(missingColumn, fromString("any")), columnMetas)).isTrue();
 
-    assertFalse(canDrop(ltEq(intColumn, -1), missingMinMaxColumnMetas));
-    assertFalse(canDrop(ltEq(doubleColumn, -0.1), missingMinMaxColumnMetas));
+    assertThat(canDrop(ltEq(intColumn, -1), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, -0.1), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
   public void testGt() {
-    assertFalse(canDrop(gt(intColumn, 9), columnMetas));
-    assertFalse(canDrop(gt(intColumn, 10), columnMetas));
-    assertTrue(canDrop(gt(intColumn, 100), columnMetas));
-    assertTrue(canDrop(gt(intColumn, 101), columnMetas));
+    assertThat(canDrop(gt(intColumn, 9), columnMetas)).isFalse();
+    assertThat(canDrop(gt(intColumn, 10), columnMetas)).isFalse();
+    assertThat(canDrop(gt(intColumn, 100), columnMetas)).isTrue();
+    assertThat(canDrop(gt(intColumn, 101), columnMetas)).isTrue();
 
-    assertTrue(canDrop(gt(intColumn, 0), nullColumnMetas));
-    assertTrue(canDrop(gt(intColumn, 7), nullColumnMetas));
+    assertThat(canDrop(gt(intColumn, 0), nullColumnMetas)).isTrue();
+    assertThat(canDrop(gt(intColumn, 7), nullColumnMetas)).isTrue();
 
-    assertTrue(canDrop(gt(missingColumn, fromString("any")), columnMetas));
+    assertThat(canDrop(gt(missingColumn, fromString("any")), columnMetas)).isTrue();
 
-    assertFalse(canDrop(gt(intColumn, 0), missingMinMaxColumnMetas));
-    assertFalse(canDrop(gt(doubleColumn, 0.0), missingMinMaxColumnMetas));
+    assertThat(canDrop(gt(intColumn, 0), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 0.0), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
   public void testGtEq() {
-    assertFalse(canDrop(gtEq(intColumn, 9), columnMetas));
-    assertFalse(canDrop(gtEq(intColumn, 10), columnMetas));
-    assertFalse(canDrop(gtEq(intColumn, 100), columnMetas));
-    assertTrue(canDrop(gtEq(intColumn, 101), columnMetas));
+    assertThat(canDrop(gtEq(intColumn, 9), columnMetas)).isFalse();
+    assertThat(canDrop(gtEq(intColumn, 10), columnMetas)).isFalse();
+    assertThat(canDrop(gtEq(intColumn, 100), columnMetas)).isFalse();
+    assertThat(canDrop(gtEq(intColumn, 101), columnMetas)).isTrue();
 
-    assertTrue(canDrop(gtEq(intColumn, 0), nullColumnMetas));
-    assertTrue(canDrop(gtEq(intColumn, 7), nullColumnMetas));
+    assertThat(canDrop(gtEq(intColumn, 0), nullColumnMetas)).isTrue();
+    assertThat(canDrop(gtEq(intColumn, 7), nullColumnMetas)).isTrue();
 
-    assertTrue(canDrop(gtEq(missingColumn, fromString("any")), columnMetas));
+    assertThat(canDrop(gtEq(missingColumn, fromString("any")), columnMetas)).isTrue();
 
-    assertFalse(canDrop(gtEq(intColumn, 1), missingMinMaxColumnMetas));
-    assertFalse(canDrop(gtEq(doubleColumn, 0.1), missingMinMaxColumnMetas));
+    assertThat(canDrop(gtEq(intColumn, 1), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 0.1), missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
@@ -311,8 +317,8 @@ public class TestStatisticsFilter {
     values1.add(15);
     values1.add(17);
     values1.add(19);
-    assertFalse(canDrop(in(intColumn, values1), columnMetas));
-    assertFalse(canDrop(notIn(intColumn, values1), columnMetas));
+    assertThat(canDrop(in(intColumn, values1), columnMetas)).isFalse();
+    assertThat(canDrop(notIn(intColumn, values1), columnMetas)).isFalse();
 
     Set<Integer> values2 = new HashSet<>();
     values2.add(109);
@@ -320,8 +326,8 @@ public class TestStatisticsFilter {
     values2.add(5);
     values2.add(117);
     values2.add(101);
-    assertFalse(canDrop(in(intColumn, values2), columnMetas));
-    assertFalse(canDrop(notIn(intColumn, values2), columnMetas));
+    assertThat(canDrop(in(intColumn, values2), columnMetas)).isFalse();
+    assertThat(canDrop(notIn(intColumn, values2), columnMetas)).isFalse();
 
     Set<Integer> values3 = new HashSet<>();
     values3.add(1);
@@ -329,14 +335,14 @@ public class TestStatisticsFilter {
     values3.add(5);
     values3.add(7);
     values3.add(10);
-    assertFalse(canDrop(in(intColumn, values3), columnMetas));
-    assertFalse(canDrop(notIn(intColumn, values3), columnMetas));
+    assertThat(canDrop(in(intColumn, values3), columnMetas)).isFalse();
+    assertThat(canDrop(notIn(intColumn, values3), columnMetas)).isFalse();
 
     Set<Integer> values4 = new HashSet<>();
     values4.add(50);
     values4.add(60);
-    assertFalse(canDrop(in(intColumn, values4), missingMinMaxColumnMetas));
-    assertFalse(canDrop(notIn(intColumn, values4), missingMinMaxColumnMetas));
+    assertThat(canDrop(in(intColumn, values4), missingMinMaxColumnMetas)).isFalse();
+    assertThat(canDrop(notIn(intColumn, values4), missingMinMaxColumnMetas)).isFalse();
 
     Set<Double> values5 = new HashSet<>();
     values5.add(1.0);
@@ -344,24 +350,24 @@ public class TestStatisticsFilter {
     values5.add(95.0);
     values5.add(107.0);
     values5.add(99.0);
-    assertFalse(canDrop(in(doubleColumn, values5), columnMetas));
-    assertFalse(canDrop(notIn(doubleColumn, values5), columnMetas));
+    assertThat(canDrop(in(doubleColumn, values5), columnMetas)).isFalse();
+    assertThat(canDrop(notIn(doubleColumn, values5), columnMetas)).isFalse();
 
     Set<Binary> values6 = new HashSet<>();
     values6.add(Binary.fromString("test1"));
     values6.add(Binary.fromString("test2"));
-    assertTrue(canDrop(in(missingColumn, values6), columnMetas));
-    assertFalse(canDrop(notIn(missingColumn, values6), columnMetas));
+    assertThat(canDrop(in(missingColumn, values6), columnMetas)).isTrue();
+    assertThat(canDrop(notIn(missingColumn, values6), columnMetas)).isFalse();
 
     Set<Integer> values7 = new HashSet<>();
     values7.add(null);
-    assertFalse(canDrop(in(intColumn, values7), nullColumnMetas));
-    assertFalse(canDrop(notIn(intColumn, values7), nullColumnMetas));
+    assertThat(canDrop(in(intColumn, values7), nullColumnMetas)).isFalse();
+    assertThat(canDrop(notIn(intColumn, values7), nullColumnMetas)).isFalse();
 
     Set<Binary> values8 = new HashSet<>();
     values8.add(null);
-    assertFalse(canDrop(in(missingColumn, values8), columnMetas));
-    assertFalse(canDrop(notIn(missingColumn, values8), columnMetas));
+    assertThat(canDrop(in(missingColumn, values8), columnMetas)).isFalse();
+    assertThat(canDrop(notIn(missingColumn, values8), columnMetas)).isFalse();
 
     IntStatistics statsNoNulls = new IntStatistics();
     statsNoNulls.setMinMax(10, 100);
@@ -373,21 +379,25 @@ public class TestStatisticsFilter {
 
     Set<Integer> values9 = new HashSet<>();
     values9.add(null);
-    assertTrue(canDrop(
-        in(intColumn, values9),
-        List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            in(intColumn, values9),
+            List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertFalse(canDrop(
-        notIn(intColumn, values9),
-        List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notIn(intColumn, values9),
+            List.of(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        in(intColumn, values9),
-        List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            in(intColumn, values9),
+            List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        notIn(intColumn, values9),
-        List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            notIn(intColumn, values9),
+            List.of(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
   }
 
   @Test
@@ -431,54 +441,55 @@ public class TestStatisticsFilter {
 
   @Test
   public void testContainsEqNonNull() {
-    assertTrue(canDrop(contains(eq(intColumn, 9)), columnMetas));
-    assertFalse(canDrop(contains(eq(intColumn, 10)), columnMetas));
-    assertFalse(canDrop(contains(eq(intColumn, 100)), columnMetas));
-    assertTrue(canDrop(contains(eq(intColumn, 101)), columnMetas));
+    assertThat(canDrop(contains(eq(intColumn, 9)), columnMetas)).isTrue();
+    assertThat(canDrop(contains(eq(intColumn, 10)), columnMetas)).isFalse();
+    assertThat(canDrop(contains(eq(intColumn, 100)), columnMetas)).isFalse();
+    assertThat(canDrop(contains(eq(intColumn, 101)), columnMetas)).isTrue();
 
     // drop columns of all nulls when looking for non-null value
-    assertTrue(canDrop(contains(eq(intColumn, 0)), nullColumnMetas));
-    assertFalse(canDrop(contains(eq(intColumn, 50)), missingMinMaxColumnMetas));
+    assertThat(canDrop(contains(eq(intColumn, 0)), nullColumnMetas)).isTrue();
+    assertThat(canDrop(contains(eq(intColumn, 50)), missingMinMaxColumnMetas))
+        .isFalse();
   }
 
   @Test
   public void testContainsAnd() {
     Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
     Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
-    assertTrue(canDrop(and(yes, yes), columnMetas));
-    assertTrue(canDrop(and(yes, no), columnMetas));
-    assertTrue(canDrop(and(no, yes), columnMetas));
-    assertFalse(canDrop(and(no, no), columnMetas));
+    assertThat(canDrop(and(yes, yes), columnMetas)).isTrue();
+    assertThat(canDrop(and(yes, no), columnMetas)).isTrue();
+    assertThat(canDrop(and(no, yes), columnMetas)).isTrue();
+    assertThat(canDrop(and(no, no), columnMetas)).isFalse();
   }
 
   @Test
   public void testContainsOr() {
     Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
     Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
-    assertTrue(canDrop(or(yes, yes), columnMetas));
-    assertFalse(canDrop(or(yes, no), columnMetas));
-    assertFalse(canDrop(or(no, yes), columnMetas));
-    assertFalse(canDrop(or(no, no), columnMetas));
+    assertThat(canDrop(or(yes, yes), columnMetas)).isTrue();
+    assertThat(canDrop(or(yes, no), columnMetas)).isFalse();
+    assertThat(canDrop(or(no, yes), columnMetas)).isFalse();
+    assertThat(canDrop(or(no, no), columnMetas)).isFalse();
   }
 
   @Test
   public void testAnd() {
     FilterPredicate yes = eq(intColumn, 9);
     FilterPredicate no = eq(doubleColumn, 50D);
-    assertTrue(canDrop(and(yes, yes), columnMetas));
-    assertTrue(canDrop(and(yes, no), columnMetas));
-    assertTrue(canDrop(and(no, yes), columnMetas));
-    assertFalse(canDrop(and(no, no), columnMetas));
+    assertThat(canDrop(and(yes, yes), columnMetas)).isTrue();
+    assertThat(canDrop(and(yes, no), columnMetas)).isTrue();
+    assertThat(canDrop(and(no, yes), columnMetas)).isTrue();
+    assertThat(canDrop(and(no, no), columnMetas)).isFalse();
   }
 
   @Test
   public void testOr() {
     FilterPredicate yes = eq(intColumn, 9);
     FilterPredicate no = eq(doubleColumn, 50D);
-    assertTrue(canDrop(or(yes, yes), columnMetas));
-    assertFalse(canDrop(or(yes, no), columnMetas));
-    assertFalse(canDrop(or(no, yes), columnMetas));
-    assertFalse(canDrop(or(no, no), columnMetas));
+    assertThat(canDrop(or(yes, yes), columnMetas)).isTrue();
+    assertThat(canDrop(or(yes, no), columnMetas)).isFalse();
+    assertThat(canDrop(or(no, yes), columnMetas)).isFalse();
+    assertThat(canDrop(or(no, no), columnMetas)).isFalse();
   }
 
   public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer> {
@@ -556,67 +567,89 @@ public class TestStatisticsFilter {
     IntStatistics neither = new IntStatistics();
     neither.setMinMax(1, 2);
 
-    assertTrue(canDrop(pred, List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(pred, List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertFalse(canDrop(pred, List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(pred, List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(pred, List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(pred, List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(invPred, List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(invPred, List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertTrue(canDrop(invPred, List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(invPred, List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertFalse(canDrop(invPred, List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(invPred, List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
     // udpDropMissingColumn drops null column.
-    assertTrue(canDrop(
-        udpDropMissingColumn, List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            udpDropMissingColumn,
+            List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertTrue(canDrop(
-        udpDropMissingColumn, List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            udpDropMissingColumn,
+            List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertTrue(canDrop(
-        udpDropMissingColumn,
-        List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            udpDropMissingColumn,
+            List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
     // invUdpDropMissingColumn (i.e., not(udpDropMissingColumn)) keeps null column.
-    assertFalse(canDrop(
-        invUdpDropMissingColumn,
-        List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            invUdpDropMissingColumn,
+            List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        invUdpDropMissingColumn,
-        List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            invUdpDropMissingColumn,
+            List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        invUdpDropMissingColumn,
-        List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            invUdpDropMissingColumn,
+            List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
     // udpKeepMissingColumn keeps null column.
-    assertFalse(canDrop(
-        udpKeepMissingColumn, List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            udpKeepMissingColumn,
+            List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        udpKeepMissingColumn, List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            udpKeepMissingColumn,
+            List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
-    assertFalse(canDrop(
-        udpKeepMissingColumn,
-        List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            udpKeepMissingColumn,
+            List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isFalse();
 
     // invUdpKeepMissingColumn (i.e., not(udpKeepMissingColumn)) drops null column.
-    assertTrue(canDrop(
-        invUdpKeepMissingColumn,
-        List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            invUdpKeepMissingColumn,
+            List.of(getIntColumnMeta(seven, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertTrue(canDrop(
-        invUdpKeepMissingColumn,
-        List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            invUdpKeepMissingColumn,
+            List.of(getIntColumnMeta(eight, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertTrue(canDrop(
-        invUdpKeepMissingColumn,
-        List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+    assertThat(canDrop(
+            invUdpKeepMissingColumn,
+            List.of(getIntColumnMeta(neither, 177L), getDoubleColumnMeta(doubleStats, 177L))))
+        .isTrue();
 
-    assertFalse(canDrop(allPositivePred, missingMinMaxColumnMetas));
+    assertThat(canDrop(allPositivePred, missingMinMaxColumnMetas)).isFalse();
   }
 
   @Test
@@ -626,15 +659,11 @@ public class TestStatisticsFilter {
 
     FilterPredicate pred = and(not(eq(doubleColumn, 12.0)), eq(intColumn, 17));
 
-    try {
-      canDrop(pred, columnMetas);
-      fail("This should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter?"
-              + " not(eq(double.column, 12.0))",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> canDrop(pred, columnMetas))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter?"
+                + " not(eq(double.column, 12.0))");
   }
 
   private static final FloatColumn floatCol = floatColumn("float.column");
@@ -682,21 +711,23 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(allNanStats, 177L));
 
-    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(gt(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, 5.0), metas));
-    assertTrue(canDrop(in(doubleColumn, new HashSet<>(List.of(5.0))), metas));
+    assertThat(canDrop(eq(doubleColumn, 5.0), metas)).isTrue();
+    assertThat(canDrop(notEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(5.0))), metas))
+        .isTrue();
 
-    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+    assertThat(canDrop(eq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -711,15 +742,16 @@ public class TestStatisticsFilter {
         List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(mixedStats, 177L));
 
     // Non-NaN literal within range: cannot drop
-    assertFalse(canDrop(eq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(notEq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(lt(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(gt(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas));
-    assertFalse(canDrop(lt(doubleColumn, 0.0), metas));
-    assertFalse(canDrop(gt(doubleColumn, 200.0), metas));
+    assertThat(canDrop(eq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas))
+        .isFalse();
+    assertThat(canDrop(lt(doubleColumn, 0.0), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 200.0), metas)).isFalse();
 
     DoubleStatistics mixedEqualStats = new DoubleStatistics();
     mixedEqualStats.setMinMax(5.0, 5.0);
@@ -727,16 +759,17 @@ public class TestStatisticsFilter {
     mixedEqualStats.incrementNanCount(1);
     List<ColumnChunkMetaData> mixedEqualMetas =
         List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(mixedEqualStats, 177L));
-    assertFalse(canDrop(notEq(doubleColumn, 5.0), mixedEqualMetas));
+    assertThat(canDrop(notEq(doubleColumn, 5.0), mixedEqualMetas)).isFalse();
 
     // NaN literal: NaN values are present so cannot drop
-    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+    assertThat(canDrop(eq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -752,12 +785,12 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(statsWithUnknownNaNs, 177L));
 
-    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(gt(doubleColumn, 200.0), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, 200.0), metas));
+    assertThat(canDrop(eq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 200.0), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 200.0), metas)).isFalse();
   }
 
   @Test
@@ -771,21 +804,23 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(zeroNanStats, 177L));
 
-    assertFalse(canDrop(eq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(notEq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(lt(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(gt(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, 50.0), metas));
-    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas));
+    assertThat(canDrop(eq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 50.0), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas))
+        .isFalse();
 
-    assertTrue(canDrop(eq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+    assertThat(canDrop(eq(doubleColumn, Double.NaN), metas)).isTrue();
+    assertThat(canDrop(notEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -803,21 +838,23 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMetaWithType(ieee754Type, allNanStats, 177L));
 
-    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(lt(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(gt(doubleColumn, 5.0), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, 5.0), metas));
-    assertTrue(canDrop(in(doubleColumn, new HashSet<>(List.of(5.0))), metas));
+    assertThat(canDrop(eq(doubleColumn, 5.0), metas)).isTrue();
+    assertThat(canDrop(notEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 5.0), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(5.0))), metas))
+        .isTrue();
 
-    assertFalse(canDrop(eq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(gtEq(doubleColumn, Double.NaN), metas));
-    assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas));
+    assertThat(canDrop(eq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(notEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, Double.NaN), metas)).isFalse();
+    assertThat(canDrop(in(doubleColumn, new HashSet<>(List.of(Double.NaN))), metas))
+        .isFalse();
   }
 
   // ========================= Float NaN Tests =========================
@@ -832,21 +869,22 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(allNanStats, 177L));
 
-    assertTrue(canDrop(eq(floatCol, 5.0f), metas));
-    assertFalse(canDrop(notEq(floatCol, 5.0f), metas));
-    assertFalse(canDrop(lt(floatCol, 5.0f), metas));
-    assertFalse(canDrop(ltEq(floatCol, 5.0f), metas));
-    assertFalse(canDrop(gt(floatCol, 5.0f), metas));
-    assertFalse(canDrop(gtEq(floatCol, 5.0f), metas));
-    assertTrue(canDrop(in(floatCol, new HashSet<>(List.of(5.0f))), metas));
+    assertThat(canDrop(eq(floatCol, 5.0f), metas)).isTrue();
+    assertThat(canDrop(notEq(floatCol, 5.0f), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, 5.0f), metas)).isFalse();
+    assertThat(canDrop(ltEq(floatCol, 5.0f), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, 5.0f), metas)).isFalse();
+    assertThat(canDrop(gtEq(floatCol, 5.0f), metas)).isFalse();
+    assertThat(canDrop(in(floatCol, new HashSet<>(List.of(5.0f))), metas)).isTrue();
 
-    assertFalse(canDrop(eq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(gtEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas));
+    assertThat(canDrop(eq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(notEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -860,15 +898,15 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(mixedStats, 177L));
 
-    assertFalse(canDrop(eq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(notEq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(lt(floatCol, 50.0f), metas));
-    assertFalse(canDrop(ltEq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(gt(floatCol, 50.0f), metas));
-    assertFalse(canDrop(gtEq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas));
-    assertFalse(canDrop(lt(floatCol, 0.0f), metas));
-    assertFalse(canDrop(gt(floatCol, 200.0f), metas));
+    assertThat(canDrop(eq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(notEq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(ltEq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(gtEq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, 0.0f), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, 200.0f), metas)).isFalse();
 
     FloatStatistics mixedEqualStats = new FloatStatistics();
     mixedEqualStats.setMinMax(5.0f, 5.0f);
@@ -876,15 +914,16 @@ public class TestStatisticsFilter {
     mixedEqualStats.incrementNanCount(1);
     List<ColumnChunkMetaData> mixedEqualMetas =
         List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(mixedEqualStats, 177L));
-    assertFalse(canDrop(notEq(floatCol, 5.0f), mixedEqualMetas));
+    assertThat(canDrop(notEq(floatCol, 5.0f), mixedEqualMetas)).isFalse();
 
-    assertFalse(canDrop(eq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(gtEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas));
+    assertThat(canDrop(eq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(notEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -898,21 +937,22 @@ public class TestStatisticsFilter {
     List<ColumnChunkMetaData> metas =
         List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(zeroNanStats, 177L));
 
-    assertFalse(canDrop(eq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(notEq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(lt(floatCol, 50.0f), metas));
-    assertFalse(canDrop(ltEq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(gt(floatCol, 50.0f), metas));
-    assertFalse(canDrop(gtEq(floatCol, 50.0f), metas));
-    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas));
+    assertThat(canDrop(eq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(notEq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(ltEq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(gtEq(floatCol, 50.0f), metas)).isFalse();
+    assertThat(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas)).isFalse();
 
-    assertTrue(canDrop(eq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(gtEq(floatCol, Float.NaN), metas));
-    assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas));
+    assertThat(canDrop(eq(floatCol, Float.NaN), metas)).isTrue();
+    assertThat(canDrop(notEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(lt(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(ltEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(gt(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(gtEq(floatCol, Float.NaN), metas)).isFalse();
+    assertThat(canDrop(in(floatCol, new HashSet<>(List.of(Float.NaN))), metas))
+        .isFalse();
   }
 
   // ========================= Float16 NaN Tests =========================
@@ -958,21 +998,23 @@ public class TestStatisticsFilter {
     ColumnChunkMetaData float16Meta = getFloat16ColumnMeta(allNanStats, 177L);
     List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
 
-    assertTrue(canDrop(eq(float16Column, FLOAT16_ONE), metas));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_ONE), metas));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_ONE), metas));
-    assertFalse(canDrop(ltEq(float16Column, FLOAT16_ONE), metas));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_ONE), metas));
-    assertFalse(canDrop(gtEq(float16Column, FLOAT16_ONE), metas));
-    assertTrue(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_ONE))), metas));
+    assertThat(canDrop(eq(float16Column, FLOAT16_ONE), metas)).isTrue();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_ONE), metas)).isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_ONE), metas)).isFalse();
+    assertThat(canDrop(ltEq(float16Column, FLOAT16_ONE), metas)).isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_ONE), metas)).isFalse();
+    assertThat(canDrop(gtEq(float16Column, FLOAT16_ONE), metas)).isFalse();
+    assertThat(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_ONE))), metas))
+        .isTrue();
 
-    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(gtEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas));
+    assertThat(canDrop(eq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(ltEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(gtEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -989,21 +1031,23 @@ public class TestStatisticsFilter {
     ColumnChunkMetaData float16Meta = getFloat16ColumnMeta(mixedStats, 177L);
     List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
 
-    assertFalse(canDrop(eq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(ltEq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(gtEq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas));
+    assertThat(canDrop(eq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(ltEq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(gtEq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas))
+        .isFalse();
 
-    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(gtEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas));
+    assertThat(canDrop(eq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(ltEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(gtEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas))
+        .isFalse();
   }
 
   @Test
@@ -1020,20 +1064,22 @@ public class TestStatisticsFilter {
     ColumnChunkMetaData float16Meta = getFloat16ColumnMeta(zeroNanStats, 177L);
     List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
 
-    assertFalse(canDrop(eq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(ltEq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(gtEq(float16Column, FLOAT16_FIFTY), metas));
-    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas));
+    assertThat(canDrop(eq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(ltEq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(gtEq(float16Column, FLOAT16_FIFTY), metas)).isFalse();
+    assertThat(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas))
+        .isFalse();
 
-    assertTrue(canDrop(eq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(gtEq(float16Column, FLOAT16_NAN), metas));
-    assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas));
+    assertThat(canDrop(eq(float16Column, FLOAT16_NAN), metas)).isTrue();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(ltEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(gtEq(float16Column, FLOAT16_NAN), metas)).isFalse();
+    assertThat(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_NAN))), metas))
+        .isFalse();
   }
 }

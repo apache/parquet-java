@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop.util;
 
 import static org.apache.hadoop.fs.FileSystemTestBinder.addFileSystemForTesting;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -40,7 +42,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.impl.FutureDataInputStreamBuilderImpl;
 import org.apache.parquet.io.SeekableInputStream;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -150,7 +151,7 @@ public class TestHadoopOpenFile {
    */
   private static void openAndRead(final HadoopInputFile inputFile) throws IOException {
     try (SeekableInputStream stream = inputFile.newStream()) {
-      Assert.assertEquals("byte read", FIRST, stream.read());
+      assertThat(stream.read()).as("byte read").isEqualTo(FIRST);
     }
   }
 
@@ -170,7 +171,9 @@ public class TestHadoopOpenFile {
     doReturn(opener).when(mockFS).openFile(path);
 
     final HadoopInputFile inputFile = fileFromStatus();
-    Assert.assertThrows(FileNotFoundException.class, inputFile::newStream);
+    assertThatThrownBy(inputFile::newStream)
+        .isInstanceOf(FileNotFoundException.class)
+        .hasMessage("file not found");
     Mockito.verify(mockFS, never()).open(path);
   }
 
@@ -191,11 +194,10 @@ public class TestHadoopOpenFile {
     // this looks up the FS binding via the status file path.
     final HadoopInputFile inputFile = fileFromStatus();
 
-    final FileNotFoundException caught = Assert.assertThrows(FileNotFoundException.class, inputFile::newStream);
-    Assert.assertSame(fileNotFound, caught);
-    final Throwable[] suppressed = caught.getSuppressed();
-    Assert.assertEquals("number of suppressed exceptions", 1, suppressed.length);
-    Assert.assertSame(illegal, suppressed[0]);
+    assertThatThrownBy(inputFile::newStream)
+        .isInstanceOf(FileNotFoundException.class)
+        .isSameAs(fileNotFound)
+        .hasSuppressedException(illegal);
   }
 
   /**
@@ -213,11 +215,10 @@ public class TestHadoopOpenFile {
     // this looks up the FS binding via the status file path.
     final HadoopInputFile inputFile = fileFromStatus();
 
-    final NullPointerException caught = Assert.assertThrows(NullPointerException.class, inputFile::newStream);
-    Assert.assertSame(npe, caught);
-    final Throwable[] suppressed = caught.getSuppressed();
-    Assert.assertEquals("number of suppressed exceptions", 1, suppressed.length);
-    Assert.assertSame(illegal, suppressed[0]);
+    assertThatThrownBy(inputFile::newStream)
+        .isInstanceOf(NullPointerException.class)
+        .isSameAs(npe)
+        .hasSuppressedException(illegal);
   }
 
   /**

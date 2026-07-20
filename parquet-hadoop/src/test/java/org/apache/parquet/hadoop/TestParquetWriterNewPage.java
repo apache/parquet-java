@@ -28,8 +28,8 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.util.HashMap;
 import java.util.List;
@@ -102,17 +102,17 @@ public class TestParquetWriterNewPage {
             .build();
         for (int i = 0; i < 1000; i++) {
           Group group = reader.read();
-          assertEquals(
-              "test" + (i % modulo),
-              group.getBinary("binary_field", 0).toStringUsingUTF8());
-          assertEquals(32, group.getInteger("int32_field", 0));
-          assertEquals(64l, group.getLong("int64_field", 0));
-          assertEquals(true, group.getBoolean("boolean_field", 0));
-          assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
-          assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
-          assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
-          assertEquals(0, group.getFieldRepetitionCount("null_field"));
+          assertThat(group.getBinary("binary_field", 0).toStringUsingUTF8())
+              .isEqualTo("test" + (i % modulo));
+          assertThat(group.getInteger("int32_field", 0)).isEqualTo(32);
+          assertThat(group.getLong("int64_field", 0)).isEqualTo(64l);
+          assertThat(group.getBoolean("boolean_field", 0)).isEqualTo(true);
+          assertThat(group.getFloat("float_field", 0)).isCloseTo(1.0f, offset(0.001f));
+          assertThat(group.getDouble("double_field", 0)).isCloseTo(2.0d, offset(0.001));
+          assertThat(group.getBinary("flba_field", 0).toStringUsingUTF8())
+              .isEqualTo("foo");
+          assertThat(group.getInt96("int96_field", 0)).isEqualTo(Binary.fromConstantByteArray(new byte[12]));
+          assertThat(group.getFieldRepetitionCount("null_field")).isEqualTo(0);
         }
         reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
@@ -121,9 +121,9 @@ public class TestParquetWriterNewPage {
             if (column.getPath().toDotString().equals("binary_field")) {
               String key = modulo + "-" + version;
               Encoding expectedEncoding = expected.get(key);
-              assertTrue(
-                  key + ":" + column.getEncodings() + " should contain " + expectedEncoding,
-                  column.getEncodings().contains(expectedEncoding));
+              assertThat(column.getEncodings())
+                  .as(key + ":" + column.getEncodings() + " should contain " + expectedEncoding)
+                  .contains(expectedEncoding);
             }
           }
         }

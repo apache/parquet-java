@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,7 +46,6 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestZstandardCodec {
@@ -77,7 +78,7 @@ public class TestZstandardCodec {
     (new Random()).nextBytes(data);
     BytesInput compressedData = compress(codec, BytesInput.from(data));
     byte[] decompressedData = decompress(codec, compressedData, data.length);
-    Assert.assertArrayEquals(data, decompressedData);
+    assertThat(decompressedData).isEqualTo(data);
   }
 
   private BytesInput compress(ZstandardCodec codec, BytesInput bytes) throws IOException {
@@ -104,7 +105,7 @@ public class TestZstandardCodec {
     // Clear the cache so that a new codec can be created with new configuration
     CodecFactory.CODEC_BY_NAME.clear();
     long fileSizeHighLevel = runMrWithConf(22);
-    Assert.assertTrue(fileSizeLowLevel > fileSizeHighLevel);
+    assertThat(fileSizeLowLevel).isGreaterThan(fileSizeHighLevel);
   }
 
   private long runMrWithConf(int level) throws Exception {
@@ -115,7 +116,7 @@ public class TestZstandardCodec {
     Path path = new Path(
         Files.createTempDirectory("zstd" + level).toAbsolutePath().toString());
     RunningJob mapRedJob = runMapReduceJob(CompressionCodecName.ZSTD, jobConf, conf, path);
-    Assert.assertTrue(mapRedJob.isSuccessful());
+    assertThat(mapRedJob.isSuccessful()).isTrue();
     return getFileSize(path, conf);
   }
 

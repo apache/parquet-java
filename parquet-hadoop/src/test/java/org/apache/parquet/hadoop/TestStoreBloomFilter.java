@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.hadoop.TestBloomFiltering.generateDictionaryData;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,7 +41,6 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -88,14 +88,14 @@ public class TestStoreBloomFilter {
           // column `id` isn't fully encoded in dictionary, it will generate `BloomFilter`
           ColumnChunkMetaData idMeta = block.getColumns().get(0);
           EncodingStats idEncoding = idMeta.getEncodingStats();
-          Assert.assertTrue(idEncoding.hasNonDictionaryEncodedPages());
-          Assert.assertNotNull(reader.readBloomFilter(idMeta));
+          assertThat(idEncoding.hasNonDictionaryEncodedPages()).isTrue();
+          assertThat(reader.readBloomFilter(idMeta)).isNotNull();
 
           // column `name` is fully encoded in dictionary, it won't generate `BloomFilter`
           ColumnChunkMetaData nameMeta = block.getColumns().get(1);
           EncodingStats nameEncoding = nameMeta.getEncodingStats();
-          Assert.assertFalse(nameEncoding.hasNonDictionaryEncodedPages());
-          Assert.assertNull(reader.readBloomFilter(nameMeta));
+          assertThat(nameEncoding.hasNonDictionaryEncodedPages()).isFalse();
+          assertThat(reader.readBloomFilter(nameMeta)).isNull();
         } catch (IOException e) {
           e.printStackTrace();
         }

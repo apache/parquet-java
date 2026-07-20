@@ -33,13 +33,10 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +47,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -109,7 +105,6 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -227,22 +222,11 @@ public class TestParquetFileWriter {
         "message m { required group a {required binary b;} required group " + "c { required int64 d; }}");
     Configuration conf = new Configuration();
 
-    ParquetFileWriter writer = null;
-    boolean exceptionThrown = false;
     Path path = new Path(testFile.toURI());
-    try {
-      writer = createWriter(conf, schema, path);
-    } catch (IOException ioe1) {
-      exceptionThrown = true;
-    }
-    assertTrue(exceptionThrown);
-    exceptionThrown = false;
-    try {
-      writer = createWriter(conf, schema, path, OVERWRITE);
-    } catch (IOException ioe2) {
-      exceptionThrown = true;
-    }
-    assertTrue(!exceptionThrown);
+    assertThatThrownBy(() -> createWriter(conf, schema, path))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("already exists");
+    assertThatCode(() -> createWriter(conf, schema, path, OVERWRITE)).doesNotThrowAnyException();
     testFile.delete();
   }
 
@@ -288,23 +272,23 @@ public class TestParquetFileWriter {
     w.close();
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
+    assertThat(readFooter.getBlocks()).as("footer: " + readFooter).hasSize(2);
     BlockMetaData rowGroup = readFooter.getBlocks().get(0);
-    assertEquals(c1Ends - c1Starts, rowGroup.getColumns().get(0).getTotalSize());
-    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
-    assertEquals(c2Ends - c1Starts, rowGroup.getTotalByteSize());
+    assertThat(rowGroup.getColumns().get(0).getTotalSize()).isEqualTo(c1Ends - c1Starts);
+    assertThat(rowGroup.getColumns().get(1).getTotalSize()).isEqualTo(c2Ends - c2Starts);
+    assertThat(rowGroup.getTotalByteSize()).isEqualTo(c2Ends - c1Starts);
 
-    assertEquals(c1Starts, rowGroup.getColumns().get(0).getStartingPos());
-    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
-    assertEquals(c1p1Starts, rowGroup.getColumns().get(0).getFirstDataPageOffset());
-    assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
-    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffset());
-    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffset());
+    assertThat(rowGroup.getColumns().get(0).getStartingPos()).isEqualTo(c1Starts);
+    assertThat(rowGroup.getColumns().get(0).getDictionaryPageOffset()).isEqualTo(0);
+    assertThat(rowGroup.getColumns().get(0).getFirstDataPageOffset()).isEqualTo(c1p1Starts);
+    assertThat(rowGroup.getColumns().get(1).getStartingPos()).isEqualTo(c2Starts);
+    assertThat(rowGroup.getColumns().get(1).getDictionaryPageOffset()).isEqualTo(c2Starts);
+    assertThat(rowGroup.getColumns().get(1).getFirstDataPageOffset()).isEqualTo(c2p1Starts);
 
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
     expectedEncoding.add(BIT_PACKED);
-    assertEquals(expectedEncoding, rowGroup.getColumns().get(0).getEncodings());
+    assertThat(rowGroup.getColumns().get(0).getEncodings()).isEqualTo(expectedEncoding);
 
     { // read first block of col #1
       try (ParquetFileReader r = new ParquetFileReader(
@@ -314,10 +298,10 @@ public class TestParquetFileWriter {
           List.of(rowGroup),
           List.of(SCHEMA.getColumnDescription(PATH1)))) {
         PageReadStore pages = r.readNextRowGroup();
-        assertEquals(3, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(3);
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-        assertNull(r.readNextRowGroup());
+        assertThat(r.readNextRowGroup()).isNull();
       }
     }
 
@@ -330,7 +314,7 @@ public class TestParquetFileWriter {
           List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
 
         PageReadStore pages = r.readNextRowGroup();
-        assertEquals(3, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(3);
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
@@ -338,12 +322,12 @@ public class TestParquetFileWriter {
         validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
         pages = r.readNextRowGroup();
-        assertEquals(4, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(4);
 
         validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
         validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
-        assertNull(r.readNextRowGroup());
+        assertThat(r.readNextRowGroup()).isNull();
       }
     }
     PrintFooter.main(new String[] {path.toString()});
@@ -388,25 +372,25 @@ public class TestParquetFileWriter {
     w.end(new HashMap<String, String>());
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
+    assertThat(readFooter.getBlocks()).as("footer: " + readFooter).hasSize(2);
     BlockMetaData rowGroup = readFooter.getBlocks().get(0);
-    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
+    assertThat(rowGroup.getColumns().get(1).getTotalSize()).isEqualTo(c2Ends - c2Starts);
 
-    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
-    assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
-    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffset());
-    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffset());
+    assertThat(rowGroup.getColumns().get(0).getDictionaryPageOffset()).isEqualTo(0);
+    assertThat(rowGroup.getColumns().get(1).getStartingPos()).isEqualTo(c2Starts);
+    assertThat(rowGroup.getColumns().get(1).getDictionaryPageOffset()).isEqualTo(c2Starts);
+    assertThat(rowGroup.getColumns().get(1).getFirstDataPageOffset()).isEqualTo(c2p1Starts);
 
     BlockMetaData rowGroup2 = readFooter.getBlocks().get(1);
-    assertEquals(0, rowGroup2.getColumns().get(0).getDictionaryPageOffset());
-    assertEquals(c1Bock2Starts, rowGroup2.getColumns().get(0).getStartingPos());
-    assertEquals(c1p1Bock2Starts, rowGroup2.getColumns().get(0).getFirstDataPageOffset());
-    assertEquals(c1Block2Ends - c1Bock2Starts, rowGroup2.getColumns().get(0).getTotalSize());
+    assertThat(rowGroup2.getColumns().get(0).getDictionaryPageOffset()).isEqualTo(0);
+    assertThat(rowGroup2.getColumns().get(0).getStartingPos()).isEqualTo(c1Bock2Starts);
+    assertThat(rowGroup2.getColumns().get(0).getFirstDataPageOffset()).isEqualTo(c1p1Bock2Starts);
+    assertThat(rowGroup2.getColumns().get(0).getTotalSize()).isEqualTo(c1Block2Ends - c1Bock2Starts);
 
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
     expectedEncoding.add(BIT_PACKED);
-    assertEquals(expectedEncoding, rowGroup.getColumns().get(0).getEncodings());
+    assertThat(rowGroup.getColumns().get(0).getEncodings()).isEqualTo(expectedEncoding);
 
     ParquetInputSplit split = new ParquetInputSplit(
         path,
@@ -423,7 +407,7 @@ public class TestParquetFileWriter {
     TaskAttemptID taskAttemptID = TaskAttemptID.forName("attempt_0_1_m_1_1");
     TaskAttemptContext taskContext = ContextUtil.newTaskAttemptContext(configuration, taskAttemptID);
     RecordReader<Void, ArrayWritable> reader = input.createRecordReader(split, taskContext);
-    assertTrue(reader instanceof ParquetRecordReader);
+    assertThat(reader).isInstanceOf(ParquetRecordReader.class);
     // RowGroup.file_offset is checked here
     reader.initialize(split, taskContext);
     reader.close();
@@ -441,10 +425,9 @@ public class TestParquetFileWriter {
     w.start();
     w.startBlock(0);
 
-    TestUtils.assertThrows("End block with zero record", ParquetEncodingException.class, (Callable<Void>) () -> {
-      w.endBlock();
-      return null;
-    });
+    assertThatThrownBy(w::endBlock)
+        .isInstanceOf(ParquetEncodingException.class)
+        .hasMessage("End block with zero record");
   }
 
   @Test
@@ -483,8 +466,10 @@ public class TestParquetFileWriter {
           r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
       BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(
           readFooter.getBlocks().get(0).getColumns().get(0));
-      assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("hello"))));
-      assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("world"))));
+      assertThat(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("hello"))))
+          .isTrue();
+      assertThat(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("world"))))
+          .isTrue();
     }
   }
 
@@ -526,14 +511,12 @@ public class TestParquetFileWriter {
     w.end(new HashMap<>());
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    assertEquals("footer: " + readFooter, 1, readFooter.getBlocks().size());
-    assertEquals(
-        c1Ends - c1Starts,
-        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
-    assertEquals(
-        c2Ends - c2Starts,
-        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
-    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+    assertThat(readFooter.getBlocks()).as("footer: " + readFooter).hasSize(1);
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize())
+        .isEqualTo(c1Ends - c1Starts);
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize())
+        .isEqualTo(c2Ends - c2Starts);
+    assertThat(readFooter.getBlocks().get(0).getTotalByteSize()).isEqualTo(c2Ends - c1Starts);
 
     // check for stats
     org.apache.parquet.column.statistics.Statistics<?> expectedStats = createStatistics("b", "z", C1);
@@ -542,9 +525,8 @@ public class TestParquetFileWriter {
 
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
-    assertEquals(
-        expectedEncoding,
-        readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(0).getEncodings())
+        .isEqualTo(expectedEncoding);
 
     try (ParquetFileReader reader = new ParquetFileReader(
         configuration,
@@ -553,7 +535,7 @@ public class TestParquetFileWriter {
         readFooter.getBlocks(),
         List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
       PageReadStore pages = reader.readNextRowGroup();
-      assertEquals(14, pages.getRowCount());
+      assertThat(pages.getRowCount()).isEqualTo(14);
       validateV2Page(
           SCHEMA,
           pages,
@@ -598,7 +580,7 @@ public class TestParquetFileWriter {
           defLevels.toByteArray(),
           data2.toByteArray(),
           12);
-      assertNull(reader.readNextRowGroup());
+      assertThat(reader.readNextRowGroup()).isNull();
     }
   }
 
@@ -656,34 +638,33 @@ public class TestParquetFileWriter {
     }
     long startFooter = fileLen - footerLen - 8;
 
-    assertEquals("Footer should start after second row group without padding", secondRowGroupEnds, startFooter);
+    assertThat(startFooter)
+        .as("Footer should start after second row group without padding")
+        .isEqualTo(secondRowGroupEnds);
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, path);
-    assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
-    assertEquals(
-        c1Ends - c1Starts,
-        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
-    assertEquals(
-        c2Ends - c2Starts,
-        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
-    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+    assertThat(readFooter.getBlocks()).as("footer: " + readFooter).hasSize(2);
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize())
+        .isEqualTo(c1Ends - c1Starts);
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize())
+        .isEqualTo(c2Ends - c2Starts);
+    assertThat(readFooter.getBlocks().get(0).getTotalByteSize()).isEqualTo(c2Ends - c1Starts);
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
     expectedEncoding.add(BIT_PACKED);
-    assertEquals(
-        expectedEncoding,
-        readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(0).getEncodings())
+        .isEqualTo(expectedEncoding);
 
     // verify block starting positions with padding
-    assertEquals(
-        "First row group should start after magic",
-        4,
-        readFooter.getBlocks().get(0).getStartingPos());
-    assertTrue("First row group should end before the block size (120)", firstRowGroupEnds < 120);
-    assertEquals(
-        "Second row group should start at the block size",
-        120,
-        readFooter.getBlocks().get(1).getStartingPos());
+    assertThat(readFooter.getBlocks().get(0).getStartingPos())
+        .as("First row group should start after magic")
+        .isEqualTo(4);
+    assertThat(firstRowGroupEnds)
+        .as("First row group should end before the block size (120)")
+        .isLessThan(120);
+    assertThat(readFooter.getBlocks().get(1).getStartingPos())
+        .as("Second row group should start at the block size")
+        .isEqualTo(120);
 
     { // read first block of col #1
       try (ParquetFileReader r = new ParquetFileReader(
@@ -693,10 +674,10 @@ public class TestParquetFileWriter {
           List.of(readFooter.getBlocks().get(0)),
           List.of(SCHEMA.getColumnDescription(PATH1)))) {
         PageReadStore pages = r.readNextRowGroup();
-        assertEquals(3, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(3);
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-        assertNull(r.readNextRowGroup());
+        assertThat(r.readNextRowGroup()).isNull();
       }
     }
 
@@ -709,7 +690,7 @@ public class TestParquetFileWriter {
           List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
 
         PageReadStore pages = r.readNextRowGroup();
-        assertEquals(3, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(3);
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
@@ -717,12 +698,12 @@ public class TestParquetFileWriter {
         validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
         pages = r.readNextRowGroup();
-        assertEquals(4, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(4);
 
         validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
         validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
-        assertNull(r.readNextRowGroup());
+        assertThat(r.readNextRowGroup()).isNull();
       }
     }
     PrintFooter.main(new String[] {path.toString()});
@@ -784,34 +765,33 @@ public class TestParquetFileWriter {
     }
     long startFooter = fileLen - footerLen - 8;
 
-    assertEquals("Footer should start after second row group without padding", secondRowGroupEnds, startFooter);
+    assertThat(startFooter)
+        .as("Footer should start after second row group without padding")
+        .isEqualTo(secondRowGroupEnds);
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, path);
-    assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
-    assertEquals(
-        c1Ends - c1Starts,
-        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
-    assertEquals(
-        c2Ends - c2Starts,
-        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
-    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+    assertThat(readFooter.getBlocks()).as("footer: " + readFooter).hasSize(2);
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize())
+        .isEqualTo(c1Ends - c1Starts);
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize())
+        .isEqualTo(c2Ends - c2Starts);
+    assertThat(readFooter.getBlocks().get(0).getTotalByteSize()).isEqualTo(c2Ends - c1Starts);
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
     expectedEncoding.add(BIT_PACKED);
-    assertEquals(
-        expectedEncoding,
-        readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+    assertThat(readFooter.getBlocks().get(0).getColumns().get(0).getEncodings())
+        .isEqualTo(expectedEncoding);
 
     // verify block starting positions with padding
-    assertEquals(
-        "First row group should start after magic",
-        4,
-        readFooter.getBlocks().get(0).getStartingPos());
-    assertTrue("First row group should end before the block size (120)", firstRowGroupEnds > 100);
-    assertEquals(
-        "Second row group should start after no padding",
-        109,
-        readFooter.getBlocks().get(1).getStartingPos());
+    assertThat(readFooter.getBlocks().get(0).getStartingPos())
+        .as("First row group should start after magic")
+        .isEqualTo(4);
+    assertThat(firstRowGroupEnds)
+        .as("First row group should end before the block size (120)")
+        .isGreaterThan(100);
+    assertThat(readFooter.getBlocks().get(1).getStartingPos())
+        .as("Second row group should start after no padding")
+        .isEqualTo(109);
 
     { // read first block of col #1
       try (ParquetFileReader r = new ParquetFileReader(
@@ -821,10 +801,10 @@ public class TestParquetFileWriter {
           List.of(readFooter.getBlocks().get(0)),
           List.of(SCHEMA.getColumnDescription(PATH1)))) {
         PageReadStore pages = r.readNextRowGroup();
-        assertEquals(3, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(3);
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-        assertNull(r.readNextRowGroup());
+        assertThat(r.readNextRowGroup()).isNull();
       }
     }
 
@@ -836,7 +816,7 @@ public class TestParquetFileWriter {
           readFooter.getBlocks(),
           List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
         PageReadStore pages = r.readNextRowGroup();
-        assertEquals(3, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(3);
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
         validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
@@ -844,12 +824,12 @@ public class TestParquetFileWriter {
         validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
         pages = r.readNextRowGroup();
-        assertEquals(4, pages.getRowCount());
+        assertThat(pages.getRowCount()).isEqualTo(4);
 
         validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
         validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
-        assertNull(r.readNextRowGroup());
+        assertThat(r.readNextRowGroup()).isNull();
       }
     }
     PrintFooter.main(new String[] {path.toString()});
@@ -872,15 +852,15 @@ public class TestParquetFileWriter {
         (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
             createdBy, thriftStats, PrimitiveTypeName.INT64);
 
-    assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
-    assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
-    assertEquals(parquetMRstats.getNumNulls(), convertedBackStats.getNumNulls());
+    assertThat(convertedBackStats.getMax()).isEqualTo(parquetMRstats.getMax());
+    assertThat(convertedBackStats.getMin()).isEqualTo(parquetMRstats.getMin());
+    assertThat(convertedBackStats.getNumNulls()).isEqualTo(parquetMRstats.getNumNulls());
   }
 
   @Test
   public void testWriteReadStatistics() throws Exception {
     // this test assumes statistics will be read
-    Assume.assumeTrue(!shouldIgnoreStatistics(Version.FULL_VERSION, BINARY));
+    assumeThat(shouldIgnoreStatistics(Version.FULL_VERSION, BINARY)).isFalse();
 
     File testFile = temp.newFile();
     testFile.delete();
@@ -999,7 +979,7 @@ public class TestParquetFileWriter {
     footers = ParquetFileReader.readFooters(configuration, outputStatus, false);
     validateFooters(footers);
     footers = ParquetFileReader.readFooters(configuration, fs.getFileStatus(new Path(testDirPath, "part0")), false);
-    assertEquals(1, footers.size());
+    assertThat(footers).hasSize(1);
 
     final FileStatus metadataFile =
         fs.getFileStatus(new Path(testDirPath, ParquetFileWriter.PARQUET_METADATA_FILE));
@@ -1024,7 +1004,7 @@ public class TestParquetFileWriter {
   @Test
   public void testWriteReadStatisticsAllNulls() throws Exception {
     // this test assumes statistics will be read
-    Assume.assumeTrue(!shouldIgnoreStatistics(Version.FULL_VERSION, BINARY));
+    assumeThat(shouldIgnoreStatistics(Version.FULL_VERSION, BINARY)).isFalse();
 
     File testFile = temp.newFile();
     testFile.delete();
@@ -1051,26 +1031,25 @@ public class TestParquetFileWriter {
     // assert the statistics object is not empty
     org.apache.parquet.column.statistics.Statistics stats =
         readFooter.getBlocks().get(0).getColumns().get(0).getStatistics();
-    assertFalse("is empty: " + stats, stats.isEmpty());
+    assertThat(stats.isEmpty()).as("is empty: " + stats).isFalse();
     // assert the number of nulls are correct for the first block
-    assertEquals("nulls: " + stats, 1, stats.getNumNulls());
+    assertThat(stats.getNumNulls()).as("nulls: " + stats).isEqualTo(1);
   }
 
   private void validateFooters(final List<Footer> metadata) {
     LOG.debug("{}", metadata);
-    assertEquals(String.valueOf(metadata), 3, metadata.size());
+    assertThat(metadata).as(String.valueOf(metadata)).hasSize(3);
     for (Footer footer : metadata) {
       final File file = new File(footer.getFile().toUri());
-      assertTrue(file.getName(), file.getName().startsWith("part"));
-      assertTrue(file.getPath(), file.exists());
+      assertThat(file.getName().startsWith("part")).as(file.getName()).isTrue();
+      assertThat(file.exists()).as(file.getPath()).isTrue();
       final ParquetMetadata parquetMetadata = footer.getParquetMetadata();
-      assertEquals(2, parquetMetadata.getBlocks().size());
+      assertThat(parquetMetadata.getBlocks()).hasSize(2);
       final Map<String, String> keyValueMetaData =
           parquetMetadata.getFileMetaData().getKeyValueMetaData();
-      assertEquals("bar", keyValueMetaData.get("foo"));
-      assertEquals(
-          footer.getFile().getName(),
-          keyValueMetaData.get(footer.getFile().getName()));
+      assertThat(keyValueMetaData.get("foo")).isEqualTo("bar");
+      assertThat(keyValueMetaData.get(footer.getFile().getName()))
+          .isEqualTo(footer.getFile().getName());
     }
   }
 
@@ -1130,13 +1109,13 @@ public class TestParquetFileWriter {
       throws IOException {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
     DataPageV2 page = (DataPageV2) pageReader.readPage();
-    assertEquals(values, page.getValueCount());
-    assertEquals(rows, page.getRowCount());
-    assertEquals(nullCount, page.getNullCount());
-    assertEquals(uncompressedSize, page.getUncompressedSize());
-    assertArrayEquals(repetition, page.getRepetitionLevels().toByteArray());
-    assertArrayEquals(definition, page.getDefinitionLevels().toByteArray());
-    assertArrayEquals(data, page.getData().toByteArray());
+    assertThat(page.getValueCount()).isEqualTo(values);
+    assertThat(page.getRowCount()).isEqualTo(rows);
+    assertThat(page.getNullCount()).isEqualTo(nullCount);
+    assertThat(page.getUncompressedSize()).isEqualTo(uncompressedSize);
+    assertThat(page.getRepetitionLevels().toByteArray()).isEqualTo(repetition);
+    assertThat(page.getDefinitionLevels().toByteArray()).isEqualTo(definition);
+    assertThat(page.getData().toByteArray()).isEqualTo(data);
   }
 
   private org.apache.parquet.column.statistics.Statistics<?> createStatistics(
@@ -1152,8 +1131,8 @@ public class TestParquetFileWriter {
       throws IOException {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
     DataPage page = pageReader.readPage();
-    assertEquals(values, page.getValueCount());
-    assertArrayEquals(bytes.toByteArray(), ((DataPageV1) page).getBytes().toByteArray());
+    assertThat(page.getValueCount()).isEqualTo(values);
+    assertThat(((DataPageV1) page).getBytes().toByteArray()).isEqualTo(bytes.toByteArray());
   }
 
   @Test
@@ -1168,13 +1147,12 @@ public class TestParquetFileWriter {
         new HashMap<String, String>(),
         "test2");
     GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
-    assertEquals(
-        merged.getSchema(),
-        new MessageType(
+    assertThat(new MessageType(
             "root1",
             new PrimitiveType(REPEATED, BINARY, "a"),
             new PrimitiveType(OPTIONAL, BINARY, "b"),
-            new PrimitiveType(REQUIRED, BINARY, "c")));
+            new PrimitiveType(REQUIRED, BINARY, "c")))
+        .isEqualTo(merged.getSchema());
   }
 
   @Test
@@ -1215,15 +1193,14 @@ public class TestParquetFileWriter {
 
     ParquetMetadata merged = ParquetFileWriter.mergeFooters(new Path("/tmp"), footers);
 
-    assertEquals(
-        new MessageType(
+    assertThat(merged.getFileMetaData().getSchema())
+        .isEqualTo(new MessageType(
             "root1",
             new PrimitiveType(REPEATED, BINARY, "a"),
             new PrimitiveType(OPTIONAL, BINARY, "b"),
-            new PrimitiveType(REQUIRED, BINARY, "c")),
-        merged.getFileMetaData().getSchema());
+            new PrimitiveType(REQUIRED, BINARY, "c")));
 
-    assertEquals("Should have all blocks", expected, merged.getBlocks());
+    assertThat(merged.getBlocks()).as("Should have all blocks").isEqualTo(expected);
   }
 
   /**
@@ -1343,90 +1320,95 @@ public class TestParquetFileWriter {
         HadoopInputFile.fromPath(path, configuration),
         ParquetReadOptions.builder().build())) {
       ParquetMetadata footer = reader.getFooter();
-      assertEquals(3, footer.getBlocks().size());
+      assertThat(footer.getBlocks()).hasSize(3);
       BlockMetaData blockMeta = footer.getBlocks().get(1);
-      assertEquals(2, blockMeta.getColumns().size());
+      assertThat(blockMeta.getColumns()).hasSize(2);
 
       ColumnIndex columnIndex =
           reader.readColumnIndex(blockMeta.getColumns().get(0));
-      assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
-      assertTrue(List.of(1l, 0l).equals(columnIndex.getNullCounts()));
-      assertTrue(List.of(false, false).equals(columnIndex.getNullPages()));
+      assertThat(columnIndex.getBoundaryOrder()).isEqualTo(BoundaryOrder.ASCENDING);
+      assertThat(columnIndex.getNullCounts()).containsExactly(1L, 0L);
+      assertThat(columnIndex.getNullPages()).containsExactly(false, false);
       List<ByteBuffer> minValues = columnIndex.getMinValues();
-      assertEquals(2, minValues.size());
+      assertThat(minValues).hasSize(2);
       List<ByteBuffer> maxValues = columnIndex.getMaxValues();
-      assertEquals(2, maxValues.size());
-      assertEquals("aaa", new String(minValues.get(0).array(), StandardCharsets.UTF_8));
-      assertEquals("aaa", new String(maxValues.get(0).array(), StandardCharsets.UTF_8));
-      assertEquals("bbb", new String(minValues.get(1).array(), StandardCharsets.UTF_8));
-      assertEquals("ccc", new String(maxValues.get(1).array(), StandardCharsets.UTF_8));
+      assertThat(maxValues).hasSize(2);
+      assertThat(new String(minValues.get(0).array(), StandardCharsets.UTF_8))
+          .isEqualTo("aaa");
+      assertThat(new String(maxValues.get(0).array(), StandardCharsets.UTF_8))
+          .isEqualTo("aaa");
+      assertThat(new String(minValues.get(1).array(), StandardCharsets.UTF_8))
+          .isEqualTo("bbb");
+      assertThat(new String(maxValues.get(1).array(), StandardCharsets.UTF_8))
+          .isEqualTo("ccc");
 
       columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(1));
-      assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
-      assertTrue(List.of(0l, 3l, 0l).equals(columnIndex.getNullCounts()));
-      assertTrue(List.of(false, true, false).equals(columnIndex.getNullPages()));
+      assertThat(columnIndex.getBoundaryOrder()).isEqualTo(BoundaryOrder.DESCENDING);
+      assertThat(columnIndex.getNullCounts()).containsExactly(0L, 3L, 0L);
+      assertThat(columnIndex.getNullPages()).containsExactly(false, true, false);
       minValues = columnIndex.getMinValues();
-      assertEquals(3, minValues.size());
+      assertThat(minValues).hasSize(3);
       maxValues = columnIndex.getMaxValues();
-      assertEquals(3, maxValues.size());
-      assertEquals(100, BytesUtils.bytesToLong(minValues.get(0).array()));
-      assertEquals(117, BytesUtils.bytesToLong(maxValues.get(0).array()));
-      assertEquals(0, minValues.get(1).array().length);
-      assertEquals(0, maxValues.get(1).array().length);
-      assertEquals(0, BytesUtils.bytesToLong(minValues.get(2).array()));
-      assertEquals(0, BytesUtils.bytesToLong(maxValues.get(2).array()));
+      assertThat(maxValues).hasSize(3);
+      assertThat(BytesUtils.bytesToLong(minValues.get(0).array())).isEqualTo(100);
+      assertThat(BytesUtils.bytesToLong(maxValues.get(0).array())).isEqualTo(117);
+      assertThat(minValues.get(1).array().length).isEqualTo(0);
+      assertThat(maxValues.get(1).array().length).isEqualTo(0);
+      assertThat(BytesUtils.bytesToLong(minValues.get(2).array())).isEqualTo(0);
+      assertThat(BytesUtils.bytesToLong(maxValues.get(2).array())).isEqualTo(0);
 
       OffsetIndex offsetIndex =
           reader.readOffsetIndex(blockMeta.getColumns().get(0));
-      assertEquals(2, offsetIndex.getPageCount());
-      assertEquals(c1p1Starts, offsetIndex.getOffset(0));
-      assertEquals(c1p2Starts, offsetIndex.getOffset(1));
-      assertEquals(c1p2Starts - c1p1Starts, offsetIndex.getCompressedPageSize(0));
-      assertEquals(c1Ends - c1p2Starts, offsetIndex.getCompressedPageSize(1));
-      assertEquals(0, offsetIndex.getFirstRowIndex(0));
-      assertEquals(1, offsetIndex.getFirstRowIndex(1));
+      assertThat(offsetIndex.getPageCount()).isEqualTo(2);
+      assertThat(offsetIndex.getOffset(0)).isEqualTo(c1p1Starts);
+      assertThat(offsetIndex.getOffset(1)).isEqualTo(c1p2Starts);
+      assertThat(offsetIndex.getCompressedPageSize(0)).isEqualTo(c1p2Starts - c1p1Starts);
+      assertThat(offsetIndex.getCompressedPageSize(1)).isEqualTo(c1Ends - c1p2Starts);
+      assertThat(offsetIndex.getFirstRowIndex(0)).isEqualTo(0);
+      assertThat(offsetIndex.getFirstRowIndex(1)).isEqualTo(1);
 
       offsetIndex = reader.readOffsetIndex(blockMeta.getColumns().get(1));
-      assertEquals(3, offsetIndex.getPageCount());
-      assertEquals(c2p1Starts, offsetIndex.getOffset(0));
-      assertEquals(c2p2Starts, offsetIndex.getOffset(1));
-      assertEquals(c2p3Starts, offsetIndex.getOffset(2));
-      assertEquals(c2p2Starts - c2p1Starts, offsetIndex.getCompressedPageSize(0));
-      assertEquals(c2p3Starts - c2p2Starts, offsetIndex.getCompressedPageSize(1));
-      assertEquals(c2Ends - c2p3Starts, offsetIndex.getCompressedPageSize(2));
-      assertEquals(0, offsetIndex.getFirstRowIndex(0));
-      assertEquals(1, offsetIndex.getFirstRowIndex(1));
-      assertEquals(3, offsetIndex.getFirstRowIndex(2));
+      assertThat(offsetIndex.getPageCount()).isEqualTo(3);
+      assertThat(offsetIndex.getOffset(0)).isEqualTo(c2p1Starts);
+      assertThat(offsetIndex.getOffset(1)).isEqualTo(c2p2Starts);
+      assertThat(offsetIndex.getOffset(2)).isEqualTo(c2p3Starts);
+      assertThat(offsetIndex.getCompressedPageSize(0)).isEqualTo(c2p2Starts - c2p1Starts);
+      assertThat(offsetIndex.getCompressedPageSize(1)).isEqualTo(c2p3Starts - c2p2Starts);
+      assertThat(offsetIndex.getCompressedPageSize(2)).isEqualTo(c2Ends - c2p3Starts);
+      assertThat(offsetIndex.getFirstRowIndex(0)).isEqualTo(0);
+      assertThat(offsetIndex.getFirstRowIndex(1)).isEqualTo(1);
+      assertThat(offsetIndex.getFirstRowIndex(2)).isEqualTo(3);
 
       if (columnIndexTruncateLen == Integer.MAX_VALUE) {
-        assertNull(reader.readColumnIndex(
-            footer.getBlocks().get(2).getColumns().get(0)));
+        assertThat(reader.readColumnIndex(
+                footer.getBlocks().get(2).getColumns().get(0)))
+            .isNull();
       } else {
         blockMeta = footer.getBlocks().get(2);
-        assertNotNull(reader.readColumnIndex(blockMeta.getColumns().get(0)));
+        assertThat(reader.readColumnIndex(blockMeta.getColumns().get(0)))
+            .isNotNull();
         columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(0));
-        assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
-        assertTrue(List.of(0l).equals(columnIndex.getNullCounts()));
-        assertTrue(List.of(false).equals(columnIndex.getNullPages()));
+        assertThat(columnIndex.getBoundaryOrder()).isEqualTo(BoundaryOrder.ASCENDING);
+        assertThat(columnIndex.getNullCounts()).containsExactly(0L);
+        assertThat(columnIndex.getNullPages()).containsExactly(false);
         minValues = columnIndex.getMinValues();
-        assertEquals(1, minValues.size());
+        assertThat(minValues).hasSize(1);
         maxValues = columnIndex.getMaxValues();
-        assertEquals(1, maxValues.size());
+        assertThat(maxValues).hasSize(1);
 
         BinaryTruncator truncator =
             BinaryTruncator.getTruncator(SCHEMA.getType(PATH1).asPrimitiveType());
-        assertEquals(
-            new String(new byte[1], StandardCharsets.UTF_8),
-            new String(minValues.get(0).array(), StandardCharsets.UTF_8));
+        assertThat(new String(minValues.get(0).array(), StandardCharsets.UTF_8))
+            .isEqualTo(new String(new byte[1], StandardCharsets.UTF_8));
         byte[] truncatedMaxValue = truncator
             .truncateMax(
                 Binary.fromConstantByteArray(new byte[(int) MAX_STATS_SIZE]), columnIndexTruncateLen)
             .getBytes();
-        assertEquals(
-            new String(truncatedMaxValue, StandardCharsets.UTF_8),
-            new String(maxValues.get(0).array(), StandardCharsets.UTF_8));
+        assertThat(new String(maxValues.get(0).array(), StandardCharsets.UTF_8))
+            .isEqualTo(new String(truncatedMaxValue, StandardCharsets.UTF_8));
 
-        assertNull(reader.readColumnIndex(blockMeta.getColumns().get(1)));
+        assertThat(reader.readColumnIndex(blockMeta.getColumns().get(1)))
+            .isNull();
       }
     }
   }
@@ -1454,19 +1436,15 @@ public class TestParquetFileWriter {
         keyValues2,
         "test");
     GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
-    try {
-      merged.merge(new StrictKeyValueMetadataMergeStrategy());
-      fail("Merge metadata is expected to fail because of conflicting key values");
-    } catch (RuntimeException e) {
-      // expected because of conflicting values
-      assertTrue(e.getMessage().contains("could not merge metadata"));
-    }
+    assertThatThrownBy(() -> merged.merge(new StrictKeyValueMetadataMergeStrategy()))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("could not merge metadata");
 
     Map<String, String> mergedKeyValues =
         merged.merge(new ConcatenatingKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
-    assertEquals(1, mergedKeyValues.size());
+    assertThat(mergedKeyValues).hasSize(1);
     String mergedValue = mergedKeyValues.get("a");
-    assertTrue(mergedValue.equals("b,c") || mergedValue.equals("c,b"));
+    assertThat(mergedValue).isIn("b,c", "c,b");
   }
 
   @Test
@@ -1494,8 +1472,8 @@ public class TestParquetFileWriter {
     GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
     Map<String, String> mergedValues =
         merged.merge(new StrictKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
-    assertEquals("b", mergedValues.get("a"));
-    assertEquals("d", mergedValues.get("c"));
+    assertThat(mergedValues.get("a")).isEqualTo("b");
+    assertThat(mergedValues.get("c")).isEqualTo("d");
   }
 
   private org.apache.parquet.column.statistics.Statistics<?> statsC1(Binary... values) {

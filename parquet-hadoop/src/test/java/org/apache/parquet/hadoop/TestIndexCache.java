@@ -23,6 +23,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -42,7 +44,6 @@ import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -80,7 +81,7 @@ public class TestIndexCache {
     ParquetReadOptions options = ParquetReadOptions.builder().build();
     ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
     IndexCache indexCache = IndexCache.create(fileReader, new HashSet<>(), IndexCache.CacheStrategy.NONE, false);
-    Assert.assertTrue(indexCache instanceof NoneIndexCache);
+    assertThat(indexCache).isInstanceOf(NoneIndexCache.class);
     List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
     for (BlockMetaData blockMetaData : blocks) {
       indexCache.setBlockMetadata(blockMetaData);
@@ -88,10 +89,9 @@ public class TestIndexCache {
         validateColumnIndex(fileReader.readColumnIndex(chunk), indexCache.getColumnIndex(chunk));
         validateOffsetIndex(fileReader.readOffsetIndex(chunk), indexCache.getOffsetIndex(chunk));
 
-        Assert.assertEquals(
-            "BloomFilter should match",
-            fileReader.readBloomFilter(chunk),
-            indexCache.getBloomFilter(chunk));
+        assertThat(indexCache.getBloomFilter(chunk))
+            .as("BloomFilter should match")
+            .isEqualTo(fileReader.readBloomFilter(chunk));
       }
     }
   }
@@ -110,11 +110,11 @@ public class TestIndexCache {
     columns.add(ColumnPath.fromDotString("Links.Forward"));
 
     IndexCache indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, false);
-    Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
+    assertThat(indexCache).isInstanceOf(PrefetchIndexCache.class);
     validPrecacheIndexCache(fileReader, indexCache, columns, false);
 
     indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, true);
-    Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
+    assertThat(indexCache).isInstanceOf(PrefetchIndexCache.class);
     validPrecacheIndexCache(fileReader, indexCache, columns, true);
   }
 
@@ -139,16 +139,21 @@ public class TestIndexCache {
         validateColumnIndex(fileReader.readColumnIndex(chunk), indexCache.getColumnIndex(chunk));
         validateOffsetIndex(fileReader.readOffsetIndex(chunk), indexCache.getOffsetIndex(chunk));
 
-        Assert.assertEquals(
-            "BloomFilter should match",
-            fileReader.readBloomFilter(chunk),
-            indexCache.getBloomFilter(chunk));
+        assertThat(indexCache.getBloomFilter(chunk))
+            .as("BloomFilter should match")
+            .isEqualTo(fileReader.readBloomFilter(chunk));
 
         if (freeCacheAfterGet) {
-          Assert.assertThrows(IllegalStateException.class, () -> indexCache.getColumnIndex(chunk));
-          Assert.assertThrows(IllegalStateException.class, () -> indexCache.getOffsetIndex(chunk));
+          assertThatThrownBy(() -> indexCache.getColumnIndex(chunk))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessageContaining("Not found cached ColumnIndex");
+          assertThatThrownBy(() -> indexCache.getOffsetIndex(chunk))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessageContaining("Not found cached OffsetIndex");
           if (columns.contains(chunk.getPath())) {
-            Assert.assertThrows(IllegalStateException.class, () -> indexCache.getBloomFilter(chunk));
+            assertThatThrownBy(() -> indexCache.getBloomFilter(chunk))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Not found cached BloomFilter");
           }
         }
       }
@@ -157,25 +162,25 @@ public class TestIndexCache {
 
   private static void validateColumnIndex(ColumnIndex expected, ColumnIndex target) {
     if (expected == null) {
-      Assert.assertEquals("ColumnIndex should should equal", expected, target);
+      assertThat(target).as("ColumnIndex should should equal").isEqualTo(expected);
     } else {
-      Assert.assertNotNull("ColumnIndex should not be null", target);
-      Assert.assertEquals(expected.getClass(), target.getClass());
-      Assert.assertEquals(expected.getMinValues(), target.getMinValues());
-      Assert.assertEquals(expected.getMaxValues(), target.getMaxValues());
-      Assert.assertEquals(expected.getBoundaryOrder(), target.getBoundaryOrder());
-      Assert.assertEquals(expected.getNullCounts(), target.getNullCounts());
-      Assert.assertEquals(expected.getNullPages(), target.getNullPages());
+      assertThat(target).as("ColumnIndex should not be null").isNotNull();
+      assertThat(target.getClass()).isEqualTo(expected.getClass());
+      assertThat(target.getMinValues()).containsExactlyElementsOf(expected.getMinValues());
+      assertThat(target.getMaxValues()).containsExactlyElementsOf(expected.getMaxValues());
+      assertThat(target.getBoundaryOrder()).isEqualTo(expected.getBoundaryOrder());
+      assertThat(target.getNullCounts()).containsExactlyElementsOf(expected.getNullCounts());
+      assertThat(target.getNullPages()).containsExactlyElementsOf(expected.getNullPages());
     }
   }
 
   private static void validateOffsetIndex(OffsetIndex expected, OffsetIndex target) {
     if (expected == null) {
-      Assert.assertEquals("OffsetIndex should should equal", expected, target);
+      assertThat(target).as("OffsetIndex should should equal").isEqualTo(expected);
     } else {
-      Assert.assertNotNull("OffsetIndex should not be null", target);
-      Assert.assertEquals(expected.getClass(), target.getClass());
-      Assert.assertEquals(expected.toString(), target.toString());
+      assertThat(target).as("OffsetIndex should not be null").isNotNull();
+      assertThat(target.getClass()).isEqualTo(expected.getClass());
+      assertThat(target).asString().isEqualTo(expected.toString());
     }
   }
 }

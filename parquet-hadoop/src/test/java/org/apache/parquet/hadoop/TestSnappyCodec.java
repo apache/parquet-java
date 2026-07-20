@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -78,7 +77,7 @@ public class TestSnappyCodec {
 
     // Validate that the result from the codec is the same as if we compressed the
     // buffer directly.
-    assertArrayEquals(rawCompressed, codecCompressed);
+    assertThat(codecCompressed).isEqualTo(rawCompressed);
 
     ByteArrayInputStream inputStream = new ByteArrayInputStream(codecCompressed);
     CompressionInputStream decompressor = codec.createInputStream(inputStream);
@@ -92,8 +91,8 @@ public class TestSnappyCodec {
 
     byte[] rawDecompressed = Snappy.uncompress(rawCompressed);
 
-    assertArrayEquals(input, rawDecompressed);
-    assertArrayEquals(input, codecDecompressed);
+    assertThat(rawDecompressed).isEqualTo(input);
+    assertThat(codecDecompressed).isEqualTo(input);
   }
 
   private void TestSnappy(SnappyCompressor compressor, SnappyDecompressor decompressor, String... strings)
@@ -132,7 +131,7 @@ public class TestSnappyCodec {
     int decompressedSize = decompressor.decompress(decompressedData, 0, uncompressedSize);
     assert (decompressor.finished());
 
-    assertEquals(uncompressedSize, decompressedSize);
-    assertArrayEquals(uncompressedData, decompressedData);
+    assertThat(decompressedSize).isEqualTo(uncompressedSize);
+    assertThat(decompressedData).isEqualTo(uncompressedData);
   }
 }

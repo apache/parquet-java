@@ -27,10 +27,8 @@ import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.google.common.io.Files;
@@ -101,26 +99,18 @@ public class TestInputFormat {
 
   @Test
   public void testThrowExceptionWhenMaxSplitSizeIsSmallerThanMinSplitSize() throws IOException {
-    try {
-      generateSplitByMinMaxSize(50, 49);
-      fail("should throw exception when max split size is smaller than the min split size");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          "maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> generateSplitByMinMaxSize(50, 49))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50");
   }
 
   @Test
   public void testThrowExceptionWhenMaxSplitSizeIsNegative() throws IOException {
-    try {
-      generateSplitByMinMaxSize(-100, -50);
-      fail("should throw exception when max split size is negative");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          "maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100",
-          e.getMessage());
-    }
+    assertThatThrownBy(() -> generateSplitByMinMaxSize(-100, -50))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100");
   }
 
   @Test
@@ -130,17 +120,17 @@ public class TestInputFormat {
     Configuration conf = new Configuration();
     ParquetInputFormat.setFilterPredicate(conf, p);
     Filter read = ParquetInputFormat.getFilter(conf);
-    assertTrue(read instanceof FilterPredicateCompat);
-    assertEquals(p, ((FilterPredicateCompat) read).getFilterPredicate());
+    assertThat(read).isInstanceOf(FilterPredicateCompat.class);
+    assertThat(((FilterPredicateCompat) read).getFilterPredicate()).isEqualTo(p);
 
     conf = new Configuration();
     ParquetInputFormat.setFilterPredicate(conf, not(p));
     read = ParquetInputFormat.getFilter(conf);
-    assertTrue(read instanceof FilterPredicateCompat);
-    assertEquals(
-        and(notEq(intColumn, 7), notEq(intColumn, 12)), ((FilterPredicateCompat) read).getFilterPredicate());
+    assertThat(read).isInstanceOf(FilterPredicateCompat.class);
+    assertThat(((FilterPredicateCompat) read).getFilterPredicate())
+        .isEqualTo(and(notEq(intColumn, 7), notEq(intColumn, 12)));
 
-    assertEquals(FilterCompat.NOOP, ParquetInputFormat.getFilter(new Configuration()));
+    assertThat(ParquetInputFormat.getFilter(new Configuration())).isEqualTo(FilterCompat.NOOP);
   }
 
   /*
@@ -314,27 +304,20 @@ public class TestInputFormat {
     IntColumn foo = intColumn("foo");
     FilterPredicate p = or(eq(foo, 10), eq(foo, 11));
 
-    Job job = new Job();
+    Job jobWithUnboundFilter = new Job();
+    Configuration confWithUnboundFilter = jobWithUnboundFilter.getConfiguration();
+    ParquetInputFormat.setUnboundRecordFilter(jobWithUnboundFilter, DummyUnboundRecordFilter.class);
+    assertThatThrownBy(() -> ParquetInputFormat.setFilterPredicate(confWithUnboundFilter, p))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("You cannot provide a FilterPredicate after providing an UnboundRecordFilter");
 
-    Configuration conf = job.getConfiguration();
-    ParquetInputFormat.setUnboundRecordFilter(job, DummyUnboundRecordFilter.class);
-    try {
-      ParquetInputFormat.setFilterPredicate(conf, p);
-      fail("this should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals("You cannot provide a FilterPredicate after providing an UnboundRecordFilter", e.getMessage());
-    }
-
-    job = new Job();
-    conf = job.getConfiguration();
-
-    ParquetInputFormat.setFilterPredicate(conf, p);
-    try {
-      ParquetInputFormat.setUnboundRecordFilter(job, DummyUnboundRecordFilter.class);
-      fail("this should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals("You cannot provide an UnboundRecordFilter after providing a FilterPredicate", e.getMessage());
-    }
+    Job jobWithPredicate = new Job();
+    Configuration confWithPredicate = jobWithPredicate.getConfiguration();
+    ParquetInputFormat.setFilterPredicate(confWithPredicate, p);
+    assertThatThrownBy(() ->
+            ParquetInputFormat.setUnboundRecordFilter(jobWithPredicate, DummyUnboundRecordFilter.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("You cannot provide an UnboundRecordFilter after providing a FilterPredicate");
   }
 
   public static BlockMetaData makeBlockFromStats(IntStatistics stats, long valueCount) {
@@ -363,9 +346,10 @@ public class TestInputFormat {
     FileSystem fs = FileSystem.getLocal(new Configuration());
     ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
-    assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
-    assertFalse(cacheValue.isCurrent(
-        new ParquetInputFormat.FileStatusWrapper(fs.getFileStatus(new Path(tempFile.getAbsolutePath())))));
+    assertThat(tempFile.setLastModified(tempFile.lastModified() + 5000)).isTrue();
+    assertThat(cacheValue.isCurrent(new ParquetInputFormat.FileStatusWrapper(
+            fs.getFileStatus(new Path(tempFile.getAbsolutePath())))))
+        .isFalse();
   }
 
   @Test
@@ -374,14 +358,14 @@ public class TestInputFormat {
     FileSystem fs = FileSystem.getLocal(new Configuration());
     ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
-    assertTrue(cacheValue.isNewerThan(null));
-    assertFalse(cacheValue.isNewerThan(cacheValue));
+    assertThat(cacheValue.isNewerThan(null)).isTrue();
+    assertThat(cacheValue.isNewerThan(cacheValue)).isFalse();
 
-    assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
+    assertThat(tempFile.setLastModified(tempFile.lastModified() + 5000)).isTrue();
     ParquetInputFormat.FootersCacheValue newerCacheValue = getDummyCacheValue(tempFile, fs);
 
-    assertTrue(newerCacheValue.isNewerThan(cacheValue));
-    assertFalse(cacheValue.isNewerThan(newerCacheValue));
+    assertThat(newerCacheValue.isNewerThan(cacheValue)).isTrue();
+    assertThat(cacheValue.isNewerThan(newerCacheValue)).isFalse();
   }
 
   @Test
@@ -417,7 +401,7 @@ public class TestInputFormat {
     for (int i = 0; i < numFiles; i++) {
       Footer footer = footers.get(i);
       File file = new File(tempDir, String.format("part-%05d.parquet", i));
-      assertEquals(file.toURI().toString(), footer.getFile().toString());
+      assertThat(footer.getFile()).asString().isEqualTo(file.toURI().toString());
     }
   }
 
@@ -464,7 +448,7 @@ public class TestInputFormat {
     ParquetMetadata mockMetadata = mock(ParquetMetadata.class);
     ParquetInputFormat.FootersCacheValue cacheValue =
         new ParquetInputFormat.FootersCacheValue(statusWrapper, new Footer(path, mockMetadata));
-    assertTrue(cacheValue.isCurrent(statusWrapper));
+    assertThat(cacheValue.isCurrent(statusWrapper)).isTrue();
     return cacheValue;
   }
 
@@ -504,35 +488,36 @@ public class TestInputFormat {
   }
 
   private void shouldSplitStartBe(List<ParquetInputSplit> splits, long... offsets) {
-    assertEquals(message(splits), offsets.length, splits.size());
+    assertThat(splits).as(message(splits)).hasSameSizeAs(offsets);
     for (int i = 0; i < offsets.length; i++) {
-      assertEquals(message(splits) + i, offsets[i], splits.get(i).getStart());
+      assertThat(splits.get(i).getStart()).as(message(splits) + i).isEqualTo(offsets[i]);
     }
   }
 
   private void shouldSplitBlockSizeBe(List<ParquetInputSplit> splits, int... sizes) {
-    assertEquals(message(splits), sizes.length, splits.size());
+    assertThat(splits).as(message(splits)).hasSameSizeAs(sizes);
     for (int i = 0; i < sizes.length; i++) {
-      assertEquals(message(splits) + i, sizes[i], splits.get(i).getRowGroupOffsets().length);
+      assertThat(splits.get(i).getRowGroupOffsets().length)
+          .as(message(splits) + i)
+          .isEqualTo(sizes[i]);
     }
   }
 
   private void shouldSplitLocationBe(List<ParquetInputSplit> splits, int... locations) throws IOException {
-    assertEquals(message(splits), locations.length, splits.size());
+    assertThat(splits).as(message(splits)).hasSameSizeAs(locations);
     for (int i = 0; i < locations.length; i++) {
       int loc = locations[i];
       ParquetInputSplit split = splits.get(i);
-      assertEquals(
-          message(splits) + i,
-          "[foo" + loc + ".datanode, bar" + loc + ".datanode]",
-          Arrays.toString(split.getLocations()));
+      assertThat(Arrays.toString(split.getLocations()))
+          .as(message(splits) + i)
+          .isEqualTo("[foo" + loc + ".datanode, bar" + loc + ".datanode]");
     }
   }
 
   private void shouldOneSplitRowGroupOffsetBe(ParquetInputSplit split, int... rowGroupOffsets) {
-    assertEquals(split.toString(), rowGroupOffsets.length, split.getRowGroupOffsets().length);
+    assertThat(split.getRowGroupOffsets()).hasSameSizeAs(rowGroupOffsets);
     for (int i = 0; i < rowGroupOffsets.length; i++) {
-      assertEquals(split.toString(), rowGroupOffsets[i], split.getRowGroupOffsets()[i]);
+      assertThat(split.getRowGroupOffsets()[i]).as(split.toString()).isEqualTo(rowGroupOffsets[i]);
     }
   }
 
@@ -541,9 +526,9 @@ public class TestInputFormat {
   }
 
   private void shouldSplitLengthBe(List<ParquetInputSplit> splits, int... lengths) {
-    assertEquals(message(splits), lengths.length, splits.size());
+    assertThat(splits).as(message(splits)).hasSameSizeAs(lengths);
     for (int i = 0; i < lengths.length; i++) {
-      assertEquals(message(splits) + i, lengths[i], splits.get(i).getLength());
+      assertThat(splits.get(i).getLength()).as(message(splits) + i).isEqualTo(lengths[i]);
     }
   }
 

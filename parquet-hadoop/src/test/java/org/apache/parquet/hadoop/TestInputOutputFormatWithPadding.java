@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static java.lang.Thread.sleep;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -48,7 +49,6 @@ import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -157,7 +157,9 @@ public class TestInputOutputFormatWithPadding {
     ParquetMetadata footer = ParquetFileReader.readFooter(
         conf, new Path(parquetFile.toString()), ParquetMetadataConverter.NO_FILTER);
     for (BlockMetaData block : footer.getBlocks()) {
-      Assert.assertTrue("Block should start at a multiple of the block size", block.getStartingPos() % 1024 == 0);
+      assertThat(block.getStartingPos() % 1024)
+          .as("Block should start at a multiple of the block size")
+          .isZero();
     }
 
     {
@@ -175,14 +177,14 @@ public class TestInputOutputFormatWithPadding {
     }
 
     File dataFile = getDataFile(outputFolder);
-    Assert.assertNotNull("Should find a data file", dataFile);
+    assertThat(dataFile).as("Should find a data file").isNotNull();
 
     StringBuilder contentBuilder = new StringBuilder();
     for (String line : Files.readAllLines(dataFile.toPath(), StandardCharsets.UTF_8)) {
       contentBuilder.append(line);
     }
     String reconstructed = contentBuilder.toString();
-    Assert.assertEquals("Should match written file content", FILE_CONTENT, reconstructed);
+    assertThat(reconstructed).as("Should match written file content").isEqualTo(FILE_CONTENT);
 
     HadoopOutputFile.getBlockFileSystems().remove("file");
   }

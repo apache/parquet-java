@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -95,9 +96,9 @@ public class TestParquetFileReaderMaxMessageSize {
         ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
 
       ParquetMetadata metadata = reader.getFooter();
-      assertNotNull(metadata);
-      assertEquals(schema, metadata.getFileMetaData().getSchema());
-      assertTrue(metadata.getBlocks().size() > 0);
+      assertThat(metadata).isNotNull();
+      assertThat(metadata.getFileMetaData().getSchema()).isEqualTo(schema);
+      assertThat(metadata.getBlocks()).isNotEmpty();
     }
   }
 
@@ -114,8 +115,8 @@ public class TestParquetFileReaderMaxMessageSize {
         ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
 
       ParquetMetadata metadata = reader.getFooter();
-      assertNotNull(metadata);
-      assertEquals(1, metadata.getBlocks().get(0).getRowCount());
+      assertThat(metadata).isNotNull();
+      assertThat(metadata.getBlocks().get(0).getRowCount()).isEqualTo(1);
     }
   }
 
@@ -123,25 +124,21 @@ public class TestParquetFileReaderMaxMessageSize {
    * Test that insufficient max message size produces error
    */
   @Test
-  public void testInsufficientMaxMessageSizeError() throws IOException {
+  public void testInsufficientMaxMessageSizeError() {
     // Try to read with very small max message size
     Configuration readConf = new Configuration();
     readConf.setInt("parquet.thrift.string.size.limit", 1); // Only 1 byte
 
     ParquetReadOptions options = HadoopReadOptions.builder(readConf).build();
 
-    try (ParquetFileReader reader =
-        ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
-      fail("Should have thrown Message size exceeds limit due to MaxMessageSize");
-    } catch (IOException e) {
-      e.printStackTrace();
-      assertTrue(
-          "Error should mention TTransportException",
-          e.getMessage().contains("Message size exceeds limit")
-              || e.getCause().getMessage().contains("Message size exceeds limit")
-              || e.getMessage().contains("MaxMessageSize reached")
-              || e.getCause().getMessage().contains("MaxMessageSize reached"));
-    }
+    assertThatThrownBy(() -> {
+          try (ParquetFileReader reader =
+              ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
+            reader.getFooter();
+          }
+        })
+        .isInstanceOf(IOException.class)
+        .hasMessageMatching("(?s).*(Message size exceeds limit|MaxMessageSize reached).*");
   }
 
   /**
@@ -157,8 +154,8 @@ public class TestParquetFileReaderMaxMessageSize {
     try (ParquetFileReader reader =
         ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
       ParquetMetadata metadata = reader.getFooter();
-      assertNotNull(metadata);
-      assertEquals(schema, metadata.getFileMetaData().getSchema());
+      assertThat(metadata).isNotNull();
+      assertThat(metadata.getFileMetaData().getSchema()).isEqualTo(schema);
     }
   }
 
@@ -172,23 +169,18 @@ public class TestParquetFileReaderMaxMessageSize {
     assertRejectsNonPositiveMaxMessageSize(-5);
   }
 
-  private void assertRejectsNonPositiveMaxMessageSize(int maxMessageSize) throws IOException {
+  private void assertRejectsNonPositiveMaxMessageSize(int maxMessageSize) {
     Configuration readConf = new Configuration();
     readConf.setInt("parquet.thrift.string.size.limit", maxMessageSize);
     ParquetReadOptions options = HadoopReadOptions.builder(readConf).build();
 
-    try (ParquetFileReader reader =
-        ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
-      fail("Expected failure for non-positive max message size: " + maxMessageSize);
-    } catch (RuntimeException | IOException e) {
-      String message = e.getMessage() == null ? "" : e.getMessage();
-      String causeMessage = e.getCause() == null || e.getCause().getMessage() == null
-          ? ""
-          : e.getCause().getMessage();
-      assertTrue(
-          "Expected 'Max message size must be positive' in " + message + " / " + causeMessage,
-          message.contains("Max message size must be positive")
-              || causeMessage.contains("Max message size must be positive"));
-    }
+    assertThatThrownBy(() -> {
+          try (ParquetFileReader reader =
+              ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
+            reader.getFooter();
+          }
+        })
+        .isInstanceOf(NumberFormatException.class)
+        .hasMessage("Max message size must be positive: " + maxMessageSize);
   }
 }

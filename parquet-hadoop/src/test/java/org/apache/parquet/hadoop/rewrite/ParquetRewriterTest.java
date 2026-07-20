@@ -26,14 +26,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.data.Offset.offset;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -344,14 +339,14 @@ public class ParquetRewriterTest {
 
     // Verify column encryption
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
-    assertFalse(metaData.getBlocks().isEmpty());
+    assertThat(metaData.getBlocks()).isNotEmpty();
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
     Set<String> set = new HashSet<>(List.of(encryptColumns));
     for (ColumnChunkMetaData column : columns) {
       if (set.contains(column.getPath().toDotString())) {
-        assertTrue(column.isEncrypted());
+        assertThat(column.isEncrypted()).isTrue();
       } else {
-        assertFalse(column.isEncrypted());
+        assertThat(column.isEncrypted()).isFalse();
       }
     }
 
@@ -422,14 +417,14 @@ public class ParquetRewriterTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 3);
-    assertEquals(fields.get(0).getName(), "id");
-    assertEquals(fields.get(1).getName(), "name");
-    assertEquals(fields.get(2).getName(), "location");
+    assertThat(fields).hasSize(3);
+    assertThat(fields.get(0).getName()).isEqualTo("id");
+    assertThat(fields.get(1).getName()).isEqualTo("name");
+    assertThat(fields.get(2).getName()).isEqualTo("location");
     List<Type> subFields = fields.get(2).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "lon");
-    assertEquals(subFields.get(1).getName(), "lat");
+    assertThat(subFields).hasSize(2);
+    assertThat(subFields.get(0).getName()).isEqualTo("lon");
+    assertThat(subFields.get(1).getName()).isEqualTo("lat");
 
     try (ParquetReader<Group> outReader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
             .withConf(conf)
@@ -441,23 +436,25 @@ public class ParquetRewriterTest {
       for (Group inRead = inReader.read(), outRead = outReader.read();
           inRead != null || outRead != null;
           inRead = inReader.read(), outRead = outReader.read()) {
-        assertNotNull(inRead);
-        assertNotNull(outRead);
+        assertThat(inRead).isNotNull();
+        assertThat(outRead).isNotNull();
 
-        assertEquals(inRead.getLong("id", 0), outRead.getLong("id", 0));
-        assertEquals(inRead.getString("name", 0), outRead.getString("name", 0));
+        assertThat(outRead.getLong("id", 0)).isEqualTo(inRead.getLong("id", 0));
+        assertThat(outRead.getString("name", 0)).isEqualTo(inRead.getString("name", 0));
 
         // location was null
         Group finalOutRead = outRead;
-        assertThrows(
-            RuntimeException.class,
-            () -> finalOutRead.getGroup("location", 0).getDouble("lat", 0));
-        assertThrows(
-            RuntimeException.class,
-            () -> finalOutRead.getGroup("location", 0).getDouble("lon", 0));
+        assertThatThrownBy(() -> finalOutRead.getGroup("location", 0).getDouble("lat", 0))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("not found");
+        assertThatThrownBy(() -> finalOutRead.getGroup("location", 0).getDouble("lon", 0))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("not found");
 
         // phone numbers was pruned
-        assertThrows(InvalidRecordException.class, () -> finalOutRead.getGroup("phoneNumbers", 0));
+        assertThatThrownBy(() -> finalOutRead.getGroup("phoneNumbers", 0))
+            .isInstanceOf(InvalidRecordException.class)
+            .hasMessageContaining("phoneNumbers not found in");
       }
     }
 
@@ -508,15 +505,15 @@ public class ParquetRewriterTest {
 
     // Verify the column is encrypted
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
-    assertFalse(metaData.getBlocks().isEmpty());
+    assertThat(metaData.getBlocks()).isNotEmpty();
     Set<String> encryptedColumns = new HashSet<>(List.of(encryptColumns));
     for (BlockMetaData blockMetaData : metaData.getBlocks()) {
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
       for (ColumnChunkMetaData column : columns) {
         if (encryptedColumns.contains(column.getPath().toDotString())) {
-          assertTrue(column.isEncrypted());
+          assertThat(column.isEncrypted()).isTrue();
         } else {
-          assertFalse(column.isEncrypted());
+          assertThat(column.isEncrypted()).isFalse();
         }
       }
     }
@@ -570,7 +567,7 @@ public class ParquetRewriterTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     MessageType expectSchema = createSchema();
-    assertEquals(expectSchema, schema);
+    assertThat(schema).isEqualTo(expectSchema);
 
     // Verify codec has not been translated
     verifyCodec(
@@ -626,7 +623,7 @@ public class ParquetRewriterTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     MessageType expectSchema = createSchemaWithRenamed();
-    assertEquals(expectSchema, schema);
+    assertThat(schema).isEqualTo(expectSchema);
 
     verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.SNAPPY), fileDecryptionProperties); // Verify codec
     // Verify the merged data are not changed
@@ -637,15 +634,15 @@ public class ParquetRewriterTest {
     validateRowGroupRowCount();
 
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
-    assertFalse(metaData.getBlocks().isEmpty());
+    assertThat(metaData.getBlocks()).isNotEmpty();
     Set<String> encryptedColumns = new HashSet<>(List.of(encryptColumns));
     for (BlockMetaData blockMetaData : metaData.getBlocks()) {
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
       for (ColumnChunkMetaData column : columns) {
         if (encryptedColumns.contains(column.getPath().toDotString())) {
-          assertTrue(column.isEncrypted());
+          assertThat(column.isEncrypted()).isTrue();
         } else {
-          assertFalse(column.isEncrypted());
+          assertThat(column.isEncrypted()).isFalse();
         }
       }
     }
@@ -776,7 +773,7 @@ public class ParquetRewriterTest {
     // Verify bloom filters
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
-    assertEquals(inputBloomFilters, outputBloomFilters);
+    assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
   }
 
   @Test
@@ -791,16 +788,15 @@ public class ParquetRewriterTest {
 
     // Verify bloom filters
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
-    assertEquals(inputBloomFilters.size(), 2);
-    assertTrue(inputBloomFilters.containsKey(ColumnPath.fromDotString("Links.Forward")));
-    assertTrue(inputBloomFilters.containsKey(ColumnPath.fromDotString("DocId")));
+    assertThat(inputBloomFilters)
+        .containsOnlyKeys(ColumnPath.fromDotString("Links.Forward"), ColumnPath.fromDotString("DocId"));
 
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
-    assertEquals(outputBloomFilters.size(), 1);
-    assertTrue(outputBloomFilters.containsKey(ColumnPath.fromDotString("DocId")));
+    assertThat(outputBloomFilters).hasSize(1);
+    assertThat(outputBloomFilters).containsKey(ColumnPath.fromDotString("DocId"));
 
     inputBloomFilters.remove(ColumnPath.fromDotString("Links.Forward"));
-    assertEquals(inputBloomFilters, outputBloomFilters);
+    assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
   }
 
   @Test
@@ -817,11 +813,13 @@ public class ParquetRewriterTest {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
 
     // Cannot read without FileDecryptionProperties
-    assertThrows(ParquetCryptoRuntimeException.class, () -> allOutputBloomFilters(null));
+    assertThatThrownBy(() -> allOutputBloomFilters(null))
+        .isInstanceOf(ParquetCryptoRuntimeException.class)
+        .hasMessageContaining("Null File Decryptor");
 
     FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(fileDecryptionProperties);
-    assertEquals(inputBloomFilters, outputBloomFilters);
+    assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
   }
 
   private void testSingleInputFileSetupWithBloomFilter(String... bloomFilterEnabledColumns) throws IOException {
@@ -911,14 +909,14 @@ public class ParquetRewriterTest {
 
     // Verify column encryption
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
-    assertFalse(metaData.getBlocks().isEmpty());
+    assertThat(metaData.getBlocks()).isNotEmpty();
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
     Set<String> set = ImmutableSet.of(encryptColumn);
     for (ColumnChunkMetaData column : columns) {
       if (set.contains(column.getPath().toDotString())) {
-        assertTrue(column.isEncrypted());
+        assertThat(column.isEncrypted()).isTrue();
       } else {
-        assertFalse(column.isEncrypted());
+        assertThat(column.isEncrypted()).isFalse();
       }
     }
 
@@ -930,7 +928,7 @@ public class ParquetRewriterTest {
         emptyMap()); // Verify data
     validateSchemaWithGenderColumnPruned(true); // Verify schema
     validateCreatedBy(); // Verify original.created.by
-    assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
+    assertThat(rBloomFilters).isEqualTo(inputBloomFilters.keySet()); // Verify bloom filters
     verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.ZSTD), fileDecryptionProperties); // Verify codec
     validatePageIndex(ImmutableSet.of(encryptColumn), joinColumnsOverwrite, emptyMap());
   }
@@ -1035,51 +1033,52 @@ public class ParquetRewriterTest {
         inputFiles.stream().mapToInt(x -> x.getFileContent().length).sum();
     for (int i = 0; i < totalRows; i++) {
       Group groupActual = reader.read();
-      assertNotNull(groupActual);
+      assertThat(groupActual).isNotNull();
 
       if (!prunePaths.contains("DocId")) {
         if (nullifiedPaths.contains("DocId")) {
-          assertThrows(RuntimeException.class, () -> groupActual.getLong("DocId", 0));
+          assertThatThrownBy(() -> groupActual.getLong("DocId", 0))
+              .isInstanceOf(RuntimeException.class)
+              .hasMessageContaining("not found");
         } else {
-          assertEquals(
-              groupActual.getLong("DocId", 0),
-              groupsExpected.apply("DocId", i).getLong("DocId", 0));
+          assertThat(groupActual.getLong("DocId", 0))
+              .isEqualTo(groupsExpected.apply("DocId", i).getLong("DocId", 0));
         }
       }
 
       if (!prunePaths.contains("Name") && !nullifiedPaths.contains("Name")) {
         String colName = renameColumns.getOrDefault("Name", "Name");
-        assertArrayEquals(
-            groupActual.getBinary(colName, 0).getBytes(),
-            groupsExpected.apply("Name", i).getBinary("Name", 0).getBytes());
+        assertThat(groupActual.getBinary(colName, 0).getBytes())
+            .isEqualTo(groupsExpected
+                .apply("Name", i)
+                .getBinary("Name", 0)
+                .getBytes());
       }
 
       if (!prunePaths.contains("Gender") && !nullifiedPaths.contains("Gender")) {
-        assertArrayEquals(
-            groupActual.getBinary("Gender", 0).getBytes(),
-            groupsExpected.apply("Gender", i).getBinary("Gender", 0).getBytes());
+        assertThat(groupActual.getBinary("Gender", 0).getBytes())
+            .isEqualTo(groupsExpected
+                .apply("Gender", i)
+                .getBinary("Gender", 0)
+                .getBytes());
       }
 
       if (!prunePaths.contains("FloatFraction") && !nullifiedPaths.contains("FloatFraction")) {
-        assertEquals(
-            groupActual.getFloat("FloatFraction", 0),
-            groupsExpected.apply("FloatFraction", i).getFloat("FloatFraction", 0),
-            0);
+        assertThat(groupActual.getFloat("FloatFraction", 0))
+            .isCloseTo(groupsExpected.apply("FloatFraction", i).getFloat("FloatFraction", 0), offset(0f));
       }
 
       if (!prunePaths.contains("DoubleFraction") && !nullifiedPaths.contains("DoubleFraction")) {
-        assertEquals(
-            groupActual.getDouble("DoubleFraction", 0),
-            groupsExpected.apply("DoubleFraction", i).getDouble("DoubleFraction", 0),
-            0);
+        assertThat(groupActual.getDouble("DoubleFraction", 0))
+            .isCloseTo(
+                groupsExpected.apply("DoubleFraction", i).getDouble("DoubleFraction", 0), offset(0.0));
       }
 
       Group subGroup = groupActual.getGroup("Links", 0);
 
       if (!prunePaths.contains("Links.Backward") && !nullifiedPaths.contains("Links.Backward")) {
-        assertArrayEquals(
-            subGroup.getBinary("Backward", 0).getBytes(),
-            groupsExpected
+        assertThat(subGroup.getBinary("Backward", 0).getBytes())
+            .isEqualTo(groupsExpected
                 .apply("Links", i)
                 .getGroup("Links", 0)
                 .getBinary("Backward", 0)
@@ -1088,11 +1087,12 @@ public class ParquetRewriterTest {
 
       if (!prunePaths.contains("Links.Forward")) {
         if (nullifiedPaths.contains("Links.Forward")) {
-          assertThrows(RuntimeException.class, () -> subGroup.getBinary("Forward", 0));
+          assertThatThrownBy(() -> subGroup.getBinary("Forward", 0))
+              .isInstanceOf(RuntimeException.class)
+              .hasMessageContaining("not found");
         } else {
-          assertArrayEquals(
-              subGroup.getBinary("Forward", 0).getBytes(),
-              groupsExpected
+          assertThat(subGroup.getBinary("Forward", 0).getBytes())
+              .isEqualTo(groupsExpected
                   .apply("Links", i)
                   .getGroup("Links", 0)
                   .getBinary("Forward", 0)
@@ -1129,7 +1129,7 @@ public class ParquetRewriterTest {
         codecs.add(columnChunkMetaData.getCodec());
       }
     }
-    assertEquals(expectedCodecs, codecs);
+    assertThat(codecs).isEqualTo(expectedCodecs);
   }
 
   @FunctionalInterface
@@ -1219,24 +1219,23 @@ public class ParquetRewriterTest {
         ColumnIndex outColumnIndex = outReader.readColumnIndex(outChunk);
         OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
         if (inColumnIndex != null) {
-          assertEquals(inColumnIndex.getBoundaryOrder(), outColumnIndex.getBoundaryOrder());
-          assertEquals(inColumnIndex.getMaxValues(), outColumnIndex.getMaxValues());
-          assertEquals(inColumnIndex.getMinValues(), outColumnIndex.getMinValues());
-          assertEquals(inColumnIndex.getNullCounts(), outColumnIndex.getNullCounts());
+          assertThat(outColumnIndex.getBoundaryOrder()).isEqualTo(inColumnIndex.getBoundaryOrder());
+          assertThat(outColumnIndex.getMaxValues()).containsExactlyElementsOf(inColumnIndex.getMaxValues());
+          assertThat(outColumnIndex.getMinValues()).containsExactlyElementsOf(inColumnIndex.getMinValues());
+          assertThat(outColumnIndex.getNullCounts()).containsExactlyElementsOf(inColumnIndex.getNullCounts());
         }
         if (inOffsetIndex != null) {
           List<Long> inOffsets = getOffsets(inReader, inChunk);
           List<Long> outOffsets = getOffsets(outReader, outChunk);
-          assertEquals(inOffsets.size(), outOffsets.size());
-          assertEquals(inOffsets.size(), inOffsetIndex.getPageCount());
-          assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
+          assertThat(outOffsets).hasSameSizeAs(inOffsets);
+          assertThat(inOffsetIndex.getPageCount()).isEqualTo(inOffsets.size());
+          assertThat(outOffsetIndex.getPageCount()).isEqualTo(inOffsetIndex.getPageCount());
           for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
-            assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
-            assertEquals(
-                inOffsetIndex.getLastRowIndex(k, inBlockMeta.getRowCount()),
-                outOffsetIndex.getLastRowIndex(k, outBlockMeta.getRowCount()));
-            assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
-            assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
+            assertThat(outOffsetIndex.getFirstRowIndex(k)).isEqualTo(inOffsetIndex.getFirstRowIndex(k));
+            assertThat(outOffsetIndex.getLastRowIndex(k, outBlockMeta.getRowCount()))
+                .isEqualTo(inOffsetIndex.getLastRowIndex(k, inBlockMeta.getRowCount()));
+            assertThat((long) inOffsets.get(k)).isEqualTo(inOffsetIndex.getOffset(k));
+            assertThat((long) outOffsets.get(k)).isEqualTo(outOffsetIndex.getOffset(k));
           }
         }
       }
@@ -1290,23 +1289,24 @@ public class ParquetRewriterTest {
     for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
       createdBySet.add(pmd.getFileMetaData().getCreatedBy());
-      assertNull(pmd.getFileMetaData().getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY));
+      assertThat(pmd.getFileMetaData().getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY))
+          .isNull();
     }
 
     // Verify created_by from input files have been deduplicated
     Object[] inputCreatedBys = createdBySet.toArray();
-    assertEquals(1, inputCreatedBys.length);
+    assertThat(inputCreatedBys).hasSize(1);
 
     // Verify created_by has been set
     FileMetaData outFMD = getFileMetaData(outputFile, null).getFileMetaData();
     final String createdBy = outFMD.getCreatedBy();
-    assertNotNull(createdBy);
-    assertEquals(createdBy, Version.FULL_VERSION);
+    assertThat(createdBy).isNotNull();
+    assertThat(createdBy).isEqualTo(Version.FULL_VERSION);
 
     // Verify original.created.by has been set
     String inputCreatedBy = (String) inputCreatedBys[0];
     String originalCreatedBy = outFMD.getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY);
-    assertEquals(inputCreatedBy, originalCreatedBy);
+    assertThat(originalCreatedBy).isEqualTo(inputCreatedBy);
   }
 
   private void validateRowGroupRowCount() throws Exception {
@@ -1324,7 +1324,7 @@ public class ParquetRewriterTest {
       outputRowCounts.add(blockMetaData.getRowCount());
     }
 
-    assertEquals(inputRowCounts, outputRowCounts);
+    assertThat(outputRowCounts).isEqualTo(inputRowCounts);
   }
 
   private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters() throws Exception {
@@ -1416,7 +1416,7 @@ public class ParquetRewriterTest {
             conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER)
         .getFileMetaData()
         .getSchema();
-    assertEquals(expectSchema, actualSchema);
+    assertThat(actualSchema).isEqualTo(expectSchema);
   }
 
   private void addGzipInputFile() {

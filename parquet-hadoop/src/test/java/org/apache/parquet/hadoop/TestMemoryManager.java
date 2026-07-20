@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.util.Set;
@@ -27,7 +30,6 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -66,10 +68,10 @@ public class TestMemoryManager {
     // this value tends to change a little between setup and tests, so this
     // validates that it is within 15% of the expected value
     long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
-    Assert.assertTrue(
-        "Pool size should be within 15% of the expected value" + " (expected = " + expectedPoolSize
-            + " actual = " + poolSize + ")",
-        Math.abs(expectedPoolSize - poolSize) < (long) (expectedPoolSize * 0.15));
+    assertThat(Math.abs(expectedPoolSize - poolSize))
+        .as("Pool size should be within 15% of the expected value" + " (expected = " + expectedPoolSize
+            + " actual = " + poolSize + ")")
+        .isLessThan((long) (expectedPoolSize * 0.15));
   }
 
   @Test
@@ -78,35 +80,52 @@ public class TestMemoryManager {
     long rowGroupSize = poolSize / 2;
     conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
 
-    Assert.assertTrue("Pool should hold 2 full row groups", (2 * rowGroupSize) <= poolSize);
-    Assert.assertTrue("Pool should not hold 3 full row groups", poolSize < (3 * rowGroupSize));
+    assertThat(2 * rowGroupSize).as("Pool should hold 2 full row groups").isLessThanOrEqualTo(poolSize);
+    assertThat(poolSize).as("Pool should not hold 3 full row groups").isLessThan(3 * rowGroupSize);
 
-    Assert.assertEquals("Allocations should start out at 0", 0, getTotalAllocation());
+    assertThat(getTotalAllocation()).as("Allocations should start out at 0").isEqualTo(0);
 
     RecordWriter writer1 = createWriter(1);
-    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
-    Assert.assertEquals("First writer should be limited by row group size", rowGroupSize, getTotalAllocation());
+    assertThat(getTotalAllocation())
+        .as("Allocations should never exceed pool size")
+        .isLessThanOrEqualTo(poolSize);
+    assertThat(getTotalAllocation())
+        .as("First writer should be limited by row group size")
+        .isEqualTo(rowGroupSize);
 
     RecordWriter writer2 = createWriter(2);
-    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
-    Assert.assertEquals(
-        "Second writer should be limited by row group size", 2 * rowGroupSize, getTotalAllocation());
+    assertThat(getTotalAllocation())
+        .as("Allocations should never exceed pool size")
+        .isLessThanOrEqualTo(poolSize);
+    assertThat(getTotalAllocation())
+        .as("Second writer should be limited by row group size")
+        .isEqualTo(2 * rowGroupSize);
 
     RecordWriter writer3 = createWriter(3);
-    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
+    assertThat(getTotalAllocation())
+        .as("Allocations should never exceed pool size")
+        .isLessThanOrEqualTo(poolSize);
 
     writer1.close(null);
-    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
-    Assert.assertEquals(
-        "Allocations should be increased to the row group size", 2 * rowGroupSize, getTotalAllocation());
+    assertThat(getTotalAllocation())
+        .as("Allocations should never exceed pool size")
+        .isLessThanOrEqualTo(poolSize);
+    assertThat(getTotalAllocation())
+        .as("Allocations should be increased to the row group size")
+        .isEqualTo(2 * rowGroupSize);
 
     writer2.close(null);
-    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
-    Assert.assertEquals(
-        "Allocations should be increased to the row group size", rowGroupSize, getTotalAllocation());
+    assertThat(getTotalAllocation())
+        .as("Allocations should never exceed pool size")
+        .isLessThanOrEqualTo(poolSize);
+    assertThat(getTotalAllocation())
+        .as("Allocations should be increased to the row group size")
+        .isEqualTo(rowGroupSize);
 
     writer3.close(null);
-    Assert.assertEquals("Allocations should be increased to the row group size", 0, getTotalAllocation());
+    assertThat(getTotalAllocation())
+        .as("Allocations should be increased to the row group size")
+        .isEqualTo(0);
   }
 
   @Test
@@ -116,20 +135,18 @@ public class TestMemoryManager {
     long rowGroupSize = poolSize / 2;
     conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
 
-    Assert.assertTrue("Pool should hold 2 full row groups", (2 * rowGroupSize) <= poolSize);
-    Assert.assertTrue("Pool should not hold 3 full row groups", poolSize < (3 * rowGroupSize));
+    assertThat(2 * rowGroupSize).as("Pool should hold 2 full row groups").isLessThanOrEqualTo(poolSize);
+    assertThat(poolSize).as("Pool should not hold 3 full row groups").isLessThan(3 * rowGroupSize);
 
     Runnable callback = () -> counter++;
 
     // first-time registration should succeed
     ParquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter", callback);
 
-    try {
-      ParquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter", callback);
-      Assert.fail("Duplicated registering callback should throw duplicates exception.");
-    } catch (IllegalArgumentException e) {
-      // expected
-    }
+    assertThatThrownBy(() -> ParquetOutputFormat.getMemoryManager()
+            .registerScaleCallBack("increment-test-counter", callback))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("The callBackName increment-test-counter is duplicated and has been registered already.");
 
     // hit the limit once and clean up
     RecordWriter writer1 = createWriter(1);
@@ -140,11 +157,10 @@ public class TestMemoryManager {
     writer3.close(null);
 
     // Verify Callback mechanism
-    Assert.assertEquals("Allocations should be adjusted once", 1, counter);
-    Assert.assertEquals(
-        "Should not allow duplicate callbacks",
-        1,
-        ParquetOutputFormat.getMemoryManager().getScaleCallBacks().size());
+    assertThat(counter).as("Allocations should be adjusted once").isEqualTo(1);
+    assertThat(ParquetOutputFormat.getMemoryManager().getScaleCallBacks())
+        .as("Should not allow duplicate callbacks")
+        .hasSize(1);
   }
 
   @Rule

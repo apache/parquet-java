@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ParquetProperties;
@@ -31,22 +29,21 @@ public class TestByteStreamSplitConfiguration {
   public void testDefault() throws Exception {
     Configuration conf = new Configuration();
     // default should be false
-    assertEquals(
-        ParquetProperties.DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED,
-        ParquetOutputFormat.getByteStreamSplitEnabled(conf));
+    assertThat(ParquetOutputFormat.getByteStreamSplitEnabled(conf))
+        .isEqualTo(ParquetProperties.DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED);
   }
 
   @Test
   public void testSetTrue() throws Exception {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.ENABLE_BYTE_STREAM_SPLIT, true);
-    assertTrue(ParquetOutputFormat.getByteStreamSplitEnabled(conf));
+    assertThat(ParquetOutputFormat.getByteStreamSplitEnabled(conf)).isTrue();
   }
 
   @Test
   public void testSetFalse() throws Exception {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.ENABLE_BYTE_STREAM_SPLIT, false);
-    assertFalse(ParquetOutputFormat.getByteStreamSplitEnabled(conf));
+    assertThat(ParquetOutputFormat.getByteStreamSplitEnabled(conf)).isFalse();
   }
 }

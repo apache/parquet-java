@@ -24,7 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -68,14 +68,14 @@ public class ColumnPrunerTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 3);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "Links");
+    assertThat(fields).hasSize(3);
+    assertThat(fields.get(0).getName()).isEqualTo("DocId");
+    assertThat(fields.get(1).getName()).isEqualTo("Name");
+    assertThat(fields.get(2).getName()).isEqualTo("Links");
     List<Type> subFields = fields.get(2).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+    assertThat(subFields).hasSize(2);
+    assertThat(subFields.get(0).getName()).isEqualTo("Backward");
+    assertThat(subFields.get(1).getName()).isEqualTo("Forward");
 
     // Verify the data are not changed for the columns not pruned
     List<String> prunePaths = List.of("Gender");
@@ -98,13 +98,13 @@ public class ColumnPrunerTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 2);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Links");
+    assertThat(fields).hasSize(2);
+    assertThat(fields.get(0).getName()).isEqualTo("DocId");
+    assertThat(fields.get(1).getName()).isEqualTo("Links");
     List<Type> subFields = fields.get(1).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+    assertThat(subFields).hasSize(2);
+    assertThat(subFields.get(0).getName()).isEqualTo("Backward");
+    assertThat(subFields.get(1).getName()).isEqualTo("Forward");
 
     // Verify the data are not changed for the columns not pruned
     List<String> prunePaths = List.of("Name", "Gender");
@@ -135,14 +135,14 @@ public class ColumnPrunerTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 4);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "Gender");
-    assertEquals(fields.get(3).getName(), "Links");
+    assertThat(fields).hasSize(4);
+    assertThat(fields.get(0).getName()).isEqualTo("DocId");
+    assertThat(fields.get(1).getName()).isEqualTo("Name");
+    assertThat(fields.get(2).getName()).isEqualTo("Gender");
+    assertThat(fields.get(3).getName()).isEqualTo("Links");
     List<Type> subFields = fields.get(3).asGroupType().getFields();
-    assertEquals(subFields.size(), 1);
-    assertEquals(subFields.get(0).getName(), "Forward");
+    assertThat(subFields).hasSize(1);
+    assertThat(subFields.get(0).getName()).isEqualTo("Forward");
 
     // Verify the data are not changed for the columns not pruned
     List<String> prunePaths = List.of("Links.Backward");
@@ -164,10 +164,10 @@ public class ColumnPrunerTest {
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 3);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "Gender");
+    assertThat(fields).hasSize(3);
+    assertThat(fields.get(0).getName()).isEqualTo("DocId");
+    assertThat(fields.get(1).getName()).isEqualTo("Name");
+    assertThat(fields.get(2).getName()).isEqualTo("Gender");
 
     // Verify the data are not changed for the columns not pruned
     List<String> prunePaths = List.of("Links");
@@ -190,21 +190,21 @@ public class ColumnPrunerTest {
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
       if (!prunePaths.contains("DocId")) {
-        assertEquals(1l, group.getLong("DocId", 0));
+        assertThat(group.getLong("DocId", 0)).isEqualTo(1l);
       }
       if (!prunePaths.contains("Name")) {
-        assertEquals("foo", group.getBinary("Name", 0).toStringUsingUTF8());
+        assertThat(group.getBinary("Name", 0).toStringUsingUTF8()).isEqualTo("foo");
       }
       if (!prunePaths.contains("Gender")) {
-        assertEquals("male", group.getBinary("Gender", 0).toStringUsingUTF8());
+        assertThat(group.getBinary("Gender", 0).toStringUsingUTF8()).isEqualTo("male");
       }
       if (!prunePaths.contains("Links")) {
         Group subGroup = group.getGroup("Links", 0);
         if (!prunePaths.contains("Links.Backward")) {
-          assertEquals(2l, subGroup.getLong("Backward", 0));
+          assertThat(subGroup.getLong("Backward", 0)).isEqualTo(2l);
         }
         if (!prunePaths.contains("Links.Forward")) {
-          assertEquals(3l, subGroup.getLong("Forward", 0));
+          assertThat(subGroup.getLong("Forward", 0)).isEqualTo(3l);
         }
       }
     }

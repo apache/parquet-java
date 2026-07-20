@@ -24,8 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -61,7 +60,6 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class CompressionConverterTest {
@@ -140,12 +138,12 @@ public class CompressionConverterTest {
         .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      assertTrue(group.getLong("DocId", 0) == testDocs.docId[i]);
-      assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
-      assertArrayEquals(group.getBinary("Gender", 0).getBytes(), testDocs.gender[i].getBytes());
+      assertThat(group.getLong("DocId", 0)).isEqualTo(testDocs.docId[i]);
+      assertThat(group.getBinary("Name", 0).getBytes()).isEqualTo(testDocs.name[i].getBytes());
+      assertThat(group.getBinary("Gender", 0).getBytes()).isEqualTo(testDocs.gender[i].getBytes());
       Group subGroup = group.getGroup("Links", 0);
-      assertArrayEquals(subGroup.getBinary("Backward", 0).getBytes(), testDocs.linkBackward[i].getBytes());
-      assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
+      assertThat(subGroup.getBinary("Backward", 0).getBytes()).isEqualTo(testDocs.linkBackward[i].getBytes());
+      assertThat(subGroup.getBinary("Forward", 0).getBytes()).isEqualTo(testDocs.linkForward[i].getBytes());
     }
     reader.close();
   }
@@ -153,19 +151,16 @@ public class CompressionConverterTest {
   private void validMeta(String inputFile, String outFile) throws Exception {
     ParquetMetadata inMetaData = ParquetFileReader.readFooter(conf, new Path(inputFile), NO_FILTER);
     ParquetMetadata outMetaData = ParquetFileReader.readFooter(conf, new Path(outFile), NO_FILTER);
-    Assert.assertEquals(
-        inMetaData.getFileMetaData().getSchema(),
-        outMetaData.getFileMetaData().getSchema());
-    Assert.assertEquals(
-        inMetaData.getFileMetaData().getKeyValueMetaData(),
-        outMetaData.getFileMetaData().getKeyValueMetaData());
+    assertThat(outMetaData.getFileMetaData().getSchema())
+        .isEqualTo(inMetaData.getFileMetaData().getSchema());
+    assertThat(outMetaData.getFileMetaData().getKeyValueMetaData())
+        .isEqualTo(inMetaData.getFileMetaData().getKeyValueMetaData());
   }
 
   private void validColumnIndex(String inputFile, String outFile) throws Exception {
     ParquetMetadata inMetaData = ParquetFileReader.readFooter(conf, new Path(inputFile), NO_FILTER);
     ParquetMetadata outMetaData = ParquetFileReader.readFooter(conf, new Path(outFile), NO_FILTER);
-    Assert.assertEquals(
-        inMetaData.getBlocks().size(), outMetaData.getBlocks().size());
+    assertThat(outMetaData.getBlocks()).hasSameSizeAs(inMetaData.getBlocks());
     try (TransParquetFileReader inReader = new TransParquetFileReader(
             HadoopInputFile.fromPath(new Path(inputFile), conf),
             HadoopReadOptions.builder(conf).build());
@@ -175,9 +170,7 @@ public class CompressionConverterTest {
       for (int i = 0; i < inMetaData.getBlocks().size(); i++) {
         BlockMetaData inBlockMetaData = inMetaData.getBlocks().get(i);
         BlockMetaData outBlockMetaData = outMetaData.getBlocks().get(i);
-        Assert.assertEquals(
-            inBlockMetaData.getColumns().size(),
-            outBlockMetaData.getColumns().size());
+        assertThat(outBlockMetaData.getColumns()).hasSameSizeAs(inBlockMetaData.getColumns());
         for (int j = 0; j < inBlockMetaData.getColumns().size(); j++) {
           ColumnChunkMetaData inChunk = inBlockMetaData.getColumns().get(j);
           ColumnIndex inColumnIndex = inReader.readColumnIndex(inChunk);
@@ -186,24 +179,26 @@ public class CompressionConverterTest {
           ColumnIndex outColumnIndex = outReader.readColumnIndex(outChunk);
           OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
           if (inColumnIndex != null) {
-            Assert.assertEquals(inColumnIndex.getBoundaryOrder(), outColumnIndex.getBoundaryOrder());
-            Assert.assertEquals(inColumnIndex.getMaxValues(), outColumnIndex.getMaxValues());
-            Assert.assertEquals(inColumnIndex.getMinValues(), outColumnIndex.getMinValues());
-            Assert.assertEquals(inColumnIndex.getNullCounts(), outColumnIndex.getNullCounts());
+            assertThat(outColumnIndex.getBoundaryOrder()).isEqualTo(inColumnIndex.getBoundaryOrder());
+            assertThat(outColumnIndex.getMaxValues())
+                .containsExactlyElementsOf(inColumnIndex.getMaxValues());
+            assertThat(outColumnIndex.getMinValues())
+                .containsExactlyElementsOf(inColumnIndex.getMinValues());
+            assertThat(outColumnIndex.getNullCounts())
+                .containsExactlyElementsOf(inColumnIndex.getNullCounts());
           }
           if (inOffsetIndex != null) {
             List<Long> inOffsets = getOffsets(inReader, inChunk);
             List<Long> outOffsets = getOffsets(outReader, outChunk);
-            Assert.assertEquals(inOffsets.size(), outOffsets.size());
-            Assert.assertEquals(inOffsets.size(), inOffsetIndex.getPageCount());
-            Assert.assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
+            assertThat(outOffsets).hasSameSizeAs(inOffsets);
+            assertThat(inOffsetIndex.getPageCount()).isEqualTo(inOffsets.size());
+            assertThat(outOffsetIndex.getPageCount()).isEqualTo(inOffsetIndex.getPageCount());
             for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
-              Assert.assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
-              Assert.assertEquals(
-                  inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()),
-                  outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
-              Assert.assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
-              Assert.assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
+              assertThat(outOffsetIndex.getFirstRowIndex(k)).isEqualTo(inOffsetIndex.getFirstRowIndex(k));
+              assertThat(outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()))
+                  .isEqualTo(inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()));
+              assertThat((long) inOffsets.get(k)).isEqualTo(inOffsetIndex.getOffset(k));
+              assertThat((long) outOffsets.get(k)).isEqualTo(outOffsetIndex.getOffset(k));
             }
           }
         }

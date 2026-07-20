@@ -19,8 +19,7 @@
 package org.apache.parquet.hadoop.metadata;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -36,8 +35,8 @@ public class TestColumnChunkMetaData {
     long big = (long) Integer.MAX_VALUE + 1;
 
     ColumnChunkMetaData md = newMD(big);
-    assertTrue(md instanceof IntColumnChunkMetaData);
-    assertEquals(big, md.getFirstDataPageOffset());
+    assertThat(md).isInstanceOf(IntColumnChunkMetaData.class);
+    assertThat(md.getFirstDataPageOffset()).isEqualTo(big);
   }
 
   @Test
@@ -45,8 +44,8 @@ public class TestColumnChunkMetaData {
     long small = 1;
 
     ColumnChunkMetaData md = newMD(small);
-    assertTrue(md instanceof IntColumnChunkMetaData);
-    assertEquals(small, md.getFirstDataPageOffset());
+    assertThat(md).isInstanceOf(IntColumnChunkMetaData.class);
+    assertThat(md.getFirstDataPageOffset()).isEqualTo(small);
   }
 
   @Test
@@ -54,8 +53,8 @@ public class TestColumnChunkMetaData {
     long veryBig = (long) Integer.MAX_VALUE * 3;
 
     ColumnChunkMetaData md = newMD(veryBig);
-    assertTrue(md instanceof LongColumnChunkMetaData);
-    assertEquals(veryBig, md.getFirstDataPageOffset());
+    assertThat(md).isInstanceOf(LongColumnChunkMetaData.class);
+    assertThat(md.getFirstDataPageOffset()).isEqualTo(veryBig);
   }
 
   @Test
@@ -63,8 +62,8 @@ public class TestColumnChunkMetaData {
     long neg = -1;
 
     ColumnChunkMetaData md = newMD(neg);
-    assertTrue(md instanceof LongColumnChunkMetaData);
-    assertEquals(neg, md.getFirstDataPageOffset());
+    assertThat(md).isInstanceOf(LongColumnChunkMetaData.class);
+    assertThat(md.getFirstDataPageOffset()).isEqualTo(neg);
   }
 
   private ColumnChunkMetaData newMD(long big) {

@@ -19,10 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -162,23 +160,20 @@ public class TestMergeMetadataFiles {
     ParquetMetadata meta2 =
         ParquetFileReader.readFooter(info.conf, info.metaPath2, ParquetMetadataConverter.NO_FILTER);
 
-    assertTrue(commonMeta1.getBlocks().isEmpty());
-    assertTrue(commonMeta2.getBlocks().isEmpty());
-    assertEquals(
-        commonMeta1.getFileMetaData().getSchema(),
-        commonMeta2.getFileMetaData().getSchema());
+    assertThat(commonMeta1.getBlocks()).isEmpty();
+    assertThat(commonMeta2.getBlocks()).isEmpty();
+    assertThat(commonMeta2.getFileMetaData().getSchema())
+        .isEqualTo(commonMeta1.getFileMetaData().getSchema());
 
-    assertFalse(meta1.getBlocks().isEmpty());
-    assertFalse(meta2.getBlocks().isEmpty());
-    assertEquals(
-        meta1.getFileMetaData().getSchema(), meta2.getFileMetaData().getSchema());
+    assertThat(meta1.getBlocks()).isNotEmpty();
+    assertThat(meta2.getBlocks()).isNotEmpty();
+    assertThat(meta2.getFileMetaData().getSchema())
+        .isEqualTo(meta1.getFileMetaData().getSchema());
 
-    assertEquals(
-        commonMeta1.getFileMetaData().getKeyValueMetaData(),
-        commonMeta2.getFileMetaData().getKeyValueMetaData());
-    assertEquals(
-        meta1.getFileMetaData().getKeyValueMetaData(),
-        meta2.getFileMetaData().getKeyValueMetaData());
+    assertThat(commonMeta2.getFileMetaData().getKeyValueMetaData())
+        .isEqualTo(commonMeta1.getFileMetaData().getKeyValueMetaData());
+    assertThat(meta2.getFileMetaData().getKeyValueMetaData())
+        .isEqualTo(meta1.getFileMetaData().getKeyValueMetaData());
 
     // test file serialization
     Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
@@ -193,24 +188,19 @@ public class TestMergeMetadataFiles {
         ParquetFileReader.readFooter(info.conf, mergedCommonOut, ParquetMetadataConverter.NO_FILTER);
 
     // ideally we'd assert equality here, but BlockMetaData and it's references don't implement equals
-    assertEquals(
-        meta1.getBlocks().size() + meta2.getBlocks().size(),
-        mergedMeta.getBlocks().size());
-    assertTrue(mergedCommonMeta.getBlocks().isEmpty());
+    assertThat(mergedMeta.getBlocks())
+        .hasSize(meta1.getBlocks().size() + meta2.getBlocks().size());
+    assertThat(mergedCommonMeta.getBlocks()).isEmpty();
 
-    assertEquals(
-        meta1.getFileMetaData().getSchema(),
-        mergedMeta.getFileMetaData().getSchema());
-    assertEquals(
-        commonMeta1.getFileMetaData().getSchema(),
-        mergedCommonMeta.getFileMetaData().getSchema());
+    assertThat(mergedMeta.getFileMetaData().getSchema())
+        .isEqualTo(meta1.getFileMetaData().getSchema());
+    assertThat(mergedCommonMeta.getFileMetaData().getSchema())
+        .isEqualTo(commonMeta1.getFileMetaData().getSchema());
 
-    assertEquals(
-        meta1.getFileMetaData().getKeyValueMetaData(),
-        mergedMeta.getFileMetaData().getKeyValueMetaData());
-    assertEquals(
-        commonMeta1.getFileMetaData().getKeyValueMetaData(),
-        mergedCommonMeta.getFileMetaData().getKeyValueMetaData());
+    assertThat(mergedMeta.getFileMetaData().getKeyValueMetaData())
+        .isEqualTo(meta1.getFileMetaData().getKeyValueMetaData());
+    assertThat(mergedCommonMeta.getFileMetaData().getKeyValueMetaData())
+        .isEqualTo(commonMeta1.getFileMetaData().getKeyValueMetaData());
   }
 
   @Test
@@ -220,29 +210,14 @@ public class TestMergeMetadataFiles {
     Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
     Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
 
-    try {
-      ParquetFileWriter.writeMergedMetadataFile(List.of(info.metaPath1, info.metaPath2), mergedOut, info.conf);
-      fail("this should throw");
-    } catch (RuntimeException e) {
-      boolean eq1 =
-          e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [2, 1]");
-      boolean eq2 =
-          e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [1, 2]");
+    assertThatThrownBy(() -> ParquetFileWriter.writeMergedMetadataFile(
+            List.of(info.metaPath1, info.metaPath2), mergedOut, info.conf))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("could not merge metadata: key schema_num has conflicting values");
 
-      assertEquals(eq1 || eq2, true);
-    }
-
-    try {
-      ParquetFileWriter.writeMergedMetadataFile(
-          List.of(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
-      fail("this should throw");
-    } catch (RuntimeException e) {
-      boolean eq1 =
-          e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [2, 1]");
-      boolean eq2 =
-          e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [1, 2]");
-
-      assertEquals(eq1 || eq2, true);
-    }
+    assertThatThrownBy(() -> ParquetFileWriter.writeMergedMetadataFile(
+            List.of(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("could not merge metadata: key schema_num has conflicting values");
   }
 }

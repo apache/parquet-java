@@ -20,11 +20,8 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -488,13 +485,15 @@ public class TestDataPageChecksums {
           PageReadStore pageReadStore = reader.readNextRowGroup();
 
           DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
-          assertFalse(
-              "Data in page was not corrupted", Arrays.equals(getPageBytes(colAPage1), colAPage1Bytes));
+          assertThat(getPageBytes(colAPage1))
+              .as("Data in page was not corrupted")
+              .isNotEqualTo(colAPage1Bytes);
           readNextPage(colADesc, pageReadStore);
           readNextPage(colBDesc, pageReadStore);
           DataPage colBPage2 = readNextPage(colBDesc, pageReadStore);
-          assertFalse(
-              "Data in page was not corrupted", Arrays.equals(getPageBytes(colBPage2), colBPage2Bytes));
+          assertThat(getPageBytes(colBPage2))
+              .as("Data in page was not corrupted")
+              .isNotEqualTo(colBPage2Bytes);
         }
 
         // Now we enable checksum verification, the corruption should be detected
@@ -716,7 +715,9 @@ public class TestDataPageChecksums {
    * Compare the extracted (decompressed) bytes to the reference bytes
    */
   private void assertCorrectContent(byte[] pageBytes, byte[] referenceBytes) {
-    assertArrayEquals("Read page content was different from expected page content", referenceBytes, pageBytes);
+    assertThat(pageBytes)
+        .as("Read page content was different from expected page content")
+        .isEqualTo(referenceBytes);
   }
 
   private byte[] getPageBytes(DataPage page) throws IOException {
@@ -738,21 +739,20 @@ public class TestDataPageChecksums {
    * check that the crc's are identical.
    */
   private void assertCrcSetAndCorrect(Page page, byte[] referenceBytes) {
-    assertTrue("Checksum was not set in page", page.getCrc().isPresent());
+    assertThat(page.getCrc()).as("Checksum was not set in page").isPresent();
     int crcFromPage = page.getCrc().getAsInt();
     crc.reset();
     crc.update(referenceBytes);
-    assertEquals(
-        "Checksum found in page did not match calculated reference checksum",
-        crc.getValue(),
-        (long) crcFromPage & 0xffffffffL);
+    assertThat((long) crcFromPage & 0xffffffffL)
+        .as("Checksum found in page did not match calculated reference checksum")
+        .isEqualTo(crc.getValue());
   }
 
   /**
    * Verify that the crc is not set
    */
   private void assertCrcNotSet(Page page) {
-    assertFalse("Checksum was set in page", page.getCrc().isPresent());
+    assertThat(page.getCrc()).as("Checksum was set in page").isEmpty();
   }
 
   /**
@@ -760,14 +760,8 @@ public class TestDataPageChecksums {
    * if the read succeeds (no exception was thrown ), verify that the checksum was not set.
    */
   private void assertVerificationFailed(ParquetFileReader reader) {
-    try {
-      reader.readNextRowGroup();
-      fail("Expected checksum verification exception to be thrown");
-    } catch (Exception e) {
-      assertTrue("Thrown exception is of incorrect type", e instanceof ParquetDecodingException);
-      assertTrue(
-          "Did not catch checksum verification ParquetDecodingException",
-          e.getMessage().contains("CRC checksum verification failed"));
-    }
+    assertThatThrownBy(reader::readNextRowGroup)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("CRC checksum verification failed");
   }
 }

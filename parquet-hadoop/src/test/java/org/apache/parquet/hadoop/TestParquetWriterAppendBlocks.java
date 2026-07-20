@@ -23,6 +23,8 @@ import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +35,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.Path;
@@ -47,7 +48,6 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -135,12 +135,13 @@ public class TestParquetWriterAppendBlocks {
     while ((next = reader.read()) != null) {
       Group expectedNext = expected.removeFirst();
       // check each value; equals is not supported for simple records
-      Assert.assertEquals("Each id should match", expectedNext.getInteger("id", 0), next.getInteger("id", 0));
-      Assert.assertEquals(
-          "Each string should match", expectedNext.getString("string", 0), next.getString("string", 0));
+      assertThat(next.getInteger("id", 0)).as("Each id should match").isEqualTo(expectedNext.getInteger("id", 0));
+      assertThat(next.getString("string", 0))
+          .as("Each string should match")
+          .isEqualTo(expectedNext.getString("string", 0));
     }
 
-    Assert.assertEquals("All records should be present", 0, expected.size());
+    assertThat(expected).as("All records should be present").isEmpty();
   }
 
   /**
@@ -166,11 +167,14 @@ public class TestParquetWriterAppendBlocks {
       for (Group expectedNext : expected) {
         Group next = reader.read();
         // check each value; equals is not supported for simple records
-        Assert.assertEquals("Each id should match", expectedNext.getInteger("id", 0), next.getInteger("id", 0));
-        Assert.assertEquals(
-            "Each string should match", expectedNext.getString("string", 0), next.getString("string", 0));
+        assertThat(next.getInteger("id", 0))
+            .as("Each id should match")
+            .isEqualTo(expectedNext.getInteger("id", 0));
+        assertThat(next.getString("string", 0))
+            .as("Each string should match")
+            .isEqualTo(expectedNext.getString("string", 0));
       }
-      Assert.assertNull("No extra records should be present", reader.read());
+      assertThat(reader.read()).as("No extra records should be present").isNull();
     }
   }
 
@@ -200,33 +204,38 @@ public class TestParquetWriterAppendBlocks {
     expectedRowGroups.addAll(f1Footer.getBlocks());
     expectedRowGroups.addAll(f2Footer.getBlocks());
 
-    Assert.assertEquals(
-        "Combined should have the right number of row groups",
-        expectedRowGroups.size(),
-        combinedFooter.getBlocks().size());
+    assertThat(combinedFooter.getBlocks())
+        .as("Combined should have the right number of row groups")
+        .hasSameSizeAs(expectedRowGroups);
 
     long nextStart = 4;
     for (BlockMetaData rowGroup : combinedFooter.getBlocks()) {
       BlockMetaData expected = expectedRowGroups.removeFirst();
-      Assert.assertEquals("Row count should match", expected.getRowCount(), rowGroup.getRowCount());
-      Assert.assertEquals(
-          "Compressed size should match", expected.getCompressedSize(), rowGroup.getCompressedSize());
-      Assert.assertEquals("Total size should match", expected.getTotalByteSize(), rowGroup.getTotalByteSize());
-      Assert.assertEquals(
-          "Start pos should be at the last row group's end", nextStart, rowGroup.getStartingPos());
+      assertThat(rowGroup.getRowCount()).as("Row count should match").isEqualTo(expected.getRowCount());
+      assertThat(rowGroup.getCompressedSize())
+          .as("Compressed size should match")
+          .isEqualTo(expected.getCompressedSize());
+      assertThat(rowGroup.getTotalByteSize())
+          .as("Total size should match")
+          .isEqualTo(expected.getTotalByteSize());
+      assertThat(rowGroup.getStartingPos())
+          .as("Start pos should be at the last row group's end")
+          .isEqualTo(nextStart);
       assertColumnsEquivalent(expected.getColumns(), rowGroup.getColumns());
       nextStart = rowGroup.getStartingPos() + rowGroup.getTotalByteSize();
     }
   }
 
   public void assertColumnsEquivalent(List<ColumnChunkMetaData> expected, List<ColumnChunkMetaData> actual) {
-    Assert.assertEquals("Should have the expected columns", expected.size(), actual.size());
+    assertThat(actual).as("Should have the expected columns").hasSameSizeAs(expected);
     for (int i = 0; i < actual.size(); i += 1) {
       ColumnChunkMetaData current = actual.get(i);
       if (i != 0) {
         ColumnChunkMetaData previous = actual.get(i - 1);
         long expectedStart = previous.getStartingPos() + previous.getTotalSize();
-        Assert.assertEquals("Should start after the previous column", expectedStart, current.getStartingPos());
+        assertThat(current.getStartingPos())
+            .as("Should start after the previous column")
+            .isEqualTo(expectedStart);
       }
 
       assertColumnMetadataEquivalent(expected.get(i), current);
@@ -234,17 +243,20 @@ public class TestParquetWriterAppendBlocks {
   }
 
   public void assertColumnMetadataEquivalent(ColumnChunkMetaData expected, ColumnChunkMetaData actual) {
-    Assert.assertEquals("Should be the expected column", expected.getPath(), expected.getPath());
-    Assert.assertEquals("Primitive type should not change", expected.getType(), actual.getType());
-    Assert.assertEquals("Compression codec should not change", expected.getCodec(), actual.getCodec());
-    Assert.assertEquals("Data encodings should not change", expected.getEncodings(), actual.getEncodings());
-    Assert.assertEquals("Statistics should not change", expected.getStatistics(), actual.getStatistics());
-    Assert.assertEquals(
-        "Uncompressed size should not change",
-        expected.getTotalUncompressedSize(),
-        actual.getTotalUncompressedSize());
-    Assert.assertEquals("Compressed size should not change", expected.getTotalSize(), actual.getTotalSize());
-    Assert.assertEquals("Number of values should not change", expected.getValueCount(), actual.getValueCount());
+    assertThat(actual.getPath()).as("Should be the expected column").isEqualTo(expected.getPath());
+    assertThat(actual.getType()).as("Primitive type should not change").isEqualTo(expected.getType());
+    assertThat(actual.getCodec()).as("Compression codec should not change").isEqualTo(expected.getCodec());
+    assertThat(actual.getEncodings()).as("Data encodings should not change").isEqualTo(expected.getEncodings());
+    assertThat(actual.getStatistics()).as("Statistics should not change").isEqualTo(expected.getStatistics());
+    assertThat(actual.getTotalUncompressedSize())
+        .as("Uncompressed size should not change")
+        .isEqualTo(expected.getTotalUncompressedSize());
+    assertThat(actual.getTotalSize())
+        .as("Compressed size should not change")
+        .isEqualTo(expected.getTotalSize());
+    assertThat(actual.getValueCount())
+        .as("Number of values should not change")
+        .isEqualTo(expected.getValueCount());
   }
 
   @Test
@@ -265,10 +277,9 @@ public class TestParquetWriterAppendBlocks {
 
     ParquetMetadata footer = ParquetFileReader.readFooter(CONF, droppedColumnFile, NO_FILTER);
     for (BlockMetaData rowGroup : footer.getBlocks()) {
-      Assert.assertEquals(
-          "Should have only the string column",
-          1,
-          rowGroup.getColumns().size());
+      assertThat(rowGroup.getColumns())
+          .as("Should have only the string column")
+          .hasSize(1);
     }
 
     ParquetReader<Group> reader =
@@ -277,11 +288,12 @@ public class TestParquetWriterAppendBlocks {
     Group next;
     while ((next = reader.read()) != null) {
       Group expectedNext = expected.removeFirst();
-      Assert.assertEquals(
-          "Each string should match", expectedNext.getString("string", 0), next.getString("string", 0));
+      assertThat(next.getString("string", 0))
+          .as("Each string should match")
+          .isEqualTo(expectedNext.getString("string", 0));
     }
 
-    Assert.assertEquals("All records should be present", 0, expected.size());
+    assertThat(expected).as("All records should be present").isEmpty();
   }
 
   @Test
@@ -296,11 +308,9 @@ public class TestParquetWriterAppendBlocks {
     final ParquetFileWriter writer = new ParquetFileWriter(CONF, droppedColumnSchema, droppedColumnFile);
     writer.start();
 
-    TestUtils.assertThrows(
-        "Should complain that id column is dropped", IllegalArgumentException.class, (Callable<Void>) () -> {
-          writer.appendRowGroups(incoming, footer.getBlocks(), false);
-          return null;
-        });
+    assertThatThrownBy(() -> writer.appendRowGroups(incoming, footer.getBlocks(), false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Columns cannot be copied (missing from target schema): id");
   }
 
   @Test
@@ -319,11 +329,9 @@ public class TestParquetWriterAppendBlocks {
     final ParquetFileWriter writer = new ParquetFileWriter(CONF, fileSchema, missingColumnFile);
     writer.start();
 
-    TestUtils.assertThrows(
-        "Should complain that value column is missing", IllegalArgumentException.class, (Callable<Void>) () -> {
-          writer.appendFile(CONF, file1);
-          return null;
-        });
+    assertThatThrownBy(() -> writer.appendFile(CONF, file1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Missing column 'value'");
   }
 
   private Path newTemp() throws IOException {

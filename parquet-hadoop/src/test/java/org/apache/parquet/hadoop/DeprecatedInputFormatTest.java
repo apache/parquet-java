@@ -19,8 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -254,9 +253,7 @@ public class DeprecatedInputFormatTest {
       while ((line = br.readLine()) != null) {
         s.add(line.split("\t")[1]);
       }
-      assertEquals(s.size(), 2);
-      assertTrue(s.contains("hello"));
-      assertTrue(s.contains("world"));
+      assertThat(s).containsExactlyInAnyOrder("hello", "world");
     }
 
     FileUtils.deleteDirectory(inputDir);
@@ -266,28 +263,19 @@ public class DeprecatedInputFormatTest {
   @Test
   public void testReadWriteWithCountDeprecated() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(mapRedJob
-            .getCounters()
-            .getGroup("parquet")
-            .getCounterForName("bytesread")
-            .getValue()
-        > 0L);
-    assertTrue(mapRedJob
-            .getCounters()
-            .getGroup("parquet")
-            .getCounterForName("bytestotal")
-            .getValue()
-        > 0L);
-    assertTrue(mapRedJob
-            .getCounters()
-            .getGroup("parquet")
-            .getCounterForName("bytesread")
-            .getValue()
-        == mapRedJob
-            .getCounters()
-            .getGroup("parquet")
-            .getCounterForName("bytestotal")
-            .getValue());
+    long bytesRead = mapRedJob
+        .getCounters()
+        .getGroup("parquet")
+        .getCounterForName("bytesread")
+        .getValue();
+    long bytesTotal = mapRedJob
+        .getCounters()
+        .getGroup("parquet")
+        .getCounterForName("bytestotal")
+        .getValue();
+    assertThat(bytesRead).isPositive();
+    assertThat(bytesTotal).isPositive();
+    assertThat(bytesRead).isEqualTo(bytesTotal);
     // not testing the time read counter since it could be zero due to the size of data is too small
   }
 
@@ -297,27 +285,24 @@ public class DeprecatedInputFormatTest {
     jobConf.set("parquet.benchmark.bytes.total", "false");
     jobConf.set("parquet.benchmark.bytes.read", "false");
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertEquals(
-        mapRedJob
+    assertThat(mapRedJob
             .getCounters()
             .getGroup("parquet")
             .getCounterForName("bytesread")
-            .getValue(),
-        0L);
-    assertEquals(
-        mapRedJob
+            .getValue())
+        .isZero();
+    assertThat(mapRedJob
             .getCounters()
             .getGroup("parquet")
             .getCounterForName("bytestotal")
-            .getValue(),
-        0L);
-    assertEquals(
-        mapRedJob
+            .getValue())
+        .isZero();
+    assertThat(mapRedJob
             .getCounters()
             .getGroup("parquet")
             .getCounterForName("timeread")
-            .getValue(),
-        0L);
+            .getValue())
+        .isZero();
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {

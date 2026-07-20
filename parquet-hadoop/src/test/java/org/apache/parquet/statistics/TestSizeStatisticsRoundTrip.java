@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.statistics;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -43,7 +43,6 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -82,18 +81,18 @@ public class TestSizeStatisticsRoundTrip {
       ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
 
       SizeStatistics sizeStatistics = column.getSizeStatistics();
-      Assert.assertEquals(Optional.of(4L), sizeStatistics.getUnencodedByteArrayDataBytes());
-      Assert.assertEquals(Collections.emptyList(), sizeStatistics.getRepetitionLevelHistogram());
-      Assert.assertEquals(Collections.emptyList(), sizeStatistics.getDefinitionLevelHistogram());
+      assertThat(sizeStatistics.getUnencodedByteArrayDataBytes()).isEqualTo(Optional.of(4L));
+      assertThat(sizeStatistics.getRepetitionLevelHistogram()).isEmpty();
+      assertThat(sizeStatistics.getDefinitionLevelHistogram()).isEmpty();
 
       ColumnIndex columnIndex = reader.readColumnIndex(column);
-      Assert.assertEquals(Collections.emptyList(), columnIndex.getRepetitionLevelHistogram());
-      Assert.assertEquals(Collections.emptyList(), columnIndex.getDefinitionLevelHistogram());
+      assertThat(columnIndex.getRepetitionLevelHistogram()).isEmpty();
+      assertThat(columnIndex.getDefinitionLevelHistogram()).isEmpty();
 
       OffsetIndex offsetIndex = reader.readOffsetIndex(column);
-      Assert.assertEquals(2, offsetIndex.getPageCount());
-      Assert.assertEquals(Optional.of(2L), offsetIndex.getUnencodedByteArrayDataBytes(0));
-      Assert.assertEquals(Optional.of(2L), offsetIndex.getUnencodedByteArrayDataBytes(1));
+      assertThat(offsetIndex.getPageCount()).isEqualTo(2);
+      assertThat(offsetIndex.getUnencodedByteArrayDataBytes(0)).isEqualTo(Optional.of(2L));
+      assertThat(offsetIndex.getUnencodedByteArrayDataBytes(1)).isEqualTo(Optional.of(2L));
     }
   }
 
@@ -140,17 +139,17 @@ public class TestSizeStatisticsRoundTrip {
       ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
 
       SizeStatistics sizeStatistics = column.getSizeStatistics();
-      Assert.assertEquals(Optional.of(3L), sizeStatistics.getUnencodedByteArrayDataBytes());
-      Assert.assertEquals(List.of(2L, 1L), sizeStatistics.getRepetitionLevelHistogram());
-      Assert.assertEquals(List.of(0L, 0L, 0L, 3L), sizeStatistics.getDefinitionLevelHistogram());
+      assertThat(sizeStatistics.getUnencodedByteArrayDataBytes()).isEqualTo(Optional.of(3L));
+      assertThat(sizeStatistics.getRepetitionLevelHistogram()).containsExactly(2L, 1L);
+      assertThat(sizeStatistics.getDefinitionLevelHistogram()).containsExactly(0L, 0L, 0L, 3L);
 
       ColumnIndex columnIndex = reader.readColumnIndex(column);
-      Assert.assertEquals(List.of(2L, 1L), sizeStatistics.getRepetitionLevelHistogram());
-      Assert.assertEquals(List.of(0L, 0L, 0L, 3L), sizeStatistics.getDefinitionLevelHistogram());
+      assertThat(columnIndex.getRepetitionLevelHistogram()).containsExactly(2L, 1L);
+      assertThat(columnIndex.getDefinitionLevelHistogram()).containsExactly(0L, 0L, 0L, 3L);
 
       OffsetIndex offsetIndex = reader.readOffsetIndex(column);
-      Assert.assertEquals(1, offsetIndex.getPageCount());
-      Assert.assertEquals(Optional.of(3L), offsetIndex.getUnencodedByteArrayDataBytes(0));
+      assertThat(offsetIndex.getPageCount()).isEqualTo(1);
+      assertThat(offsetIndex.getUnencodedByteArrayDataBytes(0)).isEqualTo(Optional.of(3L));
     }
   }
 

@@ -26,7 +26,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LE
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,6 +108,6 @@ public class TestParquetMetadata {
     FileMetaData fmd = new FileMetaData(complexParquetSchema, Collections.emptyMap(), "ASF");
     String prettyJSon = ParquetMetadata.toPrettyJSON(new ParquetMetadata(fmd, Collections.emptyList()));
 
-    assertEquals(mapper.readTree(prettyJSon), expectedJson());
+    assertThat(mapper.readTree(prettyJSon)).isEqualTo(expectedJson());
   }
 }

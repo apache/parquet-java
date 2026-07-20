@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
@@ -59,14 +58,14 @@ public class TestLruCache {
 
     SimpleValue oldValue = new SimpleValue(true, true);
     cache.put(oldKey, oldValue);
-    assertEquals(oldValue, cache.getCurrentValue(oldKey));
-    assertEquals(1, cache.size());
+    assertThat(cache.getCurrentValue(oldKey)).isEqualTo(oldValue);
+    assertThat(cache.size()).isOne();
 
     SimpleValue newValue = new SimpleValue(true, true);
     cache.put(newKey, newValue);
-    assertNull(cache.getCurrentValue(oldKey));
-    assertEquals(newValue, cache.getCurrentValue(newKey));
-    assertEquals(1, cache.size());
+    assertThat(cache.getCurrentValue(oldKey)).isNull();
+    assertThat(cache.getCurrentValue(newKey)).isEqualTo(newValue);
+    assertThat(cache.size()).isOne();
   }
 
   @Test
@@ -77,8 +76,9 @@ public class TestLruCache {
     SimpleValue notAsCurrentValue = new SimpleValue(true, false);
     cache.put(DEFAULT_KEY, currentValue);
     cache.put(DEFAULT_KEY, notAsCurrentValue);
-    assertEquals(
-        "The existing value in the cache was overwritten", currentValue, cache.getCurrentValue(DEFAULT_KEY));
+    assertThat(cache.getCurrentValue(DEFAULT_KEY))
+        .as("The existing value in the cache was overwritten")
+        .isEqualTo(currentValue);
   }
 
   @Test
@@ -87,8 +87,8 @@ public class TestLruCache {
 
     SimpleValue outdatedValue = new SimpleValue(false, true);
     cache.put(DEFAULT_KEY, outdatedValue);
-    assertEquals(0, cache.size());
-    assertNull(cache.getCurrentValue(DEFAULT_KEY));
+    assertThat(cache.size()).isZero();
+    assertThat(cache.getCurrentValue(DEFAULT_KEY)).isNull();
   }
 
   @Test
@@ -98,13 +98,12 @@ public class TestLruCache {
     SimpleValue currentValue = new SimpleValue(true, true);
     SimpleValue notAsCurrentValue = new SimpleValue(true, false);
     cache.put(DEFAULT_KEY, notAsCurrentValue);
-    assertEquals(1, cache.size());
+    assertThat(cache.size()).isOne();
     cache.put(DEFAULT_KEY, currentValue);
-    assertEquals(1, cache.size());
-    assertEquals(
-        "The existing value in the cache was NOT overwritten",
-        currentValue,
-        cache.getCurrentValue(DEFAULT_KEY));
+    assertThat(cache.size()).isOne();
+    assertThat(cache.getCurrentValue(DEFAULT_KEY))
+        .as("The existing value in the cache was NOT overwritten")
+        .isEqualTo(currentValue);
   }
 
   @Test
@@ -113,12 +112,14 @@ public class TestLruCache {
 
     SimpleValue value = new SimpleValue(true, true);
     cache.put(DEFAULT_KEY, value);
-    assertEquals(1, cache.size());
-    assertEquals(value, cache.getCurrentValue(DEFAULT_KEY));
+    assertThat(cache.size()).isOne();
+    assertThat(cache.getCurrentValue(DEFAULT_KEY)).isEqualTo(value);
 
     value.setCurrent(false);
-    assertNull("The value should not be current anymore", cache.getCurrentValue(DEFAULT_KEY));
-    assertEquals(0, cache.size());
+    assertThat(cache.getCurrentValue(DEFAULT_KEY))
+        .as("The value should not be current anymore")
+        .isNull();
+    assertThat(cache.size()).isZero();
   }
 
   @Test
@@ -127,13 +128,13 @@ public class TestLruCache {
 
     SimpleValue value = new SimpleValue(true, true);
     cache.put(DEFAULT_KEY, value);
-    assertEquals(1, cache.size());
-    assertEquals(value, cache.getCurrentValue(DEFAULT_KEY));
+    assertThat(cache.size()).isOne();
+    assertThat(cache.getCurrentValue(DEFAULT_KEY)).isEqualTo(value);
 
     // remove the only value
-    assertEquals(value, cache.remove(DEFAULT_KEY));
-    assertNull(cache.getCurrentValue(DEFAULT_KEY));
-    assertEquals(0, cache.size());
+    assertThat(cache.remove(DEFAULT_KEY)).isEqualTo(value);
+    assertThat(cache.getCurrentValue(DEFAULT_KEY)).isNull();
+    assertThat(cache.size()).isZero();
   }
 
   @Test
@@ -145,13 +146,13 @@ public class TestLruCache {
     SimpleValue value = new SimpleValue(true, true);
     cache.put(key1, value);
     cache.put(key2, value);
-    assertEquals(value, cache.getCurrentValue(key1));
-    assertEquals(value, cache.getCurrentValue(key2));
-    assertEquals(2, cache.size());
+    assertThat(cache.getCurrentValue(key1)).isEqualTo(value);
+    assertThat(cache.getCurrentValue(key2)).isEqualTo(value);
+    assertThat(cache.size()).isEqualTo(2);
 
     cache.clear();
-    assertNull(cache.getCurrentValue(key1));
-    assertNull(cache.getCurrentValue(key2));
-    assertEquals(0, cache.size());
+    assertThat(cache.getCurrentValue(key1)).isNull();
+    assertThat(cache.getCurrentValue(key2)).isNull();
+    assertThat(cache.size()).isZero();
   }
 }

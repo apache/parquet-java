@@ -20,8 +20,7 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -89,12 +88,11 @@ public class TestColumnChunkPageReadStore {
       storeReleaser.releaseLater(storeAllocator.allocate(8));
       store.setReleaser(storeReleaser);
 
-      try {
-        store.close();
-        throw new AssertionError("Expected close() to propagate the reader failure");
-      } catch (RuntimeException e) {
-        assertSame(releaseFailure, e.getCause());
-      }
+      assertThatThrownBy(store::close)
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Unable to close resource")
+          .cause()
+          .isSameAs(releaseFailure);
     }
   }
 
@@ -112,18 +110,12 @@ public class TestColumnChunkPageReadStore {
     storeReleaser.releaseLater(throwingReleaserAllocator.allocate(8));
     store.setReleaser(storeReleaser);
 
-    try {
-      store.close();
-      throw new AssertionError("Expected close() to propagate the failures");
-    } catch (RuntimeException e) {
-      // Readers are released before the releaser, so the reader failure is the primary (root) cause and the
-      // releaser failure is attached to it as a suppressed exception, ensuring both are reported.
-      Throwable root = e.getCause();
-      assertSame(readerFailure, root);
-      Throwable[] suppressed = root.getSuppressed();
-      assertEquals(1, suppressed.length);
-      assertSame(releaserFailure, suppressed[0]);
-    }
+    assertThatThrownBy(store::close)
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Unable to close resource")
+        .cause()
+        .isSameAs(readerFailure)
+        .hasSuppressedException(releaserFailure);
   }
 
   private static ByteBufferAllocator throwingAllocator(RuntimeException releaseFailure) {

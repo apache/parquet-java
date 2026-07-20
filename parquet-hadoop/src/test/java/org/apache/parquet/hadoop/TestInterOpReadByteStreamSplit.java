@@ -19,10 +19,7 @@
 
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import org.apache.hadoop.fs.Path;
@@ -46,32 +43,32 @@ public class TestInterOpReadByteStreamSplit {
         ParquetReader.builder(new GroupReadSupport(), floatsFile).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
-        assertNotNull(group);
+        assertThat(group).isNotNull();
         float fval = group.getFloat("f32", 0);
         double dval = group.getDouble("f64", 0);
         // Values are from the normal distribution
-        assertTrue(Math.abs(fval) < 4.0);
-        assertTrue(Math.abs(dval) < 4.0);
+        assertThat(Math.abs(fval)).isLessThan(4.0f);
+        assertThat(Math.abs(dval)).isLessThan(4.0);
         switch (i) {
           case 0:
-            assertEquals(1.7640524f, fval, 0.0);
-            assertEquals(-1.3065268517353166, dval, 0.0);
+            assertThat(fval).isEqualTo(1.7640524f);
+            assertThat(dval).isEqualTo(-1.3065268517353166);
             break;
           case 1:
-            assertEquals(0.4001572f, fval, 0.0);
-            assertEquals(1.658130679618188, dval, 0.0);
+            assertThat(fval).isEqualTo(0.4001572f);
+            assertThat(dval).isEqualTo(1.658130679618188);
             break;
           case expectRows - 2:
-            assertEquals(-0.39944902f, fval, 0.0);
-            assertEquals(-0.9301565025243212, dval, 0.0);
+            assertThat(fval).isEqualTo(-0.39944902f);
+            assertThat(dval).isEqualTo(-0.9301565025243212);
             break;
           case expectRows - 1:
-            assertEquals(0.37005588f, fval, 0.0);
-            assertEquals(-0.17858909208732915, dval, 0.0);
+            assertThat(fval).isEqualTo(0.37005588f);
+            assertThat(dval).isEqualTo(-0.17858909208732915);
             break;
         }
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -80,12 +77,12 @@ public class TestInterOpReadByteStreamSplit {
         ParquetReader.builder(new GroupReadSupport(), path).build()) {
       for (int i = 0; i < expectRows; ++i) {
         SimpleGroup group = (SimpleGroup) reader.read();
-        assertNotNull(group);
+        assertThat(group).isNotNull();
         Object left = group.getObject(leftCol, 0);
         Object right = group.getObject(rightCol, 0);
-        assertEquals(left, right);
+        assertThat(right).isEqualTo(left);
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 

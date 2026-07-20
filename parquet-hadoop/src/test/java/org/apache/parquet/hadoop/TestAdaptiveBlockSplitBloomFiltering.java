@@ -19,7 +19,7 @@
 
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
@@ -72,7 +72,7 @@ public class TestAdaptiveBlockSplitBloomFiltering extends TestBloomFiltering {
               // expectedNVD=8192],
               // [byteSize=16384, expectedNVD=13500], [byteSize=32768, expectedNVD=27000] ......
               // number of distinct values is less than 100, so the byteSize should be less than 2048.
-              assertTrue(bitsetSize <= 2048);
+              assertThat(bitsetSize).isLessThanOrEqualTo(2048);
             });
       });
     }

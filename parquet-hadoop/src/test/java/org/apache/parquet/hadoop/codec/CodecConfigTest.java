@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
@@ -29,7 +31,6 @@ import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class CodecConfigTest {
@@ -56,12 +57,12 @@ public class CodecConfigTest {
     conf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
     TaskAttemptContext task = ContextUtil.newTaskAttemptContext(
         conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
-    Assert.assertEquals(CodecConfig.from(task).getCodec(), expectedCodec);
+    assertThat(CodecConfig.from(task).getCodec()).isEqualTo(expectedCodec);
 
     // Test mapred API
     JobConf jobConf = new JobConf();
     jobConf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
-    Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
+    assertThat(CodecConfig.from(jobConf).getCodec()).isEqualTo(expectedCodec);
   }
 
   public void shouldUseHadoopFlagToSetCodec(String codecClassStr, CompressionCodecName expectedCodec)
@@ -73,12 +74,12 @@ public class CodecConfigTest {
     conf.set("mapred.output.compression.codec", codecClassStr);
     TaskAttemptContext task = ContextUtil.newTaskAttemptContext(
         conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
-    Assert.assertEquals(expectedCodec, CodecConfig.from(task).getCodec());
+    assertThat(CodecConfig.from(task).getCodec()).isEqualTo(expectedCodec);
 
     // Test mapred API
     JobConf jobConf = new JobConf();
     jobConf.setBoolean("mapred.output.compress", true);
     jobConf.set("mapred.output.compression.codec", codecClassStr);
-    Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
+    assertThat(CodecConfig.from(jobConf).getCodec()).isEqualTo(expectedCodec);
   }
 }

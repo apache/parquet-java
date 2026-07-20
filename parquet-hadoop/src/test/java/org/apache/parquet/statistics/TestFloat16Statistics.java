@@ -20,7 +20,7 @@ package org.apache.parquet.statistics;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -184,8 +184,8 @@ public class TestFloat16Statistics {
             reader.getFooter().getBlocks().get(0).getColumns().get(0);
         Statistics<?> statistics = column.getStatistics();
 
-        assertArrayEquals(expectedValues.get(i)[0].getBytes(), statistics.getMinBytes());
-        assertArrayEquals(expectedValues.get(i)[1].getBytes(), statistics.getMaxBytes());
+        assertThat(statistics.getMinBytes()).isEqualTo(expectedValues.get(i)[0].getBytes());
+        assertThat(statistics.getMaxBytes()).isEqualTo(expectedValues.get(i)[1].getBytes());
       }
     }
   }
@@ -239,8 +239,8 @@ public class TestFloat16Statistics {
               reader.getFooter().getBlocks().get(0).getColumns().get(0);
           Statistics<?> statistics = column.getStatistics();
 
-          assertArrayEquals(valuesInAscendingOrder[minIndex].getBytes(), statistics.getMinBytes());
-          assertArrayEquals(valuesInAscendingOrder[maxIndex].getBytes(), statistics.getMaxBytes());
+          assertThat(statistics.getMinBytes()).isEqualTo(valuesInAscendingOrder[minIndex].getBytes());
+          assertThat(statistics.getMaxBytes()).isEqualTo(valuesInAscendingOrder[maxIndex].getBytes());
         }
       }
     }
