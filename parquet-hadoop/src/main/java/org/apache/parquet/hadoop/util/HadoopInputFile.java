@@ -19,6 +19,7 @@
 
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.hadoop.fs.Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH;
 import static org.apache.parquet.hadoop.util.wrapped.io.FutureIO.awaitFuture;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FutureDataInputStreamBuilder;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
@@ -53,12 +55,35 @@ public class HadoopInputFile implements InputFile {
   private static final String PARQUET_READ_POLICY = "parquet, vector, random, adaptive";
 
   private final FileSystem fs;
+  private final Path path;
+  private final long length;
   private final FileStatus stat;
   private final Configuration conf;
 
   public static HadoopInputFile fromPath(Path path, Configuration conf) throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopInputFile(fs, fs.getFileStatus(path), conf);
+  }
+
+  /**
+   * Creates an input file using a caller-supplied file length.
+   *
+   * <p>The length is trusted and no file status lookup is performed. Callers must provide the exact
+   * length of the file that will be opened. The file is not validated until it is opened.
+   *
+   * @param path file path
+   * @param length exact file length in bytes
+   * @param conf configuration used to resolve the file system
+   * @return an input file that uses the supplied length
+   * @throws IllegalArgumentException if {@code length} is negative
+   * @throws IOException if the file system cannot be resolved
+   */
+  public static HadoopInputFile fromPath(Path path, long length, Configuration conf) throws IOException {
+    if (length < 0) {
+      throw new IllegalArgumentException("Invalid file length: " + length);
+    }
+    FileSystem fs = path.getFileSystem(conf);
+    return new HadoopInputFile(fs, path, length, conf);
   }
 
   public static HadoopInputFile fromPathUnchecked(Path path, Configuration conf) {
@@ -76,7 +101,17 @@ public class HadoopInputFile implements InputFile {
 
   private HadoopInputFile(FileSystem fs, FileStatus stat, Configuration conf) {
     this.fs = fs;
+    this.path = stat.getPath();
+    this.length = stat.getLen();
     this.stat = stat;
+    this.conf = conf;
+  }
+
+  private HadoopInputFile(FileSystem fs, Path path, long length, Configuration conf) {
+    this.fs = fs;
+    this.path = path;
+    this.length = length;
+    this.stat = null;
     this.conf = conf;
   }
 
@@ -85,19 +120,19 @@ public class HadoopInputFile implements InputFile {
   }
 
   public Path getPath() {
-    return stat.getPath();
+    return path;
   }
 
   @Override
   public long getLength() {
-    return stat.getLen();
+    return length;
   }
 
   /**
    * Open the file.
-   * <p>Uses {@code FileSystem.openFile()} so that
-   * the existing FileStatus can be passed down: saves a HEAD request on cloud storage.
-   * and ignored everywhere else.
+   * <p>Uses {@code FileSystem.openFile()} so that the existing FileStatus, when available, or the
+   * known file length can be passed down. File systems may use either to avoid a metadata request
+   * when opening the file.
    *
    * @return the input stream.
    *
@@ -109,20 +144,24 @@ public class HadoopInputFile implements InputFile {
   public SeekableInputStream newStream() throws IOException {
     FSDataInputStream stream;
     try {
-      // this method is async so that implementations may do async HEAD head
+      // this method is async so that implementations may do async HEAD
       // requests, such as S3A/ABFS when a file status is passed down.
-      final CompletableFuture<FSDataInputStream> future = fs.openFile(stat.getPath())
-          .withFileStatus(stat)
-          .opt(OPENFILE_READ_POLICY_KEY, PARQUET_READ_POLICY)
-          .build();
+      FutureDataInputStreamBuilder builder = fs.openFile(path).opt(OPENFILE_READ_POLICY_KEY, PARQUET_READ_POLICY);
+      if (stat != null) {
+        builder.withFileStatus(stat);
+      } else {
+        builder.opt(FS_OPTION_OPENFILE_LENGTH, Long.toString(length));
+      }
+      final CompletableFuture<FSDataInputStream> future = builder.build();
       stream = awaitFuture(future);
     } catch (RuntimeException e) {
       // S3A < 3.3.5 would raise illegal path exception if the openFile path didn't
       // equal the path in the FileStatus; Hive virtual FS could create this condition.
-      // As the path to open is derived from stat.getPath(), this condition seems
-      // near-impossible to create -but is handled here for due diligence.
+      // When a status is supplied, the path to open is derived from stat.getPath(),
+      // so this condition seems near-impossible to create -but is handled here
+      // for due diligence.
       try {
-        stream = fs.open(stat.getPath());
+        stream = fs.open(path);
       } catch (IOException | RuntimeException ex) {
         // failure on this attempt attaches the failure of the openFile() call
         // so the stack trace is preserved.
@@ -136,6 +175,6 @@ public class HadoopInputFile implements InputFile {
 
   @Override
   public String toString() {
-    return stat.getPath().toString();
+    return path.toString();
   }
 }
