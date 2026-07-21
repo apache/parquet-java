@@ -65,6 +65,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -1348,6 +1349,33 @@ public class ParquetFileReader implements Closeable {
     return true;
   }
 
+  static class ReleasingAllocator implements ByteBufferAllocator {
+    ByteBufferAllocator base;
+    ByteBufferReleaser releaser;
+
+    public ReleasingAllocator(ByteBufferAllocator base, ByteBufferReleaser releaser) {
+      this.base = base;
+      this.releaser = releaser;
+    }
+
+    @Override
+    public ByteBuffer allocate(int size) {
+      ByteBuffer res = base.allocate(size);
+      releaser.releaseLater(res);
+      return res;
+    }
+
+    @Override
+    public void release(ByteBuffer b) {
+      base.release(b);
+    }
+
+    @Override
+    public boolean isDirect() {
+      return base.isDirect();
+    }
+  }
+
   /**
    * Read all parts through vectored IO.
    * <p>
@@ -1378,7 +1406,7 @@ public class ParquetFileReader implements Closeable {
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     // Request a vectored read;
-    f.readVectored(ranges, options.getAllocator());
+    f.readVectored(ranges, new ReleasingAllocator(options.getAllocator(), builder.releaser));
     int k = 0;
     for (ConsecutivePartList consecutivePart : allParts) {
       ParquetFileRange currRange = ranges.get(k++);
@@ -1890,6 +1918,8 @@ public class ParquetFileReader implements Closeable {
       lastDescriptor = descriptor;
       this.f = f;
     }
+
+    ByteBufferReleaser getReleaser() { return releaser; }
 
     void addBuffersToRelease(List<ByteBuffer> toRelease) {
       toRelease.forEach(releaser::releaseLater);
