@@ -69,7 +69,8 @@ public class HadoopInputFile implements InputFile {
    * Creates an input file using a caller-supplied file length.
    *
    * <p>The length is trusted and no file status lookup is performed. Callers must provide the exact
-   * length of the file that will be opened. The file is not validated until it is opened.
+   * length of the file that will be opened. The file system may defer checking whether the file
+   * exists until the first read. If the supplied length is incorrect, reads may fail.
    *
    * @param path file path
    * @param length exact file length in bytes

@@ -44,7 +44,9 @@ import org.apache.hadoop.fs.impl.FutureDataInputStreamBuilderImpl;
 import org.apache.parquet.io.SeekableInputStream;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
 
 /**
@@ -60,6 +62,10 @@ import org.mockito.Mockito;
 public class TestHadoopOpenFile {
 
   private static final int FIRST = MockHadoopInputStream.TEST_ARRAY[0];
+
+  @Rule
+  public TemporaryFolder temp = new TemporaryFolder();
+
   private URI fsUri;
   private FileStatus status;
   private Path path;
@@ -135,6 +141,23 @@ public class TestHadoopOpenFile {
     assertThatThrownBy(() -> HadoopInputFile.fromPath(path, -1, conf))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid file length: -1");
+  }
+
+  /**
+   * Opening a nonexistent file with a caller-supplied length must fail either
+   * when opening the stream or on the first read.
+   */
+  @Test
+  public void testKnownLengthMissingFile() throws IOException {
+    final Path missingPath = new Path(new Path(temp.getRoot().toURI()), "missing.parquet");
+    final HadoopInputFile inputFile = HadoopInputFile.fromPath(missingPath, 1, conf);
+
+    assertThatThrownBy(() -> {
+          try (SeekableInputStream stream = inputFile.newStream()) {
+            stream.read();
+          }
+        })
+        .isInstanceOf(FileNotFoundException.class);
   }
 
   /**
