@@ -417,7 +417,7 @@ public class Types {
               @Override
               public Optional<AllowedPhysicalTypes> visit(
                   LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
-                return AllowedPhysicalTypes.of(PrimitiveTypeName.INT64);
+                return AllowedPhysicalTypes.fixed(12, PrimitiveTypeName.INT64);
               }
 
               @Override
@@ -463,13 +463,16 @@ public class Types {
         return Optional.of(new AllowedPhysicalTypes(EnumSet.of(first, rest), NOT_SET));
       }
 
-      private static Optional<AllowedPhysicalTypes> fixed(int requiredLength) {
-        return Optional.of(
-            new AllowedPhysicalTypes(EnumSet.of(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY), requiredLength));
+      private static Optional<AllowedPhysicalTypes> fixed(int requiredLength, PrimitiveTypeName... otherTypes) {
+        return Optional.of(new AllowedPhysicalTypes(
+            EnumSet.of(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, otherTypes), requiredLength));
       }
 
       private boolean accepts(PrimitiveTypeName type, int length) {
-        return types.contains(type) && (requiredLength == NOT_SET || length == requiredLength);
+        return types.contains(type)
+            && (type != PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+                || requiredLength == NOT_SET
+                || length == requiredLength);
       }
 
       private boolean isEmpty() {
@@ -478,10 +481,11 @@ public class Types {
 
       @Override
       public String toString() {
-        if (requiredLength != NOT_SET) {
-          return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY + "(" + requiredLength + ")";
-        }
-        return types.stream().map(Enum::name).collect(Collectors.joining(", "));
+        return types.stream()
+            .map(type -> type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY && requiredLength != NOT_SET
+                ? type + "(" + requiredLength + ")"
+                : type.name())
+            .collect(Collectors.joining(", "));
       }
     }
 

@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -249,7 +250,7 @@ public abstract class PrimitiveStringifier {
       return toFormattedString(getInstant(value));
     }
 
-    private String toFormattedString(Instant instant) {
+    final String toFormattedString(Instant instant) {
       return formatter.format(instant);
     }
 
@@ -266,6 +267,41 @@ public abstract class PrimitiveStringifier {
     }
   }
 
+  /**
+   * Stringifier implementation for timestamps that handles both int64 and FLBA(12) carriers.
+   * Values outside of Instant's supported range render as raw integers rather than human-readable
+   * timestamps.
+   */
+  private abstract static class TimestampStringifier extends DateStringifier {
+    private TimestampStringifier(String name, String format) {
+      super(name, format);
+    }
+
+    @Override
+    public String stringify(Binary value) {
+      if (value == null) {
+        return BINARY_NULL;
+      }
+      byte[] littleEndian = value.getBytesUnsafe();
+      byte[] bigEndian = new byte[littleEndian.length];
+      for (int i = 0; i < littleEndian.length; ++i) {
+        bigEndian[i] = littleEndian[littleEndian.length - 1 - i];
+      }
+      try {
+        BigInteger units = new BigInteger(bigEndian);
+        try {
+          return toFormattedString(getInstant(units));
+        } catch (ArithmeticException | DateTimeException e) {
+          return units.toString();
+        }
+      } catch (NumberFormatException e) {
+        return BINARY_INVALID;
+      }
+    }
+
+    abstract Instant getInstant(BigInteger value);
+  }
+
   static final PrimitiveStringifier DATE_STRINGIFIER = new DateStringifier("DATE_STRINGIFIER", "yyyy-MM-dd") {
     @Override
     Instant getInstant(int value) {
@@ -274,55 +310,95 @@ public abstract class PrimitiveStringifier {
     ;
   };
 
+  // Converts a count of time units since epoch, held as a BigInteger (the 96-bit FLBA(12) carrier),
+  // into an Instant. The 96-bit count does not fit in a long, but the whole-second count does, so
+  // divide first and narrow after.
+  private static Instant instantFromUnits(BigInteger units, TimeUnit unit) {
+    BigInteger[] secondsAndUnits = units.divideAndRemainder(BigInteger.valueOf(unit.convert(1, SECONDS)));
+    long seconds = secondsAndUnits[0].longValueExact();
+    long nanos = secondsAndUnits[1].longValue() * unit.toNanos(1);
+    return Instant.ofEpochSecond(seconds, nanos);
+  }
+
   static final PrimitiveStringifier TIMESTAMP_MILLIS_STRINGIFIER =
-      new DateStringifier("TIMESTAMP_MILLIS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
+      new TimestampStringifier("TIMESTAMP_MILLIS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
         @Override
         Instant getInstant(long value) {
           return Instant.ofEpochMilli(value);
+        }
+
+        @Override
+        Instant getInstant(BigInteger value) {
+          return instantFromUnits(value, MILLISECONDS);
         }
       };
 
   static final PrimitiveStringifier TIMESTAMP_MICROS_STRINGIFIER =
-      new DateStringifier("TIMESTAMP_MICROS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS") {
+      new TimestampStringifier("TIMESTAMP_MICROS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS") {
         @Override
         Instant getInstant(long value) {
           return Instant.ofEpochSecond(
               MICROSECONDS.toSeconds(value), MICROSECONDS.toNanos(value % SECONDS.toMicros(1)));
+        }
+
+        @Override
+        Instant getInstant(BigInteger value) {
+          return instantFromUnits(value, MICROSECONDS);
         }
       };
 
   static final PrimitiveStringifier TIMESTAMP_NANOS_STRINGIFIER =
-      new DateStringifier("TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS") {
+      new TimestampStringifier("TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS") {
         @Override
         Instant getInstant(long value) {
           return Instant.ofEpochSecond(
               NANOSECONDS.toSeconds(value), NANOSECONDS.toNanos(value % SECONDS.toNanos(1)));
         }
+
+        @Override
+        Instant getInstant(BigInteger value) {
+          return instantFromUnits(value, NANOSECONDS);
+        }
       };
 
   static final PrimitiveStringifier TIMESTAMP_MILLIS_UTC_STRINGIFIER =
-      new DateStringifier("TIMESTAMP_MILLIS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSZ") {
+      new TimestampStringifier("TIMESTAMP_MILLIS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSZ") {
         @Override
         Instant getInstant(long value) {
           return Instant.ofEpochMilli(value);
         }
+
+        @Override
+        Instant getInstant(BigInteger value) {
+          return instantFromUnits(value, MILLISECONDS);
+        }
       };
 
   static final PrimitiveStringifier TIMESTAMP_MICROS_UTC_STRINGIFIER =
-      new DateStringifier("TIMESTAMP_MICROS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ") {
+      new TimestampStringifier("TIMESTAMP_MICROS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ") {
         @Override
         Instant getInstant(long value) {
           return Instant.ofEpochSecond(
               MICROSECONDS.toSeconds(value), MICROSECONDS.toNanos(value % SECONDS.toMicros(1)));
         }
+
+        @Override
+        Instant getInstant(BigInteger value) {
+          return instantFromUnits(value, MICROSECONDS);
+        }
       };
 
   static final PrimitiveStringifier TIMESTAMP_NANOS_UTC_STRINGIFIER =
-      new DateStringifier("TIMESTAMP_NANOS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSZ") {
+      new TimestampStringifier("TIMESTAMP_NANOS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSZ") {
         @Override
         Instant getInstant(long value) {
           return Instant.ofEpochSecond(
               NANOSECONDS.toSeconds(value), NANOSECONDS.toNanos(value % SECONDS.toNanos(1)));
+        }
+
+        @Override
+        Instant getInstant(BigInteger value) {
+          return instantFromUnits(value, NANOSECONDS);
         }
       };
 

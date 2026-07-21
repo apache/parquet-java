@@ -279,6 +279,47 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   };
 
   /**
+   * Comparator for timestamps encoded as 12-byte little-endian two's-complement values.
+   */
+  static final PrimitiveComparator<Binary> BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR = new BinaryComparator() {
+    @Override
+    int compareBinary(Binary b1, Binary b2) {
+      if (b1.length() != 12 || b2.length() != 12) {
+        throw new IllegalArgumentException(
+            "Timestamp binary length must be 12 bytes, got " + b1.length() + " and " + b2.length());
+      }
+
+      ByteBuffer bb1 = b1.toByteBuffer();
+      ByteBuffer bb2 = b2.toByteBuffer();
+      // The buffers may be slices with a non-zero position (e.g. a ByteBuffer-backed Binary), so
+      // index relative to position() rather than absolute offset 0. Byte 11 (position + 11) is the
+      // most significant byte and carries the sign; byte 0 (position) is least significant.
+      int p1 = bb1.position();
+      int p2 = bb2.position();
+
+      // If one value is negative and the other is positive, one is trivially greater.
+      boolean neg1 = bb1.get(p1 + 11) < 0;
+      boolean neg2 = bb2.get(p2 + 11) < 0;
+      if (neg1 != neg2) {
+        return neg1 ? -1 : 1;
+      }
+
+      for (int i = 11; i >= 0; --i) {
+        int diff = toUnsigned(bb1.get(p1 + i)) - toUnsigned(bb2.get(p2 + i));
+        if (diff != 0) {
+          return diff;
+        }
+      }
+      return 0;
+    }
+
+    @Override
+    public String toString() {
+      return "BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR";
+    }
+  };
+
+  /**
    * This comparator is for comparing two float16 values represented in 2 bytes binary.
    */
   static final PrimitiveComparator<Binary> BINARY_AS_FLOAT16_COMPARATOR = new BinaryComparator() {
