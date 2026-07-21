@@ -21,6 +21,7 @@ package org.apache.parquet.schema;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR;
@@ -431,6 +432,42 @@ public class TestPrimitiveComparator {
     } else {
       assertThat(compareResult).isZero();
     }
+  }
+
+  @Test
+  public void testBinaryAsSignedIntegerLE12Comparator() {
+    // 12-byte LE encodings: byte[0]=LSB, byte[11]=MSB/sign
+    // large negative: 0x80 00..00 (most negative 96-bit value)
+    byte[] largeNeg = new byte[12];
+    largeNeg[11] = (byte) 0x80;
+    // -256: 0x00 FF FF..FF (little-endian)
+    byte[] negTwoFiftySix = new byte[12];
+    for (int i = 1; i < 12; i++) negTwoFiftySix[i] = (byte) 0xFF;
+    // -1: all 0xFF
+    byte[] negOne = new byte[12];
+    for (int i = 0; i < 12; i++) negOne[i] = (byte) 0xFF;
+    // 0: all 0x00
+    byte[] zero = new byte[12];
+    // +1: 0x01 followed by 0x00s
+    byte[] posOne = new byte[12];
+    posOne[0] = 1;
+    // +256: byte[0]=0x00, byte[1]=0x01, rest 0x00 — order vs +1 is decided at byte 1 (high byte);
+    // an LSB-first comparator would wrongly rank +256 < +1 (seeing byte[0]=0 < 1 first)
+    byte[] posTwoFiftySix = new byte[12];
+    posTwoFiftySix[1] = 1;
+    // large positive: 0x7F FF..FF (most positive 96-bit value)
+    byte[] largePos = new byte[12];
+    for (int i = 0; i < 12; i++) largePos[i] = (byte) 0xFF;
+    largePos[11] = 0x7F;
+    testObjectComparator(
+        BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR,
+        Binary.fromConstantByteArray(largeNeg),
+        Binary.fromConstantByteArray(negTwoFiftySix),
+        Binary.fromConstantByteArray(negOne),
+        Binary.fromConstantByteArray(zero),
+        Binary.fromConstantByteArray(posOne),
+        Binary.fromConstantByteArray(posTwoFiftySix),
+        Binary.fromConstantByteArray(largePos));
   }
 
   private void checkThrowingUnsupportedException(PrimitiveComparator<?> comparator, Class<?> exclude) {

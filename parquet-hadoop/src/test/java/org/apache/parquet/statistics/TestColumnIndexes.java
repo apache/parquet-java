@@ -120,6 +120,10 @@ public class TestColumnIndexes {
           .as(OriginalType.INTERVAL)
           .named("interval"),
       Types.optional(FIXED_LEN_BYTE_ARRAY).length(16).as(uuidType()).named("uuid"),
+      Types.optional(FIXED_LEN_BYTE_ARRAY)
+          .length(12)
+          .as(timestampType(true, TimeUnit.NANOS))
+          .named("timestamp-nanos-flba"),
       Types.optional(BINARY).as(stringType()).named("always-null"));
 
   private static List<Supplier<?>> buildGenerators(int recordCount, Random random) {
@@ -224,6 +228,8 @@ public class TestColumnIndexes {
             new RandomValues.FixedGenerator(random.nextLong(), 12), random, recordCount, fieldIndex++),
         sortedOrRandom(
             new RandomValues.FixedGenerator(random.nextLong(), 16), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.FixedGenerator(random.nextLong(), 12), random, recordCount, fieldIndex++),
         null);
   }
 

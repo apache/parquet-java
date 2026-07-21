@@ -37,12 +37,15 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
 import static org.apache.parquet.schema.OriginalType.UINT_8;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
@@ -2011,6 +2014,50 @@ public class TestColumnIndexBuilder {
         toBBList(Integer.valueOf(99), null));
     assertCorrectNullPages(ci6, false, true);
     assertCorrectNullCounts(ci6, 0, 1);
+  }
+
+  @Test
+  public void testBuildFlba12Timestamp() {
+    // FLBA(12) TIMESTAMP column with negative (pre-1970) and positive (post-1970) values.
+    // The LE signed comparator must order negatives before zero before positives.
+    PrimitiveType type = Types.required(FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, NANOS))
+        .named("ts");
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+    assertThat(builder).isInstanceOf(BinaryColumnIndexBuilder.class);
+
+    // -1 (all 0xFF) encodes a value just before epoch — smallest in the test
+    byte[] negOne = new byte[12];
+    for (int i = 0; i < 12; i++) negOne[i] = (byte) 0xFF;
+    // 0 (all 0x00) — epoch
+    byte[] epoch = new byte[12];
+    // +1 (0x01 followed by zeros) — just after epoch
+    byte[] posOne = new byte[12];
+    posOne[0] = 1;
+
+    StatsBuilder sb = new StatsBuilder();
+    // Page 0: only negative values, min=-1 max=-1
+    builder.add(sb.stats(type, Binary.fromConstantByteArray(negOne)));
+    // Page 1: straddles epoch, min=-1 max=+1
+    builder.add(sb.stats(type, Binary.fromConstantByteArray(negOne), Binary.fromConstantByteArray(posOne)));
+    // Page 2: only positive values, min=epoch max=+1
+    builder.add(sb.stats(type, Binary.fromConstantByteArray(epoch), Binary.fromConstantByteArray(posOne)));
+
+    ColumnIndex columnIndex = builder.build();
+    assertThat(columnIndex).isNotNull();
+    // min of page 0 must equal -1
+    assertCorrectValues(
+        columnIndex.getMinValues(),
+        Binary.fromConstantByteArray(negOne),
+        Binary.fromConstantByteArray(negOne),
+        Binary.fromConstantByteArray(epoch));
+    // max of page 0 must equal -1 (all values are negative)
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
+        Binary.fromConstantByteArray(negOne),
+        Binary.fromConstantByteArray(posOne),
+        Binary.fromConstantByteArray(posOne));
   }
 
   @Test

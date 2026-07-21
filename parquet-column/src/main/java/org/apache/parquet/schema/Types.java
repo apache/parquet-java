@@ -563,6 +563,9 @@ public class Types {
               @Override
               public Optional<Boolean> visit(
                   LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+                if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+                  return checkFixedPrimitiveType(12, timestampLogicalType);
+                }
                 return checkInt64PrimitiveType(timestampLogicalType);
               }
 

@@ -22,6 +22,8 @@ import static java.lang.Double.doubleToLongBits;
 import static java.lang.Float.floatToIntBits;
 import static org.apache.parquet.bytes.BytesUtils.intToBytes;
 import static org.apache.parquet.bytes.BytesUtils.longToBytes;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -938,6 +940,32 @@ public class TestStatistics {
     assertThatThrownBy(() -> stats.isSmallerThan(0))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("isSmallerThan is not supported by org.apache.parquet.column.statistics.NoopStatistics");
+  }
+
+  @Test
+  public void testFlba12TimestampStats() {
+    PrimitiveType type = Types.required(FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, NANOS))
+        .named("ts");
+    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(type);
+
+    // -1 (all 0xFF) — just before epoch, negative value
+    byte[] negOne = new byte[12];
+    for (int i = 0; i < 12; i++) negOne[i] = (byte) 0xFF;
+    // +1 (0x01 followed by zeros) — just after epoch, positive value
+    byte[] posOne = new byte[12];
+    posOne[0] = 1;
+    // epoch (all 0x00)
+    byte[] epoch = new byte[12];
+
+    stats.updateStats(Binary.fromConstantByteArray(posOne));
+    stats.updateStats(Binary.fromConstantByteArray(negOne));
+    stats.updateStats(Binary.fromConstantByteArray(epoch));
+
+    // min must be the negative value (-1), max must be the positive value (+1)
+    assertThat(stats.genericGetMin()).isEqualTo(Binary.fromConstantByteArray(negOne));
+    assertThat(stats.genericGetMax()).isEqualTo(Binary.fromConstantByteArray(posOne));
   }
 
   @Test

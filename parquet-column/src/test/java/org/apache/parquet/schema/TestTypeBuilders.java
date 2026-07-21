@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.schema;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
@@ -553,12 +554,19 @@ public class TestTypeBuilders {
             .hasMessage(
                 LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
       }
+      // TIMESTAMP allows FLBA(12); other lengths are still rejected.
+      // Non-timestamp types still only accept INT64 for any FLBA length.
+      boolean isTimestamp = logicalType == TIMESTAMP_MILLIS || logicalType == TIMESTAMP_MICROS;
+      String flbaErrMsg = isTimestamp
+          ? LogicalTypeAnnotation.fromOriginalType(logicalType, null)
+              + " can only annotate FIXED_LEN_BYTE_ARRAY(12)"
+          : LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64";
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
+          .hasMessage(flbaErrMsg);
     }
   }
 
@@ -1441,6 +1449,23 @@ public class TestTypeBuilders {
     assertThat(nonUtcMillisActual).isEqualTo(nonUtcMillisExpected);
     assertThat(utcMicrosActual).isEqualTo(utcMicrosExpected);
     assertThat(nonUtcMicrosActual).isEqualTo(nonUtcMicrosExpected);
+  }
+
+  @Test
+  public void testTimestampFlba12LogicalType() {
+    for (TimeUnit unit : TimeUnit.values()) {
+      // FLBA(12) with TIMESTAMP annotation is valid.
+      Types.required(FIXED_LEN_BYTE_ARRAY)
+          .length(12)
+          .as(timestampType(true, unit))
+          .named("ts");
+      // Other FLBA lengths must be rejected.
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(11)
+              .as(timestampType(true, unit))
+              .named("ts"))
+          .isInstanceOf(IllegalStateException.class);
+    }
   }
 
   @Test
