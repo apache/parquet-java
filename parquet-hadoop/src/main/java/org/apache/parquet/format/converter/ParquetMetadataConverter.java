@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1688,7 +1689,9 @@ public class ParquetMetadataConverter {
         calculatedTag,
         0,
         AesCipher.GCM_TAG_LENGTH);
-    if (!Arrays.equals(gcmTag, calculatedTag)) {
+    // Use a constant-time comparison for the authentication tag to avoid leaking
+    // timing information about the correct value (CWE-208).
+    if (!MessageDigest.isEqual(gcmTag, calculatedTag)) {
       throw new TagVerificationException("Signature mismatch in plaintext footer");
     }
   }
