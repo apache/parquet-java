@@ -163,4 +163,37 @@ public class CorruptStatisticsTest {
             "parquet-mr version 1.7.0 (build abcd)", PrimitiveTypeName.BINARY))
         .isTrue();
   }
+
+  @Test
+  public void testCorruptStatisticsColumnType() {
+    // These column types are affected by the PARQUET-251 bug
+    String corruptVersion = "parquet-mr version 1.6.0 (build abcd)";
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY));
+    // These column types are NOT affected
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.INT32));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.INT64));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.DOUBLE));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.FLOAT));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.BOOLEAN));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics(corruptVersion, PrimitiveTypeName.INT96));
+  }
+
+  @Test
+  public void testMayHaveCorruptStatistics() {
+    // Corrupt versions
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.6.0 (build abcd)"));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.4.2 (build abcd)"));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.7.999 (build abcd)"));
+    // Null/empty
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics(null));
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics(""));
+    // Unparseable
+    assertTrue(CorruptStatistics.mayHaveCorruptStatistics("unparseable string"));
+    // Fixed versions
+    assertFalse(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 1.8.0 (build abcd)"));
+    assertFalse(CorruptStatistics.mayHaveCorruptStatistics("parquet-mr version 2.0.0 (build abcd)"));
+    // Non-parquet-mr applications
+    assertFalse(CorruptStatistics.mayHaveCorruptStatistics("impala version 1.6.0 (build abcd)"));
+  }
 }

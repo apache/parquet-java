@@ -47,20 +47,22 @@ public class CorruptStatistics {
   private static final SemanticVersion CDH_5_PARQUET_251_FIXED_END = new SemanticVersion(1, 5, 0);
 
   /**
-   * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
-   * should be ignored because they are potentially corrupt.
-   *
-   * @param createdBy  the created-by string from a file footer
-   * @param columnType the type of the column that this is checking
-   * @return true if the statistics may be invalid and should be ignored, false otherwise
+   * Returns whether the given column type is one of the types affected by the PARQUET-251 bug
+   * (BINARY or FIXED_LEN_BYTE_ARRAY).
    */
-  public static boolean shouldIgnoreStatistics(String createdBy, PrimitiveTypeName columnType) {
+  private static boolean isCorruptStatisticsColumnType(PrimitiveTypeName columnType) {
+    return columnType == PrimitiveTypeName.BINARY || columnType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+  }
 
-    if (columnType != PrimitiveTypeName.BINARY && columnType != PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
-      // the bug only applies to binary columns
-      return false;
-    }
-
+  /**
+   * Determines whether a file (identified by its created_by string) may have been written by a
+   * version of parquet-mr that had the PARQUET-251 statistics bug. This is a file-level check
+   * that does not consider column type.
+   *
+   * @param createdBy the created-by string from a file footer
+   * @return true if the file may have been written by a version with the corrupt statistics bug
+   */
+  public static boolean mayHaveCorruptStatistics(String createdBy) {
     if (Strings.isNullOrEmpty(createdBy)) {
       // created_by is not populated, which could have been caused by
       // parquet-mr during the same time as PARQUET-251, see PARQUET-297
@@ -101,6 +103,22 @@ public class CorruptStatistics {
       warnParseErrorOnce(createdBy, e);
       return true;
     }
+  }
+
+  /**
+   * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
+   * should be ignored because they are potentially corrupt.
+   *
+   * @param createdBy  the created-by string from a file footer
+   * @param columnType the type of the column that this is checking
+   * @return true if the statistics may be invalid and should be ignored, false otherwise
+   */
+  public static boolean shouldIgnoreStatistics(String createdBy, PrimitiveTypeName columnType) {
+    if (!isCorruptStatisticsColumnType(columnType)) {
+      // the bug only applies to binary columns
+      return false;
+    }
+    return mayHaveCorruptStatistics(createdBy);
   }
 
   private static void warnParseErrorOnce(String createdBy, Throwable e) {
