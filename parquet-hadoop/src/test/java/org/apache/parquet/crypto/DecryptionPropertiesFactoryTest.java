@@ -22,7 +22,7 @@ package org.apache.parquet.crypto;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class DecryptionPropertiesFactoryTest {
   @Test

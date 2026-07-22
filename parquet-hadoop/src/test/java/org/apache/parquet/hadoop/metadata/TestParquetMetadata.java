@@ -37,7 +37,7 @@ import java.util.Collections;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestParquetMetadata {
   private static final String EXPECTED_JSON = "/test-expected-parquet-metadata.json";

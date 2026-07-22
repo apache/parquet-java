@@ -34,6 +34,7 @@ import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -67,9 +68,8 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues.RandomBinaryBase;
 import org.apache.parquet.statistics.RandomValues.RandomValueGenerator;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -530,13 +530,12 @@ public class TestStatistics {
     }
   }
 
-  @Rule
-  public final TemporaryFolder folder = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void testStatistics() throws IOException {
-    File file = folder.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
@@ -582,8 +581,7 @@ public class TestStatistics {
 
   @Test
   public void testDisableStatistics() throws IOException {
-    File file = folder.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
@@ -668,8 +666,7 @@ public class TestStatistics {
 
   @Test
   public void testGlobalStatisticsDisabled() throws IOException {
-    File file = folder.newFile("test_file_global_stats_disabled.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file_global_stats_disabled.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
     Random random = new Random(RANDOM_SEED);

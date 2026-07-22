@@ -43,7 +43,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Offset.offset;
 
 import com.google.common.collect.ImmutableMap;
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -100,11 +99,10 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetWriter {
 
@@ -142,12 +140,12 @@ public class TestParquetWriter {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -236,15 +234,14 @@ public class TestParquetWriter {
     }
   }
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testBadWriteSchema() throws IOException {
-    final File file = temp.newFile("test.parquet");
-    file.delete();
+    Path path = tempPath("test.parquet");
 
-    assertThatThrownBy(() -> ExampleParquetWriter.builder(new Path(file.toString()))
+    assertThatThrownBy(() -> ExampleParquetWriter.builder(path)
             .withAllocator(allocator)
             .withType(Types.buildMessage()
                 .addField(new GroupType(REQUIRED, "invalid_group"))
@@ -253,7 +250,9 @@ public class TestParquetWriter {
         .isInstanceOf(InvalidSchemaException.class)
         .hasMessageContaining("Cannot write a schema with an empty group");
 
-    assertThat(file).as("Should not create a file when schema is rejected").doesNotExist();
+    assertThat(tempDir.resolve("test.parquet"))
+        .as("Should not create a file when schema is rejected")
+        .doesNotExist();
   }
 
   // Testing the issue of PARQUET-1531 where writing null nested rows leads to empty pages if the page row count limit
@@ -273,9 +272,7 @@ public class TestParquetWriter {
     GroupFactory factory = new SimpleGroupFactory(schema);
     Group listNull = factory.newGroup();
 
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
         .withPageRowCountLimit(10)
@@ -312,9 +309,7 @@ public class TestParquetWriter {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
         .withPageRowCountLimit(10)
@@ -364,9 +359,7 @@ public class TestParquetWriter {
 
     GroupFactory factory = new SimpleGroupFactory(schema);
     for (double testFpp : testFpps) {
-      File file = temp.newFile();
-      file.delete();
-      Path path = new Path(file.getAbsolutePath());
+      Path path = newTempPath();
       try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
           .withAllocator(allocator)
           .withPageRowCountLimit(10)
@@ -425,9 +418,7 @@ public class TestParquetWriter {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
     GroupFactory factory = new SimpleGroupFactory(schema);
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
         .withConf(conf)
@@ -469,15 +460,14 @@ public class TestParquetWriter {
   @Test
   public void testExtraMetaData() throws Exception {
     final Configuration conf = new Configuration();
-    final File testDir = temp.newFile();
-    testDir.delete();
+    final Path testDir = tempPath("extra-metadata");
 
     final MessageType schema = parseMessageType("message test { required int32 int32_field; }");
     GroupWriteSupport.setSchema(schema, conf);
     final SimpleGroupFactory f = new SimpleGroupFactory(schema);
 
     for (WriterVersion version : WriterVersion.values()) {
-      final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+      final Path filePath = new Path(testDir, version.name());
       final ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(filePath, conf))
           .withConf(conf)
           .withExtraMetaData(ImmutableMap.of("simple-key", "some-value-1", "nested.key", "some-value-2"))
@@ -506,14 +496,13 @@ public class TestParquetWriter {
   @Test
   public void testFailsOnConflictingExtraMetaDataKey() throws Exception {
     final Configuration conf = new Configuration();
-    final File testDir = temp.newFile();
-    testDir.delete();
+    final Path testDir = tempPath("conflicting-metadata");
 
     final MessageType schema = parseMessageType("message test { required int32 int32_field; }");
     GroupWriteSupport.setSchema(schema, conf);
 
     for (WriterVersion version : WriterVersion.values()) {
-      final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+      final Path filePath = new Path(testDir, version.name());
 
       assertThatThrownBy(() -> ExampleParquetWriter.builder(new TestOutputFile(filePath, conf))
               .withConf(conf)
@@ -538,9 +527,7 @@ public class TestParquetWriter {
 
     GroupWriteSupport.setSchema(schema, conf);
 
-    File file = temp.newFile();
-    temp.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
         .withConf(conf)
@@ -584,9 +571,7 @@ public class TestParquetWriter {
         .append("int32_field", 42);
 
     // Test global disable
-    File file = temp.newFile();
-    temp.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
         .withSizeStatisticsEnabled(false)
@@ -606,9 +591,7 @@ public class TestParquetWriter {
     }
 
     // Test column-specific control
-    file = temp.newFile();
-    temp.delete();
-    path = new Path(file.getAbsolutePath());
+    path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
         .withSizeStatisticsEnabled(true) // enable globally
@@ -643,10 +626,7 @@ public class TestParquetWriter {
         .named("int32_field")
         .named("test_schema");
 
-    File file = temp.newFile();
-    temp.delete();
-
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     SimpleGroupFactory factory = new SimpleGroupFactory(schema);
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
@@ -716,9 +696,7 @@ public class TestParquetWriter {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
-    File file = temp.newFile();
-    temp.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     SimpleGroupFactory factory = new SimpleGroupFactory(schema);
     Group nullValue = factory.newGroup();
@@ -787,9 +765,7 @@ public class TestParquetWriter {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     OutputFile outputFile = new TestOutputFile(path, conf);
 
     String[] testNames = {"new", "writer", "builder", "without", "file"};
@@ -826,8 +802,7 @@ public class TestParquetWriter {
 
   @Test
   public void testParquetWriterBuilderCanNotConfigurePathAndFile() throws IOException {
-    File file = temp.newFile();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     Configuration conf = new Configuration();
     OutputFile outputFile = new TestOutputFile(path, conf);
     assertThatThrownBy(() ->
@@ -845,9 +820,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
@@ -877,9 +850,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
@@ -907,9 +878,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
@@ -946,9 +915,7 @@ public class TestParquetWriter {
         .as(stringType())
         .named("col_a")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     // ZSTD only supports levels 1-22; level 23 is invalid
     assertThatThrownBy(() -> {
@@ -972,9 +939,7 @@ public class TestParquetWriter {
         .as(stringType())
         .named("col_a")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     // GZIP only supports levels -1 (default) through 9; level 10 is invalid
     assertThatThrownBy(() -> {
@@ -1001,9 +966,7 @@ public class TestParquetWriter {
         .as(stringType())
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     // Both columns use ZSTD (from default), but at different levels.
     // This exercises the level-only override path in resolveCompressor().
@@ -1045,9 +1008,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
@@ -1071,10 +1032,7 @@ public class TestParquetWriter {
 
   @Test
   public void testNoFlushAfterException() throws Exception {
-    final File testDir = temp.newFile();
-    testDir.delete();
-
-    final Path file = new Path(testDir.getAbsolutePath(), "test.parquet");
+    final Path file = new Path(tempPath("abort-test"), "test.parquet");
 
     MessageType schema = Types.buildMessage()
         .required(BINARY)
@@ -1118,9 +1076,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     Job job = Job.getInstance();
     ParquetOutputFormat.setColumnCompression(job, "col_a", ZSTD);
 
@@ -1139,9 +1095,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     Job job = Job.getInstance();
     ParquetOutputFormat.setColumnCompression(job, "col_a", ZSTD);
     ParquetOutputFormat.setColumnCompression(job, "col_b", GZIP);
@@ -1161,9 +1115,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     Job job = Job.getInstance();
 
     Map<String, CompressionCodecName> codecs = writeAndReadCodecsViaOutputFormat(schema, GZIP, job, path);
@@ -1181,9 +1133,7 @@ public class TestParquetWriter {
         .required(INT32)
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     Job job = Job.getInstance();
     ParquetOutputFormat.setColumnCompression(job, "col_a", ZSTD);
     ParquetOutputFormat.setColumnCompressionLevel(job, "col_a", 1);
@@ -1211,9 +1161,7 @@ public class TestParquetWriter {
         .as(stringType())
         .named("col_b")
         .named("test");
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     Job job = Job.getInstance();
     ParquetOutputFormat.setColumnCompressionLevel(job, "col_a", 1);
     ParquetOutputFormat.setColumnCompressionLevel(job, "col_b", 10);
@@ -1278,9 +1226,7 @@ public class TestParquetWriter {
         .named("value")
         .named("test_schema");
 
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
 
     int totalRecords = 10;
     int expectedNulls = 4; // records where i % 3 == 0: i=0,3,6,9
@@ -1327,5 +1273,14 @@ public class TestParquetWriter {
           .as("DataPageV2.num_nulls should be the actual null count even when statistics are disabled")
           .isEqualTo(expectedNulls);
     }
+  }
+
+  private Path newTempPath() {
+    return new Path(
+        tempDir.resolve(java.util.UUID.randomUUID() + ".parquet").toUri());
+  }
+
+  private Path tempPath(String name) {
+    return new Path(tempDir.resolve(name).toUri());
   }
 }

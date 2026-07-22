@@ -35,7 +35,7 @@ import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestRowGroupFilter {
   @Test

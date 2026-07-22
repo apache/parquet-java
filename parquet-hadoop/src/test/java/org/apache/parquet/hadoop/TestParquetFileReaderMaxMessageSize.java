@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -36,26 +35,22 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetFileReaderMaxMessageSize {
 
   public static Path TEST_FILE;
   public MessageType schema;
 
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  @Before
+  @BeforeEach
   public void testSetup() throws IOException {
 
-    File testParquetFile = temp.newFile();
-    testParquetFile.delete();
-
-    TEST_FILE = new Path(testParquetFile.toURI());
+    TEST_FILE = new Path(tempDir.resolve("many-columns.parquet").toUri());
     // Create a file with many columns
     StringBuilder schemaBuilder = new StringBuilder("message test_schema {");
     for (int i = 0; i < 2000; i++) {

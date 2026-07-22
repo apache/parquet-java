@@ -36,8 +36,8 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
@@ -52,7 +52,7 @@ public class DeprecatedOutputFormatTest {
   private String writeSchema;
   private Configuration conf;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     conf = new Configuration();
     jobConf = new JobConf();

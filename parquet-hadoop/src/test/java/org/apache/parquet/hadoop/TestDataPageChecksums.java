@@ -23,7 +23,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,28 +66,27 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests that page level checksums are correctly written and that checksum verification works as
  * expected
  */
 public class TestDataPageChecksums {
-  @Rule
-  public final TemporaryFolder tempFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -118,9 +116,8 @@ public class TestDataPageChecksums {
   private Path writeSimpleParquetFile(
       Configuration conf, CompressionCodecName compression, ParquetProperties.WriterVersion version)
       throws IOException {
-    File file = tempFolder.newFile();
-    file.delete();
-    Path path = new Path(file.toURI());
+    Path path =
+        new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
 
     for (int i = 0; i < PAGE_SIZE; i++) {
       colAPage1Bytes[i] = (byte) i;
@@ -265,9 +262,8 @@ public class TestDataPageChecksums {
       CompressionCodecName compression,
       ParquetProperties.WriterVersion version)
       throws IOException {
-    File file = tempFolder.newFile();
-    file.delete();
-    Path path = new Path(file.toURI());
+    Path path =
+        new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withConf(conf)

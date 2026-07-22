@@ -28,7 +28,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.InterOpTester;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestInteropReadLz4RawCodec {
   private static final String CHANGESET = "19fcd4d";

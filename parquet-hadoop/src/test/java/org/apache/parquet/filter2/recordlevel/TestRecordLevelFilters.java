@@ -60,8 +60,8 @@ import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.Location;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.PhoneNumber;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.User;
 import org.apache.parquet.io.api.Binary;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class TestRecordLevelFilters {
 
@@ -127,7 +127,7 @@ public class TestRecordLevelFilters {
   private static File phonebookFile;
   private static List<User> users;
 
-  @BeforeClass
+  @BeforeAll
   public static void setup() throws IOException {
     users = makeUsers();
     phonebookFile = PhoneBookWriter.writeToFile(users);

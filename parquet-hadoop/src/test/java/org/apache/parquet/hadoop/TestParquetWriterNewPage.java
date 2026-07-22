@@ -48,7 +48,7 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestParquetWriterNewPage {
 

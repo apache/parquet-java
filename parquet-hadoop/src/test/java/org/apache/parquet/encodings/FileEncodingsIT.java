@@ -20,13 +20,12 @@ package org.apache.parquet.encodings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.BytesInput;
@@ -59,14 +58,13 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues;
 import org.apache.parquet.statistics.TestStatistics;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +73,6 @@ import org.slf4j.LoggerFactory;
  * Each test runs against all Parquet writer versions.
  * All data types are validating with and without dictionary encoding.
  */
-@RunWith(Parameterized.class)
 public class FileEncodingsIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileEncodingsIT.class);
@@ -98,12 +95,9 @@ public class FileEncodingsIT {
   private static RandomValues.FixedGenerator fixedBinaryGenerator;
 
   // Parameters
-  private PrimitiveTypeName paramTypeName;
-  private CompressionCodecName compression;
   private TrackingByteBufferAllocator allocator;
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> getParameters() {
+  static Stream<Arguments> getParameters() {
     List<PrimitiveTypeName> types = List.of(
         PrimitiveTypeName.BOOLEAN,
         PrimitiveTypeName.INT32,
@@ -117,7 +111,7 @@ public class FileEncodingsIT {
     List<CompressionCodecName> codecs;
     String codecList = System.getenv("TEST_CODECS");
     if (codecList != null) {
-      codecs = new ArrayList<CompressionCodecName>();
+      codecs = new ArrayList<>();
       for (String codec : codecList.split(",")) {
         codecs.add(CompressionCodecName.valueOf(codec.toUpperCase(Locale.ENGLISH)));
       }
@@ -128,22 +122,10 @@ public class FileEncodingsIT {
 
     System.err.println("Testing codecs: " + codecs);
 
-    List<Object[]> parameters = new ArrayList<Object[]>();
-    for (PrimitiveTypeName type : types) {
-      for (CompressionCodecName codec : codecs) {
-        parameters.add(new Object[] {type, codec});
-      }
-    }
-
-    return parameters;
+    return types.stream().flatMap(type -> codecs.stream().map(codec -> Arguments.of(type, codec)));
   }
 
-  public FileEncodingsIT(PrimitiveTypeName typeName, CompressionCodecName compression) {
-    this.paramTypeName = typeName;
-    this.compression = compression;
-  }
-
-  @BeforeClass
+  @BeforeAll
   public static void initialize() throws IOException {
     Random random = new Random(RANDOM_SEED);
     intGenerator = new RandomValues.IntGenerator(random.nextLong());
@@ -155,21 +137,23 @@ public class FileEncodingsIT {
     fixedBinaryGenerator = new RandomValues.FixedGenerator(random.nextLong(), FIXED_LENGTH);
   }
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
 
-  @Test
-  public void testFileEncodingsWithoutDictionary() throws Exception {
+  @ParameterizedTest(name = "{0}/{1}")
+  @MethodSource("getParameters")
+  public void testFileEncodingsWithoutDictionary(PrimitiveTypeName paramTypeName, CompressionCodecName compression)
+      throws Exception {
     final boolean DISABLE_DICTIONARY = false;
     List<?> randomValues;
-    randomValues = generateRandomValues(this.paramTypeName, RECORD_COUNT);
+    randomValues = generateRandomValues(paramTypeName, RECORD_COUNT);
 
     /* Run an encoding test per each writer version.
      * This loop will make sure to test future writer versions added to WriterVersion enum.
@@ -177,25 +161,28 @@ public class FileEncodingsIT {
     for (WriterVersion writerVersion : WriterVersion.values()) {
       LOG.info(String.format(
           "Testing %s/%s/%s encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
-          writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
+          writerVersion, paramTypeName, compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
       Path parquetFile = createTempFile();
       writeValuesToFile(
           parquetFile,
-          this.paramTypeName,
+          paramTypeName,
           randomValues,
           TEST_ROW_GROUP_SIZE,
           TEST_PAGE_SIZE,
           DISABLE_DICTIONARY,
-          writerVersion);
+          writerVersion,
+          compression);
       PageGroupValidator.validatePages(parquetFile, randomValues);
     }
   }
 
-  @Test
-  public void testFileEncodingsWithDictionary() throws Exception {
+  @ParameterizedTest(name = "{0}/{1}")
+  @MethodSource("getParameters")
+  public void testFileEncodingsWithDictionary(PrimitiveTypeName paramTypeName, CompressionCodecName compression)
+      throws Exception {
     final boolean ENABLE_DICTIONARY = true;
-    List<?> dictionaryValues = generateDictionaryValues(this.paramTypeName, RECORD_COUNT);
+    List<?> dictionaryValues = generateDictionaryValues(paramTypeName, RECORD_COUNT);
 
     /* Run an encoding test per each writer version.
      * This loop will make sure to test future writer versions added to WriterVersion enum.
@@ -203,28 +190,27 @@ public class FileEncodingsIT {
     for (WriterVersion writerVersion : WriterVersion.values()) {
       LOG.info(String.format(
           "Testing %s/%s/%s + DICTIONARY encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
-          writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
+          writerVersion, paramTypeName, compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
       Path parquetFile = createTempFile();
       writeValuesToFile(
           parquetFile,
-          this.paramTypeName,
+          paramTypeName,
           dictionaryValues,
           TEST_ROW_GROUP_SIZE,
           TEST_PAGE_SIZE,
           ENABLE_DICTIONARY,
-          writerVersion);
+          writerVersion,
+          compression);
       PageGroupValidator.validatePages(parquetFile, dictionaryValues);
     }
   }
 
-  @Rule
-  public TemporaryFolder tempFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  private Path createTempFile() throws IOException {
-    File tempFile = tempFolder.newFile();
-    tempFile.delete();
-    return new Path(tempFile.getAbsolutePath());
+  private Path createTempFile() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 
   /**
@@ -238,7 +224,8 @@ public class FileEncodingsIT {
       int rowGroupSize,
       int pageSize,
       boolean enableDictionary,
-      WriterVersion version)
+      WriterVersion version,
+      CompressionCodecName compression)
       throws IOException {
     MessageType schema;
     if (type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {

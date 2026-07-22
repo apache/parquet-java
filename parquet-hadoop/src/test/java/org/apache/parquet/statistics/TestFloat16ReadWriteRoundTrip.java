@@ -22,14 +22,12 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -43,14 +41,12 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestFloat16ReadWriteRoundTrip {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private Binary[] valuesInAscendingOrder = {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc}), // -Infinity
@@ -207,10 +203,8 @@ public class TestFloat16ReadWriteRoundTrip {
     }
   }
 
-  private Path newTempPath() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.getAbsolutePath());
+  private Path newTempPath() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 
   private static List<Binary> toFloat16List(List<ByteBuffer> buffers) {

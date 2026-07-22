@@ -26,7 +26,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -38,7 +37,6 @@ import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -48,15 +46,13 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetWriterAppendBlocks {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   public static final int FILE_SIZE = 10000;
   public static final Configuration CONF = new Configuration();
@@ -87,7 +83,7 @@ public class TestParquetWriterAppendBlocks {
   public Path file2;
   public List<Group> file2content = new ArrayList<Group>();
 
-  @Before
+  @BeforeEach
   public void createSourceData() throws IOException {
     this.file1 = newTemp();
     this.file2 = newTemp();
@@ -334,9 +330,7 @@ public class TestParquetWriterAppendBlocks {
         .hasMessageContaining("Missing column 'value'");
   }
 
-  private Path newTemp() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.toString());
+  private Path newTemp() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 }

@@ -41,9 +41,9 @@ import org.apache.hadoop.fs.FutureDataInputStreamBuilder;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.impl.FutureDataInputStreamBuilderImpl;
 import org.apache.parquet.io.SeekableInputStream;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
@@ -66,7 +66,7 @@ public class TestHadoopOpenFile {
   private IOException fileNotFound;
   private IllegalArgumentException illegal;
 
-  @Before
+  @BeforeEach
   public void setUp() throws URISyntaxException {
     // the schema "mock:" is used to not only be confident our injected
     // instance is picked up, but to ensure that there will be no
@@ -83,7 +83,7 @@ public class TestHadoopOpenFile {
   /**
    * Clean up the entire FS cache for the current user.
    */
-  @After
+  @AfterEach
   public void tearDown() {
     FileSystemTestBinder.cleanFilesystemCache();
   }

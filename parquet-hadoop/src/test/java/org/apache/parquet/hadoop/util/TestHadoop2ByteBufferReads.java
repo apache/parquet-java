@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.io.SeekableInputStream;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestHadoop2ByteBufferReads {
 

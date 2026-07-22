@@ -57,10 +57,9 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,6 @@ import org.slf4j.LoggerFactory;
  * Parameterized on Vectored IO enabled/disabled so can verify that
  * ranged reads work through the bridge on compatible hadoop versions.
  */
-@RunWith(Parameterized.class)
 public class TestInputOutputFormat {
   private static final Logger LOG = LoggerFactory.getLogger(TestInputOutputFormat.class);
 
@@ -80,30 +78,12 @@ public class TestInputOutputFormat {
   private String writeSchema;
   private String readSchema;
   private String partialSchema;
-  private Configuration conf;
 
   private Class<? extends Mapper<?, ?, ?, ?>> readMapperClass;
   private Class<? extends Mapper<?, ?, ?, ?>> writeMapperClass;
 
-  @Parameterized.Parameters(name = "vectored : {0}")
-  public static List<Boolean> params() {
-    return List.of(true, false);
-  }
-
-  /**
-   * Read type: true for vectored IO.
-   */
-  private final boolean readType;
-
-  public TestInputOutputFormat(boolean readType) {
-    this.readType = readType;
-  }
-
-  @Before
+  @BeforeEach
   public void setUp() {
-    conf = new Configuration();
-    // set the vector IO option
-    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, readType);
     writeSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
 
     readSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
@@ -112,6 +92,12 @@ public class TestInputOutputFormat {
 
     readMapperClass = ReadMapper.class;
     writeMapperClass = WriteMapper.class;
+  }
+
+  private Configuration createConf(boolean readType) {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, readType);
+    return conf;
   }
 
   public static final class MyWriteSupport extends DelegatingWriteSupport<Group> {
@@ -178,22 +164,22 @@ public class TestInputOutputFormat {
     }
   }
 
-  private void runMapReduceJob(CompressionCodecName codec)
+  private void runMapReduceJob(Configuration conf, CompressionCodecName codec)
       throws IOException, ClassNotFoundException, InterruptedException {
-    runMapReduceJob(codec, Collections.<String, String>emptyMap());
+    runMapReduceJob(conf, codec, Collections.<String, String>emptyMap());
   }
 
-  private void runMapReduceJob(CompressionCodecName codec, Map<String, String> extraConf)
+  private void runMapReduceJob(Configuration conf, CompressionCodecName codec, Map<String, String> extraConf)
       throws IOException, ClassNotFoundException, InterruptedException {
-    Configuration conf = new Configuration(this.conf);
+    Configuration jobConf = new Configuration(conf);
     for (Map.Entry<String, String> entry : extraConf.entrySet()) {
-      conf.set(entry.getKey(), entry.getValue());
+      jobConf.set(entry.getKey(), entry.getValue());
     }
-    final FileSystem fileSystem = parquetPath.getFileSystem(conf);
+    final FileSystem fileSystem = parquetPath.getFileSystem(jobConf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
     {
-      writeJob = new Job(conf, "write");
+      writeJob = new Job(jobConf, "write");
       TextInputFormat.addInputPath(writeJob, inputPath);
       writeJob.setInputFormatClass(TextInputFormat.class);
       writeJob.setNumReduceTasks(0);
@@ -208,8 +194,8 @@ public class TestInputOutputFormat {
       waitForJob(writeJob);
     }
     {
-      conf.set(ReadSupport.PARQUET_READ_SCHEMA, readSchema);
-      readJob = new Job(conf, "read");
+      jobConf.set(ReadSupport.PARQUET_READ_SCHEMA, readSchema);
+      readJob = new Job(jobConf, "read");
 
       readJob.setInputFormatClass(ParquetInputFormat.class);
       ParquetInputFormat.setReadSupportClass(readJob, MyReadSupport.class);
@@ -224,14 +210,14 @@ public class TestInputOutputFormat {
     }
   }
 
-  private void testReadWrite(CompressionCodecName codec)
+  private void testReadWrite(Configuration conf, CompressionCodecName codec)
       throws IOException, ClassNotFoundException, InterruptedException {
-    testReadWrite(codec, Collections.<String, String>emptyMap());
+    testReadWrite(conf, codec, Collections.<String, String>emptyMap());
   }
 
-  private void testReadWrite(CompressionCodecName codec, Map<String, String> conf)
+  private void testReadWrite(Configuration conf, CompressionCodecName codec, Map<String, String> extraConf)
       throws IOException, ClassNotFoundException, InterruptedException {
-    runMapReduceJob(codec, conf);
+    runMapReduceJob(conf, codec, extraConf);
     final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
     String lineIn;
@@ -248,18 +234,23 @@ public class TestInputOutputFormat {
     out.close();
   }
 
-  @Test
-  public void testReadWrite() throws IOException, ClassNotFoundException, InterruptedException {
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testReadWrite(boolean readType) throws IOException, ClassNotFoundException, InterruptedException {
+    Configuration conf = createConf(readType);
     // TODO: Lzo requires additional external setup steps so leave it out for now
-    testReadWrite(CompressionCodecName.GZIP);
-    testReadWrite(CompressionCodecName.UNCOMPRESSED);
-    testReadWrite(CompressionCodecName.SNAPPY);
-    testReadWrite(CompressionCodecName.ZSTD);
+    testReadWrite(conf, CompressionCodecName.GZIP);
+    testReadWrite(conf, CompressionCodecName.UNCOMPRESSED);
+    testReadWrite(conf, CompressionCodecName.SNAPPY);
+    testReadWrite(conf, CompressionCodecName.ZSTD);
   }
 
-  @Test
-  public void testReadWriteTaskSideMD() throws IOException, ClassNotFoundException, InterruptedException {
-    testReadWrite(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testReadWriteTaskSideMD(boolean readType)
+      throws IOException, ClassNotFoundException, InterruptedException {
+    Configuration conf = createConf(readType);
+    testReadWrite(conf, CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
       {
         put("parquet.task.side.metadata", "true");
       }
@@ -269,8 +260,9 @@ public class TestInputOutputFormat {
   /**
    * Uses a filter that drops all records to test handling of tasks (mappers) that need to do no work at all
    */
-  @Test
-  public void testReadWriteTaskSideMDAggressiveFilter()
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testReadWriteTaskSideMDAggressiveFilter(boolean readType)
       throws IOException, ClassNotFoundException, InterruptedException {
     Configuration conf = new Configuration();
 
@@ -278,7 +270,7 @@ public class TestInputOutputFormat {
     ParquetInputFormat.setFilterPredicate(conf, FilterApi.eq(FilterApi.intColumn("line"), -1000));
     final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
 
-    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
+    runMapReduceJob(conf, CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
       {
         put("parquet.task.side.metadata", "true");
         put(ParquetInputFormat.FILTER_PREDICATE, fpString);
@@ -290,8 +282,9 @@ public class TestInputOutputFormat {
     assertThat(lines).isEmpty();
   }
 
-  @Test
-  public void testReadWriteFilter() throws IOException, ClassNotFoundException, InterruptedException {
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testReadWriteFilter(boolean readType) throws IOException, ClassNotFoundException, InterruptedException {
     Configuration conf = new Configuration();
 
     // this filter predicate should keep some records but not all (first 500 characters)
@@ -299,7 +292,7 @@ public class TestInputOutputFormat {
     ParquetInputFormat.setFilterPredicate(conf, FilterApi.lt(FilterApi.intColumn("line"), 500));
     final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
 
-    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
+    runMapReduceJob(conf, CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
       {
         put("parquet.task.side.metadata", "true");
         put(ParquetInputFormat.FILTER_PREDICATE, fpString);
@@ -337,11 +330,13 @@ public class TestInputOutputFormat {
     assertThat(sbFound).asString().isEqualTo(String.join("\n", expected));
   }
 
-  @Test
-  public void testProjection() throws Exception {
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testProjection(boolean readType) throws Exception {
+    Configuration conf = createConf(readType);
     readSchema = partialSchema;
     writeMapperClass = PartialWriteMapper.class;
-    runMapReduceJob(CompressionCodecName.GZIP);
+    runMapReduceJob(conf, CompressionCodecName.GZIP);
   }
 
   private static long value(Job job, String groupName, String name) throws Exception {
@@ -356,9 +351,11 @@ public class TestInputOutputFormat {
     return (Long) getValue.invoke(counter);
   }
 
-  @Test
-  public void testReadWriteWithCounter() throws Exception {
-    runMapReduceJob(CompressionCodecName.GZIP);
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testReadWriteWithCounter(boolean readType) throws Exception {
+    Configuration conf = createConf(readType);
+    runMapReduceJob(conf, CompressionCodecName.GZIP);
 
     assertThat(value(readJob, "parquet", "bytesread")).isPositive();
     assertThat(value(readJob, "parquet", "bytestotal")).isPositive();
@@ -368,12 +365,14 @@ public class TestInputOutputFormat {
     // not testing the time read counter since it could be zero due to the size of data is too small
   }
 
-  @Test
-  public void testReadWriteWithoutCounter() throws Exception {
+  @ParameterizedTest(name = "vectored : {0}")
+  @ValueSource(booleans = {true, false})
+  public void testReadWriteWithoutCounter(boolean readType) throws Exception {
+    Configuration conf = createConf(readType);
     conf.set("parquet.benchmark.time.read", "false");
     conf.set("parquet.benchmark.bytes.total", "false");
     conf.set("parquet.benchmark.bytes.read", "false");
-    runMapReduceJob(CompressionCodecName.GZIP);
+    runMapReduceJob(conf, CompressionCodecName.GZIP);
     assertThat(value(readJob, "parquet", "bytesread")).isZero();
     assertThat(value(readJob, "parquet", "bytestotal")).isZero();
     assertThat(value(readJob, "parquet", "timeread")).isZero();

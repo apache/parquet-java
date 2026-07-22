@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -41,9 +42,8 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestInterOpReadFloatingPointNanCount {
 
@@ -56,14 +56,14 @@ public class TestInterOpReadFloatingPointNanCount {
 
   private final InterOpTester interop = new InterOpTester();
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testReadStatsAndColumnIndex() throws IOException {
     Configuration conf = new Configuration();
     GenerationResult generated = FloatingPointNanInteropFileGenerator.generateAndMerge(
-        conf, new Path(temp.newFolder().getAbsolutePath()));
+        conf, new Path(Files.createTempDirectory(tempDir, "folder").toUri()));
 
     verifyFile(generated.getNoNanFile(), conf, Scenario.NO_NAN);
     verifyFile(generated.getMixedNanFile(), conf, Scenario.MIXED_NAN);

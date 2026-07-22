@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,9 +52,8 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.statistics.DataGenerationContext;
 import org.apache.parquet.statistics.RandomValues;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * This tests the random access methods of the ParquetFileReader, specifically:
@@ -74,15 +74,14 @@ public class TestParquetReaderRandomAccess {
   private static final int KILOBYTE = 1 << 10;
   private static final long RANDOM_SEED = 7174252115631550700L;
 
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void test() throws IOException {
     Random random = new Random(RANDOM_SEED);
 
-    File file = temp.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     int blockSize = 50 * KILOBYTE;
     int pageSize = 2 * KILOBYTE;

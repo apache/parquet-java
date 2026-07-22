@@ -25,7 +25,6 @@ import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -56,9 +55,8 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestIeee754TotalOrderE2E {
 
@@ -66,8 +64,8 @@ public class TestIeee754TotalOrderE2E {
   private static final Binary FLOAT16_NAN_B = Binary.fromConstantByteArray(new byte[] {0x02, 0x7e});
   private static final Binary FLOAT16_ONE = Binary.fromConstantByteArray(new byte[] {0x00, 0x3c});
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private static final MessageType FLOAT_SCHEMA = Types.buildMessage()
       .required(PrimitiveTypeName.FLOAT)
@@ -118,10 +116,8 @@ public class TestIeee754TotalOrderE2E {
       .named("float16_col")
       .named("msg");
 
-  private Path newTempPath() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.getAbsolutePath());
+  private Path newTempPath() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 
   private Path writeFloatFile(float... values) throws IOException {

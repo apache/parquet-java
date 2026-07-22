@@ -136,9 +136,8 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetMetadataConverter {
   private static SecureRandom random = new SecureRandom();
@@ -147,8 +146,8 @@ public class TestParquetMetadataConverter {
   private static final String NUMBER = "0123456789";
   private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testPageHeader() throws IOException {
@@ -1732,7 +1731,7 @@ public class TestParquetMetadataConverter {
   }
 
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {
-    Path file = new Path(temporaryFolder.newFolder("verifyMapMessageType").getPath(), keyValueName + ".parquet");
+    Path file = new Path(tempDir.resolve(keyValueName + ".parquet").toUri());
 
     try (ParquetWriter<Group> writer =
         ExampleParquetWriter.builder(file).withType(messageType).build()) {
