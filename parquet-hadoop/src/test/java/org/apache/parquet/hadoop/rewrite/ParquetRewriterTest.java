@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -88,6 +89,7 @@ import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.TestFileBuilder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.OutputFile;
@@ -770,6 +772,84 @@ public class ParquetRewriterTest {
             null, ImmutableMap.of("Name", "NameRenamed"), ImmutableMap.of("Name", MaskMode.NULLIFY)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot nullify and rename the same column");
+  }
+
+  @Test
+  public void testInputFileReadersClosedWhenLaterInputFileFailsToOpen() throws Exception {
+    MessageType schema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
+    EncryptionTestFile file = new TestFileBuilder(conf, schema)
+        .withNumRecord(numRecord)
+        .withCodec("UNCOMPRESSED")
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withWriterVersion(writerVersion)
+        .build();
+
+    CloseRecordingInputFile openable =
+        new CloseRecordingInputFile(HadoopInputFile.fromPath(new Path(file.getFileName()), conf));
+    InputFile failing = new InputFile() {
+      @Override
+      public long getLength() {
+        return 0;
+      }
+
+      @Override
+      public SeekableInputStream newStream() throws IOException {
+        throw new IOException("simulated open failure");
+      }
+    };
+
+    OutputFile output = HadoopOutputFile.fromPath(new Path(outputFile), conf);
+    RewriteOptions options =
+        new RewriteOptions.Builder(parquetConf, Arrays.asList(openable, failing), output).build();
+
+    assertThrows(IllegalArgumentException.class, () -> new ParquetRewriter(options));
+    // The reader opened for the first (valid) input file must be closed, not leaked, when a later
+    // input file fails to open.
+    assertTrue("Stream of the successfully opened input file was leaked", openable.isStreamClosed());
+  }
+
+  /**
+   * An {@link InputFile} that delegates to another one but records whether the {@link SeekableInputStream} it handed
+   * out was closed, so a test can assert that already-opened readers are released on a later failure.
+   */
+  private static class CloseRecordingInputFile implements InputFile {
+    private final InputFile delegate;
+    private final AtomicBoolean streamClosed = new AtomicBoolean(false);
+
+    CloseRecordingInputFile(InputFile delegate) {
+      this.delegate = delegate;
+    }
+
+    boolean isStreamClosed() {
+      return streamClosed.get();
+    }
+
+    @Override
+    public long getLength() throws IOException {
+      return delegate.getLength();
+    }
+
+    @Override
+    public SeekableInputStream newStream() throws IOException {
+      SeekableInputStream stream = delegate.newStream();
+      return new DelegatingSeekableInputStream(stream) {
+        @Override
+        public long getPos() throws IOException {
+          return stream.getPos();
+        }
+
+        @Override
+        public void seek(long newPos) throws IOException {
+          stream.seek(newPos);
+        }
+
+        @Override
+        public void close() throws IOException {
+          streamClosed.set(true);
+          super.close();
+        }
+      };
+    }
   }
 
   public void testMergeTwoFilesWithDifferentSchemaSetup(
