@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ { setup: '11', maven: '11' }, { setup: '17', maven: '17' } ]
+        java: [ { setup: '17', maven: '17' } ]
     name: Build Parquet with JDK ${{ matrix.java.setup }}
 
     steps:
@@ -48,14 +48,10 @@ jobs:
           bash dev/ci-before_install.sh
       - name: install
         run: |
-          EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
-          export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           ./mvnw install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java.maven }}
       - name: verify
         env:
           TEST_CODECS: 'uncompressed,brotli,gzip,snappy,zstd'
           JAVA_VERSION: ${{ matrix.java.setup }}
         run: |
-          EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
-          export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           ./mvnw verify --batch-mode javadoc:javadoc

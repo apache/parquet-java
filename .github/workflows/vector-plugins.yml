@@ -49,8 +49,6 @@ jobs:
           bash dev/ci-before_install.sh
       - name: install
         run: |
-          EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
-          export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           # Spotless check uses palantir-java-format which relies on internal javac APIs
           # that are not available on all JDK versions (e.g. JDK 25+). Since the formatting
           # result is JDK-independent, running the check on JDK 17 alone is sufficient.
@@ -64,8 +62,6 @@ jobs:
           TEST_CODECS: ${{ matrix.codes }}
           JAVA_VERSION: ${{ matrix.java }}
         run: |
-          EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
-          export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           # Spotless check uses palantir-java-format which relies on internal javac APIs
           # that are not available on all JDK versions (e.g. JDK 25+). Since the formatting
           # result is JDK-independent, running the check on JDK 17 alone is sufficient.
