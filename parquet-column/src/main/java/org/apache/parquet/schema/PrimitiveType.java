@@ -385,7 +385,9 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
-        return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+        return columnOrder != null && columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER
+            ? PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR
+            : PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -578,9 +580,14 @@ public final class PrimitiveType extends Type {
     this.decimalMeta = decimalMeta;
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      if (primitive == PrimitiveTypeName.INT96) {
+        // INT96 is only used for deprecated timestamps and supports no other semantics.
+        columnOrder = ColumnOrder.int96TimestampOrder();
+      } else if (originalType == OriginalType.INTERVAL) {
+        columnOrder = ColumnOrder.undefined();
+      } else {
+        columnOrder = ColumnOrder.typeDefined();
+      }
     } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
       Preconditions.checkArgument(
           primitive == PrimitiveTypeName.FLOAT || primitive == PrimitiveTypeName.DOUBLE,
@@ -629,10 +636,16 @@ public final class PrimitiveType extends Type {
     }
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96
-              || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      if (primitive == PrimitiveTypeName.INT96) {
+        // A plain INT96 is the legacy timestamp encoding; default it to the chronological order.
+        // An annotated INT96 carries other semantics, so leave its order undefined.
+        columnOrder =
+            logicalTypeAnnotation == null ? ColumnOrder.int96TimestampOrder() : ColumnOrder.undefined();
+      } else if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation) {
+        columnOrder = ColumnOrder.undefined();
+      } else {
+        columnOrder = ColumnOrder.typeDefined();
+      }
     } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
       Preconditions.checkArgument(
           primitive == PrimitiveTypeName.FLOAT
@@ -651,8 +664,14 @@ public final class PrimitiveType extends Type {
   private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
     if (primitive == PrimitiveTypeName.INT96) {
       Preconditions.checkArgument(
-          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED
+              || columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER,
           "The column order %s is not supported by INT96",
+          columnOrder);
+    } else {
+      Preconditions.checkArgument(
+          columnOrder.getColumnOrderName() != ColumnOrderName.INT96_TIMESTAMP_ORDER,
+          "The column order %s is only supported by INT96",
           columnOrder);
     }
     if (getLogicalTypeAnnotation() != null) {
