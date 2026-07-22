@@ -677,6 +677,7 @@
               <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges$Range</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter</exclude>
+              <exclude>org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter#DeltaBinaryPackingValuesWriter(int,int,org.apache.parquet.bytes.ByteBufferAllocator)</exclude>
             </excludes>
           </parameter>
         </configuration>
