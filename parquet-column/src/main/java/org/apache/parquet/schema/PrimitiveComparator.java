@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Comparator;
 import org.apache.parquet.io.api.Binary;
 
@@ -288,29 +289,16 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
         throw new IllegalArgumentException(
             "Timestamp binary length must be 12 bytes, got " + b1.length() + " and " + b2.length());
       }
-
-      ByteBuffer bb1 = b1.toByteBuffer();
-      ByteBuffer bb2 = b2.toByteBuffer();
-      // The buffers may be slices with a non-zero position (e.g. a ByteBuffer-backed Binary), so
-      // index relative to position() rather than absolute offset 0. Byte 11 (position + 11) is the
-      // most significant byte and carries the sign; byte 0 (position) is least significant.
-      int p1 = bb1.position();
-      int p2 = bb2.position();
-
-      // If one value is negative and the other is positive, one is trivially greater.
-      boolean neg1 = bb1.get(p1 + 11) < 0;
-      boolean neg2 = bb2.get(p2 + 11) < 0;
-      if (neg1 != neg2) {
-        return neg1 ? -1 : 1;
+      ByteBuffer bb1 = b1.toByteBuffer().slice();
+      bb1.order(ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer bb2 = b2.toByteBuffer().slice();
+      bb2.order(ByteOrder.LITTLE_ENDIAN);
+      // Signed comparison of the high 4 bytes followed by unsigned comparison of the low 8 bytes.
+      int hiResult = Integer.compare(bb1.getInt(8), bb2.getInt(8));
+      if (hiResult != 0) {
+        return hiResult;
       }
-
-      for (int i = 11; i >= 0; --i) {
-        int diff = toUnsigned(bb1.get(p1 + i)) - toUnsigned(bb2.get(p2 + i));
-        if (diff != 0) {
-          return diff;
-        }
-      }
-      return 0;
+      return Long.compareUnsigned(bb1.getLong(0), bb2.getLong(0));
     }
 
     @Override
