@@ -455,6 +455,10 @@ public class TestPrimitiveComparator {
     // an LSB-first comparator would wrongly rank +256 < +1 (seeing byte[0]=0 < 1 first)
     byte[] posTwoFiftySix = new byte[12];
     posTwoFiftySix[1] = 1;
+    // +2^63: low 8 bytes have bit 63 set (LE: bytes 0..6=0x00, byte 7=0x80), high 4 bytes=0x00.
+    // Sits between small positives and largePos; fails if the lower 8 bytes are compared signed.
+    byte[] posTwo63 = new byte[12];
+    posTwo63[7] = (byte) 0x80;
     // large positive: 0x7F FF..FF (most positive 96-bit value)
     byte[] largePos = new byte[12];
     for (int i = 0; i < 12; i++) largePos[i] = (byte) 0xFF;
@@ -467,6 +471,7 @@ public class TestPrimitiveComparator {
         Binary.fromConstantByteArray(zero),
         Binary.fromConstantByteArray(posOne),
         Binary.fromConstantByteArray(posTwoFiftySix),
+        Binary.fromConstantByteArray(posTwo63),
         Binary.fromConstantByteArray(largePos));
   }
 
