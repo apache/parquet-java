@@ -534,7 +534,8 @@ public class TestTypeBuilders {
 
   @Test
   public void testInt64Annotations() {
-    OriginalType[] types = new OriginalType[] {TIME_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_MICROS, UINT_64, INT_64};
+    // Test the non-timestamp annotations for INT64. Timestamps are tested separately below.
+    OriginalType[] types = new OriginalType[] {TIME_MICROS, UINT_64, INT_64};
     for (OriginalType logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
       PrimitiveType date = Types.required(INT64).as(logicalType).named("col");
@@ -544,7 +545,8 @@ public class TestTypeBuilders {
 
   @Test
   public void testInt64AnnotationsRejectNonInt64() {
-    OriginalType[] types = new OriginalType[] {TIME_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_MICROS, UINT_64, INT_64};
+    // Test the non-timestamp annotations for INT64. Timestamps are tested separately below.
+    OriginalType[] types = new OriginalType[] {TIME_MICROS, UINT_64, INT_64};
     for (final OriginalType logicalType : types) {
       PrimitiveTypeName[] nonInt64 = new PrimitiveTypeName[] {BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY};
       for (final PrimitiveTypeName type : nonInt64) {
@@ -559,6 +561,48 @@ public class TestTypeBuilders {
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
           .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
+    }
+  }
+
+  @Test
+  public void testTimestampAnnotations() {
+    // Test timestamp annotations for both INT64 and FLBA(12).
+    OriginalType[] types = new OriginalType[] {TIMESTAMP_MILLIS, TIMESTAMP_MICROS};
+    for (OriginalType logicalType : types) {
+      PrimitiveType expectedInt64 = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
+      PrimitiveType dateInt64 = Types.required(INT64).as(logicalType).named("col");
+      assertThat(dateInt64).isEqualTo(expectedInt64);
+
+      PrimitiveType expectedFlba12 = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 12, "col", logicalType);
+      PrimitiveType dateFlba12 = Types.required(FIXED_LEN_BYTE_ARRAY)
+          .length(12)
+          .as(logicalType)
+          .named("col");
+      assertThat(dateFlba12).isEqualTo(expectedFlba12);
+    }
+  }
+
+  @Test
+  public void testTimestampAnnotationsRejectNonTimestamp() {
+    // Test timestamp annotations for both INT64 and FLBA(12).
+    OriginalType[] types = new OriginalType[] {TIMESTAMP_MILLIS, TIMESTAMP_MICROS};
+    for (OriginalType logicalType : types) {
+      // Invalid primitive types are rejected.
+      PrimitiveTypeName[] nonTimestamp = new PrimitiveTypeName[] {BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY};
+      for (PrimitiveTypeName type : nonTimestamp) {
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null)
+                + " can only annotate INT64 or FIXED_LEN_BYTE_ARRAY(12)");
+      }
+      // Invalid FLBA lengths are rejected.
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(11)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null)
+              + " can only annotate INT64 or FIXED_LEN_BYTE_ARRAY(12)");
     }
   }
 

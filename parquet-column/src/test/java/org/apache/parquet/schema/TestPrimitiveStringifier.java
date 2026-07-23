@@ -193,7 +193,22 @@ public class TestPrimitiveStringifier {
       assertThat(stringifier.stringify(cal.getTimeInMillis()))
           .isEqualTo(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment));
 
-      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      // The FIXED_LEN_BYTE_ARRAY(12) carrier renders identically to the int64 carrier. Includes a
+      // pre-epoch (negative) value to exercise the signed little-endian decoding.
+      assertThat(stringifier.stringify(flba12(0L)))
+          .isEqualTo(withZoneString("1970-01-01T00:00:00.000", timezoneAmendment));
+      cal.clear();
+      cal.set(2017, Calendar.DECEMBER, 15, 10, 9, 54);
+      cal.set(Calendar.MILLISECOND, 120);
+      assertThat(stringifier.stringify(flba12(cal.getTimeInMillis())))
+          .isEqualTo(withZoneString("2017-12-15T10:09:54.120", timezoneAmendment));
+      cal.clear();
+      cal.set(1948, Calendar.NOVEMBER, 23, 20, 19, 1);
+      cal.set(Calendar.MILLISECOND, 9);
+      assertThat(stringifier.stringify(flba12(cal.getTimeInMillis())))
+          .isEqualTo(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment));
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE, Binary.class);
     }
   }
 
@@ -221,7 +236,14 @@ public class TestPrimitiveStringifier {
       assertThat(stringifier.stringify(micros))
           .isEqualTo(withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment));
 
-      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      // The FIXED_LEN_BYTE_ARRAY(12) carrier renders identically to the int64 carrier, including
+      // the pre-epoch (negative) value above which exercises the signed little-endian decoding.
+      assertThat(stringifier.stringify(flba12(0L)))
+          .isEqualTo(withZoneString("1970-01-01T00:00:00.000000", timezoneAmendment));
+      assertThat(stringifier.stringify(flba12(micros)))
+          .isEqualTo(withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment));
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE, Binary.class);
     }
   }
 
@@ -248,7 +270,14 @@ public class TestPrimitiveStringifier {
       assertThat(stringifier.stringify(nanos))
           .isEqualTo(withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment));
 
-      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      // The FIXED_LEN_BYTE_ARRAY(12) carrier renders identically to the int64 carrier, including
+      // the pre-epoch (negative) value above which exercises the signed little-endian decoding.
+      assertThat(stringifier.stringify(flba12(0L)))
+          .isEqualTo(withZoneString("1970-01-01T00:00:00.000000000", timezoneAmendment));
+      assertThat(stringifier.stringify(flba12(nanos)))
+          .isEqualTo(withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment));
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE, Binary.class);
     }
   }
 
@@ -415,6 +444,18 @@ public class TestPrimitiveStringifier {
       array[i] = (byte) bytes[i];
     }
     return Binary.fromConstantByteArray(array);
+  }
+
+  // Encodes a unit count as the extended-precision timestamp carrier: a 12-byte signed
+  // two's-complement little-endian value (sign-extended, so negatives fill the high bytes with
+  // 0xFF).
+  private Binary flba12(long units) {
+    byte[] le = new byte[12];
+    byte fill = (byte) (units < 0 ? 0xFF : 0x00);
+    for (int i = 0; i < 12; ++i) {
+      le[i] = i < 8 ? (byte) (units >>> (8 * i)) : fill;
+    }
+    return Binary.fromConstantByteArray(le);
   }
 
   private void checkThrowingUnsupportedException(PrimitiveStringifier stringifier, Class<?>... excludes) {

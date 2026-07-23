@@ -448,6 +448,18 @@ public class TestParquetMetadataConverter {
         .required(PrimitiveTypeName.INT64)
         .as(timestampType(true, NANOS))
         .named("aTimestampUtcNanos")
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, MILLIS))
+        .named("aTimestampFlbaMillis")
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, MICROS))
+        .named("aTimestampFlbaMicros")
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, NANOS))
+        .named("aTimestampFlbaNanos")
         .required(PrimitiveTypeName.INT32)
         .as(timeType(false, MILLIS))
         .named("aTimeNonUtcMillis")
@@ -468,6 +480,19 @@ public class TestParquetMetadataConverter {
         .named("aTimeUtcNanos")
         .named("Message");
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    // FLBA(12) MILLIS/MICROS must not write a legacy converted_type (it is INT64-only).
+    SchemaElement flbaMillis = parquetSchema.stream()
+        .filter(e -> "aTimestampFlbaMillis".equals(e.getName()))
+        .findFirst()
+        .get();
+    assertThat(flbaMillis.isSetConverted_type()).isFalse();
+    assertThat(flbaMillis.isSetLogicalType()).isTrue();
+    SchemaElement flbaMicros = parquetSchema.stream()
+        .filter(e -> "aTimestampFlbaMicros".equals(e.getName()))
+        .findFirst()
+        .get();
+    assertThat(flbaMicros.isSetConverted_type()).isFalse();
+    assertThat(flbaMicros.isSetLogicalType()).isTrue();
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
     assertThat(schema).isEqualTo(expected);
   }
