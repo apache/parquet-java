@@ -2169,7 +2169,7 @@ public class TestParquetMetadataConverter {
         .as(LogicalTypeAnnotation.fileType())
         .optional(PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.stringType())
-        .named("path")
+        .named("uri")
         .optional(PrimitiveTypeName.INT64)
         .named("offset")
         .optional(PrimitiveTypeName.INT64)
@@ -2194,7 +2194,7 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testFileLogicalTypeRoundTripPathOnly() {
+  public void testFileLogicalTypeRoundTripUriOnly() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
     MessageType expected = Types.buildMessage()
@@ -2202,7 +2202,7 @@ public class TestParquetMetadataConverter {
         .as(LogicalTypeAnnotation.fileType())
         .optional(PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.stringType())
-        .named("path")
+        .named("uri")
         .named("f")
         .named("example");
 

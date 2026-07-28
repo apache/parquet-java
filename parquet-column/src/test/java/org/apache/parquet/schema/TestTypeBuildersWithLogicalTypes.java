@@ -529,17 +529,17 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
-  public void testFileLogicalTypePathOnly() {
+  public void testFileLogicalTypeUriOnly() {
     String name = "file_field";
     GroupType file = new GroupType(
         REQUIRED,
         name,
         LogicalTypeAnnotation.fileType(),
-        Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path"));
+        Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri"));
 
     assertEquals(
         "required group file_field (FILE) {\n"
-            + "  optional binary path (STRING);\n"
+            + "  optional binary uri (STRING);\n"
             + "}",
         file.toString());
 
@@ -554,7 +554,7 @@ public class TestTypeBuildersWithLogicalTypes {
     String name = "file_field";
     GroupType file = Types.requiredGroup()
         .as(LogicalTypeAnnotation.fileType())
-        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
         .optional(INT64).named("offset")
         .optional(INT64).named("size")
         .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("content_type")
@@ -565,7 +565,7 @@ public class TestTypeBuildersWithLogicalTypes {
     LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
     assertTrue(annotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
     assertEquals(6, file.getFieldCount());
-    assertEquals("path", file.getType("path").getName());
+    assertEquals("uri", file.getType("uri").getName());
     assertEquals("offset", file.getType("offset").getName());
     assertEquals("size", file.getType("size").getName());
     assertEquals("content_type", file.getType("content_type").getName());
@@ -575,7 +575,7 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testFileLogicalTypeInlineOnly() {
-    // Every field is optional, so an inline-only group is valid (spec self-reference / inline case).
+    // Every field is optional, so an inline-only group is valid (spec inline case).
     GroupType file = Types.requiredGroup()
         .as(LogicalTypeAnnotation.fileType())
         .optional(BINARY).named("inline")
@@ -588,7 +588,7 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testFileLogicalTypeSelfReference() {
-    // A self-reference omits 'path' and locates bytes within the current file via offset/size.
+    // A self-reference omits 'uri' and locates bytes within the current file via offset/size.
     GroupType file = Types.requiredGroup()
         .as(LogicalTypeAnnotation.fileType())
         .optional(INT64).named("offset")
@@ -600,11 +600,11 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
-  public void testFileLogicalTypeSelfReferenceRequiresSize() {
-    // A group without 'path' or 'inline' can only hold self-references, which require 'size'.
-    // Declaring only metadata fields leaves no way to resolve or size the referenced bytes.
+  public void testFileLogicalTypeMetadataOnlyRejected() {
+    // Per the spec resolution table, a value resolves to bytes only via 'inline', 'uri', or
+    // 'offset'. A group declaring only metadata fields can never produce a resolvable value.
     assertThrows(
-        "FILE type group without 'path'/'inline' must declare 'size'",
+        "FILE type group must declare a locator field ('inline', 'uri', or 'offset')",
         IllegalArgumentException.class,
         () -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
@@ -614,15 +614,16 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
-  public void testFileLogicalTypeSelfReferenceWithSize() {
-    // A self-reference (no 'path') that declares 'size' is valid.
-    GroupType file = Types.requiredGroup()
-        .as(LogicalTypeAnnotation.fileType())
-        .optional(INT64).named("size")
-        .named("self_ref_with_size");
-
-    assertTrue(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
-    assertEquals(1, file.getFieldCount());
+  public void testFileLogicalTypeSizeOnlyRejected() {
+    // 'size' alone never resolves to bytes (spec resolution table), so a size-only group is
+    // rejected: it declares no locator ('inline', 'uri', or 'offset').
+    assertThrows(
+        "FILE type group with only 'size' declares no locator field",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64).named("size")
+            .named("file_size_only"));
   }
 
   @Test
@@ -634,7 +635,7 @@ public class TestTypeBuildersWithLogicalTypes {
         IllegalArgumentException.class,
         () -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
-            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
             .optional(INT64).named("offset")
             .named("file_offset_without_size"));
   }
@@ -644,7 +645,7 @@ public class TestTypeBuildersWithLogicalTypes {
     // 'offset' accompanied by 'size' is valid.
     GroupType file = Types.requiredGroup()
         .as(LogicalTypeAnnotation.fileType())
-        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
         .optional(INT64).named("offset")
         .optional(INT64).named("size")
         .named("file_offset_with_size");
@@ -655,10 +656,10 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testFileLogicalTypeSizeWithoutOffset() {
-    // 'size' without 'offset' is valid (e.g. a whole-file range starting at 0).
+    // 'uri' + 'size' (without 'offset') is valid: an external reference to '[0, size)'.
     GroupType file = Types.requiredGroup()
         .as(LogicalTypeAnnotation.fileType())
-        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
         .optional(INT64).named("size")
         .named("file_size_without_offset");
 
@@ -673,7 +674,7 @@ public class TestTypeBuildersWithLogicalTypes {
         IllegalArgumentException.class,
         () -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
-            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
             .optional(BINARY).named("unknown_field")
             .named("file_with_bad_field"));
   }
@@ -686,8 +687,8 @@ public class TestTypeBuildersWithLogicalTypes {
         IllegalArgumentException.class,
         () -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
-            .required(BINARY).as(LogicalTypeAnnotation.stringType()).named("path")
-            .named("file_with_required_path"));
+            .required(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
+            .named("file_with_required_uri"));
   }
 
   @Test
@@ -700,8 +701,57 @@ public class TestTypeBuildersWithLogicalTypes {
             .as(LogicalTypeAnnotation.fileType())
             .optionalGroup()
             .optional(BINARY).named("nested")
-            .named("path")
+            .named("uri")
             .named("file_with_group_field"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsWrongStringPhysicalType() {
+    // 'uri' must be a STRING (BINARY annotated as STRING); an INT64 is rejected.
+    assertThrows(
+        "FILE type 'uri' field must be a STRING",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64).named("uri")
+            .named("file_uri_wrong_type"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsUnannotatedStringField() {
+    // A STRING field must carry the STRING logical annotation; plain BINARY is rejected.
+    assertThrows(
+        "FILE type 'uri' field must be annotated as STRING",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY).named("uri")
+            .named("file_uri_unannotated"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsWrongInt64PhysicalType() {
+    // 'offset' and 'size' must be INT64; an INT32 is rejected.
+    assertThrows(
+        "FILE type 'size' field must be an INT64",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
+            .optional(INT32).named("size")
+            .named("file_size_wrong_type"));
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsWrongInlinePhysicalType() {
+    // 'inline' must be a BYTE_ARRAY (BINARY); an INT64 is rejected.
+    assertThrows(
+        "FILE type 'inline' field must be a BYTE_ARRAY",
+        IllegalArgumentException.class,
+        () -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64).named("inline")
+            .named("file_inline_wrong_type"));
   }
 
   /**
