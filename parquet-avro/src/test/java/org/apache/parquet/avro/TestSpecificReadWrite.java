@@ -22,10 +22,7 @@ import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter.ColumnRecordFilter.column;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
@@ -34,8 +31,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -46,96 +41,97 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Other tests exercise the use of Avro Generic, a dynamic data representation. This class focuses
  * on Avro Speific whose schemas are pre-compiled to POJOs with built in SerDe for faster serialization.
  */
-@RunWith(Parameterized.class)
 public class TestSpecificReadWrite {
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-      {false}, // use the new converters
-      {true}
-    }; // use the old converters
-    return Arrays.asList(data);
+  private static Configuration testConf(boolean compat) {
+    Configuration conf = new Configuration(false);
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+    return conf;
   }
 
-  private final Configuration testConf = new Configuration(false);
-
-  public TestSpecificReadWrite(boolean compat) {
-    this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
-  }
-
-  @Test
-  public void testCompatReadWriteSpecific() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testCompatReadWriteSpecific(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
-        assertEquals(getBmwMini().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+        assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testReadWriteSpecificWithDictionary() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testReadWriteSpecificWithDictionary(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
-        assertEquals(getBmwMini().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+        assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testFilterMatchesMultiple() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesMultiple(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       for (int i = 0; i < 10; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testFilterMatchesMultipleBlocks() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesMultipleBlocks(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(
         10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       for (int i = 0; i < 10000; i++) {
-        assertEquals(getVwPolo().toString(), reader.read().toString());
-        assertEquals(getVwPassat().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+        assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testFilterMatchesNoBlocks() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesNoBlocks(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(
         10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Bogus")))) {
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testFilterMatchesFinalBlockOnly() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesFinalBlockOnly(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
@@ -161,42 +157,48 @@ public class TestSpecificReadWrite {
     }
 
     try (ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("BMW")))) {
-      assertEquals(getBmwMini().toString(), reader.read().toString());
-      assertNull(reader.read());
+      assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testFilterWithDictionary() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterWithDictionary(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, true);
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
-      assertNull(reader.read());
+      assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+      assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+      assertThat(reader.read()).isNull();
     }
   }
 
-  @Test
-  public void testFilterOnSubAttribute() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterOnSubAttribute(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
 
     ParquetReader<Car> reader =
         new AvroParquetReader<Car>(testConf, path, column("engine.type", equalTo(EngineType.DIESEL)));
-    assertEquals(reader.read().toString(), getVwPassat().toString());
-    assertNull(reader.read());
+    assertThat(reader.read()).asString().isEqualTo(getVwPassat().toString());
+    assertThat(reader.read()).isNull();
 
     reader = new AvroParquetReader<Car>(testConf, path, column("engine.capacity", equalTo(1.4f)));
-    assertEquals(getVwPolo().toString(), reader.read().toString());
-    assertNull(reader.read());
+    assertThat(reader.read()).asString().isEqualTo(getVwPolo().toString());
+    assertThat(reader.read()).isNull();
 
     reader = new AvroParquetReader<Car>(testConf, path, column("engine.hasTurboCharger", equalTo(true)));
-    assertEquals(getBmwMini().toString(), reader.read().toString());
-    assertNull(reader.read());
+    assertThat(reader.read()).asString().isEqualTo(getBmwMini().toString());
+    assertThat(reader.read()).isNull();
   }
 
-  @Test
-  public void testProjection() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testProjection(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
 
@@ -223,20 +225,22 @@ public class TestSpecificReadWrite {
 
     try (ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
-        assertTrue(car.getDoors() == 4 || car.getDoors() == 5);
-        assertNotNull(car.getEngine());
-        assertNotNull(car.getMake());
-        assertNotNull(car.getModel());
-        assertEquals(2010, car.getYear());
-        assertNotNull(car.getVin());
-        assertNull(car.getOptionalExtra());
-        assertNull(car.getServiceHistory());
+        assertThat(car.getDoors()).isIn(4, 5);
+        assertThat(car.getEngine()).isNotNull();
+        assertThat(car.getMake()).isNotNull();
+        assertThat(car.getModel()).isNotNull();
+        assertThat(car.getYear()).isEqualTo(2010);
+        assertThat(car.getVin()).isNotNull();
+        assertThat(car.getOptionalExtra()).isNull();
+        assertThat(car.getServiceHistory()).isNull();
       }
     }
   }
 
-  @Test
-  public void testRepeatedRecordProjection() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testRepeatedRecordProjection(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
     Schema schema = Car.getClassSchema();
@@ -264,35 +268,39 @@ public class TestSpecificReadWrite {
 
     try (ParquetReader<Car> reader = new AvroParquetReader<>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
-        assertNotNull(car.getServiceHistory());
+        assertThat(car.getServiceHistory()).isNotNull();
         car.getServiceHistory().forEach(service -> {
-          assertNotNull(service.getMechanic());
-          assertEquals(0L, service.getDate());
+          assertThat(service.getMechanic()).isNotNull();
+          assertThat(service.getDate()).isEqualTo(0L);
         });
       }
     }
   }
 
-  @Test
-  public void testAvroReadSchema() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAvroReadSchema(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
     AvroReadSupport.setAvroReadSchema(conf, NewCar.SCHEMA$);
 
     try (ParquetReader<NewCar> reader = new AvroParquetReader<>(conf, path)) {
       for (NewCar car = reader.read(); car != null; car = reader.read()) {
-        assertNotNull(car.getEngine());
-        assertNotNull(car.getBrand());
-        assertEquals(2010, car.getYear());
-        assertNotNull(car.getVin());
-        assertNull(car.getDescription());
-        assertEquals(5, car.getOpt());
+        assertThat(car.getEngine()).isNotNull();
+        assertThat(car.getBrand()).isNotNull();
+        assertThat(car.getYear()).isEqualTo(2010);
+        assertThat(car.getVin()).isNotNull();
+        assertThat(car.getDescription()).isNull();
+        assertThat(car.getOpt()).isEqualTo(5);
       }
     }
   }
 
-  @Test
-  public void testParsesSpecificDataModel() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testParsesSpecificDataModel(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     // SpecificRecord contains a logical type and will fail to decode unless its SpecificData model is parsed
     List<LogicalTypesTest> records = IntStream.range(0, 25)
         .mapToObj(i -> LogicalTypesTest.newBuilder()
@@ -328,7 +336,7 @@ public class TestSpecificReadWrite {
       }
     }
 
-    assertEquals(records, output);
+    assertThat(output).containsExactlyElementsOf(records);
   }
 
   private Path writeCarsToParquetFile(int num, CompressionCodecName compression, boolean enableDictionary)

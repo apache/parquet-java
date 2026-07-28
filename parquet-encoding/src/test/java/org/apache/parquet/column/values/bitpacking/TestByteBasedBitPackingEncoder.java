@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestByteBasedBitPackingEncoder {
 
@@ -38,8 +38,8 @@ public class TestByteBasedBitPackingEncoder {
           throw new RuntimeException(i + ": error writing " + j, e);
         }
       }
-      assertEquals(BytesUtils.paddedByteCountFromBits(totalValues * i), encoder.getBufferSize());
-      assertEquals(i == 0 ? 1 : 9, encoder.getNumSlabs());
+      assertThat(encoder.getBufferSize()).isEqualTo(BytesUtils.paddedByteCountFromBits(totalValues * i));
+      assertThat(encoder.getNumSlabs()).isEqualTo(i == 0 ? 1 : 9);
     }
   }
 }

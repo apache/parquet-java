@@ -30,6 +30,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.List;
@@ -54,8 +56,7 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @see SchemaConverter
@@ -362,54 +363,35 @@ public class TestSchemaConverter {
   @Test
   public void testComplexArrowToParquet() {
     MessageType parquet = converter.fromArrow(complexArrowSchema).getParquetSchema();
-    Assert.assertEquals(complexParquetSchema.toString(), parquet.toString()); // easier to read
-    Assert.assertEquals(complexParquetSchema, parquet);
+    assertThat(parquet).asString().isEqualTo(complexParquetSchema.toString()); // easier to read
+    assertThat(parquet).isEqualTo(complexParquetSchema);
   }
 
   @Test
   public void testAllArrowToParquet() {
     MessageType parquet = converter.fromArrow(allTypesArrowSchema).getParquetSchema();
-    Assert.assertEquals(allTypesParquetSchema.toString(), parquet.toString()); // easier to read
-    Assert.assertEquals(allTypesParquetSchema, parquet);
+    assertThat(parquet).asString().isEqualTo(allTypesParquetSchema.toString()); // easier to read
+    assertThat(parquet).isEqualTo(allTypesParquetSchema);
   }
 
   @Test
   public void testSupportedParquetToArrow() {
     Schema arrow = converter.fromParquet(supportedTypesParquetSchema).getArrowSchema();
-    assertEquals(supportedTypesArrowSchema, arrow);
+    assertThat(arrow).isEqualTo(supportedTypesArrowSchema);
   }
 
   @Test
   public void testRepeatedParquetToArrow() {
     Schema arrow = converter.fromParquet(Paper.schema).getArrowSchema();
-    assertEquals(paperArrowSchema, arrow);
-  }
-
-  public void assertEquals(Schema left, Schema right) {
-    compareFields(left.getFields(), right.getFields());
-    Assert.assertEquals(left, right);
-  }
-
-  /**
-   * for more pinpointed error on what is different
-   */
-  private void compareFields(List<Field> left, List<Field> right) {
-    Assert.assertEquals(left + "\n" + right, left.size(), right.size());
-    int size = left.size();
-    for (int i = 0; i < size; i++) {
-      Field expectedField = left.get(i);
-      Field field = right.get(i);
-      compareFields(expectedField.getChildren(), field.getChildren());
-      Assert.assertEquals(expectedField, field);
-    }
+    assertThat(arrow).isEqualTo(paperArrowSchema);
   }
 
   @Test
   public void testAllMap() {
     SchemaMapping map = converter.map(allTypesArrowSchema, allTypesParquetSchema);
-    Assert.assertEquals(
-        "p, s<p>, l<p>, l<p>, u<p>, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p",
-        toSummaryString(map));
+    assertThat(toSummaryString(map))
+        .isEqualTo(
+            "p, s<p>, l<p>, l<p>, u<p>, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p");
   }
 
   private String toSummaryString(SchemaMapping map) {
@@ -466,14 +448,16 @@ public class TestSchemaConverter {
   @Test
   public void testRepeatedMap() throws IOException {
     SchemaMapping map = converter.map(paperArrowSchema, Paper.schema);
-    Assert.assertEquals("p, s<r<p>, r<p>>, r<s<r<s<p, p>>, p>>", toSummaryString(map));
+    assertThat(toSummaryString(map)).isEqualTo("p, s<r<p>, r<p>>, r<s<r<s<p, p>>, p>>");
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testArrowTimeSecondToParquet() {
-    converter
-        .fromArrow(new Schema(asList(field("a", new ArrowType.Time(TimeUnit.SECOND, 32)))))
-        .getParquetSchema();
+    assertThatThrownBy(() -> converter
+            .fromArrow(new Schema(asList(field("a", new ArrowType.Time(TimeUnit.SECOND, 32)))))
+            .getParquetSchema())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Unsupported type Time(SECOND, 32)");
   }
 
   @Test
@@ -481,13 +465,12 @@ public class TestSchemaConverter {
     MessageType expected = converter
         .fromArrow(new Schema(asList(field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32)))))
         .getParquetSchema();
-    Assert.assertEquals(
-        expected,
-        Types.buildMessage()
+    assertThat(Types.buildMessage()
             .addField(Types.optional(INT32)
                 .as(LogicalTypeAnnotation.timeType(false, MILLIS))
                 .named("a"))
-            .named("root"));
+            .named("root"))
+        .isEqualTo(expected);
   }
 
   @Test
@@ -495,13 +478,12 @@ public class TestSchemaConverter {
     MessageType expected = converter
         .fromArrow(new Schema(asList(field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64)))))
         .getParquetSchema();
-    Assert.assertEquals(
-        expected,
-        Types.buildMessage()
+    assertThat(Types.buildMessage()
             .addField(Types.optional(INT64)
                 .as(LogicalTypeAnnotation.timeType(false, MICROS))
                 .named("a"))
-            .named("root"));
+            .named("root"))
+        .isEqualTo(expected);
   }
 
   @Test
@@ -512,7 +494,7 @@ public class TestSchemaConverter {
             .named("a"))
         .named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
   @Test
@@ -523,7 +505,7 @@ public class TestSchemaConverter {
             .named("a"))
         .named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
   @Test
@@ -532,7 +514,7 @@ public class TestSchemaConverter {
         .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).named("a"))
         .named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Binary())));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
   @Test
@@ -547,7 +529,7 @@ public class TestSchemaConverter {
     SchemaMapping mapping = converter.fromParquet(parquet);
     Schema actual = mapping.getArrowSchema();
 
-    Assert.assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 
   @Test
@@ -559,7 +541,7 @@ public class TestSchemaConverter {
             .named("a"))
         .named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Decimal(8, 2))));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
   @Test
@@ -567,7 +549,7 @@ public class TestSchemaConverter {
     MessageType parquet =
         Types.buildMessage().addField(Types.optional(INT96).named("a")).named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Binary())));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
   @Test
@@ -576,33 +558,39 @@ public class TestSchemaConverter {
     MessageType parquet =
         Types.buildMessage().addField(Types.optional(INT96).named("a")).named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.NANOSECOND, null))));
-    Assert.assertEquals(
-        expected, converterInt96ToTimestamp.fromParquet(parquet).getArrowSchema());
+    assertThat(converterInt96ToTimestamp.fromParquet(parquet).getArrowSchema())
+        .isEqualTo(expected);
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt64TimeMillisToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT64)
-            .as(LogicalTypeAnnotation.timeType(false, MILLIS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT64)
+                .as(LogicalTypeAnnotation.timeType(false, MILLIS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIME(MILLIS,false) can only annotate INT32");
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt32TimeMicrosToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT32)
-            .as(LogicalTypeAnnotation.timeType(false, MICROS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT32)
+                .as(LogicalTypeAnnotation.timeType(false, MICROS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIME(MICROS,false) can only annotate INT64");
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testArrowTimestampSecondToParquet() {
-    converter
-        .fromArrow(new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.SECOND, "UTC")))))
-        .getParquetSchema();
+    assertThatThrownBy(() -> converter
+            .fromArrow(new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.SECOND, "UTC")))))
+            .getParquetSchema())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Unsupported type Timestamp(SECOND, UTC)");
   }
 
   @Test
@@ -610,13 +598,12 @@ public class TestSchemaConverter {
     MessageType expected = converter
         .fromArrow(new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")))))
         .getParquetSchema();
-    Assert.assertEquals(
-        expected,
-        Types.buildMessage()
+    assertThat(Types.buildMessage()
             .addField(Types.optional(INT64)
                 .as(LogicalTypeAnnotation.timestampType(true, MILLIS))
                 .named("a"))
-            .named("root"));
+            .named("root"))
+        .isEqualTo(expected);
   }
 
   @Test
@@ -624,13 +611,12 @@ public class TestSchemaConverter {
     MessageType expected = converter
         .fromArrow(new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")))))
         .getParquetSchema();
-    Assert.assertEquals(
-        expected,
-        Types.buildMessage()
+    assertThat(Types.buildMessage()
             .addField(Types.optional(INT64)
                 .as(LogicalTypeAnnotation.timestampType(true, MICROS))
                 .named("a"))
-            .named("root"));
+            .named("root"))
+        .isEqualTo(expected);
   }
 
   @Test
@@ -641,7 +627,7 @@ public class TestSchemaConverter {
             .named("a"))
         .named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"))));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
   @Test
@@ -652,24 +638,28 @@ public class TestSchemaConverter {
             .named("a"))
         .named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"))));
-    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+    assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt32TimestampMillisToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT32)
-            .as(LogicalTypeAnnotation.timestampType(false, MILLIS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT32)
+                .as(LogicalTypeAnnotation.timestampType(false, MILLIS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIMESTAMP(MILLIS,false) can only annotate INT64");
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testParquetInt32TimestampMicrosToArrow() {
-    converter.fromParquet(Types.buildMessage()
-        .addField(Types.optional(INT32)
-            .as(LogicalTypeAnnotation.timestampType(false, MICROS))
-            .named("a"))
-        .named("root"));
+    assertThatThrownBy(() -> converter.fromParquet(Types.buildMessage()
+            .addField(Types.optional(INT32)
+                .as(LogicalTypeAnnotation.timestampType(false, MICROS))
+                .named("a"))
+            .named("root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("TIMESTAMP(MICROS,false) can only annotate INT64");
   }
 }

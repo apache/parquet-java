@@ -33,10 +33,12 @@ import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
+@EnableRuleMigrationSupport
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-reading-random")
 public class BenchmarkReadingRandomIntegers {
@@ -49,7 +51,7 @@ public class BenchmarkReadingRandomIntegers {
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
 
-  @BeforeClass
+  @BeforeAll
   public static void prepare() throws IOException {
     Random random = new Random();
     data = new int[100000 * blockSize];

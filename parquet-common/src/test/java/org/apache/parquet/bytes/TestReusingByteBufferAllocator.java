@@ -18,24 +18,19 @@
  */
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
 public class TestReusingByteBufferAllocator {
 
   private enum AllocatorType {
@@ -56,50 +51,39 @@ public class TestReusingByteBufferAllocator {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Parameter
-  public ByteBufferAllocator innerAllocator;
-
-  @Parameter(1)
-  public AllocatorType type;
-
-  @Parameters(name = "{0} {1}")
-  public static List<Object[]> parameters() {
-    List<Object[]> params = new ArrayList<>();
-    for (Object allocator : new Object[] {
-      new HeapByteBufferAllocator() {
-        @Override
-        public String toString() {
-          return "HEAP";
-        }
-      },
-      new DirectByteBufferAllocator() {
-        @Override
-        public String toString() {
-          return "DIRECT";
-        }
-      }
-    }) {
-      for (Object type : AllocatorType.values()) {
-        params.add(new Object[] {allocator, type});
-      }
-    }
-    return params;
+  static Stream<Arguments> parameters() {
+    return Stream.of(
+            new HeapByteBufferAllocator() {
+              @Override
+              public String toString() {
+                return "HEAP";
+              }
+            },
+            new DirectByteBufferAllocator() {
+              @Override
+              public String toString() {
+                return "DIRECT";
+              }
+            })
+        .flatMap(innerAllocator ->
+            Stream.of(AllocatorType.values()).map(type -> Arguments.of(innerAllocator, type)));
   }
 
-  @Before
-  public void initAllocator() {
+  private void initAllocator(ByteBufferAllocator innerAllocator) {
     allocator = TrackingByteBufferAllocator.wrap(innerAllocator);
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
 
-  @Test
-  public void normalUseCase() {
+  @ParameterizedTest(name = "{0} {1}")
+  @MethodSource("parameters")
+  public void normalUseCase(ByteBufferAllocator innerAllocator, AllocatorType type) {
+    initAllocator(innerAllocator);
     try (ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
-      assertEquals(innerAllocator.isDirect(), reusingAllocator.isDirect());
+      assertThat(reusingAllocator.isDirect()).isEqualTo(innerAllocator.isDirect());
       for (int i = 0; i < 10; ++i) {
         try (ByteBufferReleaser releaser = reusingAllocator.getReleaser()) {
           int size = RANDOM.nextInt(1024);
@@ -121,28 +105,36 @@ public class TestReusingByteBufferAllocator {
   }
 
   private void validateBuffer(ByteBuffer buf, int size) {
-    assertEquals(0, buf.position());
-    assertEquals(size, buf.capacity());
-    assertEquals(size, buf.remaining());
-    assertEquals(allocator.isDirect(), buf.isDirect());
-    assertThrows(InvalidMarkException.class, buf::reset);
+    assertThat(buf.position()).isEqualTo(0);
+    assertThat(buf.capacity()).isEqualTo(size);
+    assertThat(buf.remaining()).isEqualTo(size);
+    assertThat(buf.isDirect()).isEqualTo(allocator.isDirect());
+    assertThatThrownBy(buf::reset).isInstanceOf(InvalidMarkException.class);
   }
 
-  @Test
-  public void validateExceptions() {
+  @ParameterizedTest(name = "{0} {1}")
+  @MethodSource("parameters")
+  public void validateExceptions(ByteBufferAllocator innerAllocator, AllocatorType type) {
+    initAllocator(innerAllocator);
     try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator);
         ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
       ByteBuffer fromOther = allocator.allocate(10);
       releaser.releaseLater(fromOther);
 
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromOther));
+      assertThatThrownBy(() -> reusingAllocator.release(fromOther))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("The single buffer has already been released or never allocated");
 
       ByteBuffer fromReusing = reusingAllocator.allocate(10);
 
-      assertThrows(IllegalArgumentException.class, () -> reusingAllocator.release(fromOther));
+      assertThatThrownBy(() -> reusingAllocator.release(fromOther))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("The buffer to be released is not the one allocated by this allocator");
       switch (type) {
         case STRICT:
-          assertThrows(IllegalStateException.class, () -> reusingAllocator.allocate(5));
+          assertThatThrownBy(() -> reusingAllocator.allocate(5))
+              .isInstanceOf(IllegalStateException.class)
+              .hasMessage("The single buffer is not yet released");
           break;
         case UNSAFE:
           fromReusing = reusingAllocator.allocate(5);
@@ -152,8 +144,12 @@ public class TestReusingByteBufferAllocator {
 
       reusingAllocator.release(fromReusing);
       ByteBuffer fromReusingFinal = fromReusing;
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromOther));
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromReusingFinal));
+      assertThatThrownBy(() -> reusingAllocator.release(fromOther))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("The single buffer has already been released or never allocated");
+      assertThatThrownBy(() -> reusingAllocator.release(fromReusingFinal))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("The single buffer has already been released or never allocated");
     }
   }
 }

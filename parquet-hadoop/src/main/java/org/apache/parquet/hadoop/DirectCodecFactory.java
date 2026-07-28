@@ -111,6 +111,20 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   }
 
   @Override
+  protected BytesCompressor createCompressorAtLevel(final CompressionCodecName codecName, final int level) {
+    switch (codecName) {
+      case SNAPPY:
+        // Snappy has no compression level; keep using the direct compressor.
+        LOG.warn("Compression level {} is not supported for codec {} and will be ignored.", level, codecName);
+        return new SnappyCompressor();
+      case ZSTD:
+        return new ZstdCompressor(level);
+      default:
+        return super.createCompressorAtLevel(codecName, level);
+    }
+  }
+
+  @Override
   protected BytesDecompressor createDecompressor(final CompressionCodecName codecName) {
     switch (codecName) {
       case SNAPPY:
@@ -409,11 +423,21 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     private final ZstdCompressCtx context;
 
     ZstdCompressor() {
-      context = new ZstdCompressCtx();
-      context.setLevel(conf.getInt(
+      context = newContext(conf.getInt(
           ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL));
-      context.setWorkers(conf.getInt(
+    }
+
+    ZstdCompressor(int level) {
+      validateZstdLevel(level);
+      context = newContext(level);
+    }
+
+    private ZstdCompressCtx newContext(int level) {
+      ZstdCompressCtx ctx = new ZstdCompressCtx();
+      ctx.setLevel(level);
+      ctx.setWorkers(conf.getInt(
           ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS));
+      return ctx;
     }
 
     @Override

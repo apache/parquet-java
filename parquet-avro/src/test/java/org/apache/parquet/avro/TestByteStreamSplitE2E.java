@@ -18,8 +18,9 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.common.collect.Lists;
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -32,15 +33,13 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestByteStreamSplitE2E {
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private void testWriteReadFloatingNumbers(boolean isDouble, boolean hasNull) throws IOException {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
@@ -48,8 +47,8 @@ public class TestByteStreamSplitE2E {
     schema.setFields(Collections.singletonList(
         new Schema.Field("a", Schema.createUnion(Schema.create(Schema.Type.NULL), field), null, null)));
 
-    File file = temp.newFile((isDouble ? "double_" : "float_") + hasNull + ".parquet");
-    Path path = new Path(file.toString());
+    Path path = new Path(tempDir.resolve((isDouble ? "double_" : "float_") + hasNull + ".parquet")
+        .toUri());
     List<GenericRecord> expected = Lists.newArrayList();
 
     try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
@@ -85,7 +84,7 @@ public class TestByteStreamSplitE2E {
       }
     }
 
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
   @Test

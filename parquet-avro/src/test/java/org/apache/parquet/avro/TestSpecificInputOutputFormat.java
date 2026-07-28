@@ -19,10 +19,7 @@
 package org.apache.parquet.avro;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -41,9 +38,9 @@ import org.apache.parquet.filter.ColumnPredicates;
 import org.apache.parquet.filter.ColumnRecordFilter;
 import org.apache.parquet.filter.RecordFilter;
 import org.apache.parquet.filter.UnboundRecordFilter;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +125,7 @@ public class TestSpecificInputOutputFormat {
   final Path parquetPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/parquet");
   final Path outputPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/out");
 
-  @Before
+  @BeforeEach
   public void createParquetFile() throws Exception {
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
@@ -190,18 +187,16 @@ public class TestSpecificInputOutputFormat {
       while ((car = out.read()) != null) {
         if (previousCar != null) {
           // Testing reference equality here. The "model" field should be dictionary-encoded.
-          assertTrue(car.getModel() == previousCar.getModel());
+          assertThat(car.getModel()).isSameAs(previousCar.getModel());
         }
         // Make sure that predicate push down worked as expected
-        if (car.getEngine().getType() == EngineType.PETROL) {
-          fail("UnboundRecordFilter failed to remove cars with PETROL engines");
-        }
+        assertThat(car.getEngine().getType()).isNotEqualTo(EngineType.PETROL);
         // Note we use lineNumber * 2 because of predicate push down
         Car expectedCar = nextRecord(lineNumber * 2);
         // We removed the optional extra field using projection so we shouldn't
         // see it here...
         expectedCar.setOptionalExtra(null);
-        assertEquals("line " + lineNumber, expectedCar, car);
+        assertThat(car).as("line " + lineNumber).isEqualTo(expectedCar);
         ++lineNumber;
         previousCar = car;
       }
@@ -251,10 +246,10 @@ public class TestSpecificInputOutputFormat {
         // Note we use lineNumber * 2 because of predicate push down
         Car expectedCar = nextRecord(lineNumber * 2);
         // We removed the optional extra field using projection so we shouldn't see it here...
-        assertNull(car.getMake());
-        assertEquals(car.getEngine(), expectedCar.getEngine());
-        assertEquals(car.getYear(), expectedCar.getYear());
-        assertEquals(car.getVin(), expectedCar.getVin());
+        assertThat(car.getMake()).isNull();
+        assertThat(car.getEngine()).isEqualTo(expectedCar.getEngine());
+        assertThat(car.getYear()).isEqualTo(expectedCar.getYear());
+        assertThat(car.getVin()).isEqualTo(expectedCar.getVin());
         ++lineNumber;
       }
     }
@@ -272,7 +267,7 @@ public class TestSpecificInputOutputFormat {
     }
   }
 
-  @After
+  @AfterEach
   public void deleteOutputFile() throws IOException {
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);

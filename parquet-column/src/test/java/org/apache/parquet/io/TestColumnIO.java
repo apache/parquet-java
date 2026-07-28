@@ -28,13 +28,11 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -60,14 +58,12 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@RunWith(Parameterized.class)
 public class TestColumnIO {
   private static final Logger LOG = LoggerFactory.getLogger(TestColumnIO.class);
 
@@ -141,25 +137,14 @@ public class TestColumnIO {
     "endMessage()"
   };
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() throws IOException {
-    Object[][] data = {{true}, {false}};
-    return List.of(data);
-  }
-
-  private boolean useDictionary;
-
-  public TestColumnIO(boolean useDictionary) {
-    this.useDictionary = useDictionary;
-  }
-
   @Test
   public void testSchema() {
-    assertEquals(schemaString, schema.toString());
+    assertThat(schema).asString().isEqualTo(schemaString);
   }
 
-  @Test
-  public void testReadUsingRequestedSchemaWithExtraFields() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testReadUsingRequestedSchemaWithExtraFields(boolean useDictionary) {
     MessageType orginalSchema = new MessageType(
         "schema", new PrimitiveType(REQUIRED, INT32, "a"), new PrimitiveType(OPTIONAL, INT32, "b"));
     MessageType schemaWithExtraField = new MessageType(
@@ -173,12 +158,14 @@ public class TestColumnIO {
     writeGroups(
         orginalSchema,
         memPageStoreForOriginalSchema,
+        useDictionary,
         groupFactory.newGroup().append("a", 1).append("b", 2));
 
     SimpleGroupFactory groupFactory2 = new SimpleGroupFactory(schemaWithExtraField);
     writeGroups(
         schemaWithExtraField,
         memPageStoreForSchemaWithExtraField,
+        useDictionary,
         groupFactory2.newGroup().append("a", 1).append("b", 2).append("c", 3));
 
     {
@@ -197,53 +184,54 @@ public class TestColumnIO {
     }
   }
 
-  @Test
-  public void testReadUsingRequestedSchemaWithIncompatibleField() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testReadUsingRequestedSchemaWithIncompatibleField(boolean useDictionary) {
     MessageType originalSchema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "e"));
     MemPageStore store = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
-    writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
+    writeGroups(
+        originalSchema, store, useDictionary, groupFactory.newGroup().append("e", 4));
 
-    try {
-      MessageType schemaWithIncompatibleField = new MessageType(
-          "schema", new PrimitiveType(OPTIONAL, BINARY, "e")); // Incompatible schema: different type
-      readGroups(store, originalSchema, schemaWithIncompatibleField, 1);
-      fail("should have thrown an incompatible schema exception");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          "The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e",
-          e.getMessage());
-    }
+    // Incompatible schema: different type
+    MessageType schemaWithIncompatibleField = new MessageType("schema", new PrimitiveType(OPTIONAL, BINARY, "e"));
+    assertThatThrownBy(() -> readGroups(store, originalSchema, schemaWithIncompatibleField, 1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e");
   }
 
-  @Test
-  public void testReadUsingSchemaWithRequiredFieldThatWasOptional() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testReadUsingSchemaWithRequiredFieldThatWasOptional(boolean useDictionary) {
     MessageType originalSchema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "e"));
     MemPageStore store = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
-    writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
+    writeGroups(
+        originalSchema, store, useDictionary, groupFactory.newGroup().append("e", 4));
 
-    try {
-      MessageType schemaWithRequiredFieldThatWasOptional = new MessageType(
-          "schema",
-          new PrimitiveType(REQUIRED, INT32, "e")); // Incompatible schema: required when it was optional
-      readGroups(store, originalSchema, schemaWithRequiredFieldThatWasOptional, 1);
-      fail("should have thrown an incompatible schema exception");
-    } catch (ParquetDecodingException e) {
-      assertEquals(
-          "The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e",
-          e.getMessage());
-    }
+    // Incompatible schema: required when it was optional
+    MessageType schemaWithRequiredFieldThatWasOptional =
+        new MessageType("schema", new PrimitiveType(REQUIRED, INT32, "e"));
+    assertThatThrownBy(() -> readGroups(store, originalSchema, schemaWithRequiredFieldThatWasOptional, 1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e");
   }
 
-  @Test
-  public void testReadUsingProjectedSchema() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testReadUsingProjectedSchema(boolean useDictionary) {
     MessageType orginalSchema = new MessageType(
         "schema", new PrimitiveType(REQUIRED, INT32, "a"), new PrimitiveType(REQUIRED, INT32, "b"));
     MessageType projectedSchema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "b"));
     MemPageStore store = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(orginalSchema);
-    writeGroups(orginalSchema, store, groupFactory.newGroup().append("a", 1).append("b", 2));
+    writeGroups(
+        orginalSchema,
+        store,
+        useDictionary,
+        groupFactory.newGroup().append("a", 1).append("b", 2));
 
     {
       List<Group> groups = new ArrayList<>();
@@ -263,11 +251,10 @@ public class TestColumnIO {
       for (int j = 0; j < objects.length; j++) {
         Object object = objects[j];
         if (object == null) {
-          assertEquals(0, next.getFieldRepetitionCount(j));
+          assertThat(next.getFieldRepetitionCount(j)).isEqualTo(0);
         } else {
-          assertEquals(
-              "looking for r[" + i + "][" + j + "][0]=" + object, 1, next.getFieldRepetitionCount(j));
-          assertEquals(object, next.getInteger(j, 0));
+          assertThat(next.getFieldRepetitionCount(j)).isEqualTo(1);
+          assertThat(next.getInteger(j, 0)).isEqualTo(object);
         }
       }
     }
@@ -285,9 +272,10 @@ public class TestColumnIO {
     return groups;
   }
 
-  private void writeGroups(MessageType writtenSchema, MemPageStore memPageStore, Group... groups) {
+  private void writeGroups(
+      MessageType writtenSchema, MemPageStore memPageStore, boolean useDictionary, Group... groups) {
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
-    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore, useDictionary);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(writtenSchema);
     RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     GroupWriter groupWriter = new GroupWriter(recordWriter, writtenSchema);
@@ -298,8 +286,9 @@ public class TestColumnIO {
     columns.flush();
   }
 
-  @Test
-  public void testColumnIO() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testColumnIO(boolean useDictionary) {
     log(schema);
     log("r1");
     log(r1);
@@ -307,7 +296,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore(2);
-    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore, useDictionary);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -336,14 +325,14 @@ public class TestColumnIO {
         log("r" + (++i));
         log(record);
       }
-      assertEquals(
-          "deserialization does not display the same result",
-          r1.toString(),
-          records.get(0).toString());
-      assertEquals(
-          "deserialization does not display the same result",
-          r2.toString(),
-          records.get(1).toString());
+      assertThat(records.get(0))
+          .as("deserialization does not display the same result")
+          .asString()
+          .isEqualTo(r1.toString());
+      assertThat(records.get(1))
+          .as("deserialization does not display the same result")
+          .asString()
+          .isEqualTo(r2.toString());
     }
     {
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
@@ -361,19 +350,20 @@ public class TestColumnIO {
         log("r" + (++i));
         log(record);
       }
-      assertEquals(
-          "deserialization does not display the expected result",
-          pr1.toString(),
-          records.get(0).toString());
-      assertEquals(
-          "deserialization does not display the expected result",
-          pr2.toString(),
-          records.get(1).toString());
+      assertThat(records.get(0))
+          .as("deserialization does not display the expected result")
+          .asString()
+          .isEqualTo(pr1.toString());
+      assertThat(records.get(1))
+          .as("deserialization does not display the expected result")
+          .asString()
+          .isEqualTo(pr2.toString());
     }
   }
 
-  @Test
-  public void testOneOfEach() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testOneOfEach(boolean useDictionary) {
     MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
     GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
     Group g1 = gf.newGroup()
@@ -386,11 +376,12 @@ public class TestColumnIO {
         .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000))
         .append("h", Binary.fromString("abc"));
 
-    testSchema(oneOfEachSchema, List.of(g1));
+    testSchema(oneOfEachSchema, List.of(g1), useDictionary);
   }
 
-  @Test
-  public void testRequiredOfRequired() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testRequiredOfRequired(boolean useDictionary) {
     MessageType reqreqSchema = MessageTypeParser.parseMessageType(
         "message Document {\n" + "  required group foo {\n" + "    required int64 bar;\n" + "  }\n" + "}\n");
 
@@ -398,11 +389,12 @@ public class TestColumnIO {
     Group g1 = gf.newGroup();
     g1.addGroup("foo").append("bar", 2l);
 
-    testSchema(reqreqSchema, List.of(g1));
+    testSchema(reqreqSchema, List.of(g1), useDictionary);
   }
 
-  @Test
-  public void testOptionalRequiredInteraction() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testOptionalRequiredInteraction(boolean useDictionary) {
     for (int i = 0; i < 6; i++) {
       Type current = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "primitive");
       for (int j = 0; j < i; j++) {
@@ -418,7 +410,7 @@ public class TestColumnIO {
       }
       currentGroup.add(0, Binary.fromString("foo"));
       groups.add(root);
-      testSchema(groupSchema, groups);
+      testSchema(groupSchema, groups, useDictionary);
     }
     for (int i = 0; i < 6; i++) {
       Type current = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "primitive");
@@ -439,7 +431,7 @@ public class TestColumnIO {
       currentDefinedGroup.add(0, Binary.fromString("foo"));
       groups.add(rootDefined);
       groups.add(rootUndefined);
-      testSchema(groupSchema, groups);
+      testSchema(groupSchema, groups, useDictionary);
     }
     for (int i = 0; i < 6; i++) {
       Type current = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "primitive");
@@ -462,13 +454,13 @@ public class TestColumnIO {
       currentDefinedGroup.add(0, Binary.fromString("foo"));
       groups.add(rootDefined);
       groups.add(rootUndefined);
-      testSchema(groupSchema, groups);
+      testSchema(groupSchema, groups, useDictionary);
     }
   }
 
-  private void testSchema(MessageType messageSchema, List<Group> groups) {
+  private void testSchema(MessageType messageSchema, List<Group> groups, boolean useDictionary) {
     MemPageStore memPageStore = new MemPageStore(groups.size());
-    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore, useDictionary);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
@@ -487,7 +479,10 @@ public class TestColumnIO {
     RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
-      assertEquals("deserialization does not display the same result", group.toString(), got.toString());
+      assertThat(got)
+          .as("deserialization does not display the same result")
+          .asString()
+          .isEqualTo(group.toString());
     }
   }
 
@@ -516,19 +511,17 @@ public class TestColumnIO {
                 ? "end"
                 : Arrays.toString(leaves.get(next).getFieldPath())) + ": "
             + recordReader.getNextLevel(i, r));
-        assertEquals(
-            Arrays.toString(primitiveColumnIO.getFieldPath()) + ": " + r + " -> ",
-            next,
-            recordReader.getNextReader(i, r));
+        assertThat(recordReader.getNextReader(i, r)).isEqualTo(next);
       }
     }
     log("----");
   }
 
-  @Test
-  public void testPushParser() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testPushParser(boolean useDictionary) {
     MemPageStore memPageStore = new MemPageStore(1);
-    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore, useDictionary);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     new GroupWriter(recordWriter, schema).write(r1);
@@ -540,7 +533,7 @@ public class TestColumnIO {
     recordReader.read();
   }
 
-  private ColumnWriteStoreV1 newColumnWriteStore(MemPageStore memPageStore) {
+  private ColumnWriteStoreV1 newColumnWriteStore(MemPageStore memPageStore, boolean useDictionary) {
     return new ColumnWriteStoreV1(
         memPageStore,
         ParquetProperties.builder()
@@ -550,10 +543,11 @@ public class TestColumnIO {
             .build());
   }
 
-  @Test
-  public void testEmptyField() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testEmptyField(boolean useDictionary) {
     MemPageStore memPageStore = new MemPageStore(1);
-    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore, useDictionary);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     recordWriter.startMessage();
@@ -561,13 +555,9 @@ public class TestColumnIO {
     recordWriter.addLong(0);
     recordWriter.endField("DocId", 0);
     recordWriter.startField("Links", 1);
-    try {
-      recordWriter.endField("Links", 1);
-      Assert.fail("expected exception because of empty field");
-    } catch (ParquetEncodingException e) {
-      Assert.assertEquals(
-          "empty fields are illegal, the field should be ommited completely instead", e.getMessage());
-    }
+    assertThatThrownBy(() -> recordWriter.endField("Links", 1))
+        .isInstanceOf(ParquetEncodingException.class)
+        .hasMessage("empty fields are illegal, the field should be ommited completely instead");
   }
 
   @Test
@@ -580,14 +570,14 @@ public class TestColumnIO {
     result.add(groupRecordConverter.getCurrentRecord());
     groupWriter.write(r2);
     result.add(groupRecordConverter.getCurrentRecord());
-    assertEquals(
-        "deserialization does not display the expected result",
-        result.get(0).toString(),
-        r1.toString());
-    assertEquals(
-        "deserialization does not display the expected result",
-        result.get(1).toString(),
-        r2.toString());
+    assertThat(r1)
+        .as("deserialization does not display the expected result")
+        .asString()
+        .isEqualTo(result.get(0).toString());
+    assertThat(r2)
+        .as("deserialization does not display the expected result")
+        .asString()
+        .isEqualTo(result.get(1).toString());
   }
 
   @Test
@@ -649,7 +639,7 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       private void validate(Object value, int repetitionLevel, int definitionLevel) {
         String actual = Arrays.toString(path.getPath()) + ": " + value + ", r:" + repetitionLevel + ", d:"
             + definitionLevel;
-        assertEquals("event #" + counter, expected[counter], actual);
+        assertThat(actual).isEqualTo(expected[counter]);
         ++counter;
       }
 
@@ -699,7 +689,7 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
   }
 
   public void validate() {
-    assertEquals("read all events", expected.length, counter);
+    assertThat(counter).as("read all events").isEqualTo(expected.length);
   }
 
   @Override

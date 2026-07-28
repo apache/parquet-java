@@ -19,11 +19,9 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -31,16 +29,15 @@ import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests {@link ParquetFileReader#getRowRanges(int)}.
@@ -51,16 +48,14 @@ public class TestParquetFileReaderRowRanges {
   private static final MessageType SCHEMA =
       MessageTypeParser.parseMessageType("message test { required int64 id; required int64 grp; }");
 
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private Path file;
 
-  @Before
+  @BeforeEach
   public void writeFile() throws IOException {
-    File f = temp.newFile();
-    f.delete();
-    file = new Path(f.toURI());
+    file = new Path(tempDir.resolve("row-ranges.parquet").toUri());
 
     // Small page size produces many pages per column chunk.
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
@@ -85,13 +80,13 @@ public class TestParquetFileReaderRowRanges {
   @Test
   public void getRowRangesWithoutFilterCoversAllRows() throws IOException {
     try (ParquetFileReader reader = openReader()) {
-      assertEquals(1, reader.getRowGroups().size());
+      assertThat(reader.getRowGroups()).hasSize(1);
       BlockMetaData block = reader.getRowGroups().get(0);
 
       RowRanges ranges = reader.getRowRanges(0);
 
-      assertEquals(block.getRowCount(), ranges.rowCount());
-      assertTrue(ranges.isOverlapping(0L, block.getRowCount() - 1));
+      assertThat(ranges.rowCount()).isEqualTo(block.getRowCount());
+      assertThat(ranges.isOverlapping(0L, block.getRowCount() - 1)).isTrue();
     }
   }
 
@@ -99,8 +94,12 @@ public class TestParquetFileReaderRowRanges {
   public void getRowRangesRejectsOutOfRangeBlockIndex() throws IOException {
     try (ParquetFileReader reader = openReader()) {
       int blockCount = reader.getRowGroups().size();
-      assertThrows(IllegalArgumentException.class, () -> reader.getRowRanges(-1));
-      assertThrows(IllegalArgumentException.class, () -> reader.getRowRanges(blockCount));
+      assertThatThrownBy(() -> reader.getRowRanges(-1))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid block index");
+      assertThatThrownBy(() -> reader.getRowRanges(blockCount))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid block index");
     }
   }
 }

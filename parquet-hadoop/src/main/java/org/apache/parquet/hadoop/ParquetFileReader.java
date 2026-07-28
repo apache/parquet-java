@@ -85,6 +85,7 @@ import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.format.BlockCipher;
@@ -111,7 +112,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -1266,6 +1266,22 @@ public class ParquetFileReader implements Closeable {
     }
 
     return internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(blockIndex));
+  }
+
+  /**
+   * @param blockIndex the index of the requested block
+   * @param rowRanges  the row ranges to be read from the requested block
+   * @return the PageReadStore which can provide PageReaders for each column or null if there are no rows in this block
+   * @throws IOException              if an error occurs while reading
+   * @throws IllegalArgumentException if the {@code blockIndex} is invalid or the {@code rowRanges} is null
+   * @deprecated use {@link #readFilteredRowGroup(int, RowRanges)} with
+   *     {@link org.apache.parquet.filter2.columnindex.RowRanges} instead. This overload is retained
+   *     for backward compatibility and will be removed in 2.0.
+   */
+  @Deprecated
+  public ColumnChunkPageReadStore readFilteredRowGroup(
+      int blockIndex, org.apache.parquet.internal.filter2.columnindex.RowRanges rowRanges) throws IOException {
+    return readFilteredRowGroup(blockIndex, (RowRanges) rowRanges);
   }
 
   /**

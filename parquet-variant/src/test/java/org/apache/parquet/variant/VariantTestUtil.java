@@ -18,13 +18,14 @@
  */
 package org.apache.parquet.variant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.function.Consumer;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,9 @@ public class VariantTestUtil {
   static final ByteBuffer EMPTY_METADATA = ByteBuffer.wrap(new byte[] {0b1});
 
   static void checkType(Variant v, int expectedBasicType, Variant.Type expectedType) {
-    Assert.assertEquals(expectedBasicType, v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK);
-    Assert.assertEquals(expectedType, v.getType());
+    assertThat(v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK)
+        .isEqualTo(expectedBasicType);
+    assertThat(v.getType()).isEqualTo(expectedType);
   }
 
   static String randomString(int len) {

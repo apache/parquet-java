@@ -19,7 +19,7 @@
 package org.apache.parquet.thrift;
 
 import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -52,7 +52,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thrift.test.OneOfEach;
@@ -169,6 +169,6 @@ public class TestParquetReadProtocol {
 
     final T result = recordReader.read();
 
-    assertEquals(expected, result);
+    assertThat(result).isEqualTo(expected);
   }
 }

@@ -22,11 +22,11 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 public abstract class CSVFileTest extends FileTest {
 
-  @Before
+  @BeforeEach
   public void setUp() throws IOException {
     createTestCSVFile();
     createTestCSVFileWithDifferentSchema();

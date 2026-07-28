@@ -59,3 +59,10 @@ jobs:
           EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           ./mvnw verify --batch-mode javadoc:javadoc
+      - name: generate published JARs and verify LICENSE and NOTICE
+        if: matrix.java.setup == '17'
+        run: |
+          # Ensure all JARs published by the release are created before checking LICENSE and NOTICE.
+          ./mvnw --batch-mode process-resources source:jar-no-fork javadoc:jar
+          # Verify every published JAR contains LICENSE and NOTICE.
+          ./dev/check-jar-license-and-notice.sh

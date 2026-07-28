@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.bytes;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,10 +27,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test class of {@link ConcatenatingByteBufferCollector}.
@@ -37,12 +38,12 @@ public class TestConcatenatingByteBufferCollector {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -72,15 +73,14 @@ public class TestConcatenatingByteBufferCollector {
       result = baos.toByteArray();
     }
 
-    Assert.assertEquals(
-        "This is a test text to validate the class ConcatenatingByteBufferCollector",
-        new String(result, 0, 74));
+    assertThat(new String(result, 0, 74))
+        .isEqualTo("This is a test text to validate the class ConcatenatingByteBufferCollector");
     InputStream in = new ByteArrayInputStream(result, 74, result.length - 74);
-    Assert.assertEquals(12345, BytesUtils.readIntLittleEndian(in));
-    Assert.assertEquals(67891, BytesUtils.readUnsignedVarInt(in));
-    Assert.assertEquals(2345678901L, BytesUtils.readUnsignedVarLong(in));
-    Assert.assertEquals(-234567, BytesUtils.readZigZagVarInt(in));
-    Assert.assertEquals(-890123456789L, BytesUtils.readZigZagVarLong(in));
+    assertThat(BytesUtils.readIntLittleEndian(in)).isEqualTo(12345);
+    assertThat(BytesUtils.readUnsignedVarInt(in)).isEqualTo(67891);
+    assertThat(BytesUtils.readUnsignedVarLong(in)).isEqualTo(2345678901L);
+    assertThat(BytesUtils.readZigZagVarInt(in)).isEqualTo(-234567);
+    assertThat(BytesUtils.readZigZagVarLong(in)).isEqualTo(-890123456789L);
   }
 
   private static byte[] bytes(String str) {

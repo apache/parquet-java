@@ -22,13 +22,12 @@ import static org.apache.parquet.avro.AvroTestUtil.optional;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -40,12 +39,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
 import org.apache.avro.Conversion;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalType;
@@ -81,14 +80,11 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
 public class TestReadWrite {
 
   enum Converters {
@@ -122,46 +118,88 @@ public class TestReadWrite {
     EXPLICIT
   }
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-      {Converters.COMPATIBLE, FileLocation.HADOOP, ConfigurationType.HADOOP_CONFIGURATION, CodecFactory.IMPLICIT},
-      {
-        Converters.COMPATIBLE,
-        FileLocation.HADOOP,
-        ConfigurationType.HADOOP_PARQUET_INTERFACE,
-        CodecFactory.IMPLICIT
-      },
-      {Converters.NEW, FileLocation.HADOOP, ConfigurationType.HADOOP_CONFIGURATION, CodecFactory.IMPLICIT},
-      {Converters.NEW, FileLocation.LOCAL, ConfigurationType.HADOOP_CONFIGURATION, CodecFactory.IMPLICIT},
-      {Converters.NEW, FileLocation.HADOOP, ConfigurationType.HADOOP_PARQUET_INTERFACE, CodecFactory.IMPLICIT},
-      {Converters.NEW, FileLocation.LOCAL, ConfigurationType.HADOOP_PARQUET_INTERFACE, CodecFactory.IMPLICIT},
-      {Converters.NEW, FileLocation.HADOOP, ConfigurationType.PLAIN_PARQUET_INTERFACE, CodecFactory.IMPLICIT},
-      {Converters.NEW, FileLocation.LOCAL, ConfigurationType.PLAIN_PARQUET_INTERFACE, CodecFactory.IMPLICIT},
-      {
-        Converters.COMPATIBLE,
-        FileLocation.HADOOP,
-        ConfigurationType.HADOOP_PARQUET_INTERFACE,
-        CodecFactory.EXPLICIT
-      },
-      {Converters.NEW, FileLocation.HADOOP, ConfigurationType.HADOOP_PARQUET_INTERFACE, CodecFactory.EXPLICIT},
-      {Converters.NEW, FileLocation.LOCAL, ConfigurationType.HADOOP_PARQUET_INTERFACE, CodecFactory.EXPLICIT},
-      {Converters.NEW, FileLocation.HADOOP, ConfigurationType.PLAIN_PARQUET_INTERFACE, CodecFactory.EXPLICIT},
-      {Converters.NEW, FileLocation.LOCAL, ConfigurationType.PLAIN_PARQUET_INTERFACE, CodecFactory.EXPLICIT}
-    };
-    return Arrays.asList(data);
+  @TempDir
+  private java.nio.file.Path tempDir;
+
+  static Stream<Arguments> data() {
+    return Stream.of(
+        Arguments.of(
+            Converters.COMPATIBLE,
+            FileLocation.HADOOP,
+            ConfigurationType.HADOOP_CONFIGURATION,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.COMPATIBLE,
+            FileLocation.HADOOP,
+            ConfigurationType.HADOOP_PARQUET_INTERFACE,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.HADOOP,
+            ConfigurationType.HADOOP_CONFIGURATION,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.LOCAL,
+            ConfigurationType.HADOOP_CONFIGURATION,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.HADOOP,
+            ConfigurationType.HADOOP_PARQUET_INTERFACE,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.LOCAL,
+            ConfigurationType.HADOOP_PARQUET_INTERFACE,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.HADOOP,
+            ConfigurationType.PLAIN_PARQUET_INTERFACE,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.LOCAL,
+            ConfigurationType.PLAIN_PARQUET_INTERFACE,
+            CodecFactory.IMPLICIT),
+        Arguments.of(
+            Converters.COMPATIBLE,
+            FileLocation.HADOOP,
+            ConfigurationType.HADOOP_PARQUET_INTERFACE,
+            CodecFactory.EXPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.HADOOP,
+            ConfigurationType.HADOOP_PARQUET_INTERFACE,
+            CodecFactory.EXPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.LOCAL,
+            ConfigurationType.HADOOP_PARQUET_INTERFACE,
+            CodecFactory.EXPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.HADOOP,
+            ConfigurationType.PLAIN_PARQUET_INTERFACE,
+            CodecFactory.EXPLICIT),
+        Arguments.of(
+            Converters.NEW,
+            FileLocation.LOCAL,
+            ConfigurationType.PLAIN_PARQUET_INTERFACE,
+            CodecFactory.EXPLICIT));
   }
 
-  private final Converters converter;
-  private final FileLocation fileLocation;
-  private final ConfigurationType conf;
-  private final CodecFactory codecType;
+  private Converters converter;
+  private FileLocation fileLocation;
+  private ConfigurationType conf;
+  private CodecFactory codecType;
 
   private final Configuration testConf = new Configuration();
   private final ParquetConfiguration hadoopConfWithInterface = new HadoopParquetConfiguration();
   private final ParquetConfiguration plainParquetConf = new PlainParquetConfiguration();
 
-  public TestReadWrite(Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs) {
+  private void init(Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs) {
     this.converter = converter;
     this.fileLocation = fileLocation;
     this.conf = conf;
@@ -177,15 +215,19 @@ public class TestReadWrite {
     this.plainParquetConf.setBoolean("parquet.avro.write-old-list-structure", false);
   }
 
-  @Test
-  public void testEmptyArray() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testEmptyArray(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("array.avsc").openStream());
 
     // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<>();
 
-    String file = createTempFile().getPath();
+    String file = createTempFile().toUri().getPath();
 
     try (ParquetWriter<GenericRecord> writer = writer(file, schema)) {
       GenericData.Record record =
@@ -196,17 +238,21 @@ public class TestReadWrite {
     try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(emptyArray, nextRecord.get("myarray"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("myarray")).isEqualTo(emptyArray);
     }
   }
 
-  @Test
-  public void testEmptyMap() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testEmptyMap(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
-    String file = createTempFile().getPath();
+    String file = createTempFile().toUri().getPath();
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
     try (ParquetWriter<GenericRecord> writer = writer(file, schema)) {
@@ -220,17 +266,21 @@ public class TestReadWrite {
     try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(emptyMap, nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(emptyMap);
     }
   }
 
-  @Test
-  public void testMapWithNulls() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testMapWithNulls(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema = new Schema.Parser()
         .parse(Resources.getResource("map_with_nulls.avsc").openStream());
 
-    Path file = new Path(createTempFile().getPath());
+    Path file = createTempFile();
 
     // Write a record with a null value
     Map<CharSequence, Integer> map = new HashMap<>();
@@ -251,18 +301,22 @@ public class TestReadWrite {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(map, nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(map);
     }
   }
 
-  @Test(expected = RuntimeException.class)
-  public void testMapRequiredValueWithNull() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testMapRequiredValueWithNull(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema = Schema.createRecord("record1", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("mymap", Schema.createMap(Schema.create(Schema.Type.INT)), null, null)));
 
-    Path file = new Path(createTempFile().getPath());
+    Path file = createTempFile();
 
     try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file)
         .withSchema(schema)
@@ -277,16 +331,22 @@ public class TestReadWrite {
 
       GenericData.Record record =
           new GenericRecordBuilder(schema).set("mymap", map).build();
-      writer.write(record);
+      assertThatThrownBy(() -> writer.write(record))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Null map value for map");
     }
   }
 
-  @Test
-  public void testMapWithUtf8Key() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testMapWithUtf8Key(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
-    Path file = new Path(createTempFile().getPath());
+    Path file = createTempFile();
 
     try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file)
         .withSchema(schema)
@@ -303,16 +363,17 @@ public class TestReadWrite {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
     }
   }
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
-
-  @Test
-  public void testDecimalValues() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testDecimalValues(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema decimalSchema = Schema.createRecord("myrecord", null, null, false);
     Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(Schema.create(Schema.Type.BYTES));
     decimalSchema.setFields(Collections.singletonList(new Schema.Field("dec", decimal, null, null)));
@@ -321,9 +382,7 @@ public class TestReadWrite {
     GenericData decimalSupport = new GenericData();
     decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
 
-    File file = temp.newFile("decimal.parquet");
-    file.delete();
-    Path path = new Path(file.toString());
+    Path path = new Path(tempDir.resolve("decimal.parquet").toUri());
     List<GenericRecord> expected = Lists.newArrayList();
 
     try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
@@ -355,13 +414,18 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertTrue(
-        "dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records.get(0).get("dec"))
+        .as("dec field should be a BigDecimal instance")
+        .isInstanceOf(BigDecimal.class);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
-  @Test
-  public void testFixedDecimalValues() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testFixedDecimalValues(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema decimalSchema = Schema.createRecord("myrecord", null, null, false);
     Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(Schema.createFixed("dec", null, null, 4));
     decimalSchema.setFields(Collections.singletonList(new Schema.Field("dec", decimal, null, null)));
@@ -370,9 +434,7 @@ public class TestReadWrite {
     GenericData decimalSupport = new GenericData();
     decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
 
-    File file = temp.newFile("decimal.parquet");
-    file.delete();
-    Path path = new Path(file.toString());
+    Path path = new Path(tempDir.resolve("decimal.parquet").toUri());
     List<GenericRecord> expected = Lists.newArrayList();
 
     try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
@@ -404,17 +466,20 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertTrue(
-        "dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records.get(0).get("dec"))
+        .as("dec field should be a BigDecimal instance")
+        .isInstanceOf(BigDecimal.class);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
-  @Test
-  public void testDecimalIntegerValues() throws Exception {
-
-    File file = temp.newFile("test_decimal_integer_values.parquet");
-    file.delete();
-    Path path = new Path(file.toString());
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testDecimalIntegerValues(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
+    Path path =
+        new Path(tempDir.resolve("test_decimal_integer_values.parquet").toUri());
 
     MessageType parquetSchema = new MessageType(
         "test_decimal_integer_values",
@@ -452,31 +517,38 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertEquals("Should read 2 records", 2, records.size());
+    assertThat(records).as("Should read 2 records").hasSize(2);
 
     // INT32 values
     Object firstAge = records.get(0).get("decimal_age");
     Object secondAge = records.get(1).get("decimal_age");
 
-    Assert.assertTrue("Should be BigDecimal, but is " + firstAge.getClass(), firstAge instanceof BigDecimal);
-    Assert.assertEquals("Should be 25.34, but is " + firstAge, new BigDecimal("25.34"), firstAge);
-    Assert.assertEquals("Should be 42.67, but is " + secondAge, new BigDecimal("42.67"), secondAge);
+    assertThat(firstAge)
+        .as("Should be BigDecimal, but is " + firstAge.getClass())
+        .isInstanceOf(BigDecimal.class);
+    assertThat(firstAge).as("Should be 25.34, but is " + firstAge).isEqualTo(new BigDecimal("25.34"));
+    assertThat(secondAge).as("Should be 42.67, but is " + secondAge).isEqualTo(new BigDecimal("42.67"));
 
     // INT64 values
     Object firstSalary = records.get(0).get("decimal_salary");
     Object secondSalary = records.get(1).get("decimal_salary");
 
-    Assert.assertTrue("Should be BigDecimal, but is " + firstSalary.getClass(), firstSalary instanceof BigDecimal);
-    Assert.assertEquals("Should be 23.4, but is " + firstSalary, new BigDecimal("23.4"), firstSalary);
-    Assert.assertEquals("Should be 120.3, but is " + secondSalary, new BigDecimal("120.3"), secondSalary);
+    assertThat(firstSalary)
+        .as("Should be BigDecimal, but is " + firstSalary.getClass())
+        .isInstanceOf(BigDecimal.class);
+    assertThat(firstSalary).as("Should be 23.4, but is " + firstSalary).isEqualTo(new BigDecimal("23.4"));
+    assertThat(secondSalary).as("Should be 120.3, but is " + secondSalary).isEqualTo(new BigDecimal("120.3"));
   }
 
-  @Test
-  public void testAll() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testAll(Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("all.avsc").openStream());
 
-    Path file = new Path(createTempFile().getPath());
+    Path file = createTempFile();
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
     GenericData.Record nestedRecord = new GenericRecordBuilder(
             schema.getField("mynestedrecord").schema())
@@ -530,29 +602,33 @@ public class TestReadWrite {
         ? "a"
         : new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
-    assertNotNull(nextRecord);
-    assertEquals(null, nextRecord.get("mynull"));
-    assertEquals(true, nextRecord.get("myboolean"));
-    assertEquals(1, nextRecord.get("myint"));
-    assertEquals(2L, nextRecord.get("mylong"));
-    assertEquals(3.1f, nextRecord.get("myfloat"));
-    assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals(str("hello"), nextRecord.get("mystring"));
-    assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
-    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-    assertEquals(integerArray, nextRecord.get("myarray"));
-    assertEquals(emptyArray, nextRecord.get("myemptyarray"));
-    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-    assertEquals(genericIntegerArrayWithNulls, nextRecord.get("myarrayofoptional"));
-    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-    assertEquals(emptyMap, nextRecord.get("myemptymap"));
-    assertEquals(genericFixed, nextRecord.get("myfixed"));
+    assertThat(nextRecord).isNotNull();
+    assertThat(nextRecord.get("mynull")).isEqualTo(null);
+    assertThat(nextRecord.get("myboolean")).isEqualTo(true);
+    assertThat(nextRecord.get("myint")).isEqualTo(1);
+    assertThat(nextRecord.get("mylong")).isEqualTo(2L);
+    assertThat(nextRecord.get("myfloat")).isEqualTo(3.1f);
+    assertThat(nextRecord.get("mydouble")).isEqualTo(4.1);
+    assertThat(nextRecord.get("mybytes")).isEqualTo(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+    assertThat(nextRecord.get("mystring")).isEqualTo(str("hello"));
+    assertThat(nextRecord.get("myenum")).isEqualTo(expectedEnumSymbol);
+    assertThat(nextRecord.get("mynestedrecord")).isEqualTo(nestedRecord);
+    assertThat(nextRecord.get("myarray")).isEqualTo(integerArray);
+    assertThat(nextRecord.get("myemptyarray")).isEqualTo(emptyArray);
+    assertThat(nextRecord.get("myoptionalarray")).isEqualTo(integerArray);
+    assertThat(nextRecord.get("myarrayofoptional")).isEqualTo(genericIntegerArrayWithNulls);
+    assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
+    assertThat(nextRecord.get("myemptymap")).isEqualTo(emptyMap);
+    assertThat(nextRecord.get("myfixed")).isEqualTo(genericFixed);
   }
 
-  @Test
-  public void testAllUsingDefaultAvroSchema() throws Exception {
-    Path file = new Path(createTempFile().getPath());
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testAllUsingDefaultAvroSchema(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
+    Path file = createTempFile();
 
     // write file using Parquet APIs
     try (ParquetWriter<Map<String, Object>> parquetWriter =
@@ -752,32 +828,36 @@ public class TestReadWrite {
 
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
-      assertNotNull(nextRecord);
-      assertEquals(true, nextRecord.get("myboolean"));
-      assertEquals(1, nextRecord.get("myint"));
-      assertEquals(2L, nextRecord.get("mylong"));
-      assertEquals(3.1f, nextRecord.get("myfloat"));
-      assertEquals(4.1, nextRecord.get("mydouble"));
-      assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-      assertEquals(str("hello"), nextRecord.get("mystring"));
-      assertEquals(str("a"), nextRecord.get("myenum")); // enum symbols are unknown
-      assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-      assertEquals(integerArray, nextRecord.get("myarray"));
-      assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-      assertEquals(ingeterArrayWithNulls, nextRecord.get("myarrayofoptional"));
-      assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-      assertEquals(genericFixed, nextRecord.get("myfixed"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("myboolean")).isEqualTo(true);
+      assertThat(nextRecord.get("myint")).isEqualTo(1);
+      assertThat(nextRecord.get("mylong")).isEqualTo(2L);
+      assertThat(nextRecord.get("myfloat")).isEqualTo(3.1f);
+      assertThat(nextRecord.get("mydouble")).isEqualTo(4.1);
+      assertThat(nextRecord.get("mybytes")).isEqualTo(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+      assertThat(nextRecord.get("mystring")).isEqualTo(str("hello"));
+      assertThat(nextRecord.get("myenum")).isEqualTo(str("a")); // enum symbols are unknown
+      assertThat(nextRecord.get("mynestedrecord")).isEqualTo(nestedRecord);
+      assertThat(nextRecord.get("myarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myoptionalarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myarrayofoptional")).isEqualTo(ingeterArrayWithNulls);
+      assertThat(nextRecord.get("myrecordarray")).isEqualTo(genericRecordArray);
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
+      assertThat(nextRecord.get("myfixed")).isEqualTo(genericFixed);
     }
   }
 
-  @Test
-  public void testUnionWithSingleNonNullType() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testUnionWithSingleNonNullType(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema avroSchema = Schema.createRecord("SingleStringUnionRecord", null, null, false);
     avroSchema.setFields(Collections.singletonList(
         new Schema.Field("value", Schema.createUnion(Schema.create(Schema.Type.STRING)), null, null)));
 
-    Path file = new Path(createTempFile().getPath());
+    Path file = createTempFile();
 
     // Parquet writer
     try (ParquetWriter parquetWriter = AvroParquetWriter.builder(file)
@@ -795,19 +875,23 @@ public class TestReadWrite {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(str("theValue"), nextRecord.get("value"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("value")).isEqualTo(str("theValue"));
     }
   }
 
-  @Test
-  public void testDuplicatedValuesWithDictionary() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testDuplicatedValuesWithDictionary(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema = SchemaBuilder.record("spark_schema")
         .fields()
         .optionalBytes("value")
         .endRecord();
 
-    Path file = new Path(createTempFile().getPath());
+    Path file = createTempFile();
 
     String[] records = {"one", "two", "three", "three", "two", "one", "zero"};
     try (ParquetWriter<GenericData.Record> writer = AvroParquetWriter.<GenericData.Record>builder(file)
@@ -830,16 +914,20 @@ public class TestReadWrite {
         ByteBuffer buf = (ByteBuffer) rec.get("value");
         byte[] bytes = new byte[buf.remaining()];
         buf.get(bytes);
-        assertEquals(records[i++], new String(bytes));
+        assertThat(new String(bytes)).isEqualTo(records[i++]);
       }
     }
   }
 
-  @Test
-  public void testNestedLists() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testNestedLists(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema schema = new Schema.Parser()
         .parse(Resources.getResource("nested_array.avsc").openStream());
-    String file = createTempFile().getPath();
+    String file = createTempFile().toUri().getPath();
 
     // Parquet writer
     ParquetWriter parquetWriter = writer(file, schema);
@@ -866,26 +954,30 @@ public class TestReadWrite {
     ParquetReader<GenericRecord> reader = reader(file);
     GenericRecord nextRecord = reader.read();
 
-    assertNotNull(nextRecord);
-    assertNotNull(nextRecord.get("l1"));
+    assertThat(nextRecord).isNotNull();
+    assertThat(nextRecord.get("l1")).isNotNull();
     List l1List = (List) nextRecord.get("l1");
-    assertNotNull(l1List.get(0));
+    assertThat(l1List.get(0)).isNotNull();
     List l2List = (List) ((GenericRecord) l1List.get(0)).get("l2");
-    assertEquals(str("hello"), l2List.get(0));
+    assertThat(l2List.get(0)).isEqualTo(str("hello"));
   }
 
   /**
    * A test demonstrating the most simple way to write and read Parquet files
    * using Avro {@link GenericRecord}.
    */
-  @Test
-  public void testSimpleGeneric() throws IOException {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testSimpleGeneric(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws IOException {
+    init(converter, fileLocation, conf, codecs);
     final Schema schema = Schema.createRecord("Person", null, "org.apache.parquet", false);
     schema.setFields(Arrays.asList(
         new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null),
         new Schema.Field("weight", Schema.create(Schema.Type.INT), null, null)));
 
-    final Path file = new Path(createTempFile().getPath());
+    final Path file = createTempFile();
 
     try (final ParquetWriter<GenericData.Record> parquetWriter = AvroParquetWriter.<GenericData.Record>builder(file)
         .withSchema(schema)
@@ -908,12 +1000,12 @@ public class TestReadWrite {
     try (ParquetReader<GenericRecord> reader = AvroParquetReader.genericRecordReader(file)) {
 
       final GenericRecord r1 = reader.read();
-      assertEquals("foo", r1.get("name").toString());
-      assertEquals(123, r1.get("weight"));
+      assertThat(r1.get("name")).asString().isEqualTo("foo");
+      assertThat(r1.get("weight")).isEqualTo(123);
 
       final GenericRecord r2 = reader.read();
-      assertEquals("oof", r2.get("name").toString());
-      assertEquals(321, r2.get("weight"));
+      assertThat(r2.get("name")).asString().isEqualTo("oof");
+      assertThat(r2.get("weight")).isEqualTo(321);
     }
   }
 
@@ -946,23 +1038,25 @@ public class TestReadWrite {
     }
   }
 
-  @Test
-  public void testParsesDataModelFromConf() throws Exception {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testParsesDataModelFromConf(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
     Schema datetimeSchema = Schema.createRecord("myrecord", null, null, false);
     Schema date = LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT));
     datetimeSchema.setFields(Collections.singletonList(new Schema.Field("date", date, null, null)));
 
-    File file = temp.newFile("datetime.parquet");
-    file.delete();
-    Path path = new Path(file.toString());
+    Path path = new Path(tempDir.resolve("datetime.parquet").toUri());
     List<GenericRecord> expected = Lists.newArrayList();
 
-    Configuration conf = new Configuration();
-    AvroWriteSupport.setAvroDataSupplier(conf, CustomDataModel.class);
+    Configuration configuration = new Configuration();
+    AvroWriteSupport.setAvroDataSupplier(configuration, CustomDataModel.class);
 
     // .withDataModel is not set; AvroWriteSupport should parse it from the Configuration
     try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
-        .withConf(conf)
+        .withConf(configuration)
         .withSchema(datetimeSchema)
         .build()) {
 
@@ -977,11 +1071,11 @@ public class TestReadWrite {
     }
     List<GenericRecord> records = Lists.newArrayList();
 
-    AvroReadSupport.setAvroDataSupplier(conf, CustomDataModel.class);
+    AvroReadSupport.setAvroDataSupplier(configuration, CustomDataModel.class);
 
     try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(path)
         .disableCompatibility()
-        .withConf(conf)
+        .withConf(configuration)
         .build()) {
       GenericRecord rec;
       while ((rec = reader.read()) != null) {
@@ -989,34 +1083,36 @@ public class TestReadWrite {
       }
     }
 
-    Assert.assertTrue(
-        "date field should be a LocalDate instance", records.get(0).get("date") instanceof LocalDate);
-    Assert.assertEquals("Content should match", expected, records);
+    assertThat(records.get(0).get("date"))
+        .as("date field should be a LocalDate instance")
+        .isInstanceOf(LocalDate.class);
+    assertThat(records).as("Content should match").containsExactlyElementsOf(expected);
   }
 
-  @Test
-  public void testConstructor() throws IOException {
+  @ParameterizedTest
+  @MethodSource("data")
+  public void testConstructor(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws IOException {
+    init(converter, fileLocation, conf, codecs);
     String testFile =
         URI.create(Resources.getResource("strings-2.parquet").getFile()).getRawPath();
     InputFile inputFile = new LocalInputFile(Paths.get(testFile));
     ParquetReader<Group> reader =
         AvroParquetReader.<Group>builder(inputFile).build();
-    assertNotNull(reader);
+    assertThat(reader).isNotNull();
 
     reader = AvroParquetReader.<Group>builder(inputFile, new HadoopParquetConfiguration(new Configuration()))
         .build();
-    assertNotNull(reader);
+    assertThat(reader).isNotNull();
 
     reader = AvroParquetReader.builder(new GroupReadSupport(), new Path(testFile))
         .build();
-    assertNotNull(reader);
+    assertThat(reader).isNotNull();
   }
 
-  private File createTempFile() throws IOException {
-    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
-    tmp.deleteOnExit();
-    tmp.delete();
-    return tmp;
+  private Path createTempFile() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 
   private ParquetWriter<GenericRecord> writer(String file, Schema schema) throws IOException {

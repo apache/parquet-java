@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.bytes;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestBytesInput {
 
@@ -32,7 +32,7 @@ public class TestBytesInput {
       BytesInput varInt = BytesInput.fromUnsignedVarInt(testVal);
       byte[] rno = varInt.toByteArray();
       int i = BytesUtils.readUnsignedVarInt(new ByteArrayInputStream(rno));
-      assertEquals((int) testVal, i);
+      assertThat(i).isEqualTo(testVal);
     }
   }
 }

@@ -39,6 +39,7 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -135,6 +136,8 @@ public class ParquetProperties {
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
+  private final ColumnProperty<CompressionCodecName> columnCodecs;
+  private final ColumnProperty<Integer> columnCompressionLevels;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -167,6 +170,8 @@ public class ParquetProperties {
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
+    this.columnCodecs = builder.columnCodecs.build();
+    this.columnCompressionLevels = builder.columnCompressionLevels.build();
   }
 
   public static Builder builder() {
@@ -370,9 +375,31 @@ public class ParquetProperties {
     return sizeStatisticsEnabled;
   }
 
+  /**
+   * Returns the compression codec configured for the given column, or {@code null} if no
+   * column-specific codec has been set (the caller should fall back to the job-level codec).
+   *
+   * @param column the column descriptor
+   * @return the per-column codec, or {@code null} if not set
+   */
+  public CompressionCodecName getColumnCodec(ColumnDescriptor column) {
+    return columnCodecs.getValue(column);
+  }
+
+  /**
+   * Returns the compression level configured for the given column, or {@code null} if no
+   * column-specific level has been set.
+   *
+   * @param column the column descriptor
+   * @return the per-column compression level, or {@code null} if not set
+   */
+  public Integer getColumnCompressionLevel(ColumnDescriptor column) {
+    return columnCompressionLevels.getValue(column);
+  }
+
   @Override
   public String toString() {
-    return "Parquet page size to " + getPageSizeThreshold() + '\n'
+    String result = "Parquet page size to " + getPageSizeThreshold() + '\n'
         + "Parquet dictionary page size to " + getDictionaryPageSizeThreshold() + '\n'
         + "Dictionary is " + dictionaryEnabled + '\n'
         + "Writer version is: " + getWriterVersion() + '\n'
@@ -389,6 +416,18 @@ public class ParquetProperties {
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
         + "Size statistics enabled: " + sizeStatisticsEnabled;
+    String perColumn = "";
+    if (!columnCodecs.toString().equals(Objects.toString(columnCodecs.getDefaultValue()))) {
+      perColumn = "Per-column codecs: " + columnCodecs;
+    }
+    if (!columnCompressionLevels.toString().equals(Objects.toString(columnCompressionLevels.getDefaultValue()))) {
+      perColumn += perColumn.isEmpty() ? "Per-column compression levels: " : ", compression levels: ";
+      perColumn += columnCompressionLevels;
+    }
+    if (!perColumn.isEmpty()) {
+      result += '\n' + perColumn;
+    }
+    return result;
   }
 
   public static class Builder {
@@ -419,6 +458,8 @@ public class ParquetProperties {
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
+    private final ColumnProperty.Builder<CompressionCodecName> columnCodecs;
+    private final ColumnProperty.Builder<Integer> columnCompressionLevels;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -436,6 +477,8 @@ public class ParquetProperties {
           ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
       statistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_STATISTICS_ENABLED);
       sizeStatistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_SIZE_STATISTICS_ENABLED);
+      columnCodecs = ColumnProperty.<CompressionCodecName>builder().withDefaultValue(null);
+      columnCompressionLevels = ColumnProperty.<Integer>builder().withDefaultValue(null);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -448,7 +491,11 @@ public class ParquetProperties {
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.valuesWriterFactory = toCopy.valuesWriterFactory;
       this.allocator = toCopy.allocator;
+      this.pageValueCountThreshold = toCopy.pageValueCountThreshold;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
+      this.rowGroupRowCountLimit = toCopy.rowGroupRowCountLimit;
+      this.columnIndexTruncateLength = toCopy.columnIndexTruncateLength;
+      this.statisticsTruncateLength = toCopy.statisticsTruncateLength;
       this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
       this.bloomFilterNDVs = ColumnProperty.builder(toCopy.bloomFilterNDVs);
       this.bloomFilterFPPs = ColumnProperty.builder(toCopy.bloomFilterFPPs);
@@ -459,7 +506,11 @@ public class ParquetProperties {
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
+      this.statisticsEnabled = toCopy.statisticsEnabled;
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
+      this.sizeStatisticsEnabled = toCopy.sizeStatisticsEnabled;
+      this.columnCodecs = ColumnProperty.builder(toCopy.columnCodecs);
+      this.columnCompressionLevels = ColumnProperty.builder(toCopy.columnCompressionLevels);
     }
 
     /**
@@ -753,6 +804,32 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Set the compression codec for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param codec      the compression codec to use for this column
+     * @return this builder for method chaining
+     */
+    public Builder withCompressionCodec(String columnPath, CompressionCodecName codec) {
+      this.columnCodecs.withValue(columnPath, Objects.requireNonNull(codec, "codec cannot be null"));
+      return this;
+    }
+
+    /**
+     * Set the compression level for the specified column.
+     * The valid range is codec-specific (e.g. ZSTD: negative levels trade ratio for speed, up to 22 for best compression (default 3), GZIP: 0–9 or -1 (default 6), BROTLI: 0–11 (default 1)).
+     * Pass {@code null} to unset a previously configured level for that column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param level      the compression level, or {@code null} to unset
+     * @return this builder for method chaining
+     */
+    public Builder withCompressionLevel(String columnPath, Integer level) {
+      this.columnCompressionLevels.withValue(columnPath, level);
       return this;
     }
 

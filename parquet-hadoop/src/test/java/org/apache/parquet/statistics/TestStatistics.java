@@ -28,13 +28,13 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -68,10 +68,8 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues.RandomBinaryBase;
 import org.apache.parquet.statistics.RandomValues.RandomValueGenerator;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,8 +142,12 @@ public class TestStatistics {
 
     public void validate(T value) {
       if (hasNonNull) {
-        assertTrue("min should be <= all values", comparator.compare(min, value) <= 0);
-        assertTrue("min should be >= all values", comparator.compare(max, value) >= 0);
+        assertThat(comparator.compare(min, value))
+            .as("min should be <= all values")
+            .isLessThanOrEqualTo(0);
+        assertThat(comparator.compare(max, value))
+            .as("min should be >= all values")
+            .isGreaterThanOrEqualTo(0);
       }
     }
   }
@@ -258,13 +260,12 @@ public class TestStatistics {
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics<?> stats = getStatisticsFromPageHeader(page);
 
-      assertEquals(
-          "Statistics does not use the proper comparator",
-          desc.getPrimitiveType().comparator().getClass(),
-          stats.comparator().getClass());
+      assertThat(stats.comparator().getClass())
+          .as("Statistics does not use the proper comparator")
+          .isEqualTo(desc.getPrimitiveType().comparator().getClass());
 
       if (statisticsDisabled) {
-        Assert.assertTrue(stats.isEmpty());
+        assertThat(stats.isEmpty()).isTrue();
       }
 
       if (stats.isEmpty()) {
@@ -284,7 +285,7 @@ public class TestStatistics {
         column.consume();
       }
 
-      Assert.assertEquals(numNulls, stats.getNumNulls());
+      assertThat(stats.getNumNulls()).isEqualTo(numNulls);
     }
   }
 
@@ -529,13 +530,12 @@ public class TestStatistics {
     }
   }
 
-  @Rule
-  public final TemporaryFolder folder = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void testStatistics() throws IOException {
-    File file = folder.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
@@ -581,8 +581,7 @@ public class TestStatistics {
 
   @Test
   public void testDisableStatistics() throws IOException {
-    File file = folder.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
@@ -667,8 +666,7 @@ public class TestStatistics {
 
   @Test
   public void testGlobalStatisticsDisabled() throws IOException {
-    File file = folder.newFile("test_file_global_stats_disabled.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file_global_stats_disabled.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
     Random random = new Random(RANDOM_SEED);

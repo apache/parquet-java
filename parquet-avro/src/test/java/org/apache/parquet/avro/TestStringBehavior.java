@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.avro;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Resources;
@@ -44,30 +47,28 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestStringBehavior {
   public static Schema SCHEMA = null;
   public static BigDecimal BIG_DECIMAL = new BigDecimal("3.14");
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  public Path parquetFile;
+  public org.apache.hadoop.fs.Path parquetFile;
   public File avroFile;
 
-  @BeforeClass
+  @BeforeAll
   public static void readSchemaFile() throws IOException {
     TestStringBehavior.SCHEMA = new Schema.Parser()
         .parse(Resources.getResource("stringBehavior.avsc").openStream());
   }
 
-  @Before
+  @BeforeEach
   public void writeDataFiles() throws IOException {
     // convert BIG_DECIMAL to string by hand so generic can write it
     GenericRecord record = new GenericRecordBuilder(SCHEMA)
@@ -79,11 +80,7 @@ public class TestStringBehavior {
         .set("stringable_map", ImmutableMap.of(BIG_DECIMAL.toString(), 36))
         .build();
 
-    File file = temp.newFile("parquet");
-    file.delete();
-    file.deleteOnExit();
-
-    parquetFile = new Path(file.getPath());
+    parquetFile = new Path(tempDir.resolve("parquet").toUri());
     try (ParquetWriter<GenericRecord> parquet = AvroParquetWriter.<GenericRecord>builder(parquetFile)
         .withDataModel(GenericData.get())
         .withSchema(SCHEMA)
@@ -91,9 +88,7 @@ public class TestStringBehavior {
       parquet.write(record);
     }
 
-    avroFile = temp.newFile("avro");
-    avroFile.delete();
-    avroFile.deleteOnExit();
+    avroFile = tempDir.resolve("avro").toFile();
     try (DataFileWriter<GenericRecord> avro =
         new DataFileWriter<GenericRecord>(new GenericDatumWriter<>(SCHEMA)).create(SCHEMA, avroFile)) {
       avro.append(record);
@@ -118,55 +113,47 @@ public class TestStringBehavior {
       parquetRecord = parquet.read();
     }
 
-    Assert.assertEquals(
-        "Avro default string class should be Utf8",
-        Utf8.class,
-        avroRecord.get("default_class").getClass());
-    Assert.assertEquals(
-        "Parquet default string class should be Utf8",
-        Utf8.class,
-        parquetRecord.get("default_class").getClass());
+    assertThat(avroRecord.get("default_class").getClass())
+        .as("Avro default string class should be Utf8")
+        .isEqualTo(Utf8.class);
+    assertThat(parquetRecord.get("default_class").getClass())
+        .as("Parquet default string class should be Utf8")
+        .isEqualTo(Utf8.class);
 
-    Assert.assertEquals(
-        "Avro avro.java.string=String class should be String",
-        String.class,
-        avroRecord.get("string_class").getClass());
-    Assert.assertEquals(
-        "Parquet avro.java.string=String class should be String",
-        String.class,
-        parquetRecord.get("string_class").getClass());
+    assertThat(avroRecord.get("string_class").getClass())
+        .as("Avro avro.java.string=String class should be String")
+        .isEqualTo(String.class);
+    assertThat(parquetRecord.get("string_class").getClass())
+        .as("Parquet avro.java.string=String class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro stringable class should be Utf8",
-        Utf8.class,
-        avroRecord.get("stringable_class").getClass());
-    Assert.assertEquals(
-        "Parquet stringable class should be Utf8",
-        Utf8.class,
-        parquetRecord.get("stringable_class").getClass());
+    assertThat(avroRecord.get("stringable_class").getClass())
+        .as("Avro stringable class should be Utf8")
+        .isEqualTo(Utf8.class);
+    assertThat(parquetRecord.get("stringable_class").getClass())
+        .as("Parquet stringable class should be Utf8")
+        .isEqualTo(Utf8.class);
 
-    Assert.assertEquals(
-        "Avro map default string class should be Utf8", Utf8.class, keyClass(avroRecord.get("default_map")));
-    Assert.assertEquals(
-        "Parquet map default string class should be Utf8",
-        Utf8.class,
-        keyClass(parquetRecord.get("default_map")));
+    assertThat(keyClass(avroRecord.get("default_map")))
+        .as("Avro map default string class should be Utf8")
+        .isEqualTo(Utf8.class);
+    assertThat(keyClass(parquetRecord.get("default_map")))
+        .as("Parquet map default string class should be Utf8")
+        .isEqualTo(Utf8.class);
 
-    Assert.assertEquals(
-        "Avro map avro.java.string=String class should be String",
-        String.class,
-        keyClass(avroRecord.get("string_map")));
-    Assert.assertEquals(
-        "Parquet map avro.java.string=String class should be String",
-        String.class,
-        keyClass(parquetRecord.get("string_map")));
+    assertThat(keyClass(avroRecord.get("string_map")))
+        .as("Avro map avro.java.string=String class should be String")
+        .isEqualTo(String.class);
+    assertThat(keyClass(parquetRecord.get("string_map")))
+        .as("Parquet map avro.java.string=String class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro map stringable class should be Utf8", Utf8.class, keyClass(avroRecord.get("stringable_map")));
-    Assert.assertEquals(
-        "Parquet map stringable class should be Utf8",
-        Utf8.class,
-        keyClass(parquetRecord.get("stringable_map")));
+    assertThat(keyClass(avroRecord.get("stringable_map")))
+        .as("Avro map stringable class should be Utf8")
+        .isEqualTo(Utf8.class);
+    assertThat(keyClass(parquetRecord.get("stringable_map")))
+        .as("Parquet map stringable class should be Utf8")
+        .isEqualTo(Utf8.class);
   }
 
   @Test
@@ -187,59 +174,50 @@ public class TestStringBehavior {
       parquetRecord = parquet.read();
     }
 
-    Assert.assertEquals(
-        "Avro default string class should be String",
-        Utf8.class,
-        avroRecord.getDefaultClass().getClass());
-    Assert.assertEquals(
-        "Parquet default string class should be String",
-        Utf8.class,
-        parquetRecord.getDefaultClass().getClass());
+    assertThat(avroRecord.getDefaultClass().getClass())
+        .as("Avro default string class should be String")
+        .isEqualTo(Utf8.class);
+    assertThat(parquetRecord.getDefaultClass().getClass())
+        .as("Parquet default string class should be String")
+        .isEqualTo(Utf8.class);
 
-    Assert.assertEquals(
-        "Avro avro.java.string=String class should be String",
-        String.class,
-        avroRecord.getStringClass().getClass());
-    Assert.assertEquals(
-        "Parquet avro.java.string=String class should be String",
-        String.class,
-        parquetRecord.getStringClass().getClass());
+    assertThat(avroRecord.getStringClass().getClass())
+        .as("Avro avro.java.string=String class should be String")
+        .isEqualTo(String.class);
+    assertThat(parquetRecord.getStringClass().getClass())
+        .as("Parquet avro.java.string=String class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro stringable class should be BigDecimal",
-        BigDecimal.class,
-        avroRecord.getStringableClass().getClass());
-    Assert.assertEquals(
-        "Parquet stringable class should be BigDecimal",
-        BigDecimal.class,
-        parquetRecord.getStringableClass().getClass());
-    Assert.assertEquals(
-        "Should have the correct BigDecimal value", BIG_DECIMAL, parquetRecord.getStringableClass());
+    assertThat(avroRecord.getStringableClass().getClass())
+        .as("Avro stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(parquetRecord.getStringableClass().getClass())
+        .as("Parquet stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(parquetRecord.getStringableClass())
+        .as("Should have the correct BigDecimal value")
+        .isEqualTo(BIG_DECIMAL);
 
-    Assert.assertEquals(
-        "Avro map default string class should be String", Utf8.class, keyClass(avroRecord.getDefaultMap()));
-    Assert.assertEquals(
-        "Parquet map default string class should be String",
-        Utf8.class,
-        keyClass(parquetRecord.getDefaultMap()));
+    assertThat(keyClass(avroRecord.getDefaultMap()))
+        .as("Avro map default string class should be String")
+        .isEqualTo(Utf8.class);
+    assertThat(keyClass(parquetRecord.getDefaultMap()))
+        .as("Parquet map default string class should be String")
+        .isEqualTo(Utf8.class);
 
-    Assert.assertEquals(
-        "Avro map avro.java.string=String class should be String",
-        String.class,
-        keyClass(avroRecord.getStringMap()));
-    Assert.assertEquals(
-        "Parquet map avro.java.string=String class should be String",
-        String.class,
-        keyClass(parquetRecord.getStringMap()));
+    assertThat(keyClass(avroRecord.getStringMap()))
+        .as("Avro map avro.java.string=String class should be String")
+        .isEqualTo(String.class);
+    assertThat(keyClass(parquetRecord.getStringMap()))
+        .as("Parquet map avro.java.string=String class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro map stringable class should be BigDecimal",
-        BigDecimal.class,
-        keyClass(avroRecord.getStringableMap()));
-    Assert.assertEquals(
-        "Parquet map stringable class should be BigDecimal",
-        BigDecimal.class,
-        keyClass(parquetRecord.getStringableMap()));
+    assertThat(keyClass(avroRecord.getStringableMap()))
+        .as("Avro map stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(keyClass(parquetRecord.getStringableMap()))
+        .as("Parquet map stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
   }
 
   @Test
@@ -264,50 +242,50 @@ public class TestStringBehavior {
       parquetRecord = parquet.read();
     }
 
-    Assert.assertEquals(
-        "Avro default string class should be String", String.class, avroRecord.default_class.getClass());
-    Assert.assertEquals(
-        "Parquet default string class should be String", String.class, parquetRecord.default_class.getClass());
+    assertThat(avroRecord.default_class.getClass())
+        .as("Avro default string class should be String")
+        .isEqualTo(String.class);
+    assertThat(parquetRecord.default_class.getClass())
+        .as("Parquet default string class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro avro.java.string=String class should be String",
-        String.class,
-        avroRecord.string_class.getClass());
-    Assert.assertEquals(
-        "Parquet avro.java.string=String class should be String",
-        String.class,
-        parquetRecord.string_class.getClass());
+    assertThat(avroRecord.string_class.getClass())
+        .as("Avro avro.java.string=String class should be String")
+        .isEqualTo(String.class);
+    assertThat(parquetRecord.string_class.getClass())
+        .as("Parquet avro.java.string=String class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro stringable class should be BigDecimal", BigDecimal.class, avroRecord.stringable_class.getClass());
-    Assert.assertEquals(
-        "Parquet stringable class should be BigDecimal",
-        BigDecimal.class,
-        parquetRecord.stringable_class.getClass());
-    Assert.assertEquals("Should have the correct BigDecimal value", BIG_DECIMAL, parquetRecord.stringable_class);
+    assertThat(avroRecord.stringable_class.getClass())
+        .as("Avro stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(parquetRecord.stringable_class.getClass())
+        .as("Parquet stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(parquetRecord.stringable_class)
+        .as("Should have the correct BigDecimal value")
+        .isEqualTo(BIG_DECIMAL);
 
-    Assert.assertEquals(
-        "Avro map default string class should be String", String.class, keyClass(avroRecord.default_map));
-    Assert.assertEquals(
-        "Parquet map default string class should be String", String.class, keyClass(parquetRecord.default_map));
+    assertThat(keyClass(avroRecord.default_map))
+        .as("Avro map default string class should be String")
+        .isEqualTo(String.class);
+    assertThat(keyClass(parquetRecord.default_map))
+        .as("Parquet map default string class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro map avro.java.string=String class should be String",
-        String.class,
-        keyClass(avroRecord.string_map));
-    Assert.assertEquals(
-        "Parquet map avro.java.string=String class should be String",
-        String.class,
-        keyClass(parquetRecord.string_map));
+    assertThat(keyClass(avroRecord.string_map))
+        .as("Avro map avro.java.string=String class should be String")
+        .isEqualTo(String.class);
+    assertThat(keyClass(parquetRecord.string_map))
+        .as("Parquet map avro.java.string=String class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro map stringable class should be BigDecimal",
-        BigDecimal.class,
-        keyClass(avroRecord.stringable_map));
-    Assert.assertEquals(
-        "Parquet map stringable class should be BigDecimal",
-        BigDecimal.class,
-        keyClass(parquetRecord.stringable_map));
+    assertThat(keyClass(avroRecord.stringable_map))
+        .as("Avro map stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(keyClass(parquetRecord.stringable_map))
+        .as("Parquet map stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
   }
 
   @Test
@@ -335,21 +313,25 @@ public class TestStringBehavior {
     }
 
     // Avro uses String even if CharSequence is set
-    Assert.assertEquals(
-        "Avro default string class should be String", String.class, avroRecord.default_class.getClass());
-    Assert.assertEquals(
-        "Parquet default string class should be String", String.class, parquetRecord.default_class.getClass());
+    assertThat(avroRecord.default_class.getClass())
+        .as("Avro default string class should be String")
+        .isEqualTo(String.class);
+    assertThat(parquetRecord.default_class.getClass())
+        .as("Parquet default string class should be String")
+        .isEqualTo(String.class);
 
-    Assert.assertEquals(
-        "Avro stringable class should be BigDecimal", BigDecimal.class, avroRecord.stringable_class.getClass());
-    Assert.assertEquals(
-        "Parquet stringable class should be BigDecimal",
-        BigDecimal.class,
-        parquetRecord.stringable_class.getClass());
-    Assert.assertEquals("Should have the correct BigDecimal value", BIG_DECIMAL, parquetRecord.stringable_class);
+    assertThat(avroRecord.stringable_class.getClass())
+        .as("Avro stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(parquetRecord.stringable_class.getClass())
+        .as("Parquet stringable class should be BigDecimal")
+        .isEqualTo(BigDecimal.class);
+    assertThat(parquetRecord.stringable_class)
+        .as("Should have the correct BigDecimal value")
+        .isEqualTo(BIG_DECIMAL);
   }
 
-  @Test(expected = SecurityException.class)
+  @Test
   public void testSpecificValidationFail() throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
@@ -359,11 +341,16 @@ public class TestStringBehavior {
         AvroParquetReader.<org.apache.parquet.avro.StringBehaviorTest>builder(parquetFile)
             .withConf(conf)
             .build()) {
-      parquet.read();
+      assertThatThrownBy(parquet::read)
+          .isInstanceOf(SecurityException.class)
+          .hasMessage(
+              "Forbidden java.math.BigDecimal! This class is not trusted to be included in Avro schema "
+                  + "using java-class or java-key-class. Please set the Parquet/Hadoop configuration "
+                  + "parquet.avro.serializable.classes with the classes you trust.");
     }
   }
 
-  @Test(expected = SecurityException.class)
+  @Test
   public void testReflectValidationFail() throws IOException {
     Schema reflectSchema = ReflectData.get().getSchema(ReflectRecord.class);
 
@@ -374,11 +361,16 @@ public class TestStringBehavior {
     try (ParquetReader<ReflectRecord> parquet = AvroParquetReader.<ReflectRecord>builder(parquetFile)
         .withConf(conf)
         .build()) {
-      parquet.read();
+      assertThatThrownBy(parquet::read)
+          .isInstanceOf(SecurityException.class)
+          .hasMessage(
+              "Forbidden java.math.BigDecimal! This class is not trusted to be included in Avro schema "
+                  + "using java-class or java-key-class. Please set the Parquet/Hadoop configuration "
+                  + "parquet.avro.serializable.classes with the classes you trust.");
     }
   }
 
-  @Test(expected = SecurityException.class)
+  @Test
   public void testReflectJavaClassValidationFail() throws IOException {
     Schema reflectSchema = ReflectData.get().getSchema(ReflectRecordJavaClass.class);
 
@@ -391,7 +383,12 @@ public class TestStringBehavior {
             parquetFile)
         .withConf(conf)
         .build()) {
-      parquet.read();
+      assertThatThrownBy(parquet::read)
+          .isInstanceOf(SecurityException.class)
+          .hasMessage(
+              "Forbidden java.math.BigDecimal! This class is not trusted to be included in Avro schema "
+                  + "using java-class or java-key-class. Please set the Parquet/Hadoop configuration "
+                  + "parquet.avro.serializable.classes with the classes you trust.");
     }
   }
 
@@ -417,7 +414,7 @@ public class TestStringBehavior {
   }
 
   public static Class<?> keyClass(Object obj) {
-    Assert.assertTrue("Should be a map", obj instanceof Map);
+    assertThat(obj).as("Should be a map").isInstanceOf(Map.class);
     Map<?, ?> map = (Map<?, ?>) obj;
     return Iterables.getFirst(map.keySet(), null).getClass();
   }

@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>38</version>
+    <version>39</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
@@ -75,8 +75,8 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.22.0</jackson.version>
-    <jackson-databind.version>2.22.0</jackson-databind.version>
+    <jackson.version>2.22.1</jackson.version>
+    <jackson-databind.version>2.22.1</jackson-databind.version>
     <jackson-annotations.version>2.22</jackson-annotations.version>
     <japicmp.version>0.26.1</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
@@ -99,6 +99,7 @@
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <assertj.version>3.27.7</assertj.version>
     <junit.version>5.14.4</junit.version>
+    <assertj.version>3.27.7</assertj.version>
     <mockito.version>5.23.0</mockito.version>
     <net.openhft.version>0.27ea1</net.openhft.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
@@ -161,7 +162,19 @@
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
@@ -297,6 +310,13 @@
 
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
+          <dependencies>
+            <dependency>
+              <groupId>de.skuzzle.enforcer</groupId>
+              <artifactId>restrict-imports-enforcer-rule</artifactId>
+              <version>3.0.0</version>
+            </dependency>
+          </dependencies>
           <executions>
             <execution>
               <id>enforce-banned-dependencies</id>
@@ -311,6 +331,34 @@
                       <exclude>org.slf4j:slf4j-reload4j:*:*:compile</exclude>
                     </excludes>
                   </bannedDependencies>
+                </rules>
+                <fail>true</fail>
+              </configuration>
+            </execution>
+            <execution>
+              <id>enforce-banned-junit4-imports</id>
+              <phase>process-test-sources</phase>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <RestrictImports>
+                    <reason>Use JUnit 5 (org.junit.jupiter.*) and AssertJ instead of JUnit 4</reason>
+                    <includeTestCode>true</includeTestCode>
+                    <bannedImports>
+                      <bannedImport>org.junit.**</bannedImport>
+                      <bannedImport>junit.framework.**</bannedImport>
+                    </bannedImports>
+                    <allowedImports>
+                      <allowedImport>org.junit.jupiter.**</allowedImport>
+                      <allowedImport>org.junit.platform.**</allowedImport>
+                    </allowedImports>
+                    <!-- Benchmark tests rely on JUnit 4 @Rule via junit-benchmarks with jupiter migration support -->
+                    <exclusions>
+                      <exclusion>org.apache.parquet.column.values.**.benchmark.**</exclusion>
+                    </exclusions>
+                  </RestrictImports>
                 </rules>
                 <fail>true</fail>
               </configuration>
@@ -432,14 +480,6 @@
         <configuration>
           <header>src/license.txt</header>
           <strictCheck>true</strictCheck>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-remote-resources-plugin</artifactId>
-        <configuration>
-          <skip>true</skip>
         </configuration>
       </plugin>
 
@@ -608,6 +648,8 @@
               <exclude>org.apache.parquet.internal.column.columnindex.IndexIterator</exclude>
               <!-- Removal of a protected method in a class that's not supposed to be subclassed by third-party code -->
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
+              <!-- Removal of a protected internal field that should not have been part of the public API -->
+              <exclude>org.apache.parquet.column.values.plain.PlainValuesReader#in</exclude>
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping$TypeMappingVisitor#visit(org.apache.parquet.arrow.schema.SchemaMapping$MapTypeMapping)</exclude>
               <!-- Intentional removal of deprecated Pig support from parquet-thrift -->
@@ -618,6 +660,15 @@
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetFileReader#PARQUET_READ_PARALLELISM</exclude>
+              <!-- GH-3596: RowRanges moved to org.apache.parquet.filter2.columnindex. A deprecated
+                subclass is kept at the old internal location so the released
+                ParquetFileReader#readFilteredRowGroup(int, RowRanges) signature stays compatible.
+                The internal package carries no backward-compatibility guarantee, so the removal of
+                the old RowRanges' own members (statics, Range) and the ColumnIndexFilter
+                return-type changes are intentional. -->
+              <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges</exclude>
+              <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges$Range</exclude>
+              <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter</exclude>
             </excludes>
           </parameter>
         </configuration>
