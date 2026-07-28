@@ -20,44 +20,38 @@
 package org.apache.parquet.hadoop.util;
 
 import static org.apache.hadoop.fs.StreamCapabilities.READBYTEBUFFER;
-import static org.apache.parquet.hadoop.util.H3ByteBufferInputStream.performRead;
+import static org.apache.parquet.hadoop.util.H3ByteBufferInputStream.readBufferFully;
 import static org.apache.parquet.hadoop.util.HadoopStreams.wrap;
 import static org.apache.parquet.hadoop.util.MockHadoopInputStream.TEST_ARRAY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Collection;
 import org.apache.hadoop.fs.ByteBufferPositionedReadable;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.StreamCapabilities;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.parquet.hadoop.TestUtils;
 import org.apache.parquet.io.SeekableInputStream;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Test {@code ByteBufferPositionedReadable.readFully()} reads.
  * Parameterized on heap vs. direct buffers.
  */
-@RunWith(Parameterized.class)
+@ParameterizedClass(name = "heap={0}")
+@ValueSource(booleans = {true, false})
 public class TestHadoop3ByteBufferReadFully {
 
   /**
    * The size of the stream.
    */
   private static final int LEN = TEST_ARRAY.length;
-
-  @Parameterized.Parameters(name = "heap={0}")
-  public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {{true}, {false}};
-    return Arrays.asList(data);
-  }
 
   /**
    * Use a heap buffer?
@@ -104,7 +98,7 @@ public class TestHadoop3ByteBufferReadFully {
    * Read more than the file size, require an EOF exception to be raised.
    */
   @Test
-  public void testReadFullyLargeBuffer() throws Exception {
+  public void testReadFullyLargeBuffer() {
     final ByteBuffer readBuffer = allocate(20);
 
     FSDataInputStream hadoopStream = stream();
@@ -182,7 +176,7 @@ public class TestHadoop3ByteBufferReadFully {
 
     // reset to where the mark is.
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 7));
   }
 
   /**
@@ -231,14 +225,14 @@ public class TestHadoop3ByteBufferReadFully {
     assertBufferRead(hadoopStream, readBuffer, smallLimit, smallLimit);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, 4));
 
     readBuffer.position(smallLimit);
     readBuffer.limit(LEN);
 
     assertBufferRead(hadoopStream, readBuffer, LEN, LEN);
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, smallLimit), readBuffer);
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY, 0, smallLimit));
   }
 
   /**
@@ -248,10 +242,7 @@ public class TestHadoop3ByteBufferReadFully {
    * @param readBuffer target buffer.
    */
   private static void assertThrowsEOFException(final FSDataInputStream hadoopStream, final ByteBuffer readBuffer) {
-    TestUtils.assertThrows("Must throw EOFException", EOFException.class, () -> {
-      performRead(hadoopStream, readBuffer);
-      return null;
-    });
+    assertThatThrownBy(() -> readBufferFully(hadoopStream, readBuffer)).isInstanceOf(EOFException.class);
   }
 
   /**
@@ -292,7 +283,7 @@ public class TestHadoop3ByteBufferReadFully {
    */
   private static void assertStreamClass(
       final Class<? extends SeekableInputStream> expected, final SeekableInputStream stream) {
-    Assert.assertEquals("Wrong stream class: " + stream, expected, stream.getClass());
+    assertThat(stream.getClass()).as("Wrong stream class: " + stream).isEqualTo(expected);
   }
 
   /**
@@ -340,12 +331,12 @@ public class TestHadoop3ByteBufferReadFully {
       }
 
       @Override
-      public int read(final long position, final ByteBuffer buf) throws IOException {
+      public int read(final long position, final ByteBuffer buf) {
         return 0;
       }
 
       @Override
-      public void readFully(final long position, final ByteBuffer buf) throws IOException {}
+      public void readFully(final long position, final ByteBuffer buf) {}
     }
 
     assertStreamClass(H3ByteBufferInputStream.class, wrap(new FSDataInputStream(new InconsistentStream())));
@@ -365,10 +356,9 @@ public class TestHadoop3ByteBufferReadFully {
     final int remaining = readBuffer.remaining();
     byte[] actual = getBytes(readBuffer);
     byte[] expected = Arrays.copyOfRange(TEST_ARRAY, filePosition, remaining);
-    Assert.assertEquals(
-        "Buffer contents from data offset " + filePosition + " with length " + remaining,
-        stringify(expected),
-        stringify(actual));
+    assertThat(stringify(actual))
+        .as("Buffer contents from data offset " + filePosition + " with length " + remaining)
+        .isEqualTo(stringify(expected));
   }
 
   /**
@@ -412,8 +402,8 @@ public class TestHadoop3ByteBufferReadFully {
    * @param limit buffer limit
    */
   private static void assertPositionAndLimit(ByteBuffer readBuffer, int bufferPosition, int limit) {
-    Assert.assertEquals("Buffer Position", bufferPosition, readBuffer.position());
-    Assert.assertEquals("Buffer Limit", limit, readBuffer.limit());
+    assertThat(readBuffer.position()).as("Buffer Position").isEqualTo(bufferPosition);
+    assertThat(readBuffer.limit()).as("Buffer Limit").isEqualTo(limit);
   }
 
   /**
@@ -425,11 +415,11 @@ public class TestHadoop3ByteBufferReadFully {
    * @throws IOException exception raised on getPos()
    */
   private static void assertStreamAt(final FSDataInputStream hadoopStream, long pos) throws IOException {
-    Assert.assertEquals("Read position of stream", pos, hadoopStream.getPos());
+    assertThat(hadoopStream.getPos()).as("Read position of stream").isEqualTo(pos);
   }
 
   /**
-   * Read a buffer at the current position through {@link H3ByteBufferInputStream#performRead(FSDataInputStream, ByteBuffer)}.
+   * Read a buffer at the current position through {@link H3ByteBufferInputStream#readBufferFully(FSDataInputStream, ByteBuffer)}.
    * Assert that the stream buffer position and limit are as expected.
    * That is: the stream position has been moved forwards by the
    * size of the buffer.
@@ -449,9 +439,9 @@ public class TestHadoop3ByteBufferReadFully {
       throws IOException {
     final long pos = hadoopStream.getPos();
     final int remaining = readBuffer.remaining();
-    final int read = performRead(hadoopStream, readBuffer);
+    final int read = readBufferFully(hadoopStream, readBuffer);
     // the bytes read MUST match the buffer size, as this is a full buffer read.
-    Assert.assertEquals("bytes read from stream", remaining, read);
+    assertThat(read).as("bytes read from stream").isEqualTo(remaining);
     // the buffer position and limit match what was expected.
     assertPositionAndLimit(readBuffer, expectedBufferPosition, expectedLimit);
     // the stream has moved forwards.
@@ -487,7 +477,7 @@ public class TestHadoop3ByteBufferReadFully {
      */
     @Override
     public boolean hasCapability(final String capability) {
-      return Arrays.stream(capabilities).anyMatch(c -> c.equals(capability));
+      return Arrays.asList(capabilities).contains(capability);
     }
   }
 

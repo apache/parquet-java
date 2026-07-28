@@ -26,7 +26,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 /**
  * Class which implements {@link #readFully(ByteBuffer)} through
  * {@code ByteBufferPositionedReadable.readFully()}.
- * <p>This is implemented by HDFS and possibly other clients,
+ * <p>This is implemented by HDFS.
  */
 class H3ByteBufferInputStream extends H2SeekableInputStream {
   public H3ByteBufferInputStream(final FSDataInputStream stream) {
@@ -54,13 +54,13 @@ class H3ByteBufferInputStream extends H2SeekableInputStream {
    */
   @Override
   public void readFully(final ByteBuffer buf) throws EOFException, IOException {
-    performRead(getStream(), buf);
+    readBufferFully(getStream(), buf);
   }
 
   /**
    * Read the buffer fully through use of {@code ByteBufferPositionedReadable.readFully()}
    * from the current location.
-   * That is it reads from stream[pos] to stream[pos + buf.remaining() -1]
+   * That is it reads from {@code stream[pos]} to {@code stream[pos + buf.remaining() -1]}
    *
    * @param buf a byte buffer to fill with data from the stream
    * @return number of bytes read.
@@ -68,13 +68,12 @@ class H3ByteBufferInputStream extends H2SeekableInputStream {
    * @throws EOFException the buffer length is greater than the file length
    * @throws IOException other IO problems.
    */
-  // Visible for testing
-  static int performRead(final FSDataInputStream stream, final ByteBuffer buf) throws IOException {
+  static int readBufferFully(final FSDataInputStream stream, final ByteBuffer buf) throws IOException {
     // remember the current position
     final long pos = stream.getPos();
     final int size = buf.remaining();
     stream.readFully(pos, buf);
-    // then move read position on afterwards.
+    // then move the read position on.
     stream.seek(pos + size);
     return size;
   }
