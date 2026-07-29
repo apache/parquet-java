@@ -43,7 +43,7 @@ public class GeospatialStatistics {
   public static class Builder {
     private BoundingBox boundingBox;
     private GeospatialTypes geospatialTypes;
-    private final WKBReader reader = new WKBReader();
+    private WKBReader reader;
 
     /**
      * Create a builder to create a GeospatialStatistics.
@@ -51,6 +51,14 @@ public class GeospatialStatistics {
     public Builder() {
       this.boundingBox = new BoundingBox();
       this.geospatialTypes = new GeospatialTypes();
+      this.reader = new WKBReader();
+    }
+
+    /**
+     * Internal constructor that skips field initialization for subclasses that don't need it.
+     */
+    Builder(boolean noop) {
+      // Fields intentionally left null for NoopBuilder
     }
 
     public void update(Binary value) {
@@ -183,13 +191,19 @@ public class GeospatialStatistics {
   /**
    * Creates a no-op geospatial statistics builder that collects no data.
    * Used when geospatial statistics collection is disabled.
+   * This is a singleton since all methods are no-ops and it carries no state.
    */
   private static class NoopBuilder extends Builder {
-    private NoopBuilder() {}
+    private static final NoopBuilder INSTANCE = new NoopBuilder();
+    private static final GeospatialStatistics EMPTY = new GeospatialStatistics(null, null);
+
+    private NoopBuilder() {
+      super(true);
+    }
 
     @Override
     public GeospatialStatistics build() {
-      return new GeospatialStatistics(null, null);
+      return EMPTY;
     }
 
     @Override
@@ -207,6 +221,6 @@ public class GeospatialStatistics {
    * Creates a builder that doesn't collect any statistics.
    */
   public static Builder noopBuilder() {
-    return new NoopBuilder();
+    return NoopBuilder.INSTANCE;
   }
 }
