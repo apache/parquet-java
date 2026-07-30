@@ -875,6 +875,21 @@ public class Types {
               + "resolves to bytes only via one of these, so a group declaring none of them can "
               + "never produce a valid value",
           name);
+      // A schema that permits self-references must declare `inline`. A self-reference (`uri` not
+      // set) always sets `offset`, and the `inline` column chunk of the same row group is the
+      // reference point whose compression and encryption a self-reference inherits. A group that
+      // declares `offset` but not `uri` can only produce self-references (an offset-based read with
+      // no `uri` is a self-reference), so it must also declare `inline`. A group that declares
+      // `uri` is not required to declare `inline`: `offset`/`size` there describe an external
+      // ranged reference, and although the per-value `uri` could be left unset in some rows, the
+      // schema is treated as an external-reference schema and the `inline` requirement is not
+      // imposed.
+      Preconditions.checkArgument(
+          !(hasOffset && !hasUri) || hasInline,
+          "FILE type group '%s' declares field 'offset' but neither 'uri' nor 'inline'; a schema "
+              + "that permits self-references (offset without uri) must declare 'inline' as the "
+              + "reference point for storage inheritance",
+          name);
       // The remaining spec rules are per-value constraints that the schema builder cannot verify
       // because it sees only which fields are declared, not their values in each row: a
       // self-reference (unset `uri`) must set `offset`, `size` must be set whenever `offset` is

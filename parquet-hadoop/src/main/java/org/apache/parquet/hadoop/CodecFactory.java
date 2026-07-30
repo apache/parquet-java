@@ -281,6 +281,48 @@ public class CodecFactory implements CompressionCodecFactory {
     return comp;
   }
 
+  /**
+   * Decompresses a complete compression block whose decompressed size is not known in advance,
+   * draining the codec stream to end-of-input. This is used to resolve FILE self-references, whose
+   * stored representation records only the size of the (compressed) stored block and not the size
+   * of the resolved bytes. Each self-reference is an independent compression block, so the entire
+   * {@code compressed} range is supplied to the codec in one shot.
+   *
+   * @param codecName the {@link CompressionCodecName} of the {@code inline} column chunk the
+   *     self-reference inherits from; {@link CompressionCodecName#UNCOMPRESSED} returns the bytes
+   *     unchanged
+   * @param compressed the complete compressed block
+   * @return the decompressed (resolved) bytes
+   * @throws IOException if decompression fails
+   */
+  public BytesInput decompressUnknownSize(CompressionCodecName codecName, BytesInput compressed)
+      throws IOException {
+    CompressionCodec codec = getCodec(codecName);
+    if (codec == null) {
+      // UNCOMPRESSED: the stored bytes are the resolved bytes.
+      return compressed;
+    }
+    Decompressor decompressor = CodecPool.getDecompressor(codec);
+    try {
+      if (decompressor != null) {
+        decompressor.reset();
+      }
+      try (InputStream is = codec.createInputStream(compressed.toInputStream(), decompressor);
+          ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = is.read(buffer)) != -1) {
+          out.write(buffer, 0, read);
+        }
+        return BytesInput.from(out.toByteArray());
+      }
+    } finally {
+      if (decompressor != null) {
+        CodecPool.returnDecompressor(decompressor);
+      }
+    }
+  }
+
   @Override
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
     BytesDecompressor decomp = decompressors.get(codecName);

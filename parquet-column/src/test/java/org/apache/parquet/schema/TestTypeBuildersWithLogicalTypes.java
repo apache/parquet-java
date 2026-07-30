@@ -610,14 +610,46 @@ public class TestTypeBuildersWithLogicalTypes {
   @Test
   public void testFileLogicalTypeSelfReference() {
     // A self-reference omits 'uri' and locates bytes within the current file via offset/size.
+    // A schema that permits self-references must declare 'inline' as the storage-inheritance
+    // reference point.
     GroupType file = Types.requiredGroup()
         .as(LogicalTypeAnnotation.fileType())
         .optional(INT64).named("offset")
         .optional(INT64).named("size")
+        .optional(BINARY).named("inline")
         .named("self_ref_file");
 
     assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
-    assertThat(file.getFieldCount()).isEqualTo(2);
+    assertThat(file.getFieldCount()).isEqualTo(3);
+  }
+
+  @Test
+  public void testFileLogicalTypeOffsetRequiresInline() {
+    // A schema that permits self-references (declares 'offset' but not 'uri') must declare 'inline'
+    // as the reference point for storage inheritance. A group declaring 'offset'/'size' with
+    // neither 'uri' nor 'inline' is rejected at build time.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64).named("offset")
+            .optional(INT64).named("size")
+            .named("self_ref_without_inline"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeExternalRangedReferenceWithoutInline() {
+    // An external ranged reference declares 'uri' + 'offset' + 'size' to point at a byte range of
+    // an external file. Because 'uri' is declared, the schema is treated as an external-reference
+    // schema and is not required to declare 'inline', even though it declares 'offset'.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri")
+        .optional(INT64).named("offset")
+        .optional(INT64).named("size")
+        .named("external_ranged_file");
+
+    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(3);
   }
 
   @Test
