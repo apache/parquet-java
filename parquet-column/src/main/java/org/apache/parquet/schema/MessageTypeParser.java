@@ -225,6 +225,12 @@ public class MessageTypeParser {
       check(t, ")", "logical type ended by )", st);
       t = st.nextToken();
     }
+    if (t.equalsIgnoreCase(PrimitiveType.COLUMN_ORDER_KEYWORD)) {
+      check(st.nextToken(), "(", "column order followed by (", st);
+      childBuilder.columnOrder(parseColumnOrder(st.nextToken(), st));
+      check(st.nextToken(), ")", "column order ended by )", st);
+      t = st.nextToken();
+    }
     if (t.equals("=")) {
       childBuilder.id(Integer.parseInt(st.nextToken()));
       t = st.nextToken();
@@ -237,6 +243,26 @@ public class MessageTypeParser {
       throw new IllegalArgumentException(
           "problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType,
           e);
+    }
+  }
+
+  private static ColumnOrder parseColumnOrder(String t, Tokenizer st) {
+    ColumnOrder.ColumnOrderName name;
+    try {
+      name = ColumnOrder.ColumnOrderName.valueOf(t.toUpperCase(Locale.ENGLISH));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Unknown column order: " + t + " at " + st.getLocationString(), e);
+    }
+    switch (name) {
+      case UNDEFINED:
+        return ColumnOrder.undefined();
+      case TYPE_DEFINED_ORDER:
+        return ColumnOrder.typeDefined();
+      case IEEE_754_TOTAL_ORDER:
+        return ColumnOrder.ieee754TotalOrder();
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported column order: " + name + " at " + st.getLocationString());
     }
   }
 

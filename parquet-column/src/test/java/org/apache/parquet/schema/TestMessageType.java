@@ -202,7 +202,37 @@ public class TestMessageType {
     assertThatThrownBy(() -> m1.union(m3))
         .isInstanceOf(IncompatibleSchemaModificationException.class)
         .hasMessage(
-            "can not merge type optional binary a with column order TYPE_DEFINED_ORDER into optional binary a with column order UNDEFINED");
+            "can not merge type optional binary a with column order TYPE_DEFINED_ORDER into optional binary a columnorder(UNDEFINED) with column order UNDEFINED");
+  }
+
+  @Test
+  public void testColumnOrderTextRoundTrip() {
+    // A non-default column order must survive toString() -> parseMessageType() so that schemas
+    // serialized through the text representation (e.g. by GroupWriteSupport) keep it.
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.typeDefined())
+        .named("float_typedef")
+        .required(PrimitiveTypeName.DOUBLE)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("double_ieee754")
+        .required(PrimitiveTypeName.INT32)
+        .named("int_default")
+        .named("msg");
+
+    assertThat(schema.getType("float_typedef").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+    MessageType roundTripped = MessageTypeParser.parseMessageType(schema.toString());
+    assertThat(roundTripped).isEqualTo(schema);
+    assertThat(roundTripped.getType("float_typedef").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+    assertThat(roundTripped.getType("double_ieee754").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(roundTripped.getType("int_default").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+
+    // A column left at its default emits no columnorder(...) token.
+    assertThat(schema.toString()).doesNotContain("int_default columnorder");
   }
 
   @Test
