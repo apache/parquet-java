@@ -50,8 +50,8 @@ public class ShowFooterCommandTest extends ParquetFileTest {
   }
 
   /**
-   * The file a footer was read from is not part of the printed footer, even though the mapper used here serializes
-   * fields rather than getters.
+   * The file a footer was read from is not part of the printed footer, even though this mapper serializes fields
+   * rather than getters and cannot see the relocated annotations of parquet-hadoop.
    */
   @Test
   public void testInputFileNotPrinted() throws IOException {
@@ -65,6 +65,7 @@ public class ShowFooterCommandTest extends ParquetFileTest {
     ObjectMapper mapper = RawUtils.createObjectMapper();
     mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
     mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+    mapper.addMixIn(ParquetMetadata.class, ShowFooterCommand.MixIn.class);
     assertThat(mapper.writeValueAsString(footer)).doesNotContain("inputFile");
   }
 }
