@@ -21,6 +21,13 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.hadoop.ParquetInputFormat.READ_SUPPORT_CLASS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -47,6 +54,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Tests of a footer, and the file it was read from, being passed on to a reader through
  * {@link ParquetInputSplit#setFooter(ParquetMetadata)} rather than being read again.
  */
+@SuppressWarnings("deprecation")
 public class TestFooterReuse {
 
   private static final List<PhoneBookWriter.User> DATA = TestParquetReader.makeUsers(100);
@@ -132,6 +140,56 @@ public class TestFooterReuse {
     List<String> records = readSplit(newSplit(missing), inputFile, footer);
 
     assertThat(records).hasSize(DATA.size());
+  }
+
+  /**
+   * A split carrying a footer serializes to json without it: the footer is state of the JVM which built the split,
+   * not part of its description.
+   */
+  @Test
+  public void testFooterNotSerializedToJson() throws Exception {
+    ParquetInputSplit split = newSplit(file);
+    split.setFooter(readFooter());
+
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
+    mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+    String json = mapper.writeValueAsString(split);
+
+    assertThat(json).contains("rowGroupOffsets").doesNotContain("footer");
+  }
+
+  /**
+   * A split carrying a footer survives a Writable round trip with everything else intact, but the footer
+   * itself does not cross it: a split deserialized in a task has to read the footer as it always did.
+   */
+  @Test
+  public void testFooterNotSerializedThroughWritable() throws Exception {
+    ParquetInputSplit split = newSplit(file);
+    split.setFooter(readFooter());
+
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (DataOutputStream out = new DataOutputStream(bytes)) {
+      split.write(out);
+    }
+    ParquetInputSplit read = new ParquetInputSplit();
+    try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+      read.readFields(in);
+    }
+
+    assertThat(read.getFooter())
+        .as("footer of a split read back from its serialized form")
+        .isNull();
+    assertThat(read.getPath()).isEqualTo(split.getPath());
+    assertThat(read.getStart()).isEqualTo(split.getStart());
+    assertThat(read.getEnd()).isEqualTo(split.getEnd());
+    assertThat(read.getLength()).isEqualTo(split.getLength());
+  }
+
+  private static ParquetMetadata readFooter() throws IOException {
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(file, new Configuration()))) {
+      return reader.getFooter();
+    }
   }
 
   private static ParquetInputSplit newSplit(Path path) {
