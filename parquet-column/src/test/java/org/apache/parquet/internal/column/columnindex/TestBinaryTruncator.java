@@ -99,7 +99,7 @@ public class TestBinaryTruncator {
         .length(12)
         .as(LogicalTypeAnnotation.timestampType(true, TimeUnit.NANOS))
         .named("test_fixed_timestamp"));
-    Binary value = Binary.fromConstantByteArray(new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4});
+    Binary value = Binary.fromConstantByteArray(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
     assertThat(truncator.truncateMin(value, 4)).isSameAs(value);
     assertThat(truncator.truncateMax(value, 4)).isSameAs(value);
   }
