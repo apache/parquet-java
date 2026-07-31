@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
@@ -282,20 +283,12 @@ public abstract class PrimitiveStringifier {
       if (value == null) {
         return BINARY_NULL;
       }
-      byte[] littleEndian = value.getBytesUnsafe();
-      byte[] bigEndian = new byte[littleEndian.length];
-      for (int i = 0; i < littleEndian.length; ++i) {
-        bigEndian[i] = littleEndian[littleEndian.length - 1 - i];
-      }
+
+      BigInteger units = new BigInteger(BytesUtils.reverse(value.getBytesUnsafe()));
       try {
-        BigInteger units = new BigInteger(bigEndian);
-        try {
-          return toFormattedString(getInstant(units));
-        } catch (ArithmeticException | DateTimeException e) {
-          return units.toString();
-        }
-      } catch (NumberFormatException e) {
-        return BINARY_INVALID;
+        return toFormattedString(getInstant(units));
+      } catch (ArithmeticException | DateTimeException e) {
+        return units.toString();
       }
     }
 
@@ -311,8 +304,8 @@ public abstract class PrimitiveStringifier {
   };
 
   // Converts a count of time units since epoch, held as a BigInteger (the 96-bit FLBA(12) carrier),
-  // into an Instant. The 96-bit count does not fit in a long, but the whole-second count does, so
-  // divide first and narrow after.
+  // into an Instant. Throws ArithmeticException if the seconds portion overflows long. Throws
+  // DateTimeException if the combined seconds/nanos portion does not fit in an Instant.
   private static Instant instantFromUnits(BigInteger units, TimeUnit unit) {
     BigInteger[] secondsAndUnits = units.divideAndRemainder(BigInteger.valueOf(unit.convert(1, SECONDS)));
     long seconds = secondsAndUnits[0].longValueExact();
