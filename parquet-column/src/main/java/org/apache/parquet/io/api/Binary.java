@@ -587,7 +587,7 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
         throw new IllegalArgumentException("length must be 2");
       }
 
-      return value.order(ByteOrder.LITTLE_ENDIAN).getShort(offset);
+      return value.duplicate().order(ByteOrder.LITTLE_ENDIAN).getShort(offset);
     }
 
     @Override
