@@ -245,6 +245,29 @@ public class TestBinary {
   }
 
   @Test
+  public void testDirectByteBufferEqualityWithOffset() {
+    ByteBuffer slicedBuffer = ByteBuffer.allocateDirect(3);
+    slicedBuffer.put(new byte[] {9, 1, 2});
+    slicedBuffer.position(1);
+    Binary sliced = Binary.fromConstantByteBuffer(slicedBuffer);
+
+    ByteBuffer equalBuffer = ByteBuffer.allocateDirect(2);
+    equalBuffer.put(new byte[] {1, 2});
+    equalBuffer.flip();
+    Binary equal = Binary.fromConstantByteBuffer(equalBuffer);
+
+    ByteBuffer differentBuffer = ByteBuffer.allocateDirect(2);
+    differentBuffer.put(new byte[] {9, 1});
+    differentBuffer.flip();
+    Binary different = Binary.fromConstantByteBuffer(differentBuffer);
+
+    assertThat(sliced).isEqualTo(equal);
+    assertThat(equal).isEqualTo(sliced);
+    assertThat(sliced.hashCode()).isEqualTo(equal.hashCode());
+    assertThat(different).isNotEqualTo(sliced);
+  }
+
+  @Test
   public void testWriteAllTo() throws Exception {
     byte[] orig = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     testWriteAllToHelper(Binary.fromConstantByteBuffer(ByteBuffer.wrap(orig)), orig);
