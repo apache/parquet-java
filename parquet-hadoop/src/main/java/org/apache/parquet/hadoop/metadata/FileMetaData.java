@@ -24,6 +24,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.parquet.VersionParser;
+import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.schema.MessageType;
 
@@ -42,6 +44,7 @@ public final class FileMetaData implements Serializable {
   private final MessageType schema;
   private final Map<String, String> keyValueMetaData;
   private final String createdBy;
+  private final transient ParsedVersion writerVersion;
   private final InternalFileDecryptor fileDecryptor;
   private final EncryptionType encryptionType;
 
@@ -80,6 +83,7 @@ public final class FileMetaData implements Serializable {
     this.keyValueMetaData =
         unmodifiableMap(Objects.requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
+    this.writerVersion = parseVersion(createdBy);
     this.fileDecryptor = fileDecryptor;
     this.encryptionType = encryptionType;
   }
@@ -117,5 +121,24 @@ public final class FileMetaData implements Serializable {
 
   public EncryptionType getEncryptionType() {
     return encryptionType;
+  }
+
+  /**
+   * @return the parsed writer version, or {@code null} if {@code createdBy} is null, empty, or unparseable
+   */
+  @JsonIgnore
+  public ParsedVersion getWriterVersion() {
+    return writerVersion;
+  }
+
+  private static ParsedVersion parseVersion(String createdBy) {
+    if (createdBy == null || createdBy.isEmpty()) {
+      return null;
+    }
+    try {
+      return VersionParser.parse(createdBy);
+    } catch (RuntimeException | VersionParser.VersionParseException e) {
+      return null;
+    }
   }
 }
