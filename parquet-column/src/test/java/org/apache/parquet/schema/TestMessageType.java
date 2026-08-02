@@ -236,6 +236,15 @@ public class TestMessageType {
   }
 
   @Test
+  public void testUnknownColumnOrderParsesAsUndefined() {
+    // A column order this version does not recognize (e.g. written by a newer API) degrades to
+    // UNDEFINED rather than failing the whole parse.
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message msg { required binary a columnorder(SOME_FUTURE_ORDER); }");
+    assertThat(schema.getType("a").asPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.undefined());
+  }
+
+  @Test
   public void testIDs() {
     MessageType schema = new MessageType(
         "test",

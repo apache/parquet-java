@@ -227,7 +227,7 @@ public class MessageTypeParser {
     }
     if (t.equalsIgnoreCase(PrimitiveType.COLUMN_ORDER_KEYWORD)) {
       check(st.nextToken(), "(", "column order followed by (", st);
-      childBuilder.columnOrder(parseColumnOrder(st.nextToken(), st));
+      childBuilder.columnOrder(parseColumnOrder(st.nextToken()));
       check(st.nextToken(), ")", "column order ended by )", st);
       t = st.nextToken();
     }
@@ -246,24 +246,18 @@ public class MessageTypeParser {
     }
   }
 
-  private static ColumnOrder parseColumnOrder(String t, Tokenizer st) {
-    ColumnOrder.ColumnOrderName name;
-    try {
-      name = ColumnOrder.ColumnOrderName.valueOf(t.toUpperCase(Locale.ENGLISH));
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Unknown column order: " + t + " at " + st.getLocationString(), e);
+  private static ColumnOrder parseColumnOrder(String t) {
+    // An unrecognized order degrades to UNDEFINED rather than failing, matching
+    // ParquetMetadataConverter.fromParquetColumnOrder, so a schema written by a newer API with an
+    // order this version does not know stays parseable. Statistics under an unknown order are
+    // ignored by readers anyway.
+    if (t.equalsIgnoreCase(ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER.name())) {
+      return ColumnOrder.typeDefined();
     }
-    switch (name) {
-      case UNDEFINED:
-        return ColumnOrder.undefined();
-      case TYPE_DEFINED_ORDER:
-        return ColumnOrder.typeDefined();
-      case IEEE_754_TOTAL_ORDER:
-        return ColumnOrder.ieee754TotalOrder();
-      default:
-        throw new IllegalArgumentException(
-            "Unsupported column order: " + name + " at " + st.getLocationString());
+    if (t.equalsIgnoreCase(ColumnOrder.ColumnOrderName.IEEE_754_TOTAL_ORDER.name())) {
+      return ColumnOrder.ieee754TotalOrder();
     }
+    return ColumnOrder.undefined();
   }
 
   private static boolean isLogicalType(String t) {
