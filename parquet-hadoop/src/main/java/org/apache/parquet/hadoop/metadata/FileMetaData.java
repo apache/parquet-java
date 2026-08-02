@@ -44,7 +44,8 @@ public final class FileMetaData implements Serializable {
   private final MessageType schema;
   private final Map<String, String> keyValueMetaData;
   private final String createdBy;
-  private final transient ParsedVersion writerVersion;
+  private transient volatile ParsedVersion writerVersion;
+  private transient volatile boolean writerVersionParsed;
   private final InternalFileDecryptor fileDecryptor;
   private final EncryptionType encryptionType;
 
@@ -83,7 +84,6 @@ public final class FileMetaData implements Serializable {
     this.keyValueMetaData =
         unmodifiableMap(Objects.requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
-    this.writerVersion = parseVersion(createdBy);
     this.fileDecryptor = fileDecryptor;
     this.encryptionType = encryptionType;
   }
@@ -124,21 +124,23 @@ public final class FileMetaData implements Serializable {
   }
 
   /**
-   * @return the parsed writer version, or {@code null} if {@code createdBy} is null, empty, or unparseable
+   * Returns the parsed writer version from the {@code createdBy} string, or {@code null}
+   * if {@code createdBy} is null, empty, or unparseable. The result is computed lazily
+   * and cached. Callers that need to distinguish missing vs. unparseable can check
+   * {@link #getCreatedBy()}.
    */
   @JsonIgnore
   public ParsedVersion getWriterVersion() {
+    if (!writerVersionParsed) {
+      if (createdBy != null && !createdBy.isEmpty()) {
+        try {
+          writerVersion = VersionParser.parse(createdBy);
+        } catch (RuntimeException | VersionParser.VersionParseException e) {
+          // leave writerVersion as null — parse failed
+        }
+      }
+      writerVersionParsed = true;
+    }
     return writerVersion;
-  }
-
-  private static ParsedVersion parseVersion(String createdBy) {
-    if (createdBy == null || createdBy.isEmpty()) {
-      return null;
-    }
-    try {
-      return VersionParser.parse(createdBy);
-    } catch (RuntimeException | VersionParser.VersionParseException e) {
-      return null;
-    }
   }
 }
