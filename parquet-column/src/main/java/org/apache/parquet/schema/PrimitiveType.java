@@ -883,17 +883,13 @@ public final class PrimitiveType extends Type {
     throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
   }
 
-  private void reportSchemaMergeErrorWithColumnOrder(Type toMerge) {
-    throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " with column order "
-        + toMerge.asPrimitiveType().columnOrder() + " into " + this + " with column order " + columnOrder());
-  }
-
   @Override
   protected Type union(Type toMerge, boolean strict) {
     if (!toMerge.isPrimitive()) {
       reportSchemaMergeError(toMerge);
     }
 
+    ColumnOrder mergedColumnOrder = columnOrder();
     if (strict) {
       // Can't merge primitive fields of different type names or different original types
       if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())
@@ -907,9 +903,14 @@ public final class PrimitiveType extends Type {
         reportSchemaMergeError(toMerge);
       }
 
-      // Can't merge primitive fields with different column orders
+      // A column-order difference is the only remaining difference here (type, logical type and
+      // length already match). Reconcile to UNDEFINED instead of failing the merge: it lets an
+      // aggregation over otherwise-identical files with different column orders succeed -- e.g. a
+      // pre-upgrade float footer read as TYPE_DEFINED_ORDER merged with a post-upgrade one written
+      // as IEEE_754_TOTAL_ORDER. Per-file statistics are still read under each file's own column
+      // order, so this only drops the merged schema's (now ambiguous) ordering claim.
       if (!columnOrder().equals(toMerge.asPrimitiveType().columnOrder())) {
-        reportSchemaMergeErrorWithColumnOrder(toMerge);
+        mergedColumnOrder = ColumnOrder.undefined();
       }
     }
 
@@ -920,7 +921,9 @@ public final class PrimitiveType extends Type {
       builder.length(length);
     }
 
-    return builder.as(getLogicalTypeAnnotation()).columnOrder(columnOrder()).named(getName());
+    return builder.as(getLogicalTypeAnnotation())
+        .columnOrder(mergedColumnOrder)
+        .named(getName());
   }
 
   /**

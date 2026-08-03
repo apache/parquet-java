@@ -199,10 +199,10 @@ public class TestMessageType {
                 Types.optional(INT96).named("b"),
                 Types.optional(BINARY).named("c"))
             .named("root"));
-    assertThatThrownBy(() -> m1.union(m3))
-        .isInstanceOf(IncompatibleSchemaModificationException.class)
-        .hasMessage(
-            "can not merge type optional binary a with column order TYPE_DEFINED_ORDER into optional binary a columnorder(UNDEFINED) with column order UNDEFINED");
+    // Merging columns that differ only in column order reconciles to UNDEFINED rather than failing:
+    // m1's "a" is UNDEFINED and m3's "a" is TYPE_DEFINED_ORDER, so the merged "a" stays UNDEFINED
+    // (schema equality includes column order, so equality with m1 asserts the reconciled order).
+    assertThat(m1.union(m3)).isEqualTo(m1);
   }
 
   @Test
@@ -242,6 +242,33 @@ public class TestMessageType {
     MessageType schema =
         MessageTypeParser.parseMessageType("message msg { required binary a columnorder(SOME_FUTURE_ORDER); }");
     assertThat(schema.getType("a").asPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.undefined());
+  }
+
+  @Test
+  public void testMergeMixedFloatingColumnOrder() {
+    // A float column written post-upgrade (IEEE 754 total order) and the same column read from a
+    // legacy footer (type-defined) must merge rather than throw -- e.g. when aggregating footers
+    // over a directory that spans the upgrade. The reconciled order is UNDEFINED; per-file
+    // statistics are still read under each file's own column order.
+    MessageType newFile = Types.buildMessage()
+        .required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("f")
+        .named("root");
+    MessageType legacyFile = Types.buildMessage()
+        .required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.typeDefined())
+        .named("f")
+        .named("root");
+
+    MessageType merged = newFile.union(legacyFile);
+    assertThat(merged.getType("f").asPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.undefined());
+    // Merge is symmetric.
+    assertThat(legacyFile.union(newFile).getType("f").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.undefined());
+    // Same order on both sides is preserved (no spurious downgrade to UNDEFINED).
+    assertThat(newFile.union(newFile).getType("f").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
   }
 
   @Test
