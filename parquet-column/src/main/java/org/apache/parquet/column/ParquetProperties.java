@@ -830,6 +830,7 @@ public class ParquetProperties {
      */
     public Builder withWritePathInSchemaEnabled(boolean enabled) {
       this.writePathInSchemaEnabled = enabled;
+      return this;
     }
 
     /**
