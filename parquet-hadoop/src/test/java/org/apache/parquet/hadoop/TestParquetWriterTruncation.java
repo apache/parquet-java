@@ -20,17 +20,14 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -42,14 +39,12 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetWriterTruncation {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testTruncateColumnIndex() throws IOException {
@@ -79,8 +74,8 @@ public class TestParquetWriterTruncation {
       ColumnChunkMetaData column =
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
       ColumnIndex index = reader.readColumnIndex(column);
-      assertEquals(Collections.singletonList("1234567890"), asStrings(index.getMinValues()));
-      assertEquals(Collections.singletonList("1234567891"), asStrings(index.getMaxValues()));
+      assertThat(asStrings(index.getMinValues())).containsExactly("1234567890");
+      assertThat(asStrings(index.getMaxValues())).containsExactly("1234567891");
     }
   }
 
@@ -112,15 +107,13 @@ public class TestParquetWriterTruncation {
       ColumnChunkMetaData column =
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
       Statistics<?> statistics = column.getStatistics();
-      assertEquals("1234567890", new String(statistics.getMinBytes()));
-      assertEquals("1234567891", new String(statistics.getMaxBytes()));
+      assertThat(new String(statistics.getMinBytes())).isEqualTo("1234567890");
+      assertThat(new String(statistics.getMaxBytes())).isEqualTo("1234567891");
     }
   }
 
-  private Path newTempPath() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.getAbsolutePath());
+  private Path newTempPath() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 
   private static List<String> asStrings(List<ByteBuffer> buffers) {

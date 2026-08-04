@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
@@ -33,13 +32,20 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class TestCompressionCodec {
+
+  private final int pageSize = 64 * 1024;
 
   @Test
   public void testLz4RawBlock() throws IOException {
@@ -94,8 +100,8 @@ public class TestCompressionCodec {
     int decompressedSize = decompressor.decompress(decompressedData, 0, uncompressedSize);
     assert (decompressor.finished());
 
-    assertEquals(uncompressedSize, decompressedSize);
-    assertArrayEquals(uncompressedData, decompressedData);
+    assertThat(decompressedSize).isEqualTo(uncompressedSize);
+    assertThat(decompressedData).isEqualTo(uncompressedData);
   }
 
   @Test
@@ -137,7 +143,7 @@ public class TestCompressionCodec {
     }
     BytesInput compressedData = compress(codec, BytesInput.from(data));
     byte[] decompressedData = decompress(codec, compressedData, data.length);
-    Assert.assertArrayEquals(data, decompressedData);
+    assertThat(decompressedData).isEqualTo(data);
   }
 
   private BytesInput compress(CompressionCodec codec, BytesInput bytes) throws IOException {
@@ -177,6 +183,34 @@ public class TestCompressionCodec {
     }
   }
 
+  /**
+   * Regression test for #3478: LZ4_RAW heap decompression fails when the decompressed page
+   * exceeds the ~8KB chunk size used by stream materialization in BytesInput.copy().
+   */
+  @Test
+  public void testLz4RawHeapDecompressorCanCopyLargePage() throws IOException {
+    final int size = 16 * 1024;
+    final byte[] raw = new byte[size];
+    new Random(42).nextBytes(raw);
+
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
+        ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      CodecFactory heapCodecFactory = new CodecFactory(new Configuration(), pageSize);
+      BytesInputCompressor compressor = heapCodecFactory.getCompressor(CompressionCodecName.LZ4_RAW);
+      BytesInputDecompressor decompressor = heapCodecFactory.getDecompressor(CompressionCodecName.LZ4_RAW);
+
+      BytesInput compressed = compressor.compress(BytesInput.from(raw));
+      BytesInput decompressed = decompressor.decompress(compressed, size);
+
+      BytesInput copied = decompressed.copy(releaser);
+      assertThat(copied.toByteArray()).isEqualTo(raw);
+
+      compressor.release();
+      decompressor.release();
+      heapCodecFactory.release();
+    }
+  }
+
   @Test
   public void TestDecompressorInvalidState() throws IOException {
     // Create a mock Decompressor that returns 0 when decompress is called.
@@ -188,9 +222,8 @@ public class TestCompressionCodec {
     NonBlockedDecompressorStream decompressorStream =
         new NonBlockedDecompressorStream(new ByteArrayInputStream(new byte[0]), mockDecompressor, 1024);
 
-    assertThrows(IOException.class, () -> {
-      // Attempt to read from the stream, which should trigger the IOException.
-      decompressorStream.read(new byte[1024], 0, 1024);
-    });
+    assertThatThrownBy(() -> decompressorStream.read(new byte[1024], 0, 1024))
+        .isInstanceOf(IOException.class)
+        .hasMessage("Corrupt file: Zero bytes read during decompression.");
   }
 }

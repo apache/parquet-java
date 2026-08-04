@@ -18,14 +18,15 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.util.Random;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ByteStreamSplitValuesEndToEndTest {
 
@@ -49,9 +50,9 @@ public class ByteStreamSplitValuesEndToEndTest {
         writer.writeFloat(v);
       }
 
-      assertEquals(numElements * 4, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(numElements * 4);
       BytesInput input = writer.getBytes();
-      assertEquals(numElements * 4, input.size());
+      assertThat(input.size()).isEqualTo(numElements * 4);
 
       ByteStreamSplitValuesReaderForFloat reader = new ByteStreamSplitValuesReaderForFloat();
 
@@ -59,7 +60,42 @@ public class ByteStreamSplitValuesEndToEndTest {
 
       for (float expectedValue : values) {
         float newValue = reader.readFloat();
-        assertEquals(expectedValue, newValue, 0.0f);
+        assertThat(newValue).isCloseTo(expectedValue, offset(0.0f));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  @Test
+  public void testFloatPipelinePreservesNaNBits() throws Exception {
+    float[] values = {
+      Float.intBitsToFloat(0xffffffff),
+      Float.intBitsToFloat(0xfff00001),
+      -0.0f,
+      0.0f,
+      Float.intBitsToFloat(0x7fc00001),
+      Float.intBitsToFloat(0x7fffffff)
+    };
+
+    ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter writer = null;
+    try {
+      writer = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
+          values.length * 4, values.length * 4, new DirectByteBufferAllocator());
+      for (float value : values) {
+        writer.writeFloat(value);
+      }
+
+      BytesInput input = writer.getBytes();
+      ByteStreamSplitValuesReaderForFloat reader = new ByteStreamSplitValuesReaderForFloat();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+
+      for (float expectedValue : values) {
+        assertThat(Float.floatToRawIntBits(reader.readFloat()))
+            .isEqualTo(Float.floatToRawIntBits(expectedValue));
       }
     } finally {
       if (writer != null) {
@@ -84,9 +120,9 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeDouble(v);
     }
 
-    assertEquals(numElements * 8, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * 8);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * 8, input.size());
+    assertThat(input.size()).isEqualTo(numElements * 8);
 
     ByteStreamSplitValuesReaderForDouble reader = new ByteStreamSplitValuesReaderForDouble();
 
@@ -94,7 +130,38 @@ public class ByteStreamSplitValuesEndToEndTest {
 
     for (double expectedValue : values) {
       double newValue = reader.readDouble();
-      assertEquals(expectedValue, newValue, 0.0);
+      assertThat(newValue).isCloseTo(expectedValue, offset(0.0));
+    }
+
+    writer.reset();
+    writer.close();
+  }
+
+  @Test
+  public void testDoublePipelinePreservesNaNBits() throws Exception {
+    double[] values = {
+      Double.longBitsToDouble(0xffffffffffffffffL),
+      Double.longBitsToDouble(0xfff0000000000001L),
+      -0.0d,
+      0.0d,
+      Double.longBitsToDouble(0x7ff0000000000001L),
+      Double.longBitsToDouble(0x7fffffffffffffffL)
+    };
+
+    ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter writer =
+        new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
+            values.length * 8, values.length * 8, new DirectByteBufferAllocator());
+    for (double value : values) {
+      writer.writeDouble(value);
+    }
+
+    BytesInput input = writer.getBytes();
+    ByteStreamSplitValuesReaderForDouble reader = new ByteStreamSplitValuesReaderForDouble();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+
+    for (double expectedValue : values) {
+      assertThat(Double.doubleToRawLongBits(reader.readDouble()))
+          .isEqualTo(Double.doubleToRawLongBits(expectedValue));
     }
 
     writer.reset();
@@ -116,16 +183,16 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeInteger(v);
     }
 
-    assertEquals(numElements * 4, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * 4);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * 4, input.size());
+    assertThat(input.size()).isEqualTo(numElements * 4);
 
     ByteStreamSplitValuesReaderForInteger reader = new ByteStreamSplitValuesReaderForInteger();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (int expectedValue : values) {
       int newValue = reader.readInteger();
-      assertEquals(expectedValue, newValue);
+      assertThat(newValue).isEqualTo(expectedValue);
     }
 
     writer.reset();
@@ -147,16 +214,16 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeLong(v);
     }
 
-    assertEquals(numElements * 8, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * 8);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * 8, input.size());
+    assertThat(input.size()).isEqualTo(numElements * 8);
 
     ByteStreamSplitValuesReaderForLong reader = new ByteStreamSplitValuesReaderForLong();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (long expectedValue : values) {
       long newValue = reader.readLong();
-      assertEquals(expectedValue, newValue);
+      assertThat(newValue).isEqualTo(expectedValue);
     }
 
     writer.reset();
@@ -186,9 +253,9 @@ public class ByteStreamSplitValuesEndToEndTest {
       writer.writeBytes(Binary.fromConstantByteArray(v));
     }
 
-    assertEquals(numElements * typeLength, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(numElements * typeLength);
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * typeLength, input.size());
+    assertThat(input.size()).isEqualTo(numElements * typeLength);
 
     ByteStreamSplitValuesReaderForFLBA reader = new ByteStreamSplitValuesReaderForFLBA(typeLength);
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
@@ -197,10 +264,10 @@ public class ByteStreamSplitValuesEndToEndTest {
     for (byte[] expectedValue : values) {
       Binary expected = Binary.fromConstantByteArray(expectedValue);
       Binary actual = reader.readBytes();
-      assertEquals(expected, actual);
+      assertThat(actual).isEqualTo(expected);
       if (previousExpected != null) {
         // The latest readBytes() call shouldn't have clobbered the result of the previous call.
-        assertEquals(previousExpected, previousActual);
+        assertThat(previousActual).isEqualTo(previousExpected);
       }
       previousExpected = expected;
       previousActual = actual;

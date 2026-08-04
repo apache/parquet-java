@@ -23,9 +23,8 @@ import static org.apache.parquet.avro.AvroTestUtil.optional;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
 import static org.apache.parquet.avro.AvroTestUtil.record;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -35,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,33 +52,23 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-@RunWith(Parameterized.class)
 public class TestReadWriteOldListBehavior {
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-      {false}, // use the new converters
-      {true}
-    }; // use the old converters
-    return Arrays.asList(data);
-  }
-
-  private final boolean compat;
+  private boolean compat;
   private final Configuration testConf = new Configuration(false);
 
-  public TestReadWriteOldListBehavior(boolean compat) {
+  private void init(boolean compat) {
     this.compat = compat;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
   }
 
-  @Test
-  public void testEmptyArray() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testEmptyArray(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("array.avsc").openStream());
 
@@ -100,13 +88,15 @@ public class TestReadWriteOldListBehavior {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(emptyArray, nextRecord.get("myarray"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("myarray")).isEqualTo(emptyArray);
     }
   }
 
-  @Test
-  public void testEmptyMap() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testEmptyMap(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
@@ -126,13 +116,15 @@ public class TestReadWriteOldListBehavior {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(emptyMap, nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(emptyMap);
     }
   }
 
-  @Test
-  public void testMapWithNulls() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testMapWithNulls(boolean compat) throws Exception {
+    init(compat);
     Schema schema = new Schema.Parser()
         .parse(Resources.getResource("map_with_nulls.avsc").openStream());
 
@@ -156,13 +148,15 @@ public class TestReadWriteOldListBehavior {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(map, nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(map);
     }
   }
 
-  @Test(expected = RuntimeException.class)
-  public void testMapRequiredValueWithNull() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testMapRequiredValueWithNull(boolean compat) throws Exception {
+    init(compat);
     Schema schema = Schema.createRecord("record1", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("mymap", Schema.createMap(Schema.create(Schema.Type.INT)), null, null)));
@@ -181,12 +175,16 @@ public class TestReadWriteOldListBehavior {
 
       GenericData.Record record =
           new GenericRecordBuilder(schema).set("mymap", map).build();
-      writer.write(record);
+      assertThatThrownBy(() -> writer.write(record))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Null map value for map");
     }
   }
 
-  @Test
-  public void testMapWithUtf8Key() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testMapWithUtf8Key(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
@@ -206,13 +204,15 @@ public class TestReadWriteOldListBehavior {
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
-      assertNotNull(nextRecord);
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
     }
   }
 
-  @Test
-  public void testAll() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAll(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("all.avsc").openStream());
 
@@ -267,29 +267,31 @@ public class TestReadWriteOldListBehavior {
           ? "a"
           : new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
-      assertNotNull(nextRecord);
-      assertEquals(null, nextRecord.get("mynull"));
-      assertEquals(true, nextRecord.get("myboolean"));
-      assertEquals(1, nextRecord.get("myint"));
-      assertEquals(2L, nextRecord.get("mylong"));
-      assertEquals(3.1f, nextRecord.get("myfloat"));
-      assertEquals(4.1, nextRecord.get("mydouble"));
-      assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-      assertEquals(str("hello"), nextRecord.get("mystring"));
-      assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
-      assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-      assertEquals(integerArray, nextRecord.get("myarray"));
-      assertEquals(emptyArray, nextRecord.get("myemptyarray"));
-      assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-      assertEquals(integerArray, nextRecord.get("myarrayofoptional"));
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-      assertEquals(emptyMap, nextRecord.get("myemptymap"));
-      assertEquals(genericFixed, nextRecord.get("myfixed"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("mynull")).isEqualTo(null);
+      assertThat(nextRecord.get("myboolean")).isEqualTo(true);
+      assertThat(nextRecord.get("myint")).isEqualTo(1);
+      assertThat(nextRecord.get("mylong")).isEqualTo(2L);
+      assertThat(nextRecord.get("myfloat")).isEqualTo(3.1f);
+      assertThat(nextRecord.get("mydouble")).isEqualTo(4.1);
+      assertThat(nextRecord.get("mybytes")).isEqualTo(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+      assertThat(nextRecord.get("mystring")).isEqualTo(str("hello"));
+      assertThat(nextRecord.get("myenum")).isEqualTo(expectedEnumSymbol);
+      assertThat(nextRecord.get("mynestedrecord")).isEqualTo(nestedRecord);
+      assertThat(nextRecord.get("myarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myemptyarray")).isEqualTo(emptyArray);
+      assertThat(nextRecord.get("myoptionalarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myarrayofoptional")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
+      assertThat(nextRecord.get("myemptymap")).isEqualTo(emptyMap);
+      assertThat(nextRecord.get("myfixed")).isEqualTo(genericFixed);
     }
   }
 
-  @Test
-  public void testArrayWithNullValues() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testArrayWithNullValues(boolean compat) throws Exception {
+    init(compat);
     Schema schema =
         new Schema.Parser().parse(Resources.getResource("all.avsc").openStream());
 
@@ -337,18 +339,19 @@ public class TestReadWriteOldListBehavior {
         .set("myfixed", genericFixed)
         .build();
 
-    try (AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<>(file, schema)) {
-      writer.write(record);
-      fail("Should not succeed writing an array with null values");
-    } catch (Exception e) {
-      Assert.assertTrue(
-          "Error message should provide context and help",
-          e.getMessage().contains("parquet.avro.write-old-list-structure"));
-    }
+    assertThatThrownBy(() -> {
+          try (AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<>(file, schema)) {
+            writer.write(record);
+          }
+        })
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("parquet.avro.write-old-list-structure");
   }
 
-  @Test
-  public void testAllUsingDefaultAvroSchema() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAllUsingDefaultAvroSchema(boolean compat) throws Exception {
+    init(compat);
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
@@ -564,22 +567,22 @@ public class TestReadWriteOldListBehavior {
 
     try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
-      assertNotNull(nextRecord);
-      assertEquals(true, nextRecord.get("myboolean"));
-      assertEquals(1, nextRecord.get("myint"));
-      assertEquals(2L, nextRecord.get("mylong"));
-      assertEquals(3.1f, nextRecord.get("myfloat"));
-      assertEquals(4.1, nextRecord.get("mydouble"));
-      assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-      assertEquals(str("hello"), nextRecord.get("mystring"));
-      assertEquals(str("a"), nextRecord.get("myenum"));
-      assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-      assertEquals(integerArray, nextRecord.get("myarray"));
-      assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-      assertEquals(genericRecordArrayWithNullIntegers, nextRecord.get("myarrayofoptional"));
-      assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
-      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-      assertEquals(genericFixed, nextRecord.get("myfixed"));
+      assertThat(nextRecord).isNotNull();
+      assertThat(nextRecord.get("myboolean")).isEqualTo(true);
+      assertThat(nextRecord.get("myint")).isEqualTo(1);
+      assertThat(nextRecord.get("mylong")).isEqualTo(2L);
+      assertThat(nextRecord.get("myfloat")).isEqualTo(3.1f);
+      assertThat(nextRecord.get("mydouble")).isEqualTo(4.1);
+      assertThat(nextRecord.get("mybytes")).isEqualTo(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+      assertThat(nextRecord.get("mystring")).isEqualTo(str("hello"));
+      assertThat(nextRecord.get("myenum")).isEqualTo(str("a"));
+      assertThat(nextRecord.get("mynestedrecord")).isEqualTo(nestedRecord);
+      assertThat(nextRecord.get("myarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myoptionalarray")).isEqualTo(integerArray);
+      assertThat(nextRecord.get("myarrayofoptional")).isEqualTo(genericRecordArrayWithNullIntegers);
+      assertThat(nextRecord.get("myrecordarray")).isEqualTo(genericRecordArray);
+      assertThat(nextRecord.get("mymap")).isEqualTo(ImmutableMap.of(str("a"), 1, str("b"), 2));
+      assertThat(nextRecord.get("myfixed")).isEqualTo(genericFixed);
     }
   }
 

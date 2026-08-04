@@ -1,6 +1,7 @@
 *.class
 .project
 .classpath
+.factorypath
 .settings
 target
 # Package Files #

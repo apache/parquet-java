@@ -20,6 +20,7 @@
 package org.apache.parquet.cli;
 
 import com.beust.jcommander.internal.Lists;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
@@ -428,16 +429,22 @@ public abstract class BaseCommand implements Command, Configurable {
     }
   }
 
-  private byte[] hexToBytes(String hex) {
-
+  @VisibleForTesting
+  byte[] hexToBytes(String hex) {
+    String originalHex = hex;
     if (hex.startsWith("0x") || hex.startsWith("0X")) {
       hex = hex.substring(2);
     }
 
     int len = hex.length();
+    Preconditions.checkArgument(len % 2 == 0, "Invalid hex string: %s", originalHex);
+
     byte[] data = new byte[len / 2];
     for (int i = 0; i < len; i += 2) {
-      data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+      int high = Character.digit(hex.charAt(i), 16);
+      int low = Character.digit(hex.charAt(i + 1), 16);
+      Preconditions.checkArgument(high >= 0 && low >= 0, "Invalid hex string: %s", originalHex);
+      data[i / 2] = (byte) ((high << 4) + low);
     }
     return data;
   }

@@ -18,9 +18,13 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,18 +33,20 @@ import java.util.Map;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.hadoop.codec.CleanUtil;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Unit test to check how Parquet writing behaves in case of an error happens during the writes. We use an OOM because
@@ -54,13 +60,51 @@ import org.junit.rules.TemporaryFolder;
  * separate process.
  */
 public class TestParquetWriterError {
+  @TempDir
+  private Path tempDir;
 
-  @Rule
-  public TemporaryFolder tmpFolder = new TemporaryFolder();
+  @Test
+  public void testWriteAfterAbortShouldThrow() throws Exception {
+    java.nio.file.Path outputFile = tempDir.resolve("abort_test.parquet");
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message test { required binary name; required int32 age; }");
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
+      ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outputFile))
+          .withType(schema)
+          .withAllocator(allocator)
+          .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
+          .build();
+
+      // Write one valid record
+      writer.write(groupFactory.newGroup().append("name", "Alice").append("age", 30));
+
+      // Simulate an aborted state by reflectively setting the aborted flag
+      // on the internal writer. This mirrors what happens when a write fails
+      // with an exception (e.g. OOM during page flush).
+      Field internalWriterField = ParquetWriter.class.getDeclaredField("writer");
+      internalWriterField.setAccessible(true);
+      InternalParquetRecordWriter<?> internalWriter =
+          (InternalParquetRecordWriter<?>) internalWriterField.get(writer);
+      Field abortedField = InternalParquetRecordWriter.class.getDeclaredField("aborted");
+      abortedField.setAccessible(true);
+      abortedField.setBoolean(internalWriter, true);
+
+      // Now try to write again - this should throw IOException
+      assertThatThrownBy(() -> writer.write(
+              groupFactory.newGroup().append("name", "Charlie").append("age", 25)))
+          .isInstanceOf(IOException.class)
+          .hasMessageContaining("aborted");
+
+      // Close should not throw (it should silently skip flushing due to aborted state)
+      writer.close();
+    }
+  }
 
   @Test
   public void testInSeparateProcess() throws IOException, InterruptedException {
-    String outputFile = tmpFolder.newFile("out.parquet").toString();
+    String outputFile = tempDir.resolve("out.parquet").toString();
 
     String classpath = System.getProperty("java.class.path");
     String javaPath = Paths.get(System.getProperty("java.home"), "bin", "java")
@@ -71,10 +115,9 @@ public class TestParquetWriterError {
         .redirectError(ProcessBuilder.Redirect.INHERIT)
         .redirectOutput(ProcessBuilder.Redirect.INHERIT)
         .start();
-    Assert.assertEquals(
-        "Test process exited with a non-zero return code. See previous logs for details.",
-        0,
-        process.waitFor());
+    assertThat(process.waitFor())
+        .as("Test process exited with a non-zero return code. See previous logs for details.")
+        .isEqualTo(0);
   }
 
   /**
@@ -138,8 +181,9 @@ public class TestParquetWriterError {
         @Override
         public ByteBuffer allocate(int size) {
           if (++counter >= oomAt) {
-            Assert.assertEquals(
-                "There should not be any additional allocations after an OOM", oomAt, counter);
+            assertThat(counter)
+                .as("There should not be any additional allocations after an OOM")
+                .isEqualTo(oomAt);
             throw new OutOfMemoryError("Artificial OOM to fail write");
           }
           return super.allocate(size);
@@ -173,30 +217,30 @@ public class TestParquetWriterError {
         CompressionCodecName.LZ4_RAW
       };
       for (int cycle = 0; cycle < 50; ++cycle) {
-        try (TrackingByteBufferAllocator allocator = createAllocator(RANDOM.nextInt(100) + 1);
-            ParquetWriter<Group> writer = ExampleParquetWriter.builder(
-                    new LocalOutputFile(Paths.get(args[0])))
-                .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-                .withType(PhoneBookWriter.getSchema())
-                .withAllocator(allocator)
-                .withCodecFactory(CodecFactory.createDirectCodecFactory(
-                    new Configuration(), allocator, ParquetProperties.DEFAULT_PAGE_SIZE))
-                // Also validating the different direct codecs which might also have issues if an OOM
-                // happens
-                .withCompressionCodec(codecs[RANDOM.nextInt(codecs.length)])
-                .build()) {
-          for (int i = 0; i < 100_000; ++i) {
-            writer.write(generateNext());
-          }
-          Assert.fail("An OOM should have been thrown");
-        } catch (OutOfMemoryError oom) {
-          Throwable[] suppressed = oom.getSuppressed();
-          // No exception should be suppressed after the expected OOM:
-          // It would mean that a close() call fails with an exception
-          if (suppressed != null && suppressed.length > 0) {
-            throw suppressed[0];
-          }
-        }
+        assertThatThrownBy(() -> {
+              try (TrackingByteBufferAllocator allocator = createAllocator(RANDOM.nextInt(100) + 1);
+                  ParquetWriter<Group> writer = ExampleParquetWriter.builder(
+                          new LocalOutputFile(Paths.get(args[0])))
+                      .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
+                      .withType(PhoneBookWriter.getSchema())
+                      .withAllocator(allocator)
+                      .withCodecFactory(CodecFactory.createDirectCodecFactory(
+                          new Configuration(),
+                          allocator,
+                          ParquetProperties.DEFAULT_PAGE_SIZE))
+                      // Also validating the different direct codecs which might also have issues
+                      // if an
+                      // OOM happens
+                      .withCompressionCodec(codecs[RANDOM.nextInt(codecs.length)])
+                      .build()) {
+                for (int i = 0; i < 100_000; ++i) {
+                  writer.write(generateNext());
+                }
+              }
+            })
+            .isInstanceOf(OutOfMemoryError.class)
+            .hasMessage("Artificial OOM to fail write")
+            .hasNoSuppressedExceptions();
       }
     }
   }

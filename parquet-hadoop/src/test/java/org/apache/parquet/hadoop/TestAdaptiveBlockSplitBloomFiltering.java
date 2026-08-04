@@ -19,46 +19,60 @@
 
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-public class TestAdaptiveBlockSplitBloomFiltering extends TestBloomFiltering {
+public class TestAdaptiveBlockSplitBloomFiltering {
 
-  @BeforeClass
+  private final TestBloomFiltering bloomTests = new TestBloomFiltering();
+
+  @BeforeAll
   public static void createFiles() throws IOException {
-    createFiles(true);
+    TestBloomFiltering.createFiles(true);
   }
 
-  public TestAdaptiveBlockSplitBloomFiltering(Path file, boolean isEncrypted) {
-    super(file, isEncrypted);
+  @AfterAll
+  public static void deleteFiles() throws IOException {
+    TestBloomFiltering.deleteFiles();
   }
 
-  @Test
-  public void testSimpleFiltering() throws IOException {
-    super.testSimpleFiltering();
+  static Stream<Arguments> fileAndEncryption() {
+    return TestBloomFiltering.fileAndEncryption();
   }
 
-  @Test
-  public void testNestedFiltering() throws IOException {
-    super.testNestedFiltering();
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testSimpleFiltering(Path file, boolean isEncrypted) throws IOException {
+    bloomTests.testSimpleFiltering(file, isEncrypted);
   }
 
-  @Test
-  public void checkBloomFilterSize() throws IOException {
-    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties();
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testNestedFiltering(Path file, boolean isEncrypted) throws IOException {
+    bloomTests.testNestedFiltering(file, isEncrypted);
+  }
+
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void checkBloomFilterSize(Path file, boolean isEncrypted) throws IOException {
+    FileDecryptionProperties fileDecryptionProperties = bloomTests.getFileDecryptionProperties(isEncrypted);
     final ParquetReadOptions readOptions = ParquetReadOptions.builder()
         .withDecryption(fileDecryptionProperties)
         .build();
-    InputFile inputFile = HadoopInputFile.fromPath(getFile(), new Configuration());
+    InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
     try (ParquetFileReader fileReader = ParquetFileReader.open(inputFile, readOptions)) {
       fileReader.getRowGroups().forEach(block -> {
         BloomFilterReader bloomFilterReader = fileReader.getBloomFilterDataReader(block);
@@ -72,7 +86,7 @@ public class TestAdaptiveBlockSplitBloomFiltering extends TestBloomFiltering {
               // expectedNVD=8192],
               // [byteSize=16384, expectedNVD=13500], [byteSize=32768, expectedNVD=27000] ......
               // number of distinct values is less than 100, so the byteSize should be less than 2048.
-              assertTrue(bitsetSize <= 2048);
+              assertThat(bitsetSize).isLessThanOrEqualTo(2048);
             });
       });
     }

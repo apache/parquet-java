@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.avro;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.Lists;
 import java.io.File;
@@ -40,7 +39,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestReflectReadWrite {
 
@@ -54,9 +53,9 @@ public class TestReflectReadWrite {
     try (ParquetReader<Pojo> reader = new AvroParquetReader<Pojo>(conf, path)) {
       Pojo object = getPojo();
       for (int i = 0; i < 10; i++) {
-        assertEquals(object, reader.read());
+        assertThat(reader.read()).isEqualTo(object);
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 
@@ -70,9 +69,9 @@ public class TestReflectReadWrite {
     try (ParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(conf, path)) {
       GenericRecord object = getGenericPojoUtf8();
       for (int i = 0; i < 2; i += 1) {
-        assertEquals(object, reader.read());
+        assertThat(reader.read()).isEqualTo(object);
       }
-      assertNull(reader.read());
+      assertThat(reader.read()).isNull();
     }
   }
 

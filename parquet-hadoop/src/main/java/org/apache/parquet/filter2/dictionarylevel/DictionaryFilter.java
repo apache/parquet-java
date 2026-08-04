@@ -52,6 +52,9 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +90,51 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     return columns.get(columnPath);
   }
 
+  private static <T> boolean containsNaNLiteral(ColumnChunkMetaData meta, Set<T> values) {
+    for (T value : values) {
+      if (isNaNLiteral(meta, value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isNaNLiteral(ColumnChunkMetaData meta, Object value) {
+    PrimitiveTypeName type = meta.getPrimitiveType().getPrimitiveTypeName();
+    switch (type) {
+      case FLOAT:
+        return value instanceof Float && Float.isNaN((Float) value);
+      case DOUBLE:
+        return value instanceof Double && Double.isNaN((Double) value);
+      case FIXED_LEN_BYTE_ARRAY:
+        return isFloat16(meta)
+            && value instanceof Binary
+            && ((Binary) value).length() == 2
+            && Float16.isNaN(((Binary) value).get2BytesLittleEndian());
+      default:
+        return false;
+    }
+  }
+
+  private static boolean isFloat16(ColumnChunkMetaData meta) {
+    return meta.getPrimitiveType().getLogicalTypeAnnotation()
+        instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+  }
+
+  // Carries decoded dictionary values plus whether raw entries included any NaN.
+  private static class ExpandedDictionary<T extends Comparable<T>> {
+    private final Set<T> values;
+    private final boolean containsNaN;
+
+    private ExpandedDictionary(Set<T> values, boolean containsNaN) {
+      this.values = values;
+      this.containsNaN = containsNaN;
+    }
+  }
+
   @SuppressWarnings("unchecked")
-  private <T extends Comparable<T>> Set<T> expandDictionary(ColumnChunkMetaData meta) throws IOException {
+  private <T extends Comparable<T>> ExpandedDictionary<T> expandDictionary(ColumnChunkMetaData meta)
+      throws IOException {
     ColumnDescriptor col = new ColumnDescriptor(meta.getPath().toArray(), meta.getPrimitiveType(), -1, -1);
     DictionaryPage page = dictionaries.readDictionaryPage(col);
 
@@ -124,11 +170,16 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     Set<T> dictSet = new HashSet<>();
+    boolean containsNaN = false;
     for (int i = 0; i <= dict.getMaxId(); i++) {
-      dictSet.add((T) dictValueProvider.apply(i));
+      Object value = dictValueProvider.apply(i);
+      dictSet.add((T) value);
+      if (!containsNaN) {
+        containsNaN = isNaNLiteral(meta, value);
+      }
     }
 
-    return dictSet;
+    return new ExpandedDictionary<>(dictSet, containsNaN);
   }
 
   @Override
@@ -149,6 +200,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       // must be non-null because of the above check.
       return BLOCK_CANNOT_MATCH;
     }
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
@@ -157,8 +211,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null && !dictSet.contains(value)) {
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary != null && !dictionary.values.contains(value)) {
         return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
@@ -192,6 +246,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       // the non-null test value, so the predicate is true for all rows
       return BLOCK_MIGHT_MATCH;
     }
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
@@ -200,11 +257,14 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
       boolean mayContainNull = (meta.getStatistics() == null
           || !meta.getStatistics().isNumNullsSet()
           || meta.getStatistics().getNumNulls() > 0);
-      if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value) && !mayContainNull) {
+      if (dictionary != null
+          && dictionary.values.size() == 1
+          && dictionary.values.contains(value)
+          && !mayContainNull) {
         return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
@@ -232,15 +292,18 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     T value = lt.getValue();
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet == null) {
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary == null || dictionary.containsNaN) {
         return BLOCK_MIGHT_MATCH;
       }
 
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
-      for (T entry : dictSet) {
+      for (T entry : dictionary.values) {
         if (comparator.compare(value, entry) > 0) {
           return BLOCK_MIGHT_MATCH;
         }
@@ -272,17 +335,20 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     T value = ltEq.getValue();
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     filterColumn.getColumnPath();
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet == null) {
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary == null || dictionary.containsNaN) {
         return BLOCK_MIGHT_MATCH;
       }
 
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
-      for (T entry : dictSet) {
+      for (T entry : dictionary.values) {
         if (comparator.compare(value, entry) >= 0) {
           return BLOCK_MIGHT_MATCH;
         }
@@ -314,15 +380,18 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     T value = gt.getValue();
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet == null) {
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary == null || dictionary.containsNaN) {
         return BLOCK_MIGHT_MATCH;
       }
 
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
-      for (T entry : dictSet) {
+      for (T entry : dictionary.values) {
         if (comparator.compare(value, entry) < 0) {
           return BLOCK_MIGHT_MATCH;
         }
@@ -354,17 +423,20 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     T value = gtEq.getValue();
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     filterColumn.getColumnPath();
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet == null) {
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary == null || dictionary.containsNaN) {
         return BLOCK_MIGHT_MATCH;
       }
 
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
-      for (T entry : dictSet) {
+      for (T entry : dictionary.values) {
         if (comparator.compare(value, entry) <= 0) {
           return BLOCK_MIGHT_MATCH;
         }
@@ -396,6 +468,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       // must be non-null because of the above check.
       return BLOCK_CANNOT_MATCH;
     }
+    if (containsNaNLiteral(meta, values)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
@@ -404,9 +479,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null) {
-        return drop(dictSet, values);
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary != null) {
+        return drop(dictionary.values, values);
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
@@ -460,6 +535,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       // must be non-null because of the above check.
       return BLOCK_MIGHT_MATCH;
     }
+    if (containsNaNLiteral(meta, values)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     boolean mayContainNull = (meta.getStatistics() == null
         || !meta.getStatistics().isNumNullsSet()
@@ -476,11 +554,11 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null) {
-        if (dictSet.size() > values.size()) return BLOCK_MIGHT_MATCH;
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary != null) {
+        if (dictionary.values.size() > values.size()) return BLOCK_MIGHT_MATCH;
         // ROWS_CANNOT_MATCH if no values in the dictionary that are not also in the set
-        return values.containsAll(dictSet) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+        return values.containsAll(dictionary.values) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
@@ -534,12 +612,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet == null) {
+      ExpandedDictionary<T> dictionary = expandDictionary(meta);
+      if (dictionary == null || dictionary.containsNaN) {
         return BLOCK_MIGHT_MATCH;
       }
 
-      for (T entry : dictSet) {
+      for (T entry : dictionary.values) {
         boolean keep = udp.keep(entry);
         if ((keep && !inverted) || (!keep && inverted)) return BLOCK_MIGHT_MATCH;
       }

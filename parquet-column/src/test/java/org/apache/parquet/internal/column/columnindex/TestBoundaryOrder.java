@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.nio.ByteBuffer;
@@ -32,8 +34,7 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnI
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -250,9 +251,11 @@ public class TestBoundaryOrder {
     RAND_DESCENDING = (ColumnIndexBase<?>) builder.build();
 
     builder = ColumnIndexBuilder.getBuilder(TYPE, Integer.MAX_VALUE);
-    // Add a couple of empty stats so column index will contain null pages only
+    // Add a couple of all-null stats so column index will contain null pages only
     for (int i = 0; i < 10; ++i) {
-      builder.add(Statistics.createStats(TYPE));
+      Statistics<?> nullStats = Statistics.createStats(TYPE);
+      nullStats.incrementNumNulls(10);
+      builder.add(nullStats);
     }
     ALL_NULL_PAGES = (ColumnIndexBase<?>) builder.build();
   }
@@ -274,7 +277,7 @@ public class TestBoundaryOrder {
     IntList expected = stats.measureLinear(validatorOp, comparator);
     IntList actual = stats.measureBinary(actualOp, comparator);
 
-    Assert.assertEquals(msg, expected, actual);
+    assertThat(actual.toIntArray()).isEqualTo(expected.toIntArray());
 
     return stats;
   }

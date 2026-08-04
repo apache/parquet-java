@@ -49,7 +49,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.optional;
 import static org.apache.parquet.schema.Types.repeated;
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.LongStream;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
@@ -74,8 +75,9 @@ import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.Bin
 import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.DoubleIsInteger;
 import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.IntegerIsDivisableWith3;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests of {@link ColumnIndexFilter}
@@ -87,6 +89,7 @@ public class TestColumnIndexFilter {
     private final BoundaryOrder order;
     private List<Boolean> nullPages = new ArrayList<>();
     private List<Long> nullCounts = new ArrayList<>();
+    private List<Long> nanCounts;
     private List<ByteBuffer> minValues = new ArrayList<>();
     private List<ByteBuffer> maxValues = new ArrayList<>();
 
@@ -98,6 +101,7 @@ public class TestColumnIndexFilter {
     CIBuilder addNullPage(long nullCount) {
       nullPages.add(true);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(EMPTY);
       maxValues.add(EMPTY);
       return this;
@@ -106,6 +110,7 @@ public class TestColumnIndexFilter {
     CIBuilder addPage(long nullCount, int min, int max) {
       nullPages.add(false);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(ByteBuffer.wrap(BytesUtils.intToBytes(min)));
       maxValues.add(ByteBuffer.wrap(BytesUtils.intToBytes(max)));
       return this;
@@ -114,6 +119,7 @@ public class TestColumnIndexFilter {
     CIBuilder addPage(long nullCount, String min, String max) {
       nullPages.add(false);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(ByteBuffer.wrap(min.getBytes(UTF_8)));
       maxValues.add(ByteBuffer.wrap(max.getBytes(UTF_8)));
       return this;
@@ -122,13 +128,37 @@ public class TestColumnIndexFilter {
     CIBuilder addPage(long nullCount, double min, double max) {
       nullPages.add(false);
       nullCounts.add(nullCount);
+      addNanCount(0L);
       minValues.add(ByteBuffer.wrap(BytesUtils.longToBytes(Double.doubleToLongBits(min))));
       maxValues.add(ByteBuffer.wrap(BytesUtils.longToBytes(Double.doubleToLongBits(max))));
       return this;
     }
 
+    private void addNanCount(long nanCount) {
+      if (hasFloatingPointNanSemantics()) {
+        if (nanCounts == null) {
+          nanCounts = new ArrayList<>();
+        }
+        nanCounts.add(nanCount);
+      }
+    }
+
+    private boolean hasFloatingPointNanSemantics() {
+      switch (type.getPrimitiveTypeName()) {
+        case FLOAT:
+        case DOUBLE:
+          return true;
+        case FIXED_LEN_BYTE_ARRAY:
+          return type.getLogicalTypeAnnotation()
+              instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+        default:
+          return false;
+      }
+    }
+
     ColumnIndex build() {
-      return ColumnIndexBuilder.build(type, order, nullPages, nullCounts, minValues, maxValues);
+      return ColumnIndexBuilder.build(
+          type, order, nullPages, nullCounts, nanCounts, minValues, maxValues, null, null);
     }
   }
 
@@ -369,13 +399,17 @@ public class TestColumnIndexFilter {
     ranges.iterator().forEachRemaining((long value) -> actualList.add(value));
     LongList expectedList = new LongArrayList();
     LongStream.range(0, rowCount).forEach(expectedList::add);
-    assertArrayEquals(expectedList + " != " + actualList, expectedList.toLongArray(), actualList.toLongArray());
+    assertThat(actualList.toLongArray())
+        .as(expectedList + " != " + actualList)
+        .isEqualTo(expectedList.toLongArray());
   }
 
   private static void assertRows(RowRanges ranges, long... expectedRows) {
     LongList actualList = new LongArrayList();
     ranges.iterator().forEachRemaining((long value) -> actualList.add(value));
-    assertArrayEquals(Arrays.toString(expectedRows) + " != " + actualList, expectedRows, actualList.toLongArray());
+    assertThat(actualList.toLongArray())
+        .as(Arrays.toString(expectedRows) + " != " + actualList)
+        .isEqualTo(expectedRows);
   }
 
   @Test

@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -424,7 +424,9 @@ public class PhoneBookWriter {
         User u = userFromGroup(group);
         users.add(u);
         if (validateRowIndexes) {
-          assertEquals("Row index should be equal to User id", u.id, reader.getCurrentRowIndex());
+          assertThat(reader.getCurrentRowIndex())
+              .as("Row index should be equal to User id")
+              .isEqualTo(u.id);
         }
       }
       return users;

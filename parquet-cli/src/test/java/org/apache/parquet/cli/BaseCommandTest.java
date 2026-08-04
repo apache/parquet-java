@@ -18,15 +18,17 @@
  */
 package org.apache.parquet.cli;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assumptions.assumeThat;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +40,7 @@ public class BaseCommandTest {
   private Logger console = LoggerFactory.getLogger(BaseCommandTest.class);
   private TestCommand command;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     this.command = new TestCommand(this.console);
   }
@@ -47,34 +49,57 @@ public class BaseCommandTest {
   @Test
   public void qualifiedPathTest() throws IOException {
     Path path = this.command.qualifiedPath(FILE_PATH);
-    Assert.assertEquals("test.parquet", path.getName());
+    assertThat(path.getName()).isEqualTo("test.parquet");
   }
 
   @Test
   public void qualifiedURITest() throws IOException {
     URI uri = this.command.qualifiedURI(FILE_PATH);
-    Assert.assertEquals("/var/tmp/test.parquet", uri.getPath());
+    assertThat(uri.getPath()).isEqualTo("/var/tmp/test.parquet");
   }
 
   @Test
   public void qualifiedURIResourceURITest() throws IOException {
     URI uri = this.command.qualifiedURI("resource:/a");
-    Assert.assertEquals("/a", uri.getPath());
+    assertThat(uri.getPath()).isEqualTo("/a");
+  }
+
+  @Test
+  public void hexToBytes() {
+    assertThat(this.command.hexToBytes("0x10")).containsExactly(0x10);
+    assertThat(this.command.hexToBytes("0x0506")).containsExactly(0x05, 0x06);
+    assertThat(this.command.hexToBytes("0506")).containsExactly(0x05, 0x06);
+    assertThat(this.command.hexToBytes("0x010203")).containsExactly(0x01, 0x02, 0x03);
+  }
+
+  @Test
+  public void hexToBytesRejectsInvalidHexString() {
+    assertThatThrownBy(() -> this.command.hexToBytes("0x011"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid hex string: 0x011");
+
+    assertThatThrownBy(() -> this.command.hexToBytes("0xABZZ"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid hex string: 0xABZZ");
+
+    assertThatThrownBy(() -> this.command.hexToBytes("0xabgg"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid hex string: 0xabgg");
   }
 
   // For Windows
   @Test
   public void qualifiedPathTestForWindows() throws IOException {
-    Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
+    assumeThat(System.getProperty("os.name").toLowerCase()).startsWith("win");
     Path path = this.command.qualifiedPath(WIN_FILE_PATH);
-    Assert.assertEquals("test.parquet", path.getName());
+    assertThat(path.getName()).isEqualTo("test.parquet");
   }
 
   @Test
   public void qualifiedURITestForWindows() throws IOException {
-    Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
+    assumeThat(System.getProperty("os.name").toLowerCase()).startsWith("win");
     URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
-    Assert.assertEquals("/C:/Test/Downloads/test.parquet", uri.getPath());
+    assertThat(uri.getPath()).isEqualTo("/C:/Test/Downloads/test.parquet");
   }
 
   class TestCommand extends BaseCommand {

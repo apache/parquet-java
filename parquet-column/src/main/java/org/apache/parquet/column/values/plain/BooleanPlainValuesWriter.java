@@ -19,52 +19,74 @@
 package org.apache.parquet.column.values.plain;
 
 import static org.apache.parquet.column.Encoding.PLAIN;
-import static org.apache.parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 
 /**
- * An implementation of the PLAIN encoding
+ * An implementation of the PLAIN encoding for BOOLEAN values.
+ *
+ * <p>Packs booleans directly into bytes (8 per byte, LSB first) without
+ * going through the generic int-based bit-packing encoder.
  */
 public class BooleanPlainValuesWriter extends ValuesWriter {
 
-  private ByteBitPackingValuesWriter bitPackingWriter;
+  private static final int INITIAL_SLAB_SIZE = 1024;
+  private static final int MAX_CAPACITY = 64 * 1024;
+
+  private final CapacityByteArrayOutputStream baos;
+  private int currentByte;
+  private int bitsWritten;
 
   public BooleanPlainValuesWriter() {
-    bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN);
+    this.baos = new CapacityByteArrayOutputStream(INITIAL_SLAB_SIZE, MAX_CAPACITY);
+    this.currentByte = 0;
+    this.bitsWritten = 0;
   }
 
   @Override
   public final void writeBoolean(boolean v) {
-    bitPackingWriter.writeInteger(v ? 1 : 0);
+    currentByte |= ((v ? 1 : 0) << bitsWritten);
+    bitsWritten++;
+    if (bitsWritten == 8) {
+      baos.write(currentByte);
+      currentByte = 0;
+      bitsWritten = 0;
+    }
   }
 
   @Override
   public long getBufferedSize() {
-    return bitPackingWriter.getBufferedSize();
+    return baos.size() + (bitsWritten > 0 ? 1 : 0);
   }
 
   @Override
   public BytesInput getBytes() {
-    return bitPackingWriter.getBytes();
+    if (bitsWritten > 0) {
+      baos.write(currentByte);
+      currentByte = 0;
+      bitsWritten = 0;
+    }
+    return BytesInput.from(baos);
   }
 
   @Override
   public void reset() {
-    bitPackingWriter.reset();
+    baos.reset();
+    currentByte = 0;
+    bitsWritten = 0;
   }
 
   @Override
   public void close() {
-    bitPackingWriter.close();
+    baos.close();
   }
 
   @Override
   public long getAllocatedSize() {
-    return bitPackingWriter.getAllocatedSize();
+    return baos.getCapacity();
   }
 
   @Override
@@ -74,6 +96,6 @@ public class BooleanPlainValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return bitPackingWriter.memUsageString(prefix);
+    return String.format("%s BooleanPlainValuesWriter %d bytes", prefix, getAllocatedSize());
   }
 }

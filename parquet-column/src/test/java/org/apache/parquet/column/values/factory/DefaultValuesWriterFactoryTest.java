@@ -23,8 +23,11 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Types.required;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Field;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -48,7 +51,7 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWrite
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class DefaultValuesWriterFactoryTest {
 
@@ -791,10 +794,7 @@ public class DefaultValuesWriterFactoryTest {
   }
 
   private void validateWriterType(ValuesWriter writer, Class<? extends ValuesWriter> valuesWriterClass) {
-    assertTrue(
-        "Not instance of " + valuesWriterClass.getName() + ": actual class is "
-            + writer.getClass().getName(),
-        valuesWriterClass.isInstance(writer));
+    assertThat(writer).isInstanceOf(valuesWriterClass);
   }
 
   private void validateFallbackWriter(
@@ -806,5 +806,55 @@ public class DefaultValuesWriterFactoryTest {
     FallbackValuesWriter wr = (FallbackValuesWriter) writer;
     validateWriterType(wr.initialWriter, initialWriterClass);
     validateWriterType(wr.fallBackWriter, fallbackWriterClass);
+  }
+
+  /**
+   * Verifies that two independently built ParquetProperties instances produce ValuesWriters
+   * that use their own respective allocators, not a shared/stale reference from a static singleton.
+   */
+  @Test
+  public void testFactoryIsolation_eachPropertiesUsesOwnAllocator() throws Exception {
+    ByteBufferAllocator allocatorA = new HeapByteBufferAllocator();
+    ByteBufferAllocator allocatorB = new HeapByteBufferAllocator();
+
+    ParquetProperties propsA = ParquetProperties.builder()
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAllocator(allocatorA)
+        .build();
+
+    ParquetProperties propsB = ParquetProperties.builder()
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAllocator(allocatorB)
+        .build();
+
+    ColumnDescriptor col = createColumnDescriptor(PrimitiveTypeName.INT32);
+
+    // Create a writer from propsA's factory
+    ValuesWriter writerA = propsA.getValuesWriterFactory().newValuesWriter(col);
+    // Then create a writer from propsB's factory (this used to overwrite the static singleton)
+    ValuesWriter writerB = propsB.getValuesWriterFactory().newValuesWriter(col);
+    // Now create another writer from propsA's factory
+    ValuesWriter writerA2 = propsA.getValuesWriterFactory().newValuesWriter(col);
+
+    // All writers from propsA should use allocatorA
+    assertThat(getDictionaryWriterAllocator(writerA))
+        .as("writerA should use allocatorA")
+        .isSameAs(allocatorA);
+    assertThat(getDictionaryWriterAllocator(writerA2))
+        .as("writerA2 should use allocatorA (not allocatorB from later initialization)")
+        .isSameAs(allocatorA);
+
+    // Writers from propsB should use allocatorB
+    assertThat(getDictionaryWriterAllocator(writerB))
+        .as("writerB should use allocatorB")
+        .isSameAs(allocatorB);
+  }
+
+  private static ByteBufferAllocator getDictionaryWriterAllocator(ValuesWriter writer) throws Exception {
+    FallbackValuesWriter fallback = (FallbackValuesWriter) writer;
+    DictionaryValuesWriter dictWriter = (DictionaryValuesWriter) fallback.initialWriter;
+    Field allocatorField = DictionaryValuesWriter.class.getDeclaredField("allocator");
+    allocatorField.setAccessible(true);
+    return (ByteBufferAllocator) allocatorField.get(dictWriter);
   }
 }

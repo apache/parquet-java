@@ -18,12 +18,19 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.BROTLI;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4_RAW;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -38,8 +45,7 @@ import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,9 +89,9 @@ public class TestDirectCodecFactory {
       if (codec == LZ4_RAW) {
         // Hadoop codecs support direct decompressors only if the related native libraries are available.
         // This is not the case for our CI so let's rely on LZ4_RAW where the implementation is our own.
-        Assert.assertTrue(
-            String.format("The hadoop codec %s should support direct decompression", codec),
-            directDecompressor instanceof DirectCodecFactory.FullDirectDecompressor);
+        assertThat(directDecompressor)
+            .as(String.format("The hadoop codec %s should support direct decompression", codec))
+            .isInstanceOf(DirectCodecFactory.FullDirectDecompressor.class);
       }
 
       final BytesInput directCompressed;
@@ -151,16 +157,16 @@ public class TestDirectCodecFactory {
           b.position(shift);
           outBuf.position(shift);
           d.decompress(b, (int) compressed.size(), outBuf, size);
-          Assert.assertEquals(
-              "Input buffer position mismatch for codec " + codec,
-              compressed.size() + shift,
-              b.position());
-          Assert.assertEquals(
-              "Output buffer position mismatch for codec " + codec, size + shift, outBuf.position());
+          assertThat(b.position())
+              .as("Input buffer position mismatch for codec " + codec)
+              .isEqualTo(compressed.size() + shift);
+          assertThat(outBuf.position())
+              .as("Output buffer position mismatch for codec " + codec)
+              .isEqualTo(size + shift);
           for (int i = 0; i < size; i++) {
-            Assert.assertTrue(
-                String.format("Data didn't match at %d, while testing codec %s", i, codec),
-                outBuf.get(shift + i) == rawBuf.get(i));
+            assertThat(outBuf.get(shift + i))
+                .as(String.format("Data didn't match at %d, while testing codec %s", i, codec))
+                .isEqualTo(rawBuf.get(i));
           }
         } finally {
           allocator.release(b);
@@ -176,8 +182,9 @@ public class TestDirectCodecFactory {
           b.put(buf);
           b.flip();
           final BytesInput input = d.decompress(BytesInput.from(b), size);
-          Assert.assertArrayEquals(
-              String.format("While testing codec %s", codec), input.toByteArray(), rawArr);
+          assertThat(rawArr)
+              .as(String.format("While testing codec %s", codec))
+              .isEqualTo(input.toByteArray());
         } finally {
           allocator.release(b);
         }
@@ -186,7 +193,9 @@ public class TestDirectCodecFactory {
       case ON_HEAP: {
         final byte[] buf = compressed.toByteArray();
         final BytesInput input = d.decompress(BytesInput.from(buf), size);
-        Assert.assertArrayEquals(String.format("While testing codec %s", codec), input.toByteArray(), rawArr);
+        assertThat(rawArr)
+            .as(String.format("While testing codec %s", codec))
+            .isEqualTo(input.toByteArray());
         break;
       }
     }
@@ -194,19 +203,10 @@ public class TestDirectCodecFactory {
 
   @Test
   public void createDirectFactoryWithHeapAllocatorFails() {
-    String errorMsg =
-        "Test failed, creation of a direct codec factory should have failed when passed a non-direct allocator.";
-    try {
-      CodecFactory.createDirectCodecFactory(new Configuration(), new HeapByteBufferAllocator(), 0);
-      throw new RuntimeException(errorMsg);
-    } catch (IllegalStateException ex) {
-      // indicates successful completion of the test
-      Assert.assertTrue(
-          "Missing expected error message.",
-          ex.getMessage().contains("A DirectCodecFactory requires a direct buffer allocator be provided."));
-    } catch (Exception ex) {
-      throw new RuntimeException(errorMsg + " Failed with the wrong error.");
-    }
+    assertThatThrownBy(() ->
+            CodecFactory.createDirectCodecFactory(new Configuration(), new HeapByteBufferAllocator(), 0))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("A DirectCodecFactory requires a direct buffer allocator be provided.");
   }
 
   @Test
@@ -263,8 +263,8 @@ public class TestDirectCodecFactory {
     CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
     CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.GZIP);
 
-    Assert.assertEquals(codec_2_1, codec_2_2);
-    Assert.assertNotEquals(codec_2_1, codec_5_1);
+    assertThat(codec_2_2).isEqualTo(codec_2_1);
+    assertThat(codec_2_1).isNotEqualTo(codec_5_1);
   }
 
   @Test
@@ -282,7 +282,169 @@ public class TestDirectCodecFactory {
     CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
     CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.ZSTD);
 
-    Assert.assertEquals(codec_2_1, codec_2_2);
-    Assert.assertNotEquals(codec_2_1, codec_5_1);
+    assertThat(codec_2_2).isEqualTo(codec_2_1);
+    assertThat(codec_2_1).isNotEqualTo(codec_5_1);
+  }
+
+  @Test
+  public void leveledCompressorCachedForSameLevel() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor c1 = factory.getCompressor(ZSTD, 3);
+    BytesInputCompressor c2 = factory.getCompressor(ZSTD, 3);
+    assertThat(c2).as("Same codec+level should return the cached instance").isSameAs(c1);
+    factory.release();
+  }
+
+  @Test
+  public void leveledCompressorDiffersByLevel() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor c1 = factory.getCompressor(ZSTD, 1);
+    BytesInputCompressor c3 = factory.getCompressor(ZSTD, 3);
+    assertThat(c3)
+        .as("Different levels should return different compressor instances")
+        .isNotSameAs(c1);
+    factory.release();
+  }
+
+  @Test
+  public void leveledCacheIsolatedFromNoLevelCache() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor noLevel = factory.getCompressor(ZSTD);
+    BytesInputCompressor withLevel = factory.getCompressor(ZSTD, 3);
+    assertThat(withLevel)
+        .as("Level-aware and no-level compressors should use separate cache entries")
+        .isNotSameAs(noLevel);
+    factory.release();
+  }
+
+  @Test
+  public void leveledUncompressedReturnsNoOp() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor comp = factory.getCompressor(UNCOMPRESSED, 5);
+    assertThat(comp).isSameAs(CodecFactory.NO_OP_COMPRESSOR);
+    factory.release();
+  }
+
+  @Test
+  public void leveledSnappyIgnoresLevel() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor comp = factory.getCompressor(SNAPPY, 99);
+    assertThat(comp).isNotNull();
+    assertThat(comp.getCodecName()).isEqualTo(SNAPPY);
+    factory.release();
+  }
+
+  @Test
+  public void leveledGzipInvalidLevelThrows() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    try {
+      assertThatThrownBy(() -> factory.getCompressor(GZIP, 99))
+          .isInstanceOf(BadConfigurationException.class)
+          .hasMessageContaining("99");
+    } finally {
+      factory.release();
+    }
+  }
+
+  @Test
+  public void leveledGzipBoundaryLevelsValid() {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    for (int level : new int[] {-1, 0, 1, 9}) {
+      BytesInputCompressor comp = factory.getCompressor(GZIP, level);
+      assertThat(comp)
+          .as("Compressor should not be null for GZIP level " + level)
+          .isNotNull();
+      assertThat(comp.getCodecName())
+          .as("Codec name should be GZIP for level " + level)
+          .isEqualTo(GZIP);
+    }
+    factory.release();
+  }
+
+  @Test
+  public void leveledZstdRoundTrip() throws IOException {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    byte[] original = "hello parquet per-column compression".getBytes(StandardCharsets.UTF_8);
+    BytesInputDecompressor decompressor = factory.getDecompressor(ZSTD);
+    for (int level : new int[] {-5, 0, 1, 3, 10, 22}) {
+      BytesInput compressed = factory.getCompressor(ZSTD, level).compress(BytesInput.from(original));
+      byte[] result = decompressor.decompress(compressed, original.length).toByteArray();
+      assertThat(result).as("Round-trip failed at ZSTD level " + level).isEqualTo(original);
+    }
+    factory.release();
+  }
+
+  @Test
+  public void leveledGzipRoundTrip() throws IOException {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    byte[] original = "hello parquet per-column compression".getBytes(StandardCharsets.UTF_8);
+    BytesInputDecompressor decompressor = factory.getDecompressor(GZIP);
+    for (int level : new int[] {1, 5, 9}) {
+      BytesInput compressed = factory.getCompressor(GZIP, level).compress(BytesInput.from(original));
+      byte[] result = decompressor.decompress(compressed, original.length).toByteArray();
+      assertThat(result).as("Round-trip failed at GZIP level " + level).isEqualTo(original);
+    }
+    factory.release();
+  }
+
+  @Test
+  public void directFactoryLeveledZstdRoundTrip() throws IOException {
+    CodecFactory heap = new CodecFactory(new Configuration(), pageSize);
+    CodecFactory direct =
+        CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
+    try {
+      assertThat(heap.getCompressor(ZSTD, 3))
+          .as("heap factory should produce a HeapBytesCompressor")
+          .isInstanceOf(CodecFactory.HeapBytesCompressor.class);
+
+      // The direct factory must not fall back to the heap/Hadoop path for leveled ZSTD/SNAPPY.
+      BytesInputCompressor directZstd = direct.getCompressor(ZSTD, 3);
+      assertThat(directZstd)
+          .as("direct factory ZSTD(level) should not fall back to HeapBytesCompressor")
+          .isNotInstanceOf(CodecFactory.HeapBytesCompressor.class);
+      assertThat(directZstd.getCodecName()).isEqualTo(ZSTD);
+      assertThat(directZstd.getClass())
+          .as("leveled ZSTD should use the same direct compressor type as the no-level path")
+          .isEqualTo(direct.getCompressor(ZSTD).getClass());
+
+      BytesInputCompressor directSnappy = direct.getCompressor(SNAPPY, 5);
+      assertThat(directSnappy)
+          .as("direct factory SNAPPY(level) should not fall back to HeapBytesCompressor")
+          .isNotInstanceOf(CodecFactory.HeapBytesCompressor.class);
+      assertThat(directSnappy.getClass())
+          .as("leveled SNAPPY should use the same direct compressor type as the no-level path")
+          .isEqualTo(direct.getCompressor(SNAPPY).getClass());
+
+      // The direct ZSTD level path must compress/decompress correctly at each level.
+      byte[] original = "hello parquet per-column zstd direct compression".getBytes(StandardCharsets.UTF_8);
+      BytesInputDecompressor decompressor = heap.getDecompressor(ZSTD);
+      for (int level : new int[] {1, 3, 22}) {
+        byte[] compressed = direct.getCompressor(ZSTD, level)
+            .compress(BytesInput.from(original))
+            .toByteArray();
+        byte[] result = decompressor
+            .decompress(BytesInput.from(compressed), original.length)
+            .toByteArray();
+        assertThat(result)
+            .as("Direct ZSTD round-trip failed at level " + level)
+            .isEqualTo(original);
+      }
+    } finally {
+      heap.release();
+      direct.release();
+    }
+  }
+
+  @Test
+  public void directFactoryInvalidZstdLevelThrows() {
+    CodecFactory direct =
+        CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
+    try {
+      assertThatThrownBy(() -> direct.getCompressor(ZSTD, 23))
+          .isInstanceOf(BadConfigurationException.class)
+          .hasMessageContaining("23");
+    } finally {
+      direct.release();
+    }
   }
 }

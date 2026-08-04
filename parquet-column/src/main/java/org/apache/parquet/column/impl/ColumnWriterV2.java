@@ -100,7 +100,7 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     Encoding encoding = values.getEncoding();
     pageWriter.writePageV2(
         rowCount,
-        Math.toIntExact(statistics.getNumNulls()),
+        nullCount,
         valueCount,
         repetitionLevels.getBytes(),
         definitionLevels.getBytes(),

@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
@@ -51,7 +53,7 @@ class InternalParquetRecordWriter<T> {
   private long rowGroupSizeThreshold;
   private final int rowGroupRecordCountThreshold;
   private long nextRowGroupSize;
-  private final BytesInputCompressor compressor;
+  private final Function<ColumnDescriptor, BytesInputCompressor> compressorProvider;
   private final boolean validating;
   private final ParquetProperties props;
 
@@ -76,7 +78,6 @@ class InternalParquetRecordWriter<T> {
    * @param schema            the schema of the records
    * @param extraMetaData     extra meta data to write in the footer of the file
    * @param rowGroupSize      the size of a block in the file (this will be approximate)
-   * @param compressor        the codec used to compress
    */
   public InternalParquetRecordWriter(
       ParquetFileWriter parquetFileWriter,
@@ -84,7 +85,7 @@ class InternalParquetRecordWriter<T> {
       MessageType schema,
       Map<String, String> extraMetaData,
       long rowGroupSize,
-      BytesInputCompressor compressor,
+      Function<ColumnDescriptor, BytesInputCompressor> compressorProvider,
       boolean validating,
       ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
@@ -94,7 +95,7 @@ class InternalParquetRecordWriter<T> {
     this.rowGroupSizeThreshold = rowGroupSize;
     this.rowGroupRecordCountThreshold = props.getRowGroupRowCountLimit();
     this.nextRowGroupSize = rowGroupSizeThreshold;
-    this.compressor = compressor;
+    this.compressorProvider = compressorProvider;
     this.validating = validating;
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
@@ -108,14 +109,15 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(
-        compressor,
-        schema,
-        props.getAllocator(),
-        props.getColumnIndexTruncateLength(),
-        props.getPageWriteChecksumEnabled(),
-        fileEncryptor,
-        rowGroupOrdinal);
+    ColumnChunkPageWriteStore columnChunkPageWriteStore = ColumnChunkPageWriteStore.builder()
+        .withCompressorProvider(compressorProvider)
+        .withSchema(schema)
+        .withAllocator(props.getAllocator())
+        .withColumnIndexTruncateLength(props.getColumnIndexTruncateLength())
+        .withPageWriteChecksumEnabled(props.getPageWriteChecksumEnabled())
+        .withFileEncryptor(fileEncryptor)
+        .withRowGroupOrdinal(rowGroupOrdinal)
+        .build();
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 
@@ -152,6 +154,9 @@ class InternalParquetRecordWriter<T> {
   }
 
   public void write(T value) throws IOException, InterruptedException {
+    if (aborted) {
+      throw new IOException("Writer has been aborted due to a previous error and cannot accept further writes");
+    }
     try {
       writeSupport.write(value);
       ++recordCount;
@@ -171,7 +176,9 @@ class InternalParquetRecordWriter<T> {
 
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= rowGroupRecordCountThreshold) {
-      LOG.debug("record count reaches threshold: flushing {} records to disk.", recordCount);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("record count reaches threshold: flushing {} records to disk.", recordCount);
+      }
       flushRowGroupToStore();
       initStore();
       recordCountForNextMemCheck = min(
@@ -185,7 +192,9 @@ class InternalParquetRecordWriter<T> {
       // flush the row group if it is within ~2 records of the limit
       // it is much better to be slightly under size than to be over at all
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
-        LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
+        }
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(
@@ -201,7 +210,9 @@ class InternalParquetRecordWriter<T> {
             recordCount
                 + props.getMaxRowCountForPageSizeCheck() // will not look more than max records ahead
             );
-        LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
+        }
       }
     }
   }

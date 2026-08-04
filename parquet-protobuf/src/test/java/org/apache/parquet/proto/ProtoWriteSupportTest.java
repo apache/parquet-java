@@ -18,26 +18,11 @@
  */
 package org.apache.parquet.proto;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.data.Offset.offset;
 
-import com.google.protobuf.BoolValue;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.BytesValue;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.DoubleValue;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.FloatValue;
-import com.google.protobuf.Int32Value;
-import com.google.protobuf.Int64Value;
-import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
-import com.google.protobuf.StringValue;
-import com.google.protobuf.Timestamp;
-import com.google.protobuf.UInt32Value;
-import com.google.protobuf.UInt64Value;
-import com.google.protobuf.Value;
+import com.google.protobuf.*;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -51,7 +36,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
@@ -990,8 +975,8 @@ public class ProtoWriteSupportTest {
     Mockito.verifyNoMoreInteractions(readConsumerMock);
   }
 
-  @Test(expected = UnsupportedOperationException.class)
-  public void testMessageWithExtensions() throws Exception {
+  @Test
+  public void testMessageWithExtensions() {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.Vehicle> instance =
         createReadConsumerInstance(TestProtobuf.Vehicle.class, readConsumerMock);
@@ -1002,7 +987,9 @@ public class ProtoWriteSupportTest {
     // will cause an exception.
     msg.setExtension(TestProtobuf.Airplane.wingSpan, 50);
 
-    instance.write(msg.build());
+    assertThatThrownBy(() -> instance.write(msg.build()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Cannot convert Protobuf message with extension field(s)");
   }
 
   @Test
@@ -1050,17 +1037,18 @@ public class ProtoWriteSupportTest {
 
     // First message
     TestProto3.OneOfTestMessage gotBackFirst = gotBack.get(0);
-    assertEquals(gotBackFirst.getSecond(), 99);
-    assertEquals(gotBackFirst.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.SECOND);
+    assertThat(gotBackFirst.getSecond()).isEqualTo(99);
+    assertThat(gotBackFirst.getTheOneofCase()).isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.SECOND);
 
     // Second message with nothing set
     TestProto3.OneOfTestMessage gotBackSecond = gotBack.get(1);
-    assertEquals(gotBackSecond.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET);
+    assertThat(gotBackSecond.getTheOneofCase())
+        .isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET);
 
     // Third message with opposite field set
     TestProto3.OneOfTestMessage gotBackThird = gotBack.get(2);
-    assertEquals(gotBackThird.getFirst(), 42);
-    assertEquals(gotBackThird.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
+    assertThat(gotBackThird.getFirst()).isEqualTo(42);
+    assertThat(gotBackThird.getTheOneofCase()).isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
   }
 
   @Test
@@ -1307,9 +1295,9 @@ public class ProtoWriteSupportTest {
         TestUtils.readMessages(tmpFilePath, TestProto3.DateTimeMessage.class);
 
     TestProto3.DateTimeMessage gotBackFirst = gotBack.get(0);
-    assertEquals(timestamp, gotBackFirst.getTimestamp());
-    assertEquals(protoDate, gotBackFirst.getDate());
-    assertEquals(protoTime, gotBackFirst.getTime());
+    assertThat(gotBackFirst.getTimestamp()).isEqualTo(timestamp);
+    assertThat(gotBackFirst.getDate()).isEqualTo(protoDate);
+    assertThat(gotBackFirst.getTime()).isEqualTo(protoTime);
   }
 
   @Test
@@ -1359,17 +1347,49 @@ public class ProtoWriteSupportTest {
     List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
 
     TestProto3.WrappedMessage gotBackFirst = gotBack.get(0);
-    assertEquals(0.577, gotBackFirst.getWrappedDouble().getValue(), 1e-5);
-    assertEquals(3.1415f, gotBackFirst.getWrappedFloat().getValue(), 1e-5f);
-    assertEquals(1_000_000_000L * 4, gotBackFirst.getWrappedInt64().getValue());
-    assertEquals(1_000_000_000L * 9, gotBackFirst.getWrappedUInt64().getValue());
-    assertEquals(1_000_000 * 3, gotBackFirst.getWrappedInt32().getValue());
-    assertEquals(1_000_000 * 8, gotBackFirst.getWrappedUInt32().getValue());
-    assertEquals(BoolValue.of(true), gotBackFirst.getWrappedBool());
-    assertEquals("Good Will Hunting", gotBackFirst.getWrappedString().getValue());
-    assertEquals(
-        ByteString.copyFrom("someText", "UTF-8"),
-        gotBackFirst.getWrappedBytes().getValue());
+    assertThat(gotBackFirst.getWrappedDouble().getValue()).isCloseTo(0.577, offset(1e-5));
+    assertThat(gotBackFirst.getWrappedFloat().getValue()).isCloseTo(3.1415f, offset(1e-5f));
+    assertThat(gotBackFirst.getWrappedInt64().getValue()).isEqualTo(1_000_000_000L * 4);
+    assertThat(gotBackFirst.getWrappedUInt64().getValue()).isEqualTo(1_000_000_000L * 9);
+    assertThat(gotBackFirst.getWrappedInt32().getValue()).isEqualTo(1_000_000 * 3);
+    assertThat(gotBackFirst.getWrappedUInt32().getValue()).isEqualTo(1_000_000 * 8);
+    assertThat(gotBackFirst.getWrappedBool()).isEqualTo(BoolValue.of(true));
+    assertThat(gotBackFirst.getWrappedString().getValue()).isEqualTo("Good Will Hunting");
+    assertThat(gotBackFirst.getWrappedBytes().getValue()).isEqualTo(ByteString.copyFrom("someText", "UTF-8"));
+  }
+
+  @Test
+  public void testProto3WrappedMessageUnwrappedRoundTripUint32() throws Exception {
+
+    TestProto3.WrappedMessage msgMin = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE))
+        .build();
+    assertThat(TextFormat.shortDebugString(msgMin)).isEqualTo("wrappedUInt32 { value: 2147483648 }");
+
+    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE))
+        .build();
+    assertThat(TextFormat.shortDebugString(msgMax)).isEqualTo("wrappedUInt32 { value: 2147483647 }");
+
+    TestProto3.WrappedMessage msgMinusOne = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(-1))
+        .build();
+    assertThat(TextFormat.shortDebugString(msgMinusOne)).isEqualTo("wrappedUInt32 { value: 4294967295 }");
+
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.WrappedMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .build();
+    writer.write(msgMin);
+    writer.write(msgMax);
+    writer.write(msgMinusOne);
+    writer.close();
+    List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
+
+    assertThat(gotBack.get(0)).isEqualTo(msgMin);
+    assertThat(gotBack.get(1)).isEqualTo(msgMax);
+    assertThat(gotBack.get(2)).isEqualTo(msgMinusOne);
   }
 
   @Test
@@ -1390,18 +1410,18 @@ public class ProtoWriteSupportTest {
     List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
 
     TestProto3.WrappedMessage gotBackFirst = gotBack.get(0);
-    assertFalse(gotBackFirst.hasWrappedDouble());
-    assertEquals(3.1415f, gotBackFirst.getWrappedFloat().getValue(), 1e-5f);
+    assertThat(gotBackFirst.hasWrappedDouble()).isFalse();
+    assertThat(gotBackFirst.getWrappedFloat().getValue()).isCloseTo(3.1415f, offset(1e-5f));
 
     // double-check that nulls are honored
-    assertTrue(gotBackFirst.hasWrappedFloat());
-    assertFalse(gotBackFirst.hasWrappedInt64());
-    assertFalse(gotBackFirst.hasWrappedUInt64());
-    assertTrue(gotBackFirst.hasWrappedInt32());
-    assertFalse(gotBackFirst.hasWrappedUInt32());
-    assertEquals(0, gotBackFirst.getWrappedUInt32().getValue());
-    assertFalse(gotBackFirst.hasWrappedBool());
-    assertEquals("Good Will Hunting", gotBackFirst.getWrappedString().getValue());
-    assertFalse(gotBackFirst.hasWrappedBytes());
+    assertThat(gotBackFirst.hasWrappedFloat()).isTrue();
+    assertThat(gotBackFirst.hasWrappedInt64()).isFalse();
+    assertThat(gotBackFirst.hasWrappedUInt64()).isFalse();
+    assertThat(gotBackFirst.hasWrappedInt32()).isTrue();
+    assertThat(gotBackFirst.hasWrappedUInt32()).isFalse();
+    assertThat(gotBackFirst.getWrappedUInt32().getValue()).isEqualTo(0);
+    assertThat(gotBackFirst.hasWrappedBool()).isFalse();
+    assertThat(gotBackFirst.getWrappedString().getValue()).isEqualTo("Good Will Hunting");
+    assertThat(gotBackFirst.hasWrappedBytes()).isFalse();
   }
 }

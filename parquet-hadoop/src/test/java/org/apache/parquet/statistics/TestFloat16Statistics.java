@@ -20,14 +20,12 @@ package org.apache.parquet.statistics;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -42,14 +40,12 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestFloat16Statistics {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private Binary[] valuesInAscendingOrder = {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc}), // -Infinity
@@ -132,11 +128,11 @@ public class TestFloat16Statistics {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7e})
   }; // NaN
 
-  // Float16Builder: Drop min/max values in case of NaN as the sorting order of values is undefined
+  // Float16Statistics: NaN values are counted but excluded from min/max
   private Binary[] valuesWithNaNStatsMinMax = {
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00})
-  }; // +0
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0}), // -2.0
+    Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b})
+  }; // 65504.0
 
   @Test
   public void testFloat16StatisticsMultipleCases() throws IOException {
@@ -184,8 +180,8 @@ public class TestFloat16Statistics {
             reader.getFooter().getBlocks().get(0).getColumns().get(0);
         Statistics<?> statistics = column.getStatistics();
 
-        assertArrayEquals(expectedValues.get(i)[0].getBytes(), statistics.getMinBytes());
-        assertArrayEquals(expectedValues.get(i)[1].getBytes(), statistics.getMaxBytes());
+        assertThat(statistics.getMinBytes()).isEqualTo(expectedValues.get(i)[0].getBytes());
+        assertThat(statistics.getMaxBytes()).isEqualTo(expectedValues.get(i)[1].getBytes());
       }
     }
   }
@@ -239,16 +235,14 @@ public class TestFloat16Statistics {
               reader.getFooter().getBlocks().get(0).getColumns().get(0);
           Statistics<?> statistics = column.getStatistics();
 
-          assertArrayEquals(valuesInAscendingOrder[minIndex].getBytes(), statistics.getMinBytes());
-          assertArrayEquals(valuesInAscendingOrder[maxIndex].getBytes(), statistics.getMaxBytes());
+          assertThat(statistics.getMinBytes()).isEqualTo(valuesInAscendingOrder[minIndex].getBytes());
+          assertThat(statistics.getMaxBytes()).isEqualTo(valuesInAscendingOrder[maxIndex].getBytes());
         }
       }
     }
   }
 
-  private Path newTempPath() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.getAbsolutePath());
+  private Path newTempPath() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 }

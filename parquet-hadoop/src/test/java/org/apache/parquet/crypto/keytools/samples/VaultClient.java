@@ -133,7 +133,7 @@ public class VaultClient implements KmsClient {
   private String getContentFromTransitEngine(String endPoint, String jPayload, String masterKeyIdentifier) {
     LOG.info("masterKeyIdentifier: " + masterKeyIdentifier);
 
-    final RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE, jPayload);
+    final RequestBody requestBody = RequestBody.create(jPayload, JSON_MEDIA_TYPE);
     Request request = new Request.Builder()
         .url(endPoint + masterKeyIdentifier)
         .header(tokenHeader, kmsToken)
