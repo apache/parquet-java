@@ -2288,13 +2288,23 @@ public class TestParquetMetadataConverter {
 
     // Without path_in_schema
     FileMetaData footer = converter.toParquetMetadata(1, origMetaData);
-    assertThat(
-        footer.getRow_groups().get(0).getColumns().get(0).getMeta_data().isSetPath_in_schema()).isFalse();
+    assertThat(footer.getRow_groups()
+            .get(0)
+            .getColumns()
+            .get(0)
+            .getMeta_data()
+            .isSetPath_in_schema())
+        .isFalse();
 
     // With path_in_schema
     converter = new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, true);
     footer = converter.toParquetMetadata(1, origMetaData);
-    assertThat(
-        footer.getRow_groups().get(0).getColumns().get(0).getMeta_data().isSetPath_in_schema()).isTrue();
+    assertThat(footer.getRow_groups()
+            .get(0)
+            .getColumns()
+            .get(0)
+            .getMeta_data()
+            .isSetPath_in_schema())
+        .isTrue();
   }
 }
