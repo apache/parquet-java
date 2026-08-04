@@ -596,7 +596,6 @@ public class TestParquetMetadataConverter {
       columnChunk.setMeta_data(new ColumnMetaData(
           INT32,
           Collections.<org.apache.parquet.format.Encoding>emptyList(),
-          Collections.<String>emptyList(),
           UNCOMPRESSED,
           10l,
           size * 2,
@@ -933,7 +932,8 @@ public class TestParquetMetadataConverter {
     byte[] max = generateRandomString("b", maxLen).getBytes();
     stats.updateStats(Binary.fromConstantByteArray(min));
     stats.updateStats(Binary.fromConstantByteArray(max));
-    ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter(truncateLen);
+    ParquetMetadataConverter metadataConverter =
+        new ParquetMetadataConverter(truncateLen, ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
     org.apache.parquet.format.Statistics formatStats = metadataConverter.toParquetStatistics(stats);
 
     if (minLen + maxLen >= ParquetMetadataConverter.MAX_STATS_SIZE) {
@@ -2278,5 +2278,33 @@ public class TestParquetMetadataConverter {
     ColumnIndex roundTrip = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
     assertThat(roundTrip).isNotNull();
     assertThat(roundTrip.getNanCounts()).containsExactly(1L, 0L, 0L);
+  }
+
+  @Test
+  public void testSkipPathInSchema() throws IOException {
+    ParquetMetadata origMetaData = createParquetMetaData(null, Encoding.PLAIN);
+    ParquetMetadataConverter converter =
+        new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, false);
+
+    // Without path_in_schema
+    FileMetaData footer = converter.toParquetMetadata(1, origMetaData);
+    assertThat(footer.getRow_groups()
+            .get(0)
+            .getColumns()
+            .get(0)
+            .getMeta_data()
+            .isSetPath_in_schema())
+        .isFalse();
+
+    // With path_in_schema
+    converter = new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, true);
+    footer = converter.toParquetMetadata(1, origMetaData);
+    assertThat(footer.getRow_groups()
+            .get(0)
+            .getColumns()
+            .get(0)
+            .getMeta_data()
+            .isSetPath_in_schema())
+        .isTrue();
   }
 }
