@@ -24,8 +24,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.parquet.Strings;
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.schema.MessageType;
 
@@ -41,11 +43,22 @@ public final class FileMetaData implements Serializable {
     ENCRYPTED_FOOTER
   }
 
+  private static final class WriterVersionResult {
+    private final ParsedVersion version;
+    private final VersionParseException versionParseException;
+
+    static final WriterVersionResult MISSING = new WriterVersionResult(null, null);
+
+    WriterVersionResult(ParsedVersion version, VersionParseException versionParseException) {
+      this.version = version;
+      this.versionParseException = versionParseException;
+    }
+  }
+
   private final MessageType schema;
   private final Map<String, String> keyValueMetaData;
   private final String createdBy;
-  private transient volatile ParsedVersion writerVersion;
-  private transient volatile boolean writerVersionParsed;
+  private transient volatile WriterVersionResult writerVersionResult;
   private final InternalFileDecryptor fileDecryptor;
   private final EncryptionType encryptionType;
 
@@ -124,23 +137,38 @@ public final class FileMetaData implements Serializable {
   }
 
   /**
-   * Returns the parsed writer version from the {@code createdBy} string, or {@code null}
-   * if {@code createdBy} is null, empty, or unparseable. The result is computed lazily
-   * and cached. Callers that need to distinguish missing vs. unparseable can check
-   * {@link #getCreatedBy()}.
+   * Returns the parsed writer version from the {@code createdBy} string. The result is
+   * computed lazily and cached.
+   *
+   * @return the parsed version, or {@code null} if {@code createdBy} is null or empty
+   * @throws VersionParseException if {@code createdBy} is present but cannot be parsed
    */
   @JsonIgnore
-  public ParsedVersion getWriterVersion() {
-    if (!writerVersionParsed) {
-      if (createdBy != null && !createdBy.isEmpty()) {
-        try {
-          writerVersion = VersionParser.parse(createdBy);
-        } catch (RuntimeException | VersionParser.VersionParseException e) {
-          // leave writerVersion as null — parse failed
+  public ParsedVersion getWriterVersion() throws VersionParseException {
+    WriterVersionResult result = writerVersionResult;
+    if (result == null) {
+      synchronized (this) {
+        result = writerVersionResult;
+        if (result == null) {
+          result = parseCreatedBy();
+          writerVersionResult = result;
         }
       }
-      writerVersionParsed = true;
     }
-    return writerVersion;
+    if (result.versionParseException != null) {
+      throw result.versionParseException;
+    }
+    return result.version;
+  }
+
+  private WriterVersionResult parseCreatedBy() {
+    if (Strings.isNullOrEmpty(createdBy)) {
+      return WriterVersionResult.MISSING;
+    }
+    try {
+      return new WriterVersionResult(VersionParser.parse(createdBy), null);
+    } catch (VersionParseException e) {
+      return new WriterVersionResult(null, e);
+    }
   }
 }

@@ -19,8 +19,10 @@
 package org.apache.parquet.hadoop.metadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -32,7 +34,7 @@ class FileMetaDataTest {
       "test", new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT32, "id"));
 
   @Test
-  void validCreatedByIsParsed() {
+  void validCreatedByIsParsed() throws Exception {
     FileMetaData meta =
         new FileMetaData(SCHEMA, Collections.emptyMap(), "parquet-mr version 1.12.0 (build abc123)");
 
@@ -43,7 +45,7 @@ class FileMetaDataTest {
   }
 
   @Test
-  void nullCreatedByReturnsNullWriterVersion() {
+  void nullCreatedByReturnsNullWriterVersion() throws Exception {
     FileMetaData meta = new FileMetaData(SCHEMA, Collections.emptyMap(), null);
 
     assertThat(meta.getWriterVersion()).isNull();
@@ -51,21 +53,21 @@ class FileMetaDataTest {
   }
 
   @Test
-  void emptyCreatedByReturnsNullWriterVersion() {
+  void emptyCreatedByReturnsNullWriterVersion() throws Exception {
     FileMetaData meta = new FileMetaData(SCHEMA, Collections.emptyMap(), "");
 
     assertThat(meta.getWriterVersion()).isNull();
   }
 
   @Test
-  void unparseableCreatedByReturnsNullWriterVersion() {
+  void unparseableCreatedByThrowsVersionParseException() {
     FileMetaData meta = new FileMetaData(SCHEMA, Collections.emptyMap(), "no-version-here");
 
-    assertThat(meta.getWriterVersion()).isNull();
+    assertThatThrownBy(meta::getWriterVersion).isInstanceOf(VersionParseException.class);
   }
 
   @Test
-  void versionWithoutBuildHash() {
+  void versionWithoutBuildHash() throws Exception {
     FileMetaData meta = new FileMetaData(SCHEMA, Collections.emptyMap(), "parquet-mr version 1.8.0");
 
     assertThat(meta.getWriterVersion()).isNotNull();
@@ -74,4 +76,10 @@ class FileMetaDataTest {
     assertThat(meta.getWriterVersion().appBuildHash).isNull();
   }
 
+  @Test
+  void writerVersionIsCached() throws Exception {
+    FileMetaData meta = new FileMetaData(SCHEMA, Collections.emptyMap(), "parquet-mr version 1.12.0 (build abc)");
+
+    assertThat(meta.getWriterVersion()).isSameAs(meta.getWriterVersion());
+  }
 }
