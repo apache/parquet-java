@@ -47,6 +47,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
@@ -945,7 +947,25 @@ public class ParquetMetadataConverter {
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
       String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
-    // create stats object based on the column type
+    return fromParquetStatisticsInternal(
+        CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()),
+        formatStats,
+        type,
+        typeSortOrder);
+  }
+
+  // Visible for testing
+  static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+      ParsedVersion writerVersion, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
+    return fromParquetStatisticsInternal(
+        CorruptStatistics.shouldIgnoreStatistics(writerVersion, type.getPrimitiveTypeName()),
+        formatStats,
+        type,
+        typeSortOrder);
+  }
+
+  private static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+      boolean shouldIgnoreStatistics, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
         org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
 
@@ -962,13 +982,7 @@ public class ParquetMetadataConverter {
         boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
         boolean maxEqualsMin = isSet ? Arrays.equals(formatStats.getMin(), formatStats.getMax()) : false;
         boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
-        // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
-        // The sort order is checked to avoid returning min/max stats that are not
-        // valid with the type's sort order. In previous releases, all stats were
-        // aggregated using a signed byte-wise ordering, which isn't valid for all the
-        // types (e.g. strings, decimals etc.).
-        if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName())
-            && (sortOrdersMatch || maxEqualsMin)) {
+        if (!shouldIgnoreStatistics && (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
             statsBuilder.withMin(formatStats.min.array());
             statsBuilder.withMax(formatStats.max.array());
@@ -990,6 +1004,12 @@ public class ParquetMetadataConverter {
       String createdBy, Statistics statistics, PrimitiveType type) {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
+  }
+
+  public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
+      ParsedVersion writerVersion, Statistics statistics, PrimitiveType type) {
+    SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
+    return fromParquetStatisticsInternal(writerVersion, statistics, type, expectedOrder);
   }
 
   GeospatialStatistics toParquetGeospatialStatistics(
@@ -1837,6 +1857,24 @@ public class ParquetMetadataConverter {
         fromParquetStatistics(metaData.geospatial_statistics, type));
   }
 
+  public ColumnChunkMetaData buildColumnChunkMetaData(
+      ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, ParsedVersion writerVersion) {
+    return ColumnChunkMetaData.get(
+        columnPath,
+        type,
+        fromFormatCodec(metaData.codec),
+        convertEncodingStats(metaData.getEncoding_stats()),
+        fromFormatEncodings(metaData.encodings),
+        fromParquetStatistics(writerVersion, metaData.statistics, type),
+        metaData.data_page_offset,
+        metaData.dictionary_page_offset,
+        metaData.num_values,
+        metaData.total_compressed_size,
+        metaData.total_uncompressed_size,
+        fromParquetSizeStatistics(metaData.size_statistics, type),
+        fromParquetStatistics(metaData.geospatial_statistics, type));
+  }
+
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     return fromParquetMetadata(parquetMetadata, null, false);
   }
@@ -1854,6 +1892,17 @@ public class ParquetMetadataConverter {
       Map<RowGroup, Long> rowGroupToRowIndexOffsetMap)
       throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        buildFileMetaData(parquetMetadata, messageType, encryptedFooter, fileDecryptor);
+    String createdBy = fileMetaData.getCreatedBy();
+    ParsedVersion writerVersion = null;
+    boolean useWriterVersion = false;
+    try {
+      writerVersion = fileMetaData.getWriterVersion();
+      useWriterVersion = true;
+    } catch (VersionParseException e) {
+      // Fall back to String-based path which logs the parse error with full context
+    }
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
 
@@ -1930,13 +1979,12 @@ public class ParquetMetadataConverter {
             }
           }
 
-          String createdBy = parquetMetadata.getCreated_by();
           if (!lazyMetadataDecryption) { // full column metadata (with stats) is available
-            column = buildColumnChunkMetaData(
-                metaData,
-                columnPath,
-                messageType.getType(columnPath.toArray()).asPrimitiveType(),
-                createdBy);
+            PrimitiveType primitiveType =
+                messageType.getType(columnPath.toArray()).asPrimitiveType();
+            column = useWriterVersion
+                ? buildColumnChunkMetaData(metaData, columnPath, primitiveType, writerVersion)
+                : buildColumnChunkMetaData(metaData, columnPath, primitiveType, createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             if (metaData.isSetBloom_filter_offset()) {
               column.setBloomFilterOffset(metaData.getBloom_filter_offset());
@@ -1975,6 +2023,15 @@ public class ParquetMetadataConverter {
         blocks.add(blockMetaData);
       }
     }
+    return new ParquetMetadata(fileMetaData, blocks);
+  }
+
+  private static org.apache.parquet.hadoop.metadata.FileMetaData buildFileMetaData(
+      FileMetaData parquetMetadata,
+      MessageType messageType,
+      boolean encryptedFooter,
+      InternalFileDecryptor fileDecryptor) {
+    String createdBy = parquetMetadata.getCreated_by();
     Map<String, String> keyValueMetaData = new HashMap<String, String>();
     List<KeyValue> key_value_metadata = parquetMetadata.getKey_value_metadata();
     if (key_value_metadata != null) {
@@ -1990,10 +2047,8 @@ public class ParquetMetadataConverter {
     } else {
       encryptionType = EncryptionType.UNENCRYPTED;
     }
-    return new ParquetMetadata(
-        new org.apache.parquet.hadoop.metadata.FileMetaData(
-            messageType, keyValueMetaData, parquetMetadata.getCreated_by(), encryptionType, fileDecryptor),
-        blocks);
+    return new org.apache.parquet.hadoop.metadata.FileMetaData(
+        messageType, keyValueMetaData, createdBy, encryptionType, fileDecryptor);
   }
 
   private static IndexReference toColumnIndexReference(ColumnChunk columnChunk) {
