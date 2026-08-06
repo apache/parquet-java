@@ -122,18 +122,25 @@ public class AesCipher {
 
   /**
    * Builds the module AAD for a self-reference (FILE self-reference payload). Unlike pages, which
-   * are identified by a 2-byte page ordinal, a self-reference is identified by an 8-byte
-   * little-endian self-reference ordinal that follows the row group and column ordinals. The column
-   * ordinal is that of the {@code inline} column whose encryption the self-reference inherits.
+   * are identified by a 2-byte page ordinal, a self-reference is identified by the 8-byte
+   * little-endian offset of its stored representation within the file, following the row group and
+   * column ordinals. The column ordinal is that of the {@code inline} column whose encryption the
+   * self-reference inherits.
+   *
+   * <p>The offset is the value the writer records in the {@code offset} field of the {@code FILE}
+   * group. Because it is carried in the data, a reader can rebuild this AAD from the value alone,
+   * without counting the self-references that precede it and therefore without decoding the pages
+   * it skips.
    *
    * @param fileAAD the file AAD (AAD prefix concatenated with the AAD file-unique bytes)
    * @param rowGroupOrdinal the row group ordinal of the self-reference
    * @param columnOrdinal the ordinal of the {@code inline} column the self-reference inherits from
-   * @param selfReferenceOrdinal the zero-based self-reference ordinal within the column chunk
+   * @param selfReferenceOffset the offset of the stored representation within the file, i.e. the
+   *     value of the self-reference's {@code offset} field
    * @return the module AAD bytes
    */
   public static byte[] createSelfReferenceAAD(
-      byte[] fileAAD, int rowGroupOrdinal, int columnOrdinal, long selfReferenceOrdinal) {
+      byte[] fileAAD, int rowGroupOrdinal, int columnOrdinal, long selfReferenceOffset) {
 
     byte[] typeOrdinalBytes = new byte[1];
     typeOrdinalBytes[0] = ModuleType.SelfReference.getValue();
@@ -158,13 +165,13 @@ public class AesCipher {
     }
     byte[] columnOrdinalBytes = shortToBytesLE(shortColumnOrdinal);
 
-    if (selfReferenceOrdinal < 0) {
-      throw new IllegalArgumentException("Wrong self-reference ordinal: " + selfReferenceOrdinal);
+    if (selfReferenceOffset < 0) {
+      throw new IllegalArgumentException("Wrong self-reference offset: " + selfReferenceOffset);
     }
-    byte[] selfReferenceOrdinalBytes = longToBytesLE(selfReferenceOrdinal);
+    byte[] selfReferenceOffsetBytes = longToBytesLE(selfReferenceOffset);
 
     return concatByteArrays(
-        fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, selfReferenceOrdinalBytes);
+        fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, selfReferenceOffsetBytes);
   }
 
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)

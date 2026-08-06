@@ -1302,8 +1302,8 @@ public abstract class LogicalTypeAnnotation {
     public static final String INLINE_FIELD = "inline";
 
     /** All recognized field names in a FILE-annotated group. All fields are optional. */
-    public static final Set<String> FIELD_NAMES = Set.of(
-        URI_FIELD, OFFSET_FIELD, SIZE_FIELD, CONTENT_TYPE_FIELD, CHECKSUM_FIELD, INLINE_FIELD);
+    public static final Set<String> FIELD_NAMES =
+        Set.of(URI_FIELD, OFFSET_FIELD, SIZE_FIELD, CONTENT_TYPE_FIELD, CHECKSUM_FIELD, INLINE_FIELD);
 
     private FileLogicalTypeAnnotation() {}
 

@@ -68,6 +68,13 @@ public class ParquetProperties {
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
 
+  /**
+   * Payload size at or below which a {@code FILE} value is stored inline rather than as a
+   * self-reference. Defaults to the page size: a payload that would fill a page on its own is
+   * better kept out of the column chunk.
+   */
+  public static final int DEFAULT_FILE_SELF_REFERENCE_THRESHOLD = DEFAULT_PAGE_SIZE;
+
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
   /**
@@ -138,6 +145,7 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> sizeStatistics;
   private final ColumnProperty<CompressionCodecName> columnCodecs;
   private final ColumnProperty<Integer> columnCompressionLevels;
+  private final int fileSelfReferenceThreshold;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -172,6 +180,7 @@ public class ParquetProperties {
     this.sizeStatistics = builder.sizeStatistics.build();
     this.columnCodecs = builder.columnCodecs.build();
     this.columnCompressionLevels = builder.columnCompressionLevels.build();
+    this.fileSelfReferenceThreshold = builder.fileSelfReferenceThreshold;
   }
 
   public static Builder builder() {
@@ -345,6 +354,14 @@ public class ParquetProperties {
     return maxBloomFilterBytes;
   }
 
+  /**
+   * @return the payload size at or below which a {@code FILE} value is stored inline rather than as
+   *     a self-reference
+   */
+  public int getFileSelfReferenceThreshold() {
+    return fileSelfReferenceThreshold;
+  }
+
   public boolean getAdaptiveBloomFilterEnabled(ColumnDescriptor column) {
     return adaptiveBloomFilterEnabled.getValue(column);
   }
@@ -415,7 +432,8 @@ public class ParquetProperties {
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
-        + "Size statistics enabled: " + sizeStatisticsEnabled;
+        + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
+        + "FILE self-reference threshold is: " + getFileSelfReferenceThreshold();
     String perColumn = "";
     if (!columnCodecs.toString().equals(Objects.toString(columnCodecs.getDefaultValue()))) {
       perColumn = "Per-column codecs: " + columnCodecs;
@@ -460,6 +478,7 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
     private final ColumnProperty.Builder<CompressionCodecName> columnCodecs;
     private final ColumnProperty.Builder<Integer> columnCompressionLevels;
+    private int fileSelfReferenceThreshold = DEFAULT_FILE_SELF_REFERENCE_THRESHOLD;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -511,6 +530,7 @@ public class ParquetProperties {
       this.sizeStatisticsEnabled = toCopy.sizeStatisticsEnabled;
       this.columnCodecs = ColumnProperty.builder(toCopy.columnCodecs);
       this.columnCompressionLevels = ColumnProperty.builder(toCopy.columnCompressionLevels);
+      this.fileSelfReferenceThreshold = toCopy.fileSelfReferenceThreshold;
     }
 
     /**
@@ -654,6 +674,27 @@ public class ParquetProperties {
       Preconditions.checkArgument(
           length > 0, "Invalid statistics min/max truncate length (negative or zero) : %s", length);
       this.statisticsTruncateLength = length;
+      return this;
+    }
+
+    /**
+     * Set the payload size at or below which a {@code FILE} value is stored inline rather than as a
+     * self-reference.
+     *
+     * <p>Small payloads are cheaper to keep in the column chunk, where they are read as part of the
+     * ordinary page stream. Large ones are better stored out of line as self-references, so that
+     * reading the surrounding columns does not pull the payload bytes along with them. Set to 0 to
+     * store every payload as a self-reference, or to {@link Integer#MAX_VALUE} to always inline.
+     *
+     * @param fileSelfReferenceThreshold the inline size limit in bytes; must not be negative
+     * @return this builder for method chaining
+     */
+    public Builder withFileSelfReferenceThreshold(int fileSelfReferenceThreshold) {
+      Preconditions.checkArgument(
+          fileSelfReferenceThreshold >= 0,
+          "Invalid FILE self-reference threshold (negative): %s",
+          fileSelfReferenceThreshold);
+      this.fileSelfReferenceThreshold = fileSelfReferenceThreshold;
       return this;
     }
 

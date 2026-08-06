@@ -1080,24 +1080,30 @@ public class ParquetFileReader implements Closeable {
    * chunk's codec, returning the resolved bytes. See {@link SelfReferenceStorage} and the Parquet
    * format's "FILE" logical type specification.
    *
+   * <p>Everything needed to resolve the value comes from the value itself plus the {@code inline}
+   * column chunk's metadata, so a self-reference can be read without decoding the pages that
+   * precede it.
+   *
    * @param inlineColumn the {@link ColumnChunkMetaData} of the {@code inline} column chunk whose
    *     compression and encryption the self-reference inherits
    * @param offset the self-reference {@code offset} field (start of the stored representation)
    * @param size the self-reference {@code size} field (byte length of the stored representation)
-   * @param selfReferenceOrdinal the zero-based self-reference ordinal within the column chunk
    * @return the resolved (logical) bytes of the self-reference
    * @throws IOException if reading or resolving fails
    */
-  public BytesInput resolveSelfReference(
-      ColumnChunkMetaData inlineColumn, long offset, long size, long selfReferenceOrdinal) throws IOException {
+  public BytesInput resolveSelfReference(ColumnChunkMetaData inlineColumn, long offset, long size)
+      throws IOException {
     if (offset < 0) {
       throw new IllegalArgumentException("Self-reference offset must not be negative: " + offset);
     }
     if (size < 0) {
       throw new IllegalArgumentException("Self-reference size must not be negative: " + size);
     }
+    if (size > SelfReferenceStorage.MAX_ENCRYPTED_MODULE_SIZE) {
+      throw new IllegalArgumentException("Self-reference size exceeds the maximum readable range: " + size);
+    }
 
-    byte[] stored = new byte[Math.toIntExact(size)];
+    byte[] stored = new byte[(int) size];
     f.seek(offset);
     f.readFully(stored);
 
@@ -1127,7 +1133,7 @@ public class ParquetFileReader implements Closeable {
         fileAAD,
         inlineColumn.getRowGroupOrdinal(),
         columnOrdinal,
-        selfReferenceOrdinal);
+        offset);
   }
 
   private List<BlockMetaData> filterRowGroups(List<BlockMetaData> blocks) throws IOException {

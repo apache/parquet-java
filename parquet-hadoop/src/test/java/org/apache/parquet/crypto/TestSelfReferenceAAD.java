@@ -45,13 +45,12 @@ public class TestSelfReferenceAAD {
   public void testSelfReferenceAADLayout() {
     int rowGroupOrdinal = 3;
     int columnOrdinal = 7;
-    long selfReferenceOrdinal = 0x0102030405060708L;
+    long selfReferenceOffset = 0x0102030405060708L;
 
-    byte[] aad =
-        AesCipher.createSelfReferenceAAD(FILE_AAD, rowGroupOrdinal, columnOrdinal, selfReferenceOrdinal);
+    byte[] aad = AesCipher.createSelfReferenceAAD(FILE_AAD, rowGroupOrdinal, columnOrdinal, selfReferenceOffset);
 
     // Layout: fileAAD | moduleType(1) | rowGroupOrdinal(2 LE) | columnOrdinal(2 LE) |
-    //         selfReferenceOrdinal(8 LE)
+    //         selfReferenceOffset(8 LE)
     assertThat(aad.length).isEqualTo(FILE_AAD.length + 1 + 2 + 2 + 8);
 
     ByteBuffer buf = ByteBuffer.wrap(aad).order(ByteOrder.LITTLE_ENDIAN);
@@ -61,21 +60,30 @@ public class TestSelfReferenceAAD {
     assertThat(buf.get()).isEqualTo((byte) 10); // module type
     assertThat(buf.getShort()).isEqualTo((short) rowGroupOrdinal);
     assertThat(buf.getShort()).isEqualTo((short) columnOrdinal);
-    // The self-reference ordinal is an 8-byte little-endian integer, unlike the 2-byte page ordinal.
-    assertThat(buf.getLong()).isEqualTo(selfReferenceOrdinal);
+    // The self-reference is identified by the 8-byte file offset of its stored representation,
+    // unlike the 2-byte page ordinal.
+    assertThat(buf.getLong()).isEqualTo(selfReferenceOffset);
   }
 
   @Test
-  public void testSelfReferenceAADSupportsLargeOrdinal() {
-    // A self-reference ordinal can exceed the 2-byte page-ordinal range, so it must be 8 bytes.
-    long largeOrdinal = ((long) Short.MAX_VALUE) + 1000L;
-    byte[] aad = AesCipher.createSelfReferenceAAD(FILE_AAD, 0, 0, largeOrdinal);
+  public void testSelfReferenceAADSupportsLargeOffset() {
+    // File offsets routinely exceed the 2-byte page-ordinal range, so the field must be 8 bytes.
+    long largeOffset = 5L * 1024 * 1024 * 1024;
+    byte[] aad = AesCipher.createSelfReferenceAAD(FILE_AAD, 0, 0, largeOffset);
     ByteBuffer buf = ByteBuffer.wrap(aad, FILE_AAD.length + 1 + 2 + 2, 8).order(ByteOrder.LITTLE_ENDIAN);
-    assertThat(buf.getLong()).isEqualTo(largeOrdinal);
+    assertThat(buf.getLong()).isEqualTo(largeOffset);
   }
 
   @Test
-  public void testSelfReferenceAADRejectsNegativeOrdinals() {
+  public void testDistinctOffsetsProduceDistinctAADs() {
+    // Two self-references in the same column chunk are distinguished solely by their offsets.
+    byte[] first = AesCipher.createSelfReferenceAAD(FILE_AAD, 1, 2, 1000L);
+    byte[] second = AesCipher.createSelfReferenceAAD(FILE_AAD, 1, 2, 1064L);
+    assertThat(first).isNotEqualTo(second);
+  }
+
+  @Test
+  public void testSelfReferenceAADRejectsNegativeValues() {
     assertThatThrownBy(() -> AesCipher.createSelfReferenceAAD(FILE_AAD, -1, 0, 0))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> AesCipher.createSelfReferenceAAD(FILE_AAD, 0, -1, 0))
@@ -87,7 +95,7 @@ public class TestSelfReferenceAAD {
   @Test
   public void testSelfReferenceAADDiffersFromPageAAD() {
     // A self-reference and a data page in the same column must not share an AAD, because the module
-    // type byte differs (and the ordinal width differs).
+    // type byte differs (and the trailing field differs in width and meaning).
     byte[] selfRefAAD = AesCipher.createSelfReferenceAAD(FILE_AAD, 1, 2, 0);
     byte[] dataPageAAD = AesCipher.createModuleAAD(FILE_AAD, ModuleType.DataPage, 1, 2, 0);
     assertThat(selfRefAAD).isNotEqualTo(dataPageAAD);

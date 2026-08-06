@@ -2307,10 +2307,10 @@ public class TestParquetMetadataConverter {
 
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
+    assertThat(schema).isEqualTo(expected);
     LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
-    assertTrue(logicalType instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
-    assertEquals(LogicalTypeAnnotation.fileType(), logicalType);
+    assertThat(logicalType).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(logicalType).isEqualTo(LogicalTypeAnnotation.fileType());
   }
 
   @Test
@@ -2328,8 +2328,8 @@ public class TestParquetMetadataConverter {
 
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
+    assertThat(schema).isEqualTo(expected);
     LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
-    assertTrue(logicalType instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation);
+    assertThat(logicalType).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
   }
 }

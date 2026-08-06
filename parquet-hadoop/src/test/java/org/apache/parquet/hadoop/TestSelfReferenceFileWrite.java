@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -77,8 +78,7 @@ public class TestSelfReferenceFileWrite {
 
   private static final ColumnDescriptor ID_COLUMN = SCHEMA.getColumnDescription(new String[] {"id"});
   // The inline column is the storage-inheritance reference point for the FILE group.
-  private static final ColumnDescriptor INLINE_COLUMN =
-      SCHEMA.getColumnDescription(new String[] {"file", "inline"});
+  private static final ColumnDescriptor INLINE_COLUMN = SCHEMA.getColumnDescription(new String[] {"file", "inline"});
 
   private static final CompressionCodecName CODEC = CompressionCodecName.SNAPPY;
 
@@ -122,8 +122,7 @@ public class TestSelfReferenceFileWrite {
           BytesInput.from(payloads[i]),
           codecFactory.getCompressor(CODEC),
           null, // unencrypted file
-          inlineColumnOrdinal,
-          i));
+          inlineColumnOrdinal));
     }
 
     // Write a normal data page for the id column in the same block.
@@ -167,11 +166,18 @@ public class TestSelfReferenceFileWrite {
       }
 
       // Each self-reference resolves back to its original payload, inheriting the inline column's
-      // codec.
+      // codec. Only the offset and size recorded in the value are needed -- no per-value counter, so
+      // resolution does not depend on having read the preceding values.
       for (int i = 0; i < payloads.length; i++) {
         SelfReferenceStorage.StoredRange range = ranges.get(i);
-        BytesInput resolved =
-            reader.resolveSelfReference(inlineMeta, range.getOffset(), range.getSize(), i);
+        BytesInput resolved = reader.resolveSelfReference(inlineMeta, range.getOffset(), range.getSize());
+        assertThat(resolved.toByteArray()).isEqualTo(payloads[i]);
+      }
+
+      // Resolution order is irrelevant, which is the point of keying on the offset.
+      for (int i = payloads.length - 1; i >= 0; i--) {
+        SelfReferenceStorage.StoredRange range = ranges.get(i);
+        BytesInput resolved = reader.resolveSelfReference(inlineMeta, range.getOffset(), range.getSize());
         assertThat(resolved.toByteArray()).isEqualTo(payloads[i]);
       }
     }

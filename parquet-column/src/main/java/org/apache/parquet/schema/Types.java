@@ -883,7 +883,9 @@ public class Types {
       // `uri` is not required to declare `inline`: `offset`/`size` there describe an external
       // ranged reference, and although the per-value `uri` could be left unset in some rows, the
       // schema is treated as an external-reference schema and the `inline` requirement is not
-      // imposed.
+      // imposed. A writer must therefore not emit a self-reference under such a schema, since there
+      // would be no `inline` column chunk to inherit compression and encryption from; that is
+      // enforced on the write path rather than here.
       Preconditions.checkArgument(
           !(hasOffset && !hasUri) || hasInline,
           "FILE type group '%s' declares field 'offset' but neither 'uri' nor 'inline'; a schema "

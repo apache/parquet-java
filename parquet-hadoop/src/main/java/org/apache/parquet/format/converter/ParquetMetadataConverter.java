@@ -111,7 +111,6 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Uncompressed;
-import org.apache.parquet.format.FileType;
 import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;

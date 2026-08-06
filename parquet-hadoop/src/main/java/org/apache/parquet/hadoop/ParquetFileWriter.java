@@ -622,6 +622,11 @@ public class ParquetFileWriter implements AutoCloseable {
    * {@code Self-Reference} module type. The row group ordinal is that of the block currently being
    * written.
    *
+   * <p>Payloads are written while a block is open but before its column chunks are flushed, so they
+   * land in a contiguous run ahead of the row group's chunks. This keeps each column chunk
+   * contiguous on disk, which the read path relies on when coalescing adjacent chunks into a single
+   * range read.
+   *
    * <p>This must be called while a block is open (after {@link #startBlock(long)} and before
    * {@link #endBlock()}) so that the returned offset falls within the file body.
    *
@@ -630,7 +635,6 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param pageBlockEncryptor the data-module encryptor of the {@code inline} column chunk, or
    *     {@code null} if the column chunk is not encrypted
    * @param columnOrdinal the ordinal of the {@code inline} column the self-reference inherits from
-   * @param selfReferenceOrdinal the zero-based self-reference ordinal within the column chunk
    * @return the offset and size of the stored representation
    * @throws IOException if writing or compression fails
    */
@@ -638,22 +642,14 @@ public class ParquetFileWriter implements AutoCloseable {
       BytesInput resolvedBytes,
       CodecFactory.BytesCompressor compressor,
       BlockCipher.Encryptor pageBlockEncryptor,
-      int columnOrdinal,
-      long selfReferenceOrdinal)
+      int columnOrdinal)
       throws IOException {
     return withAbortOnFailure(() -> {
       // The block currently being written will be assigned ordinal blocks.size() in endBlock().
       int rowGroupOrdinal = blocks.size();
       byte[] fileAAD = (null == fileEncryptor) ? null : fileEncryptor.getFileAAD();
       return SelfReferenceStorage.write(
-          resolvedBytes,
-          compressor,
-          pageBlockEncryptor,
-          fileAAD,
-          rowGroupOrdinal,
-          columnOrdinal,
-          selfReferenceOrdinal,
-          out);
+          resolvedBytes, compressor, pageBlockEncryptor, fileAAD, rowGroupOrdinal, columnOrdinal, out);
     });
   }
 
