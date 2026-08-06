@@ -2062,6 +2062,8 @@ public class ParquetMetadataConverter {
           }
           primitiveBuilder.columnOrder(columnOrder);
         }
+        // Gracefully handle unsupported logical type combinations on the read path.
+        primitiveBuilder.dropUnsupportedLogicalTypeCombinations();
         childBuilder = primitiveBuilder;
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));

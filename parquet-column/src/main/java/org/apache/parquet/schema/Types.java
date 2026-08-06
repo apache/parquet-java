@@ -344,6 +344,9 @@ public class Types {
     private int precision = NOT_SET;
     private int scale = NOT_SET;
     private ColumnOrder columnOrder;
+    // When true and an unsupported logical/physical type combination is encountered, the
+    // annotation is dropped and the column order is forced to "undefined" so stats are ignored.
+    private boolean dropUnsupportedLogicalTypeCombinations = false;
 
     private BasePrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
@@ -426,8 +429,40 @@ public class Types {
       return self();
     }
 
+    /**
+     * When set, an unsupported combination results in the logical type annotation being dropped
+     * rather than throwing. The associated statistics are also forcefully ignored by setting the
+     * column order to {@link ColumnOrderName#UNDEFINED}.
+     *
+     * @return this builder for method chaining
+     */
+    public THIS dropUnsupportedLogicalTypeCombinations() {
+      this.dropUnsupportedLogicalTypeCombinations = true;
+      return self();
+    }
+
     @Override
     protected PrimitiveType build(String name) {
+      try {
+        return validateAndBuild(name);
+      } catch (IllegalStateException e) {
+        boolean canDrop = dropUnsupportedLogicalTypeCombinations
+            && !(logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation);
+        if (!canDrop) {
+          throw e;
+        }
+
+        LOGGER.warn(
+            "Dropping unsupported logical type annotation {} on physical type {}: {}",
+            logicalTypeAnnotation,
+            primitiveType,
+            e.getMessage());
+        return new PrimitiveType(
+            repetition, primitiveType, length, name, null, null, id, ColumnOrder.undefined());
+      }
+    }
+
+    private PrimitiveType validateAndBuild(String name) {
       if (length == 0 && logicalTypeAnnotation instanceof LogicalTypeAnnotation.UUIDLogicalTypeAnnotation) {
         length = LogicalTypeAnnotation.UUIDLogicalTypeAnnotation.BYTES;
       }
