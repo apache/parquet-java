@@ -98,7 +98,9 @@ import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -1475,5 +1477,159 @@ public class TestParquetFileWriter {
 
   private Path existingTempPath() throws IOException {
     return new Path(Files.createTempFile(tempDir, "test", ".tmp").toUri());
+  }
+
+  @Test
+  public void testNoFlushWhenEndFailsWithIOException() throws Exception {
+    assertEndFailureDoesNotFlush(new IOException("injected end() failure"));
+  }
+
+  @Test
+  public void testNoFlushWhenEndFailsWithRuntimeException() throws Exception {
+    // Validate that non-IOException failures are also caught and mark the writer aborted.
+    assertEndFailureDoesNotFlush(new RuntimeException("injected end() failure"));
+  }
+
+  private void assertEndFailureDoesNotFlush(Throwable toThrow) throws Exception {
+    Path path = newTempPath();
+    Configuration conf = getTestConfiguration(false);
+
+    FaultInjectingOutputFile out = new FaultInjectingOutputFile(HadoopOutputFile.fromPath(path, conf));
+    ParquetFileWriter w = new ParquetFileWriter(
+        out,
+        SCHEMA,
+        ParquetFileWriter.Mode.CREATE,
+        DEFAULT_BLOCK_SIZE,
+        MAX_PADDING_SIZE_DEFAULT,
+        null,
+        ParquetProperties.builder().withAllocator(allocator).build());
+
+    // Write one minimal, complete block.
+    w.start();
+    w.startBlock(1);
+    w.startColumn(C1, 1, CODEC);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 1, CODEC);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+
+    // Arm the fault so serialization inside end() throws, then reset the flush counter so we only
+    // measure flushes that happen during the failing end()/close().
+    out.flushCount = 0;
+    out.toThrow = toThrow;
+
+    try {
+      w.end(new HashMap<String, String>());
+      throw new AssertionError("Expected the injected failure from end()");
+    } catch (IOException | RuntimeException expected) {
+      // A RuntimeException propagates unwrapped; an IOException is wrapped by serializeFooter
+      // (Util.writeFileMetaData -> "can not write"), so unwrap to the injected root cause.
+      Throwable root = expected;
+      while (root.getCause() != null) {
+        root = root.getCause();
+      }
+      assertThat(root.getMessage()).isEqualTo("injected end() failure");
+    } finally {
+      // end()'s abort path intentionally leaves the underlying stream unclosed (so the incomplete
+      // file is never committed); close it here to make the resource contract explicit. Swallow any
+      // close failure so it can't mask the flushCount assertion below.
+      try {
+        out.stream.close();
+      } catch (IOException ignored) {
+      }
+    }
+
+    // The writer is marked aborted on failure before close() runs, so close() skips the flush and
+    // the incomplete stream is never flushed to storage.
+    assertThat(out.flushCount)
+        .as("end() must not flush the output stream when it fails")
+        .isEqualTo(0);
+  }
+
+  /**
+   * OutputFile whose stream throws a preset Throwable on write (simulating a mid-write failure) and
+   * which counts flush() calls, so a test can assert nothing was flushed on the failure path.
+   */
+  private static class FaultInjectingOutputFile implements OutputFile {
+    private final OutputFile delegate;
+    volatile Throwable toThrow = null; // when non-null, the next write(s) throw it
+    int flushCount = 0;
+    PositionOutputStream stream; // the most recently created wrapping stream
+
+    FaultInjectingOutputFile(OutputFile delegate) {
+      this.delegate = delegate;
+    }
+
+    private void failIfArmed() throws IOException {
+      Throwable t = toThrow;
+      if (t == null) {
+        return;
+      }
+      if (t instanceof IOException) {
+        throw (IOException) t;
+      }
+      if (t instanceof RuntimeException) {
+        throw (RuntimeException) t;
+      }
+      if (t instanceof Error) {
+        throw (Error) t;
+      }
+      throw new IOException(t);
+    }
+
+    private PositionOutputStream wrap(PositionOutputStream out) {
+      stream = new PositionOutputStream() {
+        @Override
+        public long getPos() throws IOException {
+          return out.getPos();
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+          failIfArmed();
+          out.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+          failIfArmed();
+          out.write(b, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+          flushCount++;
+          out.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+          out.close();
+        }
+      };
+      return stream;
+    }
+
+    @Override
+    public PositionOutputStream create(long blockSizeHint) throws IOException {
+      return wrap(delegate.create(blockSizeHint));
+    }
+
+    @Override
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
+      return wrap(delegate.createOrOverwrite(blockSizeHint));
+    }
+
+    @Override
+    public boolean supportsBlockSize() {
+      return delegate.supportsBlockSize();
+    }
+
+    @Override
+    public long defaultBlockSize() {
+      return delegate.defaultBlockSize();
+    }
   }
 }
