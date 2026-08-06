@@ -178,10 +178,41 @@
 
 --------------------------------------------------------------------------------
 
-This product depends on Jackson and includes it in this binary artifact.
-Jackson is a high-performance JSON processor.
+This product bundles Jackson (jackson-core, jackson-databind, and
+jackson-annotations) in this binary artifact. Jackson is a high-performance
+JSON processor.
 
-Copyright: 2007-2015 Tatu Saloranta and other contributors
-Home page: http://jackson.codehaus.org/
-License: http://www.apache.org/licenses/LICENSE-2.0.txt
+Copyright: 2007-2024 Tatu Saloranta and other Jackson contributors
+Home page: https://github.com/FasterXML/jackson
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+jackson-core bundles a shaded copy of FastDoubleParser and a copy of the
+Schubfach number-writing code, both of which are available under the MIT
+License:
+
+  FastDoubleParser
+  Copyright (c) 2023 Werner Randelshofer, Switzerland
+  https://github.com/wrandelshofer/FastDoubleParser
+
+  Schubfach
+  Copyright (c) 2018-2020 Raffaello Giulietti
+  https://github.com/c4f7fcce9cb06515/Schubfach
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
 
