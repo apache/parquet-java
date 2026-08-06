@@ -2134,6 +2134,72 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testFloatingPointColumnsDefaultToIeee754TotalOrder() throws IOException {
+    MessageType schema = parseMessageType("message test {"
+        + "  required float float_col;"
+        + "  required double double_col;"
+        + "  required fixed_len_byte_array(2) float16_col (FLOAT16);"
+        + "  required int32 int_col;"
+        + "}");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    // Floating-point columns serialize the new order; the int column keeps type-defined order.
+    List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
+    assertThat(columnOrders).hasSize(4);
+    assertThat(columnOrders.get(0).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(1).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(2).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(3).isSetTYPE_ORDER()).isTrue();
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    assertThat(resultSchema.getType("float_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(resultSchema.getType("double_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(resultSchema.getType("float16_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(resultSchema.getType("int_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+  }
+
+  @Test
+  public void testUndefinedFloatingPointColumnOrderReadsAsTypeDefined() throws IOException {
+    // A footer without column orders predates IEEE_754_TOTAL_ORDER: floating-point columns must be
+    // read back as type-defined order (the pre-existing default) so that legacy stats are not
+    // reinterpreted under IEEE 754 total order.
+    MessageType schema = parseMessageType("message test {"
+        + "  required float float_col;"
+        + "  required double double_col;"
+        + "  required fixed_len_byte_array(2) float16_col (FLOAT16);"
+        + "}");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    // Simulate a legacy footer that carries no column orders at all.
+    formatMetadata.unsetColumn_orders();
+    assertThat(formatMetadata.isSetColumn_orders()).isFalse();
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    assertThat(resultSchema.getType("float_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+    assertThat(resultSchema.getType("double_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+    assertThat(resultSchema.getType("float16_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+  }
+
+  @Test
   public void testNestedColumnOrdersUseLeafOrder() throws IOException {
     MessageType schema = Types.buildMessage()
         .requiredGroup()
@@ -2159,7 +2225,9 @@ public class TestParquetMetadataConverter {
     List<ColumnDescriptor> columns = resultSchema.getColumns();
     assertThat(columns).hasSize(3);
     assertThat(columns.get(0).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
-    assertThat(columns.get(1).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.typeDefined());
+    // Column "b" is a DOUBLE built without an explicit column order, so it picks up the
+    // floating-point default of IEEE 754 total order.
+    assertThat(columns.get(1).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
     assertThat(columns.get(2).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
   }
 

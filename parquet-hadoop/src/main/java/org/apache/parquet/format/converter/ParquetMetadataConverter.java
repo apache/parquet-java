@@ -2061,6 +2061,13 @@ public class ParquetMetadataConverter {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
           primitiveBuilder.columnOrder(columnOrder);
+        } else if (schemaElement.type == Type.FLOAT
+            || schemaElement.type == Type.DOUBLE
+            || (schemaElement.isSetLogicalType() && schemaElement.logicalType.isSetFLOAT16())) {
+          // A footer without column orders predates IEEE_754_TOTAL_ORDER, so a floating-point column
+          // here must not inherit the (IEEE 754 total order) construction-time default: its stats, if
+          // any, were written under the legacy type-defined order and must be read under it.
+          primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
         }
         childBuilder = primitiveBuilder;
       } else {

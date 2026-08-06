@@ -706,15 +706,20 @@ public class DictionaryFilterTest {
     return List.of(
         nanColumn(
             "double_nan_field",
-            Types.required(PrimitiveTypeName.DOUBLE).named("double_nan_field")),
+            Types.required(PrimitiveTypeName.DOUBLE)
+                .columnOrder(ColumnOrder.typeDefined())
+                .named("double_nan_field")),
         nanColumn(
             "float_nan_field",
-            Types.required(PrimitiveTypeName.FLOAT).named("float_nan_field")),
+            Types.required(PrimitiveTypeName.FLOAT)
+                .columnOrder(ColumnOrder.typeDefined())
+                .named("float_nan_field")),
         nanColumn(
             "float16_nan_field",
             Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
                 .length(2)
                 .as(LogicalTypeAnnotation.float16Type())
+                .columnOrder(ColumnOrder.typeDefined())
                 .named("float16_nan_field")));
   }
 

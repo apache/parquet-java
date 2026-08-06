@@ -37,6 +37,7 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
@@ -156,6 +157,7 @@ public class TestFloat16Statistics {
           .required(FIXED_LEN_BYTE_ARRAY)
           .as(float16Type())
           .length(2)
+          .columnOrder(ColumnOrder.typeDefined())
           .named("col_float16")
           .named("msg");
 
@@ -213,6 +215,7 @@ public class TestFloat16Statistics {
             .required(FIXED_LEN_BYTE_ARRAY)
             .as(float16Type())
             .length(2)
+            .columnOrder(ColumnOrder.typeDefined())
             .named("col_float16")
             .named("msg");
 

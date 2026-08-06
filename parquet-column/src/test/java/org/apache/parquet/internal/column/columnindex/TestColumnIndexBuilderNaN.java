@@ -44,19 +44,22 @@ import org.junit.jupiter.api.Test;
  */
 public class TestColumnIndexBuilderNaN {
 
-  private static final PrimitiveType FLOAT_TYPE =
-      Types.required(PrimitiveTypeName.FLOAT).named("test_float");
+  private static final PrimitiveType FLOAT_TYPE = Types.required(PrimitiveTypeName.FLOAT)
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("test_float");
   private static final PrimitiveType FLOAT_IEEE754_TYPE = Types.required(PrimitiveTypeName.FLOAT)
       .columnOrder(ColumnOrder.ieee754TotalOrder())
       .named("test_float_ieee754");
-  private static final PrimitiveType DOUBLE_TYPE =
-      Types.required(PrimitiveTypeName.DOUBLE).named("test_double");
+  private static final PrimitiveType DOUBLE_TYPE = Types.required(PrimitiveTypeName.DOUBLE)
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("test_double");
   private static final PrimitiveType DOUBLE_IEEE754_TYPE = Types.required(PrimitiveTypeName.DOUBLE)
       .columnOrder(ColumnOrder.ieee754TotalOrder())
       .named("test_double_ieee754");
   private static final PrimitiveType FLOAT16_TYPE = Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
       .length(2)
       .as(LogicalTypeAnnotation.float16Type())
+      .columnOrder(ColumnOrder.typeDefined())
       .named("test_float16");
   private static final PrimitiveType FLOAT16_IEEE754_TYPE = Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
       .length(2)

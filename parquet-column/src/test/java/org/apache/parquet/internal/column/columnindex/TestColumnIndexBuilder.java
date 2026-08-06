@@ -69,6 +69,7 @@ import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Operators.LongColumn;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
@@ -1030,7 +1031,8 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testBuildDoubleZeroNaN() {
-    PrimitiveType type = Types.required(DOUBLE).named("test_double");
+    PrimitiveType type =
+        Types.required(DOUBLE).columnOrder(ColumnOrder.typeDefined()).named("test_double");
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, -1.0, -0.0));
@@ -1183,7 +1185,8 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testBuildFloatZeroNaN() {
-    PrimitiveType type = Types.required(FLOAT).named("test_float");
+    PrimitiveType type =
+        Types.required(FLOAT).columnOrder(ColumnOrder.typeDefined()).named("test_float");
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, -1.0f, -0.0f));
