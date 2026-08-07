@@ -38,6 +38,9 @@ new_development_version="$release_version-SNAPSHOT"
 
 tag="apache-parquet-$release_version-rc$2"
 
+# Ensure the inlined parquet.thrift matches an official parquet-format release.
+"$(dirname "$0")/check-parquet-thrift-release.sh"
+
 ./mvnw release:clean
 ./mvnw release:prepare -DskipTests -Darguments=-DskipTests -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
 
