@@ -823,9 +823,122 @@ public class Types {
     @Override
     protected GroupType build(String name) {
       if (newLogicalTypeSet) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+          validateFileTypeFields(name, fields);
+        }
         return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
       } else {
         return new GroupType(repetition, name, getOriginalType(), fields, id);
+      }
+    }
+
+    private static void validateFileTypeFields(String name, List<Type> fields) {
+      boolean hasUri = false;
+      boolean hasOffset = false;
+      boolean hasSize = false;
+      boolean hasInline = false;
+      for (Type field : fields) {
+        String fieldName = field.getName();
+        if (!LogicalTypeAnnotation.FileLogicalTypeAnnotation.FIELD_NAMES.contains(fieldName)) {
+          throw new IllegalArgumentException("FILE type group '" + name + "' contains unrecognized field '"
+              + fieldName + "'. Valid fields are: "
+              + String.join(", ", LogicalTypeAnnotation.FileLogicalTypeAnnotation.FIELD_NAMES));
+        }
+        Preconditions.checkArgument(
+            field.isPrimitive() && field.getRepetition() == Type.Repetition.OPTIONAL,
+            "FILE type field '%s' must be an optional primitive in group '%s'",
+            fieldName,
+            name);
+        validateFileTypeFieldPhysicalType(name, field.asPrimitiveType());
+        if (LogicalTypeAnnotation.FileLogicalTypeAnnotation.URI_FIELD.equals(fieldName)) {
+          hasUri = true;
+        } else if (LogicalTypeAnnotation.FileLogicalTypeAnnotation.OFFSET_FIELD.equals(fieldName)) {
+          hasOffset = true;
+        } else if (LogicalTypeAnnotation.FileLogicalTypeAnnotation.SIZE_FIELD.equals(fieldName)) {
+          hasSize = true;
+        } else if (LogicalTypeAnnotation.FileLogicalTypeAnnotation.INLINE_FIELD.equals(fieldName)) {
+          hasInline = true;
+        }
+      }
+      // The spec requires `size` to be set whenever `offset` is set. A group that declares
+      // `offset` but not `size` can never produce a valid value, so reject it at schema-build
+      // time.
+      Preconditions.checkArgument(
+          !hasOffset || hasSize,
+          "FILE type group '%s' declares field 'offset' but not 'size'; 'size' is required whenever 'offset' is set",
+          name);
+      // Per the spec resolution table, a value resolves to bytes only if `inline`, `uri`, or
+      // `offset` is set; `size` on its own never resolves. A group that declares none of `inline`,
+      // `uri`, or `offset` can therefore never produce a resolvable value, so reject it at
+      // schema-build time.
+      Preconditions.checkArgument(
+          hasInline || hasUri || hasOffset,
+          "FILE type group '%s' must declare at least one of 'inline', 'uri', or 'offset'; a value "
+              + "resolves to bytes only via one of these, so a group declaring none of them can "
+              + "never produce a valid value",
+          name);
+      // A schema that permits self-references must declare `inline`. A self-reference (`uri` not
+      // set) always sets `offset`, and the `inline` column chunk of the same row group is the
+      // reference point whose compression and encryption a self-reference inherits. A group that
+      // declares `offset` but not `uri` can only produce self-references (an offset-based read with
+      // no `uri` is a self-reference), so it must also declare `inline`. A group that declares
+      // `uri` is not required to declare `inline`: `offset`/`size` there describe an external
+      // ranged reference, and although the per-value `uri` could be left unset in some rows, the
+      // schema is treated as an external-reference schema and the `inline` requirement is not
+      // imposed. A writer must therefore not emit a self-reference under such a schema, since there
+      // would be no `inline` column chunk to inherit compression and encryption from; that is
+      // enforced on the write path rather than here.
+      Preconditions.checkArgument(
+          !(hasOffset && !hasUri) || hasInline,
+          "FILE type group '%s' declares field 'offset' but neither 'uri' nor 'inline'; a schema "
+              + "that permits self-references (offset without uri) must declare 'inline' as the "
+              + "reference point for storage inheritance",
+          name);
+      // The remaining spec rules are per-value constraints that the schema builder cannot verify
+      // because it sees only which fields are declared, not their values in each row: a
+      // self-reference (unset `uri`) must set `offset`, `size` must be set whenever `offset` is
+      // set, and `offset`/`size` must be non-negative. Those are the responsibility of writers and
+      // consumers of FILE values.
+    }
+
+    /**
+     * Validates that a declared FILE field uses the physical type required by the spec:
+     * {@code uri}, {@code content_type}, and {@code checksum} are STRING (BINARY), {@code offset}
+     * and {@code size} are INT64, and {@code inline} is BYTE_ARRAY (BINARY).
+     */
+    private static void validateFileTypeFieldPhysicalType(String name, PrimitiveType field) {
+      String fieldName = field.getName();
+      PrimitiveType.PrimitiveTypeName physicalType = field.getPrimitiveTypeName();
+      switch (fieldName) {
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.URI_FIELD:
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CONTENT_TYPE_FIELD:
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CHECKSUM_FIELD:
+          Preconditions.checkArgument(
+              physicalType == PrimitiveType.PrimitiveTypeName.BINARY
+                  && field.getLogicalTypeAnnotation()
+                      instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation,
+              "FILE type field '%s' must be a STRING (BINARY annotated as STRING) in group '%s'",
+              fieldName,
+              name);
+          break;
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.OFFSET_FIELD:
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.SIZE_FIELD:
+          Preconditions.checkArgument(
+              physicalType == PrimitiveType.PrimitiveTypeName.INT64,
+              "FILE type field '%s' must be an INT64 in group '%s'",
+              fieldName,
+              name);
+          break;
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.INLINE_FIELD:
+          Preconditions.checkArgument(
+              physicalType == PrimitiveType.PrimitiveTypeName.BINARY,
+              "FILE type field '%s' must be a BYTE_ARRAY (BINARY) in group '%s'",
+              fieldName,
+              name);
+          break;
+        default:
+          // Unreachable: field names are validated against FIELD_NAMES before this call.
+          break;
       }
     }
 
