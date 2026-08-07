@@ -2069,6 +2069,8 @@ public class ParquetMetadataConverter {
           // any, were written under the legacy type-defined order and must be read under it.
           primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
         }
+        // Gracefully handle unsupported logical type combinations on the read path.
+        primitiveBuilder.dropUnsupportedLogicalTypeCombinations();
         childBuilder = primitiveBuilder;
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
