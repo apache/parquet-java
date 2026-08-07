@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
-import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
@@ -46,11 +45,9 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
 
   private ValuesWriter lengthWriter;
   private CapacityByteArrayOutputStream arrayOut;
-  private LittleEndianDataOutputStream out;
 
   public DeltaLengthByteArrayValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
     arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
-    out = new LittleEndianDataOutputStream(arrayOut);
     lengthWriter = new DeltaBinaryPackingValuesWriterForInteger(
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
@@ -63,10 +60,20 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   public void writeBytes(Binary v) {
     try {
       lengthWriter.writeInteger(v.length());
-      v.writeTo(out);
+      v.writeTo(arrayOut);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write bytes", e);
     }
+  }
+
+  /**
+   * Writes raw bytes directly, avoiding Binary object creation overhead.
+   * Used by {@link org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter}
+   * to write suffix bytes without creating an intermediate Binary.slice().
+   */
+  public void writeBytes(byte[] data, int offset, int length) {
+    lengthWriter.writeInteger(length);
+    arrayOut.write(data, offset, length);
   }
 
   @Override
@@ -76,11 +83,6 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
 
   @Override
   public BytesInput getBytes() {
-    try {
-      out.flush();
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page", e);
-    }
     LOG.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.concat(lengthWriter.getBytes(), BytesInput.from(arrayOut));
   }
