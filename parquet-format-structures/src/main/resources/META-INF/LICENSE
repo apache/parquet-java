@@ -178,18 +178,9 @@
 
 --------------------------------------------------------------------------------
 
-This product includes code derived from Apache Avro.
+This product bundles Apache Thrift (libthrift) in this binary artifact.
 
-Copyright: 2009-2025 The Apache Software Foundation
-Home page: https://avro.apache.org/
-License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
-
---------------------------------------------------------------------------------
-
-This product bundles fastutil in this binary artifact. fastutil provides
-type-specific collection implementations.
-
-Copyright: 2002-2024 Sebastiano Vigna
-Home page: https://fastutil.di.unimi.it/
+Copyright: 2006-2019 The Apache Software Foundation
+Home page: https://thrift.apache.org/
 License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
