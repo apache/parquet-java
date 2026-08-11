@@ -36,7 +36,7 @@ You can find additional details about the format and intended use cases in our [
 
 ## Building
 
-Parquet-Java uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
+Parquet-Java requires Java 17 or higher and uses Maven to build. It also depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
