@@ -38,11 +38,12 @@ import static org.assertj.core.data.Offset.offset;
 import java.nio.ByteBuffer;
 import java.util.Locale;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestStatistics {
   private int[] integerArray;
@@ -775,7 +776,8 @@ public class TestStatistics {
 
   @Test
   public void testSpecBuilderForFloat() {
-    PrimitiveType type = Types.required(FLOAT).named("test_float");
+    PrimitiveType type =
+        Types.required(FLOAT).columnOrder(ColumnOrder.typeDefined()).named("test_float");
     Statistics.Builder builder = Statistics.getBuilderForReading(type);
     Statistics<?> stats = builder.withMin(intToBytes(floatToIntBits(Float.NaN)))
         .withMax(intToBytes(floatToIntBits(42.0f)))
@@ -839,7 +841,8 @@ public class TestStatistics {
 
   @Test
   public void testSpecBuilderForDouble() {
-    PrimitiveType type = Types.required(DOUBLE).named("test_double");
+    PrimitiveType type =
+        Types.required(DOUBLE).columnOrder(ColumnOrder.typeDefined()).named("test_double");
     Statistics.Builder builder = Statistics.getBuilderForReading(type);
     Statistics<?> stats = builder.withMin(longToBytes(doubleToLongBits(Double.NaN)))
         .withMax(longToBytes(doubleToLongBits(42.0)))

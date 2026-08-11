@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ErrorCollector;
 import org.apache.parquet.crypto.ColumnDecryptionProperties;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
 import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
@@ -47,10 +48,9 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ErrorCollector;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,13 +120,10 @@ import org.slf4j.LoggerFactory;
 public class TestEncryptionOptions {
   private static final Logger LOG = LoggerFactory.getLogger(TestEncryptionOptions.class);
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  @Rule
-  public ErrorCollector localErrorCollector = new ErrorCollector();
-
-  private ErrorCollector errorCollector;
+  private ErrorCollector errorCollector = new ErrorCollector();
   private InterOpTester interop = new InterOpTester();
   private static final String CHANGESET = "40379b3";
 
@@ -324,10 +321,14 @@ public class TestEncryptionOptions {
     public abstract FileDecryptionProperties getDecryptionProperties();
   }
 
+  @AfterEach
+  public void verifyNoCollectedErrors() {
+    errorCollector.assertEmpty();
+  }
+
   @Test
   public void testWriteReadEncryptedParquetFiles() throws IOException {
-    this.errorCollector = localErrorCollector;
-    Path rootPath = new Path(temporaryFolder.getRoot().getPath());
+    Path rootPath = new Path(tempDir.toUri());
     LOG.info("======== testWriteReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
     // Write using various encryption configurations

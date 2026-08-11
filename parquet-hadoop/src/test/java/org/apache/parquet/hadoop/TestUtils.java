@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
-import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.statistics.Statistics;
-import org.hamcrest.CoreMatchers;
-import org.junit.Assert;
 
 public class TestUtils {
 
@@ -41,27 +40,6 @@ public class TestUtils {
     }
   }
 
-  /**
-   * A convenience method to avoid a large number of @Test(expected=...) tests
-   *
-   * @param message  A String message to describe this assertion
-   * @param expected An Exception class that the Runnable should throw
-   * @param callable A Callable that is expected to throw the exception
-   */
-  public static void assertThrows(String message, Class<? extends Exception> expected, Callable callable) {
-    try {
-      callable.call();
-      Assert.fail("No exception was thrown (" + message + "), expected: " + expected.getName());
-    } catch (Exception actual) {
-      try {
-        Assert.assertEquals(message, expected, actual.getClass());
-      } catch (AssertionError e) {
-        e.addSuppressed(actual);
-        throw e;
-      }
-    }
-  }
-
   public static void assertStatsValuesEqual(Statistics<?> stats1, Statistics<?> stats2) {
     assertStatsValuesEqual(null, stats1, stats2);
   }
@@ -73,11 +51,12 @@ public class TestUtils {
       return;
     }
     if (expected == null || actual == null) {
-      Assert.assertEquals(expected, actual);
+      assertThat(actual).isEqualTo(expected);
+      return;
     }
-    Assert.assertThat(actual, CoreMatchers.instanceOf(expected.getClass()));
-    Assert.assertArrayEquals(message, expected.getMaxBytes(), actual.getMaxBytes());
-    Assert.assertArrayEquals(message, expected.getMinBytes(), actual.getMinBytes());
-    Assert.assertEquals(message, expected.getNumNulls(), actual.getNumNulls());
+    assertThat(actual).as(message).isInstanceOf(expected.getClass());
+    assertThat(actual.getMaxBytes()).as(message).isEqualTo(expected.getMaxBytes());
+    assertThat(actual.getMinBytes()).as(message).isEqualTo(expected.getMinBytes());
+    assertThat(actual.getNumNulls()).as(message).isEqualTo(expected.getNumNulls());
   }
 }

@@ -27,7 +27,7 @@ import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestBackwardCompatibility {
 

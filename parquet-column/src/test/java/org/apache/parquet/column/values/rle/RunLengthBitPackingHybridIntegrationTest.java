@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class RunLengthBitPackingHybridIntegrationTest {
 

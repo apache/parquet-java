@@ -58,7 +58,7 @@ import java.util.List;
 import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestTypeBuilders {
   @Test

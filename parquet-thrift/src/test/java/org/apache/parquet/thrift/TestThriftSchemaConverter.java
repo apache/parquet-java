@@ -39,7 +39,7 @@ import org.apache.parquet.thrift.test.TestLogicalType;
 import org.apache.parquet.thrift.test.compat.MapStructV2;
 import org.apache.parquet.thrift.test.compat.SetStructV2;
 import org.apache.thrift.TBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestThriftSchemaConverter {
 

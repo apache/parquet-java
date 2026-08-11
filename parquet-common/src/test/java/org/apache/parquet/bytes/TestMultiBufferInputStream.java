@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
   private static final List<ByteBuffer> DATA = List.of(

@@ -225,6 +225,12 @@ public class MessageTypeParser {
       check(t, ")", "logical type ended by )", st);
       t = st.nextToken();
     }
+    if (t.equalsIgnoreCase(PrimitiveType.COLUMN_ORDER_KEYWORD)) {
+      check(st.nextToken(), "(", "column order followed by (", st);
+      childBuilder.columnOrder(parseColumnOrder(st.nextToken()));
+      check(st.nextToken(), ")", "column order ended by )", st);
+      t = st.nextToken();
+    }
     if (t.equals("=")) {
       childBuilder.id(Integer.parseInt(st.nextToken()));
       t = st.nextToken();
@@ -238,6 +244,20 @@ public class MessageTypeParser {
           "problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType,
           e);
     }
+  }
+
+  private static ColumnOrder parseColumnOrder(String t) {
+    // An unrecognized order degrades to UNDEFINED rather than failing, matching
+    // ParquetMetadataConverter.fromParquetColumnOrder, so a schema written by a newer API with an
+    // order this version does not know stays parseable. Statistics under an unknown order are
+    // ignored by readers anyway.
+    if (t.equalsIgnoreCase(ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER.name())) {
+      return ColumnOrder.typeDefined();
+    }
+    if (t.equalsIgnoreCase(ColumnOrder.ColumnOrderName.IEEE_754_TOTAL_ORDER.name())) {
+      return ColumnOrder.ieee754TotalOrder();
+    }
+    return ColumnOrder.undefined();
   }
 
   private static boolean isLogicalType(String t) {

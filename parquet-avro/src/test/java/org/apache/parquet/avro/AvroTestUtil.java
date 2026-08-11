@@ -36,7 +36,6 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.variant.Variant;
-import org.junit.rules.TemporaryFolder;
 
 public class AvroTestUtil {
 
@@ -104,17 +103,18 @@ public class AvroTestUtil {
   }
 
   @SuppressWarnings("unchecked")
-  public static <D> File write(TemporaryFolder temp, GenericData model, Schema schema, D... data) throws IOException {
-    return write(temp, new Configuration(false), model, schema, data);
+  public static <D> File write(java.nio.file.Path tempDir, GenericData model, Schema schema, D... data)
+      throws IOException {
+    return write(tempDir, new Configuration(false), model, schema, data);
   }
 
   @SuppressWarnings("unchecked")
-  public static <D> File write(TemporaryFolder temp, Configuration conf, GenericData model, Schema schema, D... data)
+  public static <D> File write(
+      java.nio.file.Path tempDir, Configuration conf, GenericData model, Schema schema, D... data)
       throws IOException {
-    File file = temp.newFile();
-    assertThat(file.delete()).isTrue();
+    java.nio.file.Path file = tempDir.resolve("test");
 
-    try (ParquetWriter<D> writer = AvroParquetWriter.<D>builder(new Path(file.toString()))
+    try (ParquetWriter<D> writer = AvroParquetWriter.<D>builder(new Path(file.toUri()))
         .withDataModel(model)
         .withSchema(schema)
         .build()) {
@@ -123,7 +123,7 @@ public class AvroTestUtil {
       }
     }
 
-    return file;
+    return file.toFile();
   }
 
   public static Configuration conf(String name, boolean value) {

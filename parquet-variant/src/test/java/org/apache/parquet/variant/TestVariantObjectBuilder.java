@@ -24,8 +24,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.UUID;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -277,7 +277,7 @@ public class TestVariantObjectBuilder {
   }
 
   @Test
-  @Ignore("Test uses too much memory")
+  @Disabled("Test uses too much memory")
   public void testObjectFourByteFieldIdBuilder() {
     // need more than 16777215 dictionary entries to push field id size above 3 bytes
     testObjectFieldIdSizeBuilder(16_800_000);

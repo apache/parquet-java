@@ -40,7 +40,7 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestFieldsPath {
   @Test

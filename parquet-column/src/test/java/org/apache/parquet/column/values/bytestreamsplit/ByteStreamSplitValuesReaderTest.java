@@ -28,11 +28,9 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
-import org.junit.experimental.runners.Enclosed;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
-@RunWith(Enclosed.class)
 public class ByteStreamSplitValuesReaderTest {
   private static <Reader extends ValuesReader> Reader makeReader(byte[] input, int length, Class<Reader> cls)
       throws Exception {
@@ -43,7 +41,8 @@ public class ByteStreamSplitValuesReaderTest {
     return reader;
   }
 
-  public static class FloatTest {
+  @Nested
+  class FloatTest {
 
     private void testReader(byte[] input, float[] values) throws Exception {
       ByteStreamSplitValuesReaderForFloat reader =
@@ -157,7 +156,8 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class DoubleTest {
+  @Nested
+  class DoubleTest {
 
     private void testReader(byte[] input, double[] values) throws Exception {
       ByteStreamSplitValuesReaderForDouble reader =
@@ -230,7 +230,8 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class IntegerTest {
+  @Nested
+  class IntegerTest {
     private void testReader(byte[] input, int[] values) throws Exception {
       ByteStreamSplitValuesReaderForInteger reader =
           makeReader(input, values.length, ByteStreamSplitValuesReaderForInteger.class);
@@ -260,7 +261,8 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class LongTest {
+  @Nested
+  class LongTest {
     private void testReader(byte[] input, long[] values) throws Exception {
       ByteStreamSplitValuesReaderForLong reader =
           makeReader(input, values.length, ByteStreamSplitValuesReaderForLong.class);
@@ -295,8 +297,9 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class FixedLenByteArrayTest {
-    private static ByteStreamSplitValuesReaderForFLBA makeReader(byte[] input, int valuesCount) throws Exception {
+  @Nested
+  class FixedLenByteArrayTest {
+    private ByteStreamSplitValuesReaderForFLBA makeReader(byte[] input, int valuesCount) throws Exception {
       ByteBuffer buffer = ByteBuffer.wrap(input);
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       ByteStreamSplitValuesReaderForFLBA reader =

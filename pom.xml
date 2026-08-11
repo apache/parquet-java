@@ -27,7 +27,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.18.0-SNAPSHOT</version>
+  <version>1.19.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet Java</name>
@@ -85,13 +85,13 @@
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.3.0</hadoop.version>
     <parquet.format.version>2.13.0</parquet.format.version>
-    <previous.version>1.17.0</previous.version>
+    <previous.version>1.18.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
     <thrift.version>0.23.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
-    <fastutil.version>8.5.18</fastutil.version>
+    <fastutil.version>8.5.19</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.11.5</avro.version>
@@ -111,7 +111,7 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.12</tukaani.version>
-    <zstd-jni.version>1.5.7-11</zstd-jni.version>
+    <zstd-jni.version>1.5.7-12</zstd-jni.version>
     <commons-text.version>1.15.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
@@ -162,7 +162,19 @@
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
@@ -298,6 +310,13 @@
 
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
+          <dependencies>
+            <dependency>
+              <groupId>de.skuzzle.enforcer</groupId>
+              <artifactId>restrict-imports-enforcer-rule</artifactId>
+              <version>3.0.0</version>
+            </dependency>
+          </dependencies>
           <executions>
             <execution>
               <id>enforce-banned-dependencies</id>
@@ -312,6 +331,34 @@
                       <exclude>org.slf4j:slf4j-reload4j:*:*:compile</exclude>
                     </excludes>
                   </bannedDependencies>
+                </rules>
+                <fail>true</fail>
+              </configuration>
+            </execution>
+            <execution>
+              <id>enforce-banned-junit4-imports</id>
+              <phase>process-test-sources</phase>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <RestrictImports>
+                    <reason>Use JUnit 5 (org.junit.jupiter.*) and AssertJ instead of JUnit 4</reason>
+                    <includeTestCode>true</includeTestCode>
+                    <bannedImports>
+                      <bannedImport>org.junit.**</bannedImport>
+                      <bannedImport>junit.framework.**</bannedImport>
+                    </bannedImports>
+                    <allowedImports>
+                      <allowedImport>org.junit.jupiter.**</allowedImport>
+                      <allowedImport>org.junit.platform.**</allowedImport>
+                    </allowedImports>
+                    <!-- Benchmark tests rely on JUnit 4 @Rule via junit-benchmarks with jupiter migration support -->
+                    <exclusions>
+                      <exclusion>org.apache.parquet.column.values.**.benchmark.**</exclusion>
+                    </exclusions>
+                  </RestrictImports>
                 </rules>
                 <fail>true</fail>
               </configuration>
@@ -433,14 +480,6 @@
         <configuration>
           <header>src/license.txt</header>
           <strictCheck>true</strictCheck>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-remote-resources-plugin</artifactId>
-        <configuration>
-          <skip>true</skip>
         </configuration>
       </plugin>
 

@@ -47,7 +47,7 @@ import org.apache.parquet.thrift.test.compat.StructV1;
 import org.apache.parquet.thrift.test.compat.StructV2;
 import org.apache.parquet.thrift.test.compat.StructV3;
 import org.apache.thrift.TBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

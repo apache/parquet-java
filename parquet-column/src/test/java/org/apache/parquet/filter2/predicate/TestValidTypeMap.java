@@ -36,7 +36,7 @@ import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Operators.LongColumn;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestValidTypeMap {
   public static IntColumn intColumn = intColumn("int.column");
