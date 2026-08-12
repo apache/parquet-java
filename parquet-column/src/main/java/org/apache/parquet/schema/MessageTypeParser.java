@@ -257,6 +257,9 @@ public class MessageTypeParser {
     if (t.equalsIgnoreCase(ColumnOrder.ColumnOrderName.IEEE_754_TOTAL_ORDER.name())) {
       return ColumnOrder.ieee754TotalOrder();
     }
+    if (t.equalsIgnoreCase(ColumnOrder.ColumnOrderName.INT96_TIMESTAMP_ORDER.name())) {
+      return ColumnOrder.int96TimestampOrder();
+    }
     return ColumnOrder.undefined();
   }
 
