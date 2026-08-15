@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for the core ALP encoder/decoder logic.
@@ -39,11 +40,10 @@ public class AlpEncoderDecoderTest {
           if (!AlpEncoderDecoder.isFloatException(value, exponent, factor)) {
             int encoded = AlpEncoderDecoder.encodeFloat(value, exponent, factor);
             float decoded = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
-            assertEquals(
-                "Round-trip failed for value=" + value + ", exponent=" + exponent + ", factor="
-                    + factor,
-                Float.floatToRawIntBits(value),
-                Float.floatToRawIntBits(decoded));
+            assertThat(Float.floatToRawIntBits(decoded))
+                .as("Round-trip failed for value=" + value + ", exponent=" + exponent + ", factor="
+                    + factor)
+                .isEqualTo(Float.floatToRawIntBits(value));
           }
         }
       }
@@ -52,41 +52,49 @@ public class AlpEncoderDecoderTest {
 
   @Test
   public void testFloatExceptionDetection() {
-    assertTrue("NaN should be an exception", AlpEncoderDecoder.isIntrinsicFloatException(Float.NaN));
-    assertTrue(
-        "Positive infinity should be an exception",
-        AlpEncoderDecoder.isIntrinsicFloatException(Float.POSITIVE_INFINITY));
-    assertTrue(
-        "Negative infinity should be an exception",
-        AlpEncoderDecoder.isIntrinsicFloatException(Float.NEGATIVE_INFINITY));
-    assertTrue("Negative zero should be an exception", AlpEncoderDecoder.isIntrinsicFloatException(-0.0f));
+    assertThat(AlpEncoderDecoder.isIntrinsicFloatException(Float.NaN))
+        .as("NaN should be an exception")
+        .isTrue();
+    assertThat(AlpEncoderDecoder.isIntrinsicFloatException(Float.POSITIVE_INFINITY))
+        .as("Positive infinity should be an exception")
+        .isTrue();
+    assertThat(AlpEncoderDecoder.isIntrinsicFloatException(Float.NEGATIVE_INFINITY))
+        .as("Negative infinity should be an exception")
+        .isTrue();
+    assertThat(AlpEncoderDecoder.isIntrinsicFloatException(-0.0f))
+        .as("Negative zero should be an exception")
+        .isTrue();
 
-    assertFalse("1.0f should not be a basic exception", AlpEncoderDecoder.isIntrinsicFloatException(1.0f));
-    assertFalse("0.0f should not be a basic exception", AlpEncoderDecoder.isIntrinsicFloatException(0.0f));
+    assertThat(AlpEncoderDecoder.isIntrinsicFloatException(1.0f))
+        .as("1.0f should not be a basic exception")
+        .isFalse();
+    assertThat(AlpEncoderDecoder.isIntrinsicFloatException(0.0f))
+        .as("0.0f should not be a basic exception")
+        .isFalse();
   }
 
   @Test
   public void testFloatEncoding() {
-    assertEquals(123, AlpEncoderDecoder.encodeFloat(1.23f, 2, 0));
-    assertEquals(123, AlpEncoderDecoder.encodeFloat(12.3f, 2, 1));
-    assertEquals(0, AlpEncoderDecoder.encodeFloat(0.0f, 5, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(1.23f, 2, 0)).isEqualTo(123);
+    assertThat(AlpEncoderDecoder.encodeFloat(12.3f, 2, 1)).isEqualTo(123);
+    assertThat(AlpEncoderDecoder.encodeFloat(0.0f, 5, 0)).isEqualTo(0);
   }
 
   @Test
   public void testFloatDecoding() {
-    assertEquals(1.23f, AlpEncoderDecoder.decodeFloat(123, 2, 0), 1e-6f);
-    assertEquals(12.3f, AlpEncoderDecoder.decodeFloat(123, 2, 1), 1e-6f);
-    assertEquals(0.0f, AlpEncoderDecoder.decodeFloat(0, 5, 0), 0.0f);
+    assertThat(AlpEncoderDecoder.decodeFloat(123, 2, 0)).isCloseTo(1.23f, within(1e-6f));
+    assertThat(AlpEncoderDecoder.decodeFloat(123, 2, 1)).isCloseTo(12.3f, within(1e-6f));
+    assertThat(AlpEncoderDecoder.decodeFloat(0, 5, 0)).isEqualTo(0.0f);
   }
 
   @Test
   public void testFloatEncodeRounding() {
     // Verify rounding behavior (magic number trick rounds to nearest)
-    assertEquals(5, AlpEncoderDecoder.encodeFloat(5.4f, 0, 0));
-    assertEquals(6, AlpEncoderDecoder.encodeFloat(5.6f, 0, 0));
-    assertEquals(-5, AlpEncoderDecoder.encodeFloat(-5.4f, 0, 0));
-    assertEquals(-6, AlpEncoderDecoder.encodeFloat(-5.6f, 0, 0));
-    assertEquals(0, AlpEncoderDecoder.encodeFloat(0.0f, 0, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(5.4f, 0, 0)).isEqualTo(5);
+    assertThat(AlpEncoderDecoder.encodeFloat(5.6f, 0, 0)).isEqualTo(6);
+    assertThat(AlpEncoderDecoder.encodeFloat(-5.4f, 0, 0)).isEqualTo(-5);
+    assertThat(AlpEncoderDecoder.encodeFloat(-5.6f, 0, 0)).isEqualTo(-6);
+    assertThat(AlpEncoderDecoder.encodeFloat(0.0f, 0, 0)).isEqualTo(0);
   }
 
   @Test
@@ -96,9 +104,9 @@ public class AlpEncoderDecoderTest {
     // and decode uses encoded * POW10[f] * POW10_NEGATIVE[e].
     float value = 12.3f;
     int encoded = AlpEncoderDecoder.encodeFloat(value, 2, 1);
-    assertEquals(123, encoded); // 12.3 * 100 * 0.1 = 123
+    assertThat(encoded).isEqualTo(123); // 12.3 * 100 * 0.1 = 123
     float decoded = AlpEncoderDecoder.decodeFloat(encoded, 2, 1);
-    assertEquals(Float.floatToRawIntBits(value), Float.floatToRawIntBits(decoded));
+    assertThat(Float.floatToRawIntBits(decoded)).isEqualTo(Float.floatToRawIntBits(value));
   }
 
   // ========== Double Encoding/Decoding Tests ==========
@@ -113,11 +121,10 @@ public class AlpEncoderDecoderTest {
           if (!AlpEncoderDecoder.isDoubleException(value, exponent, factor)) {
             long encoded = AlpEncoderDecoder.encodeDouble(value, exponent, factor);
             double decoded = AlpEncoderDecoder.decodeDouble(encoded, exponent, factor);
-            assertEquals(
-                "Round-trip failed for value=" + value + ", exponent=" + exponent + ", factor="
-                    + factor,
-                Double.doubleToRawLongBits(value),
-                Double.doubleToRawLongBits(decoded));
+            assertThat(Double.doubleToRawLongBits(decoded))
+                .as("Round-trip failed for value=" + value + ", exponent=" + exponent + ", factor="
+                    + factor)
+                .isEqualTo(Double.doubleToRawLongBits(value));
           }
         }
       }
@@ -126,41 +133,49 @@ public class AlpEncoderDecoderTest {
 
   @Test
   public void testDoubleExceptionDetection() {
-    assertTrue("NaN should be an exception", AlpEncoderDecoder.isIntrinsicDoubleException(Double.NaN));
-    assertTrue(
-        "Positive infinity should be an exception",
-        AlpEncoderDecoder.isIntrinsicDoubleException(Double.POSITIVE_INFINITY));
-    assertTrue(
-        "Negative infinity should be an exception",
-        AlpEncoderDecoder.isIntrinsicDoubleException(Double.NEGATIVE_INFINITY));
-    assertTrue("Negative zero should be an exception", AlpEncoderDecoder.isIntrinsicDoubleException(-0.0));
+    assertThat(AlpEncoderDecoder.isIntrinsicDoubleException(Double.NaN))
+        .as("NaN should be an exception")
+        .isTrue();
+    assertThat(AlpEncoderDecoder.isIntrinsicDoubleException(Double.POSITIVE_INFINITY))
+        .as("Positive infinity should be an exception")
+        .isTrue();
+    assertThat(AlpEncoderDecoder.isIntrinsicDoubleException(Double.NEGATIVE_INFINITY))
+        .as("Negative infinity should be an exception")
+        .isTrue();
+    assertThat(AlpEncoderDecoder.isIntrinsicDoubleException(-0.0))
+        .as("Negative zero should be an exception")
+        .isTrue();
 
-    assertFalse("1.0 should not be a basic exception", AlpEncoderDecoder.isIntrinsicDoubleException(1.0));
-    assertFalse("0.0 should not be a basic exception", AlpEncoderDecoder.isIntrinsicDoubleException(0.0));
+    assertThat(AlpEncoderDecoder.isIntrinsicDoubleException(1.0))
+        .as("1.0 should not be a basic exception")
+        .isFalse();
+    assertThat(AlpEncoderDecoder.isIntrinsicDoubleException(0.0))
+        .as("0.0 should not be a basic exception")
+        .isFalse();
   }
 
   @Test
   public void testDoubleEncoding() {
-    assertEquals(123L, AlpEncoderDecoder.encodeDouble(1.23, 2, 0));
-    assertEquals(123L, AlpEncoderDecoder.encodeDouble(12.3, 2, 1));
-    assertEquals(0L, AlpEncoderDecoder.encodeDouble(0.0, 5, 0));
+    assertThat(AlpEncoderDecoder.encodeDouble(1.23, 2, 0)).isEqualTo(123L);
+    assertThat(AlpEncoderDecoder.encodeDouble(12.3, 2, 1)).isEqualTo(123L);
+    assertThat(AlpEncoderDecoder.encodeDouble(0.0, 5, 0)).isEqualTo(0L);
   }
 
   @Test
   public void testDoubleDecoding() {
-    assertEquals(1.23, AlpEncoderDecoder.decodeDouble(123, 2, 0), 1e-10);
-    assertEquals(12.3, AlpEncoderDecoder.decodeDouble(123, 2, 1), 1e-10);
-    assertEquals(0.0, AlpEncoderDecoder.decodeDouble(0, 5, 0), 0.0);
+    assertThat(AlpEncoderDecoder.decodeDouble(123, 2, 0)).isCloseTo(1.23, within(1e-10));
+    assertThat(AlpEncoderDecoder.decodeDouble(123, 2, 1)).isCloseTo(12.3, within(1e-10));
+    assertThat(AlpEncoderDecoder.decodeDouble(0, 5, 0)).isEqualTo(0.0);
   }
 
   @Test
   public void testDoubleEncodeRounding() {
     // Verify rounding behavior (magic number trick rounds to nearest)
-    assertEquals(5L, AlpEncoderDecoder.encodeDouble(5.4, 0, 0));
-    assertEquals(6L, AlpEncoderDecoder.encodeDouble(5.6, 0, 0));
-    assertEquals(-5L, AlpEncoderDecoder.encodeDouble(-5.4, 0, 0));
-    assertEquals(-6L, AlpEncoderDecoder.encodeDouble(-5.6, 0, 0));
-    assertEquals(0L, AlpEncoderDecoder.encodeDouble(0.0, 0, 0));
+    assertThat(AlpEncoderDecoder.encodeDouble(5.4, 0, 0)).isEqualTo(5L);
+    assertThat(AlpEncoderDecoder.encodeDouble(5.6, 0, 0)).isEqualTo(6L);
+    assertThat(AlpEncoderDecoder.encodeDouble(-5.4, 0, 0)).isEqualTo(-5L);
+    assertThat(AlpEncoderDecoder.encodeDouble(-5.6, 0, 0)).isEqualTo(-6L);
+    assertThat(AlpEncoderDecoder.encodeDouble(0.0, 0, 0)).isEqualTo(0L);
   }
 
   @Test
@@ -170,9 +185,9 @@ public class AlpEncoderDecoderTest {
     // and decode uses encoded * POW10[f] * POW10_NEGATIVE[e].
     double value = 12.3;
     long encoded = AlpEncoderDecoder.encodeDouble(value, 2, 1);
-    assertEquals(123L, encoded); // 12.3 * 100 * 0.1 = 123
+    assertThat(encoded).isEqualTo(123L); // 12.3 * 100 * 0.1 = 123
     double decoded = AlpEncoderDecoder.decodeDouble(encoded, 2, 1);
-    assertEquals(Double.doubleToRawLongBits(value), Double.doubleToRawLongBits(decoded));
+    assertThat(Double.doubleToRawLongBits(decoded)).isEqualTo(Double.doubleToRawLongBits(value));
   }
 
   @Test
@@ -189,10 +204,9 @@ public class AlpEncoderDecoderTest {
           if (!AlpEncoderDecoder.isDoubleException(value, e, f)) {
             long encoded = AlpEncoderDecoder.encodeDouble(value, e, f);
             double decoded = AlpEncoderDecoder.decodeDouble(encoded, e, f);
-            assertEquals(
-                "Roundtrip failed for " + value + " (e=" + e + ", f=" + f + ")",
-                Double.doubleToRawLongBits(value),
-                Double.doubleToRawLongBits(decoded));
+            assertThat(Double.doubleToRawLongBits(decoded))
+                .as("Roundtrip failed for " + value + " (e=" + e + ", f=" + f + ")")
+                .isEqualTo(Double.doubleToRawLongBits(value));
           }
         }
       }
@@ -203,16 +217,16 @@ public class AlpEncoderDecoderTest {
 
   @Test
   public void testBitWidthForLong() {
-    assertEquals(0, AlpEncoderDecoder.bitWidthForLong(0L));
-    assertEquals(1, AlpEncoderDecoder.bitWidthForLong(1L));
-    assertEquals(2, AlpEncoderDecoder.bitWidthForLong(2L));
-    assertEquals(2, AlpEncoderDecoder.bitWidthForLong(3L));
-    assertEquals(3, AlpEncoderDecoder.bitWidthForLong(4L));
-    assertEquals(8, AlpEncoderDecoder.bitWidthForLong(255L));
-    assertEquals(9, AlpEncoderDecoder.bitWidthForLong(256L));
-    assertEquals(16, AlpEncoderDecoder.bitWidthForLong(65535L));
-    assertEquals(31, AlpEncoderDecoder.bitWidthForLong((long) Integer.MAX_VALUE));
-    assertEquals(63, AlpEncoderDecoder.bitWidthForLong(Long.MAX_VALUE));
+    assertThat(AlpEncoderDecoder.bitWidthForLong(0L)).isEqualTo(0);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(1L)).isEqualTo(1);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(2L)).isEqualTo(2);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(3L)).isEqualTo(2);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(4L)).isEqualTo(3);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(255L)).isEqualTo(8);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(256L)).isEqualTo(9);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(65535L)).isEqualTo(16);
+    assertThat(AlpEncoderDecoder.bitWidthForLong((long) Integer.MAX_VALUE)).isEqualTo(31);
+    assertThat(AlpEncoderDecoder.bitWidthForLong(Long.MAX_VALUE)).isEqualTo(63);
   }
 
   // ========== Best Parameters Tests ==========
@@ -222,15 +236,16 @@ public class AlpEncoderDecoderTest {
     float[] values = {1.23f, 4.56f, 7.89f, 10.11f, 12.13f};
     AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestFloatParams(values, 0, values.length);
 
-    assertNotNull(params);
-    assertTrue(params.exponent >= 0 && params.exponent <= AlpConstants.FLOAT_MAX_EXPONENT);
-    assertTrue(params.factor >= 0 && params.factor <= params.exponent);
+    assertThat(params).isNotNull();
+    assertThat(params.exponent >= 0 && params.exponent <= AlpConstants.FLOAT_MAX_EXPONENT)
+        .isTrue();
+    assertThat(params.factor >= 0 && params.factor <= params.exponent).isTrue();
 
     for (float v : values) {
       if (!AlpEncoderDecoder.isFloatException(v, params.exponent, params.factor)) {
         int encoded = AlpEncoderDecoder.encodeFloat(v, params.exponent, params.factor);
         float decoded = AlpEncoderDecoder.decodeFloat(encoded, params.exponent, params.factor);
-        assertEquals(Float.floatToRawIntBits(v), Float.floatToRawIntBits(decoded));
+        assertThat(Float.floatToRawIntBits(decoded)).isEqualTo(Float.floatToRawIntBits(v));
       }
     }
   }
@@ -240,8 +255,8 @@ public class AlpEncoderDecoderTest {
     float[] values = {Float.NaN, Float.NaN, Float.NaN};
     AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestFloatParams(values, 0, values.length);
 
-    assertNotNull(params);
-    assertEquals(values.length, params.numExceptions);
+    assertThat(params).isNotNull();
+    assertThat(params.numExceptions).isEqualTo(values.length);
   }
 
   @Test
@@ -249,15 +264,16 @@ public class AlpEncoderDecoderTest {
     double[] values = {1.23, 4.56, 7.89, 10.11, 12.13};
     AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, 0, values.length);
 
-    assertNotNull(params);
-    assertTrue(params.exponent >= 0 && params.exponent <= AlpConstants.DOUBLE_MAX_EXPONENT);
-    assertTrue(params.factor >= 0 && params.factor <= params.exponent);
+    assertThat(params).isNotNull();
+    assertThat(params.exponent >= 0 && params.exponent <= AlpConstants.DOUBLE_MAX_EXPONENT)
+        .isTrue();
+    assertThat(params.factor >= 0 && params.factor <= params.exponent).isTrue();
 
     for (double v : values) {
       if (!AlpEncoderDecoder.isDoubleException(v, params.exponent, params.factor)) {
         long encoded = AlpEncoderDecoder.encodeDouble(v, params.exponent, params.factor);
         double decoded = AlpEncoderDecoder.decodeDouble(encoded, params.exponent, params.factor);
-        assertEquals(Double.doubleToRawLongBits(v), Double.doubleToRawLongBits(decoded));
+        assertThat(Double.doubleToRawLongBits(decoded)).isEqualTo(Double.doubleToRawLongBits(v));
       }
     }
   }
@@ -267,8 +283,8 @@ public class AlpEncoderDecoderTest {
     double[] values = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
     AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, 0, values.length);
 
-    assertNotNull(params);
-    assertEquals(values.length, params.numExceptions);
+    assertThat(params).isNotNull();
+    assertThat(params.numExceptions).isEqualTo(values.length);
   }
 
   @Test
@@ -276,8 +292,8 @@ public class AlpEncoderDecoderTest {
     float[] values = {Float.NaN, Float.NaN, 1.23f, 4.56f, 7.89f, Float.NaN};
     AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestFloatParams(values, 2, 3);
 
-    assertNotNull(params);
-    assertEquals(0, params.numExceptions);
+    assertThat(params).isNotNull();
+    assertThat(params.numExceptions).isEqualTo(0);
   }
 
   // ========== Preset-Based Parameter Search Tests ==========
@@ -289,7 +305,7 @@ public class AlpEncoderDecoderTest {
     AlpEncoderDecoder.EncodingParams params =
         AlpEncoderDecoder.findBestFloatParamsWithPresets(values, 0, values.length, presets);
 
-    assertNotNull(params);
+    assertThat(params).isNotNull();
     // Should select one of the preset combinations
     boolean foundMatch = false;
     for (int[] preset : presets) {
@@ -298,7 +314,9 @@ public class AlpEncoderDecoderTest {
         break;
       }
     }
-    assertTrue("Result should be one of the preset combinations", foundMatch);
+    assertThat(foundMatch)
+        .as("Result should be one of the preset combinations")
+        .isTrue();
   }
 
   @Test
@@ -308,7 +326,7 @@ public class AlpEncoderDecoderTest {
     AlpEncoderDecoder.EncodingParams params =
         AlpEncoderDecoder.findBestDoubleParamsWithPresets(values, 0, values.length, presets);
 
-    assertNotNull(params);
+    assertThat(params).isNotNull();
     boolean foundMatch = false;
     for (int[] preset : presets) {
       if (params.exponent == preset[0] && params.factor == preset[1]) {
@@ -316,7 +334,9 @@ public class AlpEncoderDecoderTest {
         break;
       }
     }
-    assertTrue("Result should be one of the preset combinations", foundMatch);
+    assertThat(foundMatch)
+        .as("Result should be one of the preset combinations")
+        .isTrue();
   }
 
   @Test
@@ -329,9 +349,9 @@ public class AlpEncoderDecoderTest {
     AlpEncoderDecoder.EncodingParams presetResult =
         AlpEncoderDecoder.findBestFloatParamsWithPresets(values, 0, values.length, presets);
 
-    assertTrue(
-        "Preset result should be at least as good as full search",
-        presetResult.numExceptions <= fullResult.numExceptions);
+    assertThat(presetResult.numExceptions <= fullResult.numExceptions)
+        .as("Preset result should be at least as good as full search")
+        .isTrue();
   }
 
   @Test
@@ -342,7 +362,7 @@ public class AlpEncoderDecoderTest {
     // signed range (max - min), the estimator finds the lossless encoding with zero exceptions.
     float[] values = {-3.14f, 2.71f, 100.5f, -50.25f};
     AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestFloatParams(values, 0, values.length);
-    assertEquals(0, params.numExceptions);
+    assertThat(params.numExceptions).isEqualTo(0);
   }
 
   @Test
@@ -354,8 +374,8 @@ public class AlpEncoderDecoderTest {
     int[][] presets = {{0, 0}, {1, 0}}; // e=0,f=0 has the smallest signed FOR span
     AlpEncoderDecoder.EncodingParams params =
         AlpEncoderDecoder.findBestFloatParamsWithPresets(values, 0, values.length, presets);
-    assertEquals(0, params.exponent);
-    assertEquals(0, params.factor);
-    assertEquals(0, params.numExceptions);
+    assertThat(params.exponent).isEqualTo(0);
+    assertThat(params.factor).isEqualTo(0);
+    assertThat(params.numExceptions).isEqualTo(0);
   }
 }
