@@ -18,10 +18,9 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -29,7 +28,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Adversarial tests for ALP readers: feed malformed page bytes and assert the reader
@@ -119,7 +118,9 @@ public class AlpAdversarialTest {
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     });
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("compression"));
+    assertThat(ex.getMessage().toLowerCase().contains("compression"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -129,7 +130,9 @@ public class AlpAdversarialTest {
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     });
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("integer encoding"));
+    assertThat(ex.getMessage().toLowerCase().contains("integer encoding"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -139,7 +142,9 @@ public class AlpAdversarialTest {
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     });
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("vector size"));
+    assertThat(ex.getMessage().toLowerCase().contains("vector size"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -162,7 +167,9 @@ public class AlpAdversarialTest {
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     });
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("element count"));
+    assertThat(ex.getMessage().toLowerCase().contains("element count"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -172,7 +179,9 @@ public class AlpAdversarialTest {
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
       new AlpValuesReaderForDouble().initFromPage(10, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     });
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("exceeds"));
+    assertThat(ex.getMessage().toLowerCase().contains("exceeds"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   // ---------------------------------------------------------------------------
@@ -196,7 +205,9 @@ public class AlpAdversarialTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("exponent"));
+    assertThat(ex.getMessage().toLowerCase().contains("exponent"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -207,7 +218,9 @@ public class AlpAdversarialTest {
     AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readFloat);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("exponent"));
+    assertThat(ex.getMessage().toLowerCase().contains("exponent"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -219,7 +232,9 @@ public class AlpAdversarialTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("factor"));
+    assertThat(ex.getMessage().toLowerCase().contains("factor"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -232,7 +247,9 @@ public class AlpAdversarialTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("numexceptions"));
+    assertThat(ex.getMessage().toLowerCase().contains("numexceptions"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -244,7 +261,9 @@ public class AlpAdversarialTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("bitwidth"));
+    assertThat(ex.getMessage().toLowerCase().contains("bitwidth"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   @Test
@@ -256,7 +275,9 @@ public class AlpAdversarialTest {
     AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readFloat);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("bitwidth"));
+    assertThat(ex.getMessage().toLowerCase().contains("bitwidth"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   // ---------------------------------------------------------------------------
@@ -273,7 +294,7 @@ public class AlpAdversarialTest {
     Throwable t = catchAny(() -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(tiny)));
     });
-    assertNotNull("header-only page must raise", t);
+    assertThat(t).as("header-only page must raise").isNotNull();
   }
 
   @Test
@@ -285,7 +306,7 @@ public class AlpAdversarialTest {
     Throwable t = catchAny(() -> {
       new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated)));
     });
-    assertNotNull("truncated offset array must raise", t);
+    assertThat(t).as("truncated offset array must raise").isNotNull();
   }
 
   @Test
@@ -301,7 +322,7 @@ public class AlpAdversarialTest {
     Throwable t = catchAny(() -> {
       for (int i = 0; i < 32; i++) reader.readDouble();
     });
-    assertNotNull("truncated vector data must raise on read", t);
+    assertThat(t).as("truncated vector data must raise on read").isNotNull();
   }
 
   @Test
@@ -315,7 +336,7 @@ public class AlpAdversarialTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     Throwable t = catchAny(() -> reader.readDouble());
-    assertNotNull("corrupted offset must raise on decode", t);
+    assertThat(t).as("corrupted offset must raise on decode").isNotNull();
   }
 
   // ---------------------------------------------------------------------------
@@ -345,7 +366,9 @@ public class AlpAdversarialTest {
     reader.initFromPage(8, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     for (int i = 0; i < 8; i++) reader.readDouble();
     ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertTrue(ex.getMessage(), ex.getMessage().toLowerCase().contains("exhausted"));
+    assertThat(ex.getMessage().toLowerCase().contains("exhausted"))
+        .as(ex.getMessage())
+        .isTrue();
   }
 
   // ---------------------------------------------------------------------------

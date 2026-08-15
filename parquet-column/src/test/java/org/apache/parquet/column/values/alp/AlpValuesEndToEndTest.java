@@ -18,18 +18,22 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  * End-to-end tests for ALP encoding and decoding pipeline.
@@ -60,11 +64,10 @@ public class AlpValuesEndToEndTest {
       for (int i = 0; i < values.length; i++) {
         long exp = Double.doubleToRawLongBits(values[i]);
         long act = Double.doubleToRawLongBits(reader.readDouble());
-        assertEquals(
-            "Raw-bit mismatch at index " + i + " expectedBits=0x" + Long.toHexString(exp) + " actualBits=0x"
-                + Long.toHexString(act),
-            exp,
-            act);
+        assertThat(act)
+            .as("Raw-bit mismatch at index " + i + " expectedBits=0x" + Long.toHexString(exp)
+                + " actualBits=0x" + Long.toHexString(act))
+            .isEqualTo(exp);
       }
     } finally {
       if (writer != null) {
@@ -89,11 +92,10 @@ public class AlpValuesEndToEndTest {
       for (int i = 0; i < values.length; i++) {
         int exp = Float.floatToRawIntBits(values[i]);
         int act = Float.floatToRawIntBits(reader.readFloat());
-        assertEquals(
-            "Raw-bit mismatch at index " + i + " expectedBits=0x" + Integer.toHexString(exp)
-                + " actualBits=0x" + Integer.toHexString(act),
-            exp,
-            act);
+        assertThat(act)
+            .as("Raw-bit mismatch at index " + i + " expectedBits=0x" + Integer.toHexString(exp)
+                + " actualBits=0x" + Integer.toHexString(act))
+            .isEqualTo(exp);
       }
     } finally {
       if (writer != null) {
@@ -179,7 +181,8 @@ public class AlpValuesEndToEndTest {
     }
   }
 
-  @Test(timeout = 30000)
+  @Test
+  @Timeout(value = 30, unit = TimeUnit.SECONDS)
   public void testReaderRejectsCorruptInputCleanly() throws Exception {
     // Build a valid ALP double page, then feed corrupted variants. The reader must fail cleanly
     // (a catchable exception) and never hang, OOM, or read out of bounds silently.
@@ -285,11 +288,12 @@ public class AlpValuesEndToEndTest {
     } finally {
       writer.close();
     }
-    assertTrue("Writer should have allocated buffers during the run", alloc.peakOutstanding.get() > 0);
-    assertEquals(
-        "Writer leaked allocator buffers: " + alloc.outstanding.get() + " outstanding after close",
-        0,
-        alloc.outstanding.get());
+    assertThat(alloc.peakOutstanding.get() > 0)
+        .as("Writer should have allocated buffers during the run")
+        .isTrue();
+    assertThat(alloc.outstanding.get())
+        .as("Writer leaked allocator buffers: " + alloc.outstanding.get() + " outstanding after close")
+        .isEqualTo(0);
   }
 
   @Test
@@ -331,12 +335,13 @@ public class AlpValuesEndToEndTest {
         float actual = reader.readFloat();
 
         if (Float.isNaN(expected)) {
-          assertTrue("Expected NaN at index " + i, Float.isNaN(actual));
+          assertThat(Float.isNaN(actual))
+              .as("Expected NaN at index " + i)
+              .isTrue();
         } else {
-          assertEquals(
-              "Value mismatch at index " + i + " for " + expected,
-              Float.floatToRawIntBits(expected),
-              Float.floatToRawIntBits(actual));
+          assertThat(Float.floatToRawIntBits(actual))
+              .as("Value mismatch at index " + i + " for " + expected)
+              .isEqualTo(Float.floatToRawIntBits(expected));
         }
       }
     } finally {
@@ -371,12 +376,13 @@ public class AlpValuesEndToEndTest {
         double actual = reader.readDouble();
 
         if (Double.isNaN(expected)) {
-          assertTrue("Expected NaN at index " + i, Double.isNaN(actual));
+          assertThat(Double.isNaN(actual))
+              .as("Expected NaN at index " + i)
+              .isTrue();
         } else {
-          assertEquals(
-              "Value mismatch at index " + i + " for " + expected,
-              Double.doubleToRawLongBits(expected),
-              Double.doubleToRawLongBits(actual));
+          assertThat(Double.doubleToRawLongBits(actual))
+              .as("Value mismatch at index " + i + " for " + expected)
+              .isEqualTo(Double.doubleToRawLongBits(expected));
         }
       }
     } finally {
@@ -570,10 +576,9 @@ public class AlpValuesEndToEndTest {
       AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
       reader.initFromPage(pageRowCount, ByteBufferInputStream.wrap(input.toByteBuffer()));
       for (int i = 0; i < numValues; i++) {
-        assertEquals(
-            "Value mismatch at index " + i,
-            Float.floatToRawIntBits(values[i]),
-            Float.floatToRawIntBits(reader.readFloat()));
+        assertThat(Float.floatToRawIntBits(reader.readFloat()))
+            .as("Value mismatch at index " + i)
+            .isEqualTo(Float.floatToRawIntBits(values[i]));
       }
     } finally {
       if (writer != null) {
@@ -604,10 +609,9 @@ public class AlpValuesEndToEndTest {
       AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
       reader.initFromPage(pageRowCount, ByteBufferInputStream.wrap(input.toByteBuffer()));
       for (int i = 0; i < numValues; i++) {
-        assertEquals(
-            "Value mismatch at index " + i,
-            Double.doubleToRawLongBits(values[i]),
-            Double.doubleToRawLongBits(reader.readDouble()));
+        assertThat(Double.doubleToRawLongBits(reader.readDouble()))
+            .as("Value mismatch at index " + i)
+            .isEqualTo(Double.doubleToRawLongBits(values[i]));
       }
     } finally {
       if (writer != null) {
@@ -766,11 +770,11 @@ public class AlpValuesEndToEndTest {
       AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
       reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(1.0f));
       reader.skip(3);
-      assertEquals(Float.floatToRawIntBits(5.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(5.0f));
       reader.skip(2);
-      assertEquals(Float.floatToRawIntBits(8.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(8.0f));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -799,20 +803,20 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(totalValues, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       // Read first value from vector 0
-      assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(1.0f));
 
       // Skip past vector 0 and vector 1, into vector 2
       reader.skip(vectorSize * 2 - 1); // skip to index vectorSize*2
 
       // Read first value of vector 2
       float expected = (vectorSize * 2 + 1) * 1.0f;
-      assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(reader.readFloat()));
+      assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(expected));
 
       // Skip into the partial last vector
       reader.skip(vectorSize - 1); // skip to index vectorSize*3
 
       expected = (vectorSize * 3 + 1) * 1.0f;
-      assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(reader.readFloat()));
+      assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(expected));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -832,7 +836,7 @@ public class AlpValuesEndToEndTest {
       writer.writeFloat(1.0f);
       writer.writeFloat(2.0f);
       writer.reset();
-      assertEquals(0, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(0);
 
       float[] values = {3.0f, 4.0f, 5.0f};
       for (float v : values) {
@@ -844,7 +848,7 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       for (float expected : values) {
-        assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(reader.readFloat()));
+        assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(expected));
       }
     } finally {
       if (writer != null) {
@@ -1040,11 +1044,11 @@ public class AlpValuesEndToEndTest {
       AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
       reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      assertEquals(Double.doubleToRawLongBits(1.0), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(1.0));
       reader.skip(3);
-      assertEquals(Double.doubleToRawLongBits(5.0), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(5.0));
       reader.skip(2);
-      assertEquals(Double.doubleToRawLongBits(8.0), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(8.0));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -1072,15 +1076,15 @@ public class AlpValuesEndToEndTest {
       AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
       reader.initFromPage(totalValues, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      assertEquals(Double.doubleToRawLongBits(1.0), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(1.0));
       reader.skip(vectorSize * 2 - 1);
 
       double expected = (vectorSize * 2 + 1) * 1.0;
-      assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(expected));
 
       reader.skip(vectorSize - 1);
       expected = (vectorSize * 3 + 1) * 1.0;
-      assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(reader.readDouble()));
+      assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(expected));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -1100,7 +1104,7 @@ public class AlpValuesEndToEndTest {
       writer.writeDouble(1.0);
       writer.writeDouble(2.0);
       writer.reset();
-      assertEquals(0, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(0);
 
       double[] values = {3.0, 4.0, 5.0};
       for (double v : values) {
@@ -1112,7 +1116,8 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       for (double expected : values) {
-        assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(reader.readDouble()));
+        assertThat(Double.doubleToRawLongBits(reader.readDouble()))
+            .isEqualTo(Double.doubleToRawLongBits(expected));
       }
     } finally {
       if (writer != null) {
@@ -1221,52 +1226,52 @@ public class AlpValuesEndToEndTest {
       java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
 
       // Header (7 bytes)
-      assertEquals("compression_mode", 0, buf.get() & 0xFF);
-      assertEquals("integer_encoding", 0, buf.get() & 0xFF);
-      assertEquals("log_vector_size", 3, buf.get() & 0xFF); // log2(8)=3
-      assertEquals("num_elements", 10, buf.getInt());
+      assertThat(buf.get() & 0xFF).as("compression_mode").isEqualTo(0);
+      assertThat(buf.get() & 0xFF).as("integer_encoding").isEqualTo(0);
+      assertThat(buf.get() & 0xFF).as("log_vector_size").isEqualTo(3); // log2(8)=3
+      assertThat(buf.getInt()).as("num_elements").isEqualTo(10);
 
       // Offset array (2 vectors * 4 bytes = 8 bytes)
       int offset0 = buf.getInt(); // first vector offset
       int offset1 = buf.getInt(); // second vector offset
-      assertEquals("offset0 = past offset array", 8, offset0);
+      assertThat(offset0).as("offset0 = past offset array").isEqualTo(8);
 
       // Vector 0: 8 identical values, bitWidth=0, no exceptions
       // AlpInfo (4 bytes)
       int v0Exp = buf.get() & 0xFF;
       int v0Fac = buf.get() & 0xFF;
       int v0Exc = buf.getShort() & 0xFFFF;
-      assertEquals("v0 exceptions", 0, v0Exc);
+      assertThat(v0Exc).as("v0 exceptions").isEqualTo(0);
 
       // ForInfo (5 bytes)
       int v0For = buf.getInt();
       int v0Bw = buf.get() & 0xFF;
-      assertEquals("v0 bitWidth", 0, v0Bw);
+      assertThat(v0Bw).as("v0 bitWidth").isEqualTo(0);
       // No packed bytes (bitWidth=0)
       // No exceptions
 
       // Vector 0 should be exactly 4 + 5 = 9 bytes
-      assertEquals("offset1 should be offset0 + 9", offset0 + 9, offset1);
+      assertThat(offset1).as("offset1 should be offset0 + 9").isEqualTo(offset0 + 9);
 
       // Vector 1: 2 identical values, bitWidth=0, no exceptions
       int v1Exp = buf.get() & 0xFF;
       int v1Fac = buf.get() & 0xFF;
-      assertEquals("same exponent both vectors", v0Exp, v1Exp);
-      assertEquals("same factor both vectors", v0Fac, v1Fac);
+      assertThat(v1Exp).as("same exponent both vectors").isEqualTo(v0Exp);
+      assertThat(v1Fac).as("same factor both vectors").isEqualTo(v0Fac);
       int v1Exc = buf.getShort() & 0xFFFF;
-      assertEquals("v1 exceptions", 0, v1Exc);
+      assertThat(v1Exc).as("v1 exceptions").isEqualTo(0);
       int v1For = buf.getInt();
       int v1Bw = buf.get() & 0xFF;
-      assertEquals("v1 bitWidth", 0, v1Bw);
+      assertThat(v1Bw).as("v1 bitWidth").isEqualTo(0);
 
       // Should have consumed all bytes
-      assertEquals("all bytes consumed", bytes.length, buf.position());
+      assertThat(buf.position()).as("all bytes consumed").isEqualTo(bytes.length);
 
       // Verify round-trip
       AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
       reader.initFromPage(10, ByteBufferInputStream.wrap(input.toByteBuffer()));
       for (int i = 0; i < 10; i++) {
-        assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(reader.readFloat()));
+        assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(1.0f));
       }
     } finally {
       if (writer != null) {
@@ -1317,7 +1322,7 @@ public class AlpValuesEndToEndTest {
 
   // ========== Read After Skip to End ==========
 
-  @Test(expected = ParquetDecodingException.class)
+  @Test
   public void testFloatReadPastEnd() throws Exception {
     AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
@@ -1329,7 +1334,7 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(1, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       reader.readFloat(); // read the one value
-      reader.readFloat(); // should throw
+      assertThrows(ParquetDecodingException.class, () -> reader.readFloat());
     } finally {
       if (writer != null) {
         writer.reset();
@@ -1338,7 +1343,7 @@ public class AlpValuesEndToEndTest {
     }
   }
 
-  @Test(expected = ParquetDecodingException.class)
+  @Test
   public void testFloatSkipPastEnd() throws Exception {
     AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
@@ -1350,7 +1355,8 @@ public class AlpValuesEndToEndTest {
       AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
       reader.initFromPage(2, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      reader.skip(3); // should throw - only 2 values
+      // should throw - only 2 values
+      assertThrows(ParquetDecodingException.class, () -> reader.skip(3));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -1432,9 +1438,9 @@ public class AlpValuesEndToEndTest {
     AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(page));
 
-    assertEquals(Float.floatToRawIntBits(100.0f), Float.floatToRawIntBits(reader.readFloat()));
-    assertEquals(Float.floatToRawIntBits(200.0f), Float.floatToRawIntBits(reader.readFloat()));
-    assertEquals(Float.floatToRawIntBits(300.0f), Float.floatToRawIntBits(reader.readFloat()));
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(100.0f));
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(200.0f));
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(300.0f));
   }
 
   /**
@@ -1502,10 +1508,10 @@ public class AlpValuesEndToEndTest {
     AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(page));
 
-    assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(reader.readFloat()));
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(1.0f));
     float val1 = reader.readFloat();
-    assertTrue("Expected NaN at position 1", Float.isNaN(val1));
-    assertEquals(Float.floatToRawIntBits(3.0f), Float.floatToRawIntBits(reader.readFloat()));
+    assertThat(Float.isNaN(val1)).as("Expected NaN at position 1").isTrue();
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(3.0f));
   }
 
   /**
@@ -1560,9 +1566,9 @@ public class AlpValuesEndToEndTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(page));
 
-    assertEquals(Double.doubleToRawLongBits(10.0), Double.doubleToRawLongBits(reader.readDouble()));
-    assertEquals(Double.doubleToRawLongBits(20.0), Double.doubleToRawLongBits(reader.readDouble()));
-    assertEquals(Double.doubleToRawLongBits(30.0), Double.doubleToRawLongBits(reader.readDouble()));
+    assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(10.0));
+    assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(20.0));
+    assertThat(Double.doubleToRawLongBits(reader.readDouble())).isEqualTo(Double.doubleToRawLongBits(30.0));
   }
 
   // ========== Writer Output → Hand-Verified Bytes ==========
@@ -1588,20 +1594,20 @@ public class AlpValuesEndToEndTest {
       ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
 
       // Header (7 bytes)
-      assertEquals(0, buf.get() & 0xFF); // compression_mode
-      assertEquals(0, buf.get() & 0xFF); // integer_encoding
-      assertEquals(3, buf.get() & 0xFF); // log2(8) = 3
-      assertEquals(3, buf.getInt()); // num_elements
+      assertThat(buf.get() & 0xFF).isEqualTo(0); // compression_mode
+      assertThat(buf.get() & 0xFF).isEqualTo(0); // integer_encoding
+      assertThat(buf.get() & 0xFF).isEqualTo(3); // log2(8) = 3
+      assertThat(buf.getInt()).isEqualTo(3); // num_elements
 
       // Offset array (1 vector)
       int offset0 = buf.getInt();
-      assertEquals(4, offset0); // 1 * 4 = past offset array
+      assertThat(offset0).isEqualTo(4); // 1 * 4 = past offset array
 
       // AlpInfo
       int exp = buf.get() & 0xFF;
       int fac = buf.get() & 0xFF;
       int numExc = buf.getShort() & 0xFFFF;
-      assertEquals(0, numExc);
+      assertThat(numExc).isEqualTo(0);
 
       // ForInfo
       int forRef = buf.getInt();
@@ -1609,8 +1615,8 @@ public class AlpValuesEndToEndTest {
 
       // Verify: for e=0, f=0: multiplier=1.0
       // encoded = {1, 2, 3}, min = 1, deltas = {0, 1, 2}, bitWidth = 2
-      assertEquals(1, forRef); // frame of reference = 1
-      assertEquals(2, bw); // bitWidth for max delta 2
+      assertThat(forRef).isEqualTo(1); // frame of reference = 1
+      assertThat(bw).isEqualTo(2); // bitWidth for max delta 2
 
       // Packed data: ceil(3 * 2 / 8) = 1 byte
       // deltas {0, 1, 2} at bitWidth=2:
@@ -1621,10 +1627,10 @@ public class AlpValuesEndToEndTest {
       packer.pack8Values(expectedDeltas, 0, expectedPacked, 0);
 
       byte actualPackedByte = buf.get();
-      assertEquals("packed byte", expectedPacked[0], actualPackedByte);
+      assertThat(actualPackedByte).as("packed byte").isEqualTo(expectedPacked[0]);
 
       // Should have consumed all bytes
-      assertEquals("all bytes consumed", bytes.length, buf.position());
+      assertThat(buf.position()).as("all bytes consumed").isEqualTo(bytes.length);
     } finally {
       if (writer != null) {
         writer.reset();
@@ -1651,10 +1657,10 @@ public class AlpValuesEndToEndTest {
     // Another NaN variant
     float customNaN = Float.intBitsToFloat(0x7FFFFFFF);
 
-    assertTrue(Float.isNaN(standardNaN));
-    assertTrue(Float.isNaN(signalingNaN));
-    assertTrue(Float.isNaN(negativeNaN));
-    assertTrue(Float.isNaN(customNaN));
+    assertThat(Float.isNaN(standardNaN)).isTrue();
+    assertThat(Float.isNaN(signalingNaN)).isTrue();
+    assertThat(Float.isNaN(negativeNaN)).isTrue();
+    assertThat(Float.isNaN(customNaN)).isTrue();
 
     float[] values = {1.0f, standardNaN, 2.0f, signalingNaN, 3.0f, negativeNaN, 4.0f, customNaN};
 
@@ -1671,12 +1677,11 @@ public class AlpValuesEndToEndTest {
 
       for (int i = 0; i < values.length; i++) {
         float actual = reader.readFloat();
-        assertEquals(
-            "Bit pattern mismatch at index " + i + " (0x"
+        assertThat(Float.floatToRawIntBits(actual))
+            .as("Bit pattern mismatch at index " + i + " (0x"
                 + Integer.toHexString(Float.floatToRawIntBits(values[i])) + " vs 0x"
-                + Integer.toHexString(Float.floatToRawIntBits(actual)) + ")",
-            Float.floatToRawIntBits(values[i]),
-            Float.floatToRawIntBits(actual));
+                + Integer.toHexString(Float.floatToRawIntBits(actual)) + ")")
+            .isEqualTo(Float.floatToRawIntBits(values[i]));
       }
     } finally {
       if (writer != null) {
@@ -1711,12 +1716,11 @@ public class AlpValuesEndToEndTest {
 
       for (int i = 0; i < values.length; i++) {
         double actual = reader.readDouble();
-        assertEquals(
-            "Bit pattern mismatch at index " + i + " (0x"
+        assertThat(Double.doubleToRawLongBits(actual))
+            .as("Bit pattern mismatch at index " + i + " (0x"
                 + Long.toHexString(Double.doubleToRawLongBits(values[i])) + " vs 0x"
-                + Long.toHexString(Double.doubleToRawLongBits(actual)) + ")",
-            Double.doubleToRawLongBits(values[i]),
-            Double.doubleToRawLongBits(actual));
+                + Long.toHexString(Double.doubleToRawLongBits(actual)) + ")")
+            .isEqualTo(Double.doubleToRawLongBits(values[i]));
       }
     } finally {
       if (writer != null) {
@@ -1738,8 +1742,8 @@ public class AlpValuesEndToEndTest {
     float posZero = 0.0f;
 
     // Sanity: they are == but have different bit patterns
-    assertTrue(negZero == posZero);
-    assertNotEquals(Float.floatToRawIntBits(negZero), Float.floatToRawIntBits(posZero));
+    assertThat(negZero == posZero).isTrue();
+    assertThat(Float.floatToRawIntBits(negZero)).isNotEqualTo(Float.floatToRawIntBits(posZero));
 
     float[] values = {posZero, negZero, 1.0f, negZero};
 
@@ -1756,10 +1760,9 @@ public class AlpValuesEndToEndTest {
 
       for (int i = 0; i < values.length; i++) {
         float actual = reader.readFloat();
-        assertEquals(
-            "Bit pattern at index " + i,
-            Float.floatToRawIntBits(values[i]),
-            Float.floatToRawIntBits(actual));
+        assertThat(Float.floatToRawIntBits(actual))
+            .as("Bit pattern at index " + i)
+            .isEqualTo(Float.floatToRawIntBits(values[i]));
       }
     } finally {
       if (writer != null) {
@@ -1927,8 +1930,9 @@ public class AlpValuesEndToEndTest {
     for (int i = 0; i < numElements; i++) {
       float expected = (float) (i + 1);
       float actual = reader.readFloat();
-      assertEquals(
-          "Value mismatch at index " + i, Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
+      assertThat(Float.floatToRawIntBits(actual))
+          .as("Value mismatch at index " + i)
+          .isEqualTo(Float.floatToRawIntBits(expected));
     }
   }
 
@@ -1986,8 +1990,8 @@ public class AlpValuesEndToEndTest {
     reader.skip(8);
 
     // Read from vector 1
-    assertEquals(Float.floatToRawIntBits(9.0f), Float.floatToRawIntBits(reader.readFloat()));
-    assertEquals(Float.floatToRawIntBits(10.0f), Float.floatToRawIntBits(reader.readFloat()));
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(9.0f));
+    assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(10.0f));
   }
 
   // ========== Vector Size Validation ==========
@@ -1997,9 +2001,11 @@ public class AlpValuesEndToEndTest {
    * cannot represent 65536, which would cause silent data corruption if all
    * values in a vector are exceptions.
    */
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testVectorSize65536Rejected() throws Exception {
-    new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator(), 65536);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator(), 65536));
   }
 
   /**
@@ -2020,7 +2026,7 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(10, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       for (int i = 0; i < 10; i++) {
-        assertEquals(Float.floatToRawIntBits(i * 1.0f), Float.floatToRawIntBits(reader.readFloat()));
+        assertThat(Float.floatToRawIntBits(reader.readFloat())).isEqualTo(Float.floatToRawIntBits(i * 1.0f));
       }
     } finally {
       if (writer != null) {
@@ -2180,23 +2186,23 @@ public class AlpValuesEndToEndTest {
   @Test
   public void testEncoderProducesExpectedValues() {
     // 1.23f * 100 = 123
-    assertEquals(123, AlpEncoderDecoder.encodeFloat(1.23f, 2, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(1.23f, 2, 0)).isEqualTo(123);
     // 19.99f * 100 = 1999
-    assertEquals(1999, AlpEncoderDecoder.encodeFloat(19.99f, 2, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(19.99f, 2, 0)).isEqualTo(1999);
     // -5.0f * 10 = -50
-    assertEquals(-50, AlpEncoderDecoder.encodeFloat(-5.0f, 1, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(-5.0f, 1, 0)).isEqualTo(-50);
     // 0.0f * anything = 0
-    assertEquals(0, AlpEncoderDecoder.encodeFloat(0.0f, 5, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(0.0f, 5, 0)).isEqualTo(0);
     // 42.0f * 1 = 42
-    assertEquals(42, AlpEncoderDecoder.encodeFloat(42.0f, 0, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(42.0f, 0, 0)).isEqualTo(42);
     // 1.5f * 10 = 15
-    assertEquals(15, AlpEncoderDecoder.encodeFloat(1.5f, 1, 0));
+    assertThat(AlpEncoderDecoder.encodeFloat(1.5f, 1, 0)).isEqualTo(15);
 
     // Double path
-    assertEquals(123L, AlpEncoderDecoder.encodeDouble(1.23, 2, 0));
-    assertEquals(1999L, AlpEncoderDecoder.encodeDouble(19.99, 2, 0));
-    assertEquals(-50L, AlpEncoderDecoder.encodeDouble(-5.0, 1, 0));
-    assertEquals(0L, AlpEncoderDecoder.encodeDouble(0.0, 5, 0));
-    assertEquals(42L, AlpEncoderDecoder.encodeDouble(42.0, 0, 0));
+    assertThat(AlpEncoderDecoder.encodeDouble(1.23, 2, 0)).isEqualTo(123L);
+    assertThat(AlpEncoderDecoder.encodeDouble(19.99, 2, 0)).isEqualTo(1999L);
+    assertThat(AlpEncoderDecoder.encodeDouble(-5.0, 1, 0)).isEqualTo(-50L);
+    assertThat(AlpEncoderDecoder.encodeDouble(0.0, 5, 0)).isEqualTo(0L);
+    assertThat(AlpEncoderDecoder.encodeDouble(42.0, 0, 0)).isEqualTo(42L);
   }
 }
