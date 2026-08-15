@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
@@ -26,7 +26,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for the BYTE_STREAM_SPLIT scalar performance optimizations:
@@ -79,14 +79,14 @@ public class ByteStreamSplitScalarOptTest {
       writer.writeBytes(v);
     }
     BytesInput input = writer.getBytes();
-    assertEquals(numElements * typeLength, input.size());
+    assertThat(input.size()).isEqualTo(numElements * typeLength);
 
     ByteStreamSplitValuesReaderForFLBA reader = new ByteStreamSplitValuesReaderForFLBA(typeLength);
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     // Scalar read to verify each value
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readBytes());
+      assertThat(reader.readBytes()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
@@ -151,7 +151,7 @@ public class ByteStreamSplitScalarOptTest {
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readInteger());
+      assertThat(reader.readInteger()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
@@ -174,7 +174,7 @@ public class ByteStreamSplitScalarOptTest {
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readLong());
+      assertThat(reader.readLong()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
@@ -195,16 +195,16 @@ public class ByteStreamSplitScalarOptTest {
     for (int i = 0; i < 10; i++) {
       writer.writeInteger(i);
     }
-    assertEquals(10 * 4, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(10 * 4);
 
     // Write more to cross a batch boundary
     for (int i = 0; i < BATCH_SIZE; i++) {
       writer.writeInteger(i);
     }
-    assertEquals((10 + BATCH_SIZE) * 4, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo((10 + BATCH_SIZE) * 4);
 
     writer.reset();
-    assertEquals(0, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(0);
     writer.close();
   }
 
@@ -217,10 +217,10 @@ public class ByteStreamSplitScalarOptTest {
     for (int i = 0; i < 10; i++) {
       writer.writeLong(i);
     }
-    assertEquals(10 * 8, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(10 * 8);
 
     writer.reset();
-    assertEquals(0, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(0);
     writer.close();
   }
 
@@ -255,7 +255,7 @@ public class ByteStreamSplitScalarOptTest {
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(direct));
 
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readFloat(), 0.0f);
+      assertThat(reader.readFloat()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
@@ -284,7 +284,7 @@ public class ByteStreamSplitScalarOptTest {
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(direct));
 
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readLong());
+      assertThat(reader.readLong()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
@@ -322,7 +322,7 @@ public class ByteStreamSplitScalarOptTest {
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(direct));
 
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readBytes());
+      assertThat(reader.readBytes()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
@@ -347,7 +347,7 @@ public class ByteStreamSplitScalarOptTest {
       rand.nextBytes(bytes);
       writer.writeBytes(Binary.fromConstantByteArray(bytes));
     }
-    assertEquals(10 * typeLength, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(10 * typeLength);
 
     // Write more to cross a batch boundary
     for (int i = 0; i < BATCH_SIZE; i++) {
@@ -355,10 +355,10 @@ public class ByteStreamSplitScalarOptTest {
       rand.nextBytes(bytes);
       writer.writeBytes(Binary.fromConstantByteArray(bytes));
     }
-    assertEquals((10 + BATCH_SIZE) * typeLength, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo((10 + BATCH_SIZE) * typeLength);
 
     writer.reset();
-    assertEquals(0, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(0);
     writer.close();
   }
 
@@ -375,9 +375,9 @@ public class ByteStreamSplitScalarOptTest {
     for (int i = 0; i < 10; i++) {
       writer.writeInteger(i);
     }
-    assertEquals(10 * 4, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(10 * 4);
     writer.close();
-    assertEquals(0, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(0);
   }
 
   @Test
@@ -388,9 +388,9 @@ public class ByteStreamSplitScalarOptTest {
     for (int i = 0; i < 10; i++) {
       writer.writeLong(i);
     }
-    assertEquals(10 * 8, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(10 * 8);
     writer.close();
-    assertEquals(0, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(0);
   }
 
   @Test
@@ -405,9 +405,9 @@ public class ByteStreamSplitScalarOptTest {
       rand.nextBytes(bytes);
       writer.writeBytes(Binary.fromConstantByteArray(bytes));
     }
-    assertEquals(10 * typeLength, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(10 * typeLength);
     writer.close();
-    assertEquals(0, writer.getBufferedSize());
+    assertThat(writer.getBufferedSize()).isEqualTo(0);
   }
 
   // ---------------------------------------------------------------------------
@@ -453,7 +453,7 @@ public class ByteStreamSplitScalarOptTest {
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(direct));
 
     for (int i = 0; i < numElements; i++) {
-      assertEquals("Mismatch at index " + i, values[i], reader.readBytes());
+      assertThat(reader.readBytes()).as("Mismatch at index " + i).isEqualTo(values[i]);
     }
 
     writer.reset();
