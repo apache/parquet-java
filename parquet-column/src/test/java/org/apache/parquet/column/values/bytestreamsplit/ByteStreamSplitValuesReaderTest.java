@@ -18,8 +18,9 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.data.Offset.offset;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
@@ -27,11 +28,9 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
-import org.junit.experimental.runners.Enclosed;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
-@RunWith(Enclosed.class)
 public class ByteStreamSplitValuesReaderTest {
   private static <Reader extends ValuesReader> Reader makeReader(byte[] input, int length, Class<Reader> cls)
       throws Exception {
@@ -42,17 +41,20 @@ public class ByteStreamSplitValuesReaderTest {
     return reader;
   }
 
-  public static class FloatTest {
+  @Nested
+  class FloatTest {
 
     private void testReader(byte[] input, float[] values) throws Exception {
       ByteStreamSplitValuesReaderForFloat reader =
           makeReader(input, values.length, ByteStreamSplitValuesReaderForFloat.class);
       for (float expectedValue : values) {
         float f = reader.readFloat();
-        assertEquals(expectedValue, f, 0.0f);
+        assertThat(f).isCloseTo(expectedValue, offset(0.0f));
       }
       // All data exhausted
-      assertThrows(ParquetDecodingException.class, () -> reader.readFloat());
+      assertThatThrownBy(() -> reader.readFloat())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test
@@ -105,8 +107,10 @@ public class ByteStreamSplitValuesReaderTest {
       ByteStreamSplitValuesReaderForFloat reader =
           makeReader(byteData, 1, ByteStreamSplitValuesReaderForFloat.class);
       float f = reader.readFloat();
-      assertEquals(2.25f, f, 0.0f);
-      assertThrows(ParquetDecodingException.class, () -> reader.readFloat());
+      assertThat(f).isCloseTo(2.25f, offset(0.0f));
+      assertThatThrownBy(() -> reader.readFloat())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test
@@ -124,9 +128,11 @@ public class ByteStreamSplitValuesReaderTest {
           makeReader(byteData, 4, ByteStreamSplitValuesReaderForFloat.class);
       reader.skip(3);
       float f = reader.readFloat();
-      assertEquals(2.25f, f, 0.0f);
+      assertThat(f).isCloseTo(2.25f, offset(0.0f));
       // Data exhausted
-      assertThrows(ParquetDecodingException.class, () -> reader.readFloat());
+      assertThatThrownBy(() -> reader.readFloat())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test
@@ -134,7 +140,9 @@ public class ByteStreamSplitValuesReaderTest {
       byte[] byteData = new byte[128];
       ByteStreamSplitValuesReaderForFloat reader =
           makeReader(byteData, 32, ByteStreamSplitValuesReaderForFloat.class);
-      assertThrows(ParquetDecodingException.class, () -> reader.skip(33));
+      assertThatThrownBy(() -> reader.skip(33))
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("Cannot skip this many elements");
     }
 
     @Test
@@ -142,21 +150,26 @@ public class ByteStreamSplitValuesReaderTest {
       byte[] byteData = new byte[128];
       ByteStreamSplitValuesReaderForFloat reader =
           makeReader(byteData, 32, ByteStreamSplitValuesReaderForFloat.class);
-      assertThrows(ParquetDecodingException.class, () -> reader.skip(-1));
+      assertThatThrownBy(() -> reader.skip(-1))
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("Cannot skip this many elements");
     }
   }
 
-  public static class DoubleTest {
+  @Nested
+  class DoubleTest {
 
     private void testReader(byte[] input, double[] values) throws Exception {
       ByteStreamSplitValuesReaderForDouble reader =
           makeReader(input, values.length, ByteStreamSplitValuesReaderForDouble.class);
       for (double expectedValue : values) {
         double d = reader.readDouble();
-        assertEquals(expectedValue, d, 0.0);
+        assertThat(d).isCloseTo(expectedValue, offset(0.0));
       }
       // All data exhausted
-      assertThrows(ParquetDecodingException.class, () -> reader.readDouble());
+      assertThatThrownBy(() -> reader.readDouble())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test
@@ -217,16 +230,19 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class IntegerTest {
+  @Nested
+  class IntegerTest {
     private void testReader(byte[] input, int[] values) throws Exception {
       ByteStreamSplitValuesReaderForInteger reader =
           makeReader(input, values.length, ByteStreamSplitValuesReaderForInteger.class);
       for (int expectedValue : values) {
         int actual = reader.readInteger();
-        assertEquals(expectedValue, actual);
+        assertThat(actual).isEqualTo(expectedValue);
       }
       // All data exhausted
-      assertThrows(ParquetDecodingException.class, () -> reader.readInteger());
+      assertThatThrownBy(() -> reader.readInteger())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test
@@ -245,16 +261,19 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class LongTest {
+  @Nested
+  class LongTest {
     private void testReader(byte[] input, long[] values) throws Exception {
       ByteStreamSplitValuesReaderForLong reader =
           makeReader(input, values.length, ByteStreamSplitValuesReaderForLong.class);
       for (long expectedValue : values) {
         long actual = reader.readLong();
-        assertEquals(expectedValue, actual);
+        assertThat(actual).isEqualTo(expectedValue);
       }
       // All data exhausted
-      assertThrows(ParquetDecodingException.class, () -> reader.readLong());
+      assertThatThrownBy(() -> reader.readLong())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test
@@ -278,8 +297,9 @@ public class ByteStreamSplitValuesReaderTest {
     }
   }
 
-  public static class FixedLenByteArrayTest {
-    private static ByteStreamSplitValuesReaderForFLBA makeReader(byte[] input, int valuesCount) throws Exception {
+  @Nested
+  class FixedLenByteArrayTest {
+    private ByteStreamSplitValuesReaderForFLBA makeReader(byte[] input, int valuesCount) throws Exception {
       ByteBuffer buffer = ByteBuffer.wrap(input);
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       ByteStreamSplitValuesReaderForFLBA reader =
@@ -294,16 +314,18 @@ public class ByteStreamSplitValuesReaderTest {
       for (byte[] expectedValue : values) {
         Binary expected = Binary.fromReusedByteArray(expectedValue);
         Binary actual = reader.readBytes();
-        assertEquals(expected, actual);
+        assertThat(actual).isEqualTo(expected);
         if (previousExpected != null) {
           // The latest readBytes() call shouldn't have clobbered the result of the previous call.
-          assertEquals(previousExpected, previousActual);
+          assertThat(previousActual).isEqualTo(previousExpected);
         }
         previousExpected = expected;
         previousActual = actual;
       }
       // All data exhausted
-      assertThrows(ParquetDecodingException.class, () -> reader.readBytes());
+      assertThatThrownBy(() -> reader.readBytes())
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Byte-stream data was already exhausted.");
     }
 
     @Test

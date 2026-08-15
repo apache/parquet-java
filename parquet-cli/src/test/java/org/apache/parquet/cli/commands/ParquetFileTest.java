@@ -36,13 +36,13 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 public abstract class ParquetFileTest extends FileTest {
 
   private Random rnd = new Random();
 
-  @Before
+  @BeforeEach
   public void setUp() throws IOException {
     createTestParquetFile();
   }

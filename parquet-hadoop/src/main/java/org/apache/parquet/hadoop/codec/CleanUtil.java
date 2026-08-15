@@ -26,11 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A helper class that uses {@code sun.misc.Unsafe#invokeCleaner(ByteBuffer)}
- * reflectively to clean up direct buffers.
- * <p>
- * Strongly inspired by:
- * <a href="https://github.com/apache/tomcat/blob/master/java/org/apache/tomcat/util/buf/ByteBufferUtils.java">Tomcat ByteBufferUtils</a>
+ * A helper class which uses {@code sun.misc.Unsafe.invokeCleaner} to explicitly free
+ * direct ByteBuffers.
  */
 public class CleanUtil {
   private static final Logger logger = LoggerFactory.getLogger(CleanUtil.class);

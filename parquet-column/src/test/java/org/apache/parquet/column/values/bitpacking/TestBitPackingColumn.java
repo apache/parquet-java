@@ -19,8 +19,7 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import static org.apache.parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,7 +27,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,7 +167,7 @@ public class TestBitPackingColumn {
       byte[] bytes = w.getBytes().toByteArray();
       LOG.debug("vals (" + bitLength + "): " + TestBitPacking.toString(vals));
       LOG.debug("bytes: {}", TestBitPacking.toString(bytes));
-      assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
+      assertThat(TestBitPacking.toString(bytes)).isEqualTo(expected);
       ValuesReader r = type.getReader(bound);
       r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
       int[] result = new int[vals.length];
@@ -176,12 +175,14 @@ public class TestBitPackingColumn {
         result[i] = r.readInteger();
       }
       LOG.debug("result: {}", TestBitPacking.toString(result));
-      assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
+      assertThat(result)
+          .as(type + " result: " + TestBitPacking.toString(result))
+          .isEqualTo(vals);
 
       // Test skipping
       r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
       for (int i = 0; i < vals.length; i += 2) {
-        assertEquals(vals[i], r.readInteger());
+        assertThat(r.readInteger()).isEqualTo(vals[i]);
         r.skip();
       }
 
@@ -190,7 +191,7 @@ public class TestBitPackingColumn {
       int skipCount;
       for (int i = 0; i < vals.length; i += skipCount + 1) {
         skipCount = (vals.length - i) / 2;
-        assertEquals(vals[i], r.readInteger());
+        assertThat(r.readInteger()).isEqualTo(vals[i]);
         r.skip(skipCount);
       }
     }

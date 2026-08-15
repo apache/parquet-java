@@ -18,12 +18,12 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class RunLengthBitPackingHybridIntegrationTest {
 
@@ -62,25 +62,25 @@ public class RunLengthBitPackingHybridIntegrationTest {
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
     for (int i = 0; i < 100; i++) {
-      assertEquals(i % modValue, decoder.readInt());
+      assertThat(decoder.readInt()).isEqualTo(i % modValue);
     }
 
     for (int i = 0; i < 100; i++) {
-      assertEquals(77 % modValue, decoder.readInt());
+      assertThat(decoder.readInt()).isEqualTo(77 % modValue);
     }
 
     for (int i = 0; i < 100; i++) {
-      assertEquals(88 % modValue, decoder.readInt());
+      assertThat(decoder.readInt()).isEqualTo(88 % modValue);
     }
 
     for (int i = 0; i < 1000; i++) {
-      assertEquals(i % modValue, decoder.readInt());
-      assertEquals(i % modValue, decoder.readInt());
-      assertEquals(i % modValue, decoder.readInt());
+      assertThat(decoder.readInt()).isEqualTo(i % modValue);
+      assertThat(decoder.readInt()).isEqualTo(i % modValue);
+      assertThat(decoder.readInt()).isEqualTo(i % modValue);
     }
 
     for (int i = 0; i < 1000; i++) {
-      assertEquals(17 % modValue, decoder.readInt());
+      assertThat(decoder.readInt()).isEqualTo(17 % modValue);
     }
   }
 }

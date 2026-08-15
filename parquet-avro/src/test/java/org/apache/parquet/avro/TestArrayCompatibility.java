@@ -43,23 +43,23 @@ import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
   public static final Configuration OLD_BEHAVIOR_CONF = new Configuration();
   public static final Configuration NEW_BEHAVIOR_CONF = new Configuration();
 
-  @BeforeClass
+  @BeforeAll
   public static void setupNewBehaviorConfiguration() {
     OLD_BEHAVIOR_CONF.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, true);
     NEW_BEHAVIOR_CONF.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
   }
 
   @Test
-  @Ignore(value = "Not yet supported")
+  @Disabled(value = "Not yet supported")
   public void testUnannotatedListOfPrimitives() throws Exception {
     Path test =
         writeDirect("message UnannotatedListOfPrimitives {" + "  repeated int32 list_of_ints;" + "}", rc -> {
@@ -84,7 +84,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
   }
 
   @Test
-  @Ignore(value = "Not yet supported")
+  @Disabled(value = "Not yet supported")
   public void testUnannotatedListOfGroups() throws Exception {
     Path test = writeDirect(
         "message UnannotatedListOfGroups {" + "  repeated group list_of_points {"

@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.column.values.plain;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,9 +26,9 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.io.api.Binary;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for {@link BinaryPlainValuesReader} (variable-length BINARY)
@@ -39,12 +38,12 @@ public class TestBinaryPlainValuesWriterReader {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -76,7 +75,7 @@ public class TestBinaryPlainValuesWriterReader {
       reader.initFromPage(strings.length, wrapForReading(writer));
 
       for (String s : strings) {
-        assertEquals(s, reader.readBytes().toStringUsingUTF8());
+        assertThat(reader.readBytes().toStringUsingUTF8()).isEqualTo(s);
       }
     }
   }
@@ -94,7 +93,7 @@ public class TestBinaryPlainValuesWriterReader {
       reader.initFromPage(3, wrapForReading(writer));
 
       reader.skip(); // skip "first"
-      assertEquals("second", reader.readBytes().toStringUsingUTF8());
+      assertThat(reader.readBytes().toStringUsingUTF8()).isEqualTo("second");
     }
   }
 
@@ -125,8 +124,8 @@ public class TestBinaryPlainValuesWriterReader {
       BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
       reader.initFromPage(2, wrapForReading(writer));
 
-      assertArrayEquals(raw1, reader.readBytes().getBytes());
-      assertArrayEquals(raw2, reader.readBytes().getBytes());
+      assertThat(reader.readBytes().getBytes()).isEqualTo(raw1);
+      assertThat(reader.readBytes().getBytes()).isEqualTo(raw2);
     }
   }
 }

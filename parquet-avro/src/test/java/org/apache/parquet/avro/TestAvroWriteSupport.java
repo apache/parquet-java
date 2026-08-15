@@ -29,7 +29,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestAvroWriteSupport {
 

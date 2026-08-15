@@ -28,7 +28,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.proto.test.TestProto3SchemaV1;
 import org.apache.parquet.proto.test.TestProto3SchemaV2;
 import org.apache.parquet.proto.test.TestProto3SchemaV3;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for backward/forward compatibility while write and read parquet using different versions of protobuf schema.

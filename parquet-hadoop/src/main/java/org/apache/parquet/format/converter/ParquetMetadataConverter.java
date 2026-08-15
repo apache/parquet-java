@@ -778,7 +778,7 @@ public class ParquetMetadataConverter {
       switch (stat.getPage_type()) {
         case DATA_PAGE_V2:
           builder.withV2Pages();
-          // falls through
+        // falls through
         case DATA_PAGE:
           builder.addDataEncoding(getEncoding(stat.getEncoding()), stat.getCount());
           break;
@@ -815,17 +815,15 @@ public class ParquetMetadataConverter {
   public static Statistics toParquetStatistics(
       org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
     Statistics formatStats = new Statistics();
-    if (!stats.isEmpty()) {
-      formatStats.setNull_count(stats.getNumNulls());
-      if (stats.isNanCountSet()) {
-        formatStats.setNan_count(stats.getNanCount());
-      }
-    }
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
     // value has been truncated and is a lower bound and not in the page.
     if (!stats.isEmpty() && withinLimit(stats, truncateLength)) {
+      formatStats.setNull_count(stats.getNumNulls());
+      if (stats.isNanCountSet()) {
+        formatStats.setNan_count(stats.getNanCount());
+      }
       if (stats.hasNonNullValue()) {
         byte[] min;
         byte[] max;
@@ -1343,7 +1341,12 @@ public class ParquetMetadataConverter {
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
-    switch (type.getSetField()) {
+    LogicalType._Fields setField = type.getSetField();
+    if (setField == null) {
+      // Ignore unknown logical types to preserve the physical type.
+      return null;
+    }
+    switch (setField) {
       case MAP:
         return LogicalTypeAnnotation.mapType();
       case BSON:
@@ -2058,6 +2061,13 @@ public class ParquetMetadataConverter {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
           primitiveBuilder.columnOrder(columnOrder);
+        } else if (schemaElement.type == Type.FLOAT
+            || schemaElement.type == Type.DOUBLE
+            || (schemaElement.isSetLogicalType() && schemaElement.logicalType.isSetFLOAT16())) {
+          // A footer without column orders predates IEEE_754_TOTAL_ORDER, so a floating-point column
+          // here must not inherit the (IEEE 754 total order) construction-time default: its stats, if
+          // any, were written under the legacy type-defined order and must be read under it.
+          primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
         }
         childBuilder = primitiveBuilder;
       } else {
@@ -2066,7 +2076,10 @@ public class ParquetMetadataConverter {
       }
 
       if (schemaElement.isSetLogicalType()) {
-        childBuilder.as(getLogicalTypeAnnotation(schemaElement.logicalType));
+        LogicalTypeAnnotation logicalTypeAnnotation = getLogicalTypeAnnotation(schemaElement.logicalType);
+        if (logicalTypeAnnotation != null) {
+          childBuilder.as(logicalTypeAnnotation);
+        }
       }
       if (schemaElement.isSetConverted_type()) {
         OriginalType originalType = getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement)

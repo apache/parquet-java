@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.hadoop.example;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class GroupReadSupportTest {
 
@@ -43,7 +43,7 @@ public class GroupReadSupportTest {
     MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
 
     ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
-    assertEquals(context.getRequestedSchema(), fileSchema);
+    assertThat(context.getRequestedSchema()).isEqualTo(fileSchema);
   }
 
   @Test
@@ -56,6 +56,6 @@ public class GroupReadSupportTest {
     configuration.set(ReadSupport.PARQUET_READ_SCHEMA, partialSchemaStr);
 
     ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
-    assertEquals(context.getRequestedSchema(), partialSchema);
+    assertThat(context.getRequestedSchema()).isEqualTo(partialSchema);
   }
 }

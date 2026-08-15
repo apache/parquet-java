@@ -19,14 +19,14 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +35,7 @@ public class TestByteBitPacking512VectorLE {
 
   @Test
   public void unpackValuesUsingVector() {
-    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    assumeThat(ParquetReadRouter.getSupportVectorFromCPUFlags()).isEqualTo(VectorSupport.VECTOR_512);
     for (int i = 1; i <= 32; i++) {
       unpackValuesUsingVectorBitWidth(i);
     }
@@ -43,7 +43,7 @@ public class TestByteBitPacking512VectorLE {
 
   @Test
   public void unpackValuesUsingVectorDirectByteBuffer() {
-    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    assumeThat(ParquetReadRouter.getSupportVectorFromCPUFlags()).isEqualTo(VectorSupport.VECTOR_512);
     for (int i = 1; i <= 32; i++) {
       unpackValuesUsingVectorBitWidthDirect(i);
     }
@@ -51,7 +51,7 @@ public class TestByteBitPacking512VectorLE {
 
   @Test
   public void unpackValuesUsingVectorReadOnlyByteBuffer() {
-    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    assumeThat(ParquetReadRouter.getSupportVectorFromCPUFlags()).isEqualTo(VectorSupport.VECTOR_512);
     for (int i = 1; i <= 32; i++) {
       unpackValuesUsingVectorBitWidthReadOnly(i);
     }

@@ -42,8 +42,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -97,16 +96,12 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-@RunWith(Parameterized.class)
 public class DictionaryFilterTest {
 
   private static final int nElements = 1000;
@@ -221,7 +216,7 @@ public class DictionaryFilterTest {
     writer.close();
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void prepareFile() throws IOException {
     cleanup();
     prepareFile(PARQUET_1_0, FILE_V1);
@@ -243,7 +238,7 @@ public class DictionaryFilterTest {
     writeData(f, writer);
   }
 
-  @AfterClass
+  @AfterAll
   public static void cleanup() throws IOException {
     deleteFile(FILE_V1);
     deleteFile(FILE_V2);
@@ -256,44 +251,39 @@ public class DictionaryFilterTest {
     }
   }
 
-  @Parameters
-  public static Object[] params() {
-    return new Object[] {PARQUET_1_0, PARQUET_2_0};
-  }
-
   List<ColumnChunkMetaData> ccmd;
   ParquetFileReader reader;
   DictionaryPageReadStore dictionaries;
-  private Path file;
-  private WriterVersion version;
 
-  public DictionaryFilterTest(WriterVersion version) {
-    this.version = version;
+  private static Path fileForWriterVersion(WriterVersion version) {
     switch (version) {
       case PARQUET_1_0:
-        file = FILE_V1;
-        break;
+        return FILE_V1;
       case PARQUET_2_0:
-        file = FILE_V2;
-        break;
+        return FILE_V2;
+      default:
+        throw new IllegalArgumentException("Unexpected writer version: " + version);
     }
   }
 
-  @Before
-  public void setUp() throws Exception {
-    reader = ParquetFileReader.open(conf, file);
+  private void setUp(WriterVersion version) throws Exception {
+    reader = ParquetFileReader.open(conf, fileForWriterVersion(version));
     ParquetMetadata meta = reader.getFooter();
     ccmd = meta.getBlocks().get(0).getColumns();
     dictionaries = reader.getDictionaryReader(meta.getBlocks().get(0));
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
-    reader.close();
+    if (reader != null) {
+      reader.close();
+    }
   }
 
-  @Test
-  public void testDictionaryEncodedColumns() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testDictionaryEncodedColumns(WriterVersion version) throws Exception {
+    setUp(version);
     switch (version) {
       case PARQUET_1_0:
         testDictionaryEncodedColumnsV1();
@@ -305,7 +295,7 @@ public class DictionaryFilterTest {
   }
 
   @SuppressWarnings("deprecation")
-  private void testDictionaryEncodedColumnsV1() throws Exception {
+  private void testDictionaryEncodedColumnsV1() {
     Set<String> dictionaryEncodedColumns = new HashSet<String>(List.of(
         "binary_field",
         "single_value_field",
@@ -320,30 +310,30 @@ public class DictionaryFilterTest {
     for (ColumnChunkMetaData column : ccmd) {
       String name = column.getPath().toDotString();
       if (dictionaryEncodedColumns.contains(name)) {
-        assertTrue(
-            "Column should be dictionary encoded: " + name,
-            column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
-        assertFalse(
-            "Column should not have plain data pages" + name,
-            column.getEncodings().contains(Encoding.PLAIN));
+        assertThat(column.getEncodings())
+            .as("Column should be dictionary encoded: " + name)
+            .contains(Encoding.PLAIN_DICTIONARY);
+        assertThat(column.getEncodings())
+            .as("Column should not have plain data pages" + name)
+            .doesNotContain(Encoding.PLAIN);
       } else {
-        assertTrue(
-            "Column should have plain encoding: " + name,
-            column.getEncodings().contains(Encoding.PLAIN));
+        assertThat(column.getEncodings())
+            .as("Column should have plain encoding: " + name)
+            .contains(Encoding.PLAIN);
         if (name.startsWith("fallback")) {
-          assertTrue(
-              "Column should have some dictionary encoding: " + name,
-              column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
+          assertThat(column.getEncodings())
+              .as("Column should have some dictionary encoding: " + name)
+              .contains(Encoding.PLAIN_DICTIONARY);
         } else {
-          assertFalse(
-              "Column should have no dictionary encoding: " + name,
-              column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
+          assertThat(column.getEncodings())
+              .as("Column should have no dictionary encoding: " + name)
+              .doesNotContain(Encoding.PLAIN_DICTIONARY);
         }
       }
     }
   }
 
-  private void testDictionaryEncodedColumnsV2() throws Exception {
+  private void testDictionaryEncodedColumnsV2() {
     Set<String> dictionaryEncodedColumns = new HashSet<String>(List.of(
         "binary_field",
         "single_value_field",
@@ -360,221 +350,318 @@ public class DictionaryFilterTest {
       EncodingStats encStats = column.getEncodingStats();
       String name = column.getPath().toDotString();
       if (dictionaryEncodedColumns.contains(name)) {
-        assertTrue("Column should have dictionary pages: " + name, encStats.hasDictionaryPages());
-        assertTrue(
-            "Column should have dictionary encoded pages: " + name, encStats.hasDictionaryEncodedPages());
-        assertFalse(
-            "Column should not have non-dictionary encoded pages: " + name,
-            encStats.hasNonDictionaryEncodedPages());
+        assertThat(encStats.hasDictionaryPages())
+            .as("Column should have dictionary pages: " + name)
+            .isTrue();
+        assertThat(encStats.hasDictionaryEncodedPages())
+            .as("Column should have dictionary encoded pages: " + name)
+            .isTrue();
+        assertThat(encStats.hasNonDictionaryEncodedPages())
+            .as("Column should not have non-dictionary encoded pages: " + name)
+            .isFalse();
       } else {
-        assertTrue(
-            "Column should have non-dictionary encoded pages: " + name,
-            encStats.hasNonDictionaryEncodedPages());
+        assertThat(encStats.hasNonDictionaryEncodedPages())
+            .as("Column should have non-dictionary encoded pages: " + name)
+            .isTrue();
         if (name.startsWith("fallback")) {
-          assertTrue("Column should have dictionary pages: " + name, encStats.hasDictionaryPages());
-          assertTrue(
-              "Column should have dictionary encoded pages: " + name,
-              encStats.hasDictionaryEncodedPages());
+          assertThat(encStats.hasDictionaryPages())
+              .as("Column should have dictionary pages: " + name)
+              .isTrue();
+          assertThat(encStats.hasDictionaryEncodedPages())
+              .as("Column should have dictionary encoded pages: " + name)
+              .isTrue();
         } else {
-          assertFalse("Column should not have dictionary pages: " + name, encStats.hasDictionaryPages());
-          assertFalse(
-              "Column should not have dictionary encoded pages: " + name,
-              encStats.hasDictionaryEncodedPages());
+          assertThat(encStats.hasDictionaryPages())
+              .as("Column should not have dictionary pages: " + name)
+              .isFalse();
+          assertThat(encStats.hasDictionaryEncodedPages())
+              .as("Column should not have dictionary encoded pages: " + name)
+              .isFalse();
         }
       }
     }
   }
 
-  @Test
-  public void testEqBinary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqBinary(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("binary_field");
     FilterPredicate pred = eq(b, Binary.fromString("c"));
 
-    assertFalse("Should not drop block for lower case letters", canDrop(pred, ccmd, dictionaries));
+    assertThat(canDrop(pred, ccmd, dictionaries))
+        .as("Should not drop block for lower case letters")
+        .isFalse();
 
-    assertTrue(
-        "Should drop block for upper case letters", canDrop(eq(b, Binary.fromString("A")), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, Binary.fromString("A")), ccmd, dictionaries))
+        .as("Should drop block for upper case letters")
+        .isTrue();
 
-    assertFalse("Should not drop block for null", canDrop(eq(b, null), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, null), ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
   }
 
-  @Test
-  public void testEqFixed() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqFixed(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("fixed_field");
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
     if (version == PARQUET_2_0) {
-      assertTrue("Should drop block for -2", canDrop(eq(b, toBinary("-2", 17)), ccmd, dictionaries));
+      assertThat(canDrop(eq(b, toBinary("-2", 17)), ccmd, dictionaries))
+          .as("Should drop block for -2")
+          .isTrue();
     }
 
-    assertFalse("Should not drop block for -1", canDrop(eq(b, toBinary("-1", 17)), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, toBinary("-1", 17)), ccmd, dictionaries))
+        .as("Should not drop block for -1")
+        .isFalse();
 
-    assertFalse("Should not drop block for null", canDrop(eq(b, null), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, null), ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
   }
 
-  @Test
-  public void testEqInt96() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqInt96(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("int96_field");
 
     // INT96 ordering is undefined => no filtering shall be done
-    assertFalse("Should not drop block for -2", canDrop(eq(b, toBinary("-2", 12)), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, toBinary("-2", 12)), ccmd, dictionaries))
+        .as("Should not drop block for -2")
+        .isFalse();
 
-    assertFalse("Should not drop block for -1", canDrop(eq(b, toBinary("-1", 12)), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, toBinary("-1", 12)), ccmd, dictionaries))
+        .as("Should not drop block for -1")
+        .isFalse();
 
-    assertFalse("Should not drop block for null", canDrop(eq(b, null), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, null), ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
   }
 
-  @Test
-  public void testNotEqBinary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNotEqBinary(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn sharp = binaryColumn("single_value_field");
     BinaryColumn sharpAndNull = binaryColumn("optional_single_value_field");
     BinaryColumn b = binaryColumn("binary_field");
 
-    assertTrue(
-        "Should drop block with only the excluded value",
-        canDrop(notEq(sharp, Binary.fromString("sharp")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(sharp, Binary.fromString("sharp")), ccmd, dictionaries))
+        .as("Should drop block with only the excluded value")
+        .isTrue();
 
-    assertFalse(
-        "Should not drop block with any other value",
-        canDrop(notEq(sharp, Binary.fromString("applause")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(sharp, Binary.fromString("applause")), ccmd, dictionaries))
+        .as("Should not drop block with any other value")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop block with only the excluded value and null",
-        canDrop(notEq(sharpAndNull, Binary.fromString("sharp")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(sharpAndNull, Binary.fromString("sharp")), ccmd, dictionaries))
+        .as("Should not drop block with only the excluded value and null")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop block with any other value",
-        canDrop(notEq(sharpAndNull, Binary.fromString("applause")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(sharpAndNull, Binary.fromString("applause")), ccmd, dictionaries))
+        .as("Should not drop block with any other value")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop block with a known value",
-        canDrop(notEq(b, Binary.fromString("x")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(b, Binary.fromString("x")), ccmd, dictionaries))
+        .as("Should not drop block with a known value")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop block with a known value",
-        canDrop(notEq(b, Binary.fromString("B")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(b, Binary.fromString("B")), ccmd, dictionaries))
+        .as("Should not drop block with a known value")
+        .isFalse();
 
-    assertFalse("Should not drop block for null", canDrop(notEq(b, null), ccmd, dictionaries));
+    assertThat(canDrop(notEq(b, null), ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
   }
 
-  @Test
-  public void testLtInt() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtInt(WriterVersion version) throws Exception {
+    setUp(version);
     IntColumn i32 = intColumn("int32_field");
     int lowest = Integer.MAX_VALUE;
     for (int value : intValues) {
       lowest = Math.min(lowest, value);
     }
 
-    assertTrue("Should drop: < lowest value", canDrop(lt(i32, lowest), ccmd, dictionaries));
-    assertFalse("Should not drop: < (lowest value + 1)", canDrop(lt(i32, lowest + 1), ccmd, dictionaries));
+    assertThat(canDrop(lt(i32, lowest), ccmd, dictionaries))
+        .as("Should drop: < lowest value")
+        .isTrue();
+    assertThat(canDrop(lt(i32, lowest + 1), ccmd, dictionaries))
+        .as("Should not drop: < (lowest value + 1)")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop: contains matching values", canDrop(lt(i32, Integer.MAX_VALUE), ccmd, dictionaries));
+    assertThat(canDrop(lt(i32, Integer.MAX_VALUE), ccmd, dictionaries))
+        .as("Should not drop: contains matching values")
+        .isFalse();
   }
 
-  @Test
-  public void testLtFixed() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtFixed(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn fixed = binaryColumn("fixed_field");
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
     if (version == PARQUET_2_0) {
-      assertTrue("Should drop: < lowest value", canDrop(lt(fixed, DECIMAL_VALUES[0]), ccmd, dictionaries));
+      assertThat(canDrop(lt(fixed, DECIMAL_VALUES[0]), ccmd, dictionaries))
+          .as("Should drop: < lowest value")
+          .isTrue();
     }
 
-    assertFalse("Should not drop: < 2nd lowest value", canDrop(lt(fixed, DECIMAL_VALUES[1]), ccmd, dictionaries));
+    assertThat(canDrop(lt(fixed, DECIMAL_VALUES[1]), ccmd, dictionaries))
+        .as("Should not drop: < 2nd lowest value")
+        .isFalse();
   }
 
-  @Test
-  public void testLtEqLong() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtEqLong(WriterVersion version) throws Exception {
+    setUp(version);
     LongColumn i64 = longColumn("int64_field");
     long lowest = Long.MAX_VALUE;
     for (long value : longValues) {
       lowest = Math.min(lowest, value);
     }
 
-    assertTrue("Should drop: <= lowest - 1", canDrop(ltEq(i64, lowest - 1), ccmd, dictionaries));
-    assertFalse("Should not drop: <= lowest", canDrop(ltEq(i64, lowest), ccmd, dictionaries));
+    assertThat(canDrop(ltEq(i64, lowest - 1), ccmd, dictionaries))
+        .as("Should drop: <= lowest - 1")
+        .isTrue();
+    assertThat(canDrop(ltEq(i64, lowest), ccmd, dictionaries))
+        .as("Should not drop: <= lowest")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop: contains matching values", canDrop(ltEq(i64, Long.MAX_VALUE), ccmd, dictionaries));
+    assertThat(canDrop(ltEq(i64, Long.MAX_VALUE), ccmd, dictionaries))
+        .as("Should not drop: contains matching values")
+        .isFalse();
   }
 
-  @Test
-  public void testGtFloat() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtFloat(WriterVersion version) throws Exception {
+    setUp(version);
     FloatColumn f = floatColumn("float_field");
     float highest = Float.MIN_VALUE;
     for (int value : intValues) {
       highest = Math.max(highest, toFloat(value));
     }
 
-    assertTrue("Should drop: > highest value", canDrop(gt(f, highest), ccmd, dictionaries));
-    assertFalse("Should not drop: > (highest value - 1.0)", canDrop(gt(f, highest - 1.0f), ccmd, dictionaries));
+    assertThat(canDrop(gt(f, highest), ccmd, dictionaries))
+        .as("Should drop: > highest value")
+        .isTrue();
+    assertThat(canDrop(gt(f, highest - 1.0f), ccmd, dictionaries))
+        .as("Should not drop: > (highest value - 1.0)")
+        .isFalse();
 
-    assertFalse("Should not drop: contains matching values", canDrop(gt(f, Float.MIN_VALUE), ccmd, dictionaries));
+    assertThat(canDrop(gt(f, Float.MIN_VALUE), ccmd, dictionaries))
+        .as("Should not drop: contains matching values")
+        .isFalse();
   }
 
-  @Test
-  public void testGtEqDouble() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtEqDouble(WriterVersion version) throws Exception {
+    setUp(version);
     DoubleColumn d = doubleColumn("double_field");
     double highest = Double.MIN_VALUE;
     for (int value : intValues) {
       highest = Math.max(highest, toDouble(value));
     }
 
-    assertTrue("Should drop: >= highest + 0.00000001", canDrop(gtEq(d, highest + 0.00000001), ccmd, dictionaries));
-    assertFalse("Should not drop: >= highest", canDrop(gtEq(d, highest), ccmd, dictionaries));
+    assertThat(canDrop(gtEq(d, highest + 0.00000001), ccmd, dictionaries))
+        .as("Should drop: >= highest + 0.00000001")
+        .isTrue();
+    assertThat(canDrop(gtEq(d, highest), ccmd, dictionaries))
+        .as("Should not drop: >= highest")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop: contains matching values", canDrop(gtEq(d, Double.MIN_VALUE), ccmd, dictionaries));
+    assertThat(canDrop(gtEq(d, Double.MIN_VALUE), ccmd, dictionaries))
+        .as("Should not drop: contains matching values")
+        .isFalse();
   }
 
-  @Test
-  public void testNaNDictionaryFilterIsConservative() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNaNDictionaryFilterIsConservative(WriterVersion version) throws Exception {
+    setUp(version);
     List<ColumnChunkMetaData> nanColumns = nanColumns();
     DictionaryPageReadStore nanDictionaries = nanDictionaries();
     DoubleColumn doubleColumn = doubleColumn("double_nan_field");
     FloatColumn floatColumn = floatColumn("float_nan_field");
     BinaryColumn float16Column = binaryColumn("float16_nan_field");
 
-    assertFalse(canDrop(eq(doubleColumn, DOUBLE_NAN_A), nanColumns, nanDictionaries));
-    assertFalse(canDrop(eq(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notEq(doubleColumn, DOUBLE_NAN_A), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notEq(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(lt(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(gt(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries));
+    assertThat(canDrop(eq(doubleColumn, DOUBLE_NAN_A), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(eq(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notEq(doubleColumn, DOUBLE_NAN_A), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notEq(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(lt(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(gt(doubleColumn, DOUBLE_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
 
-    assertFalse(canDrop(eq(floatColumn, FLOAT_NAN_A), nanColumns, nanDictionaries));
-    assertFalse(canDrop(eq(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notEq(floatColumn, FLOAT_NAN_A), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notEq(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(lt(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(gt(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries));
+    assertThat(canDrop(eq(floatColumn, FLOAT_NAN_A), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(eq(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notEq(floatColumn, FLOAT_NAN_A), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notEq(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(lt(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(gt(floatColumn, FLOAT_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
 
     Set<Double> doubleSet = new HashSet<>();
     doubleSet.add(DOUBLE_NAN_B);
-    assertFalse(canDrop(in(doubleColumn, doubleSet), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notIn(doubleColumn, doubleSet), nanColumns, nanDictionaries));
+    assertThat(canDrop(in(doubleColumn, doubleSet), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notIn(doubleColumn, doubleSet), nanColumns, nanDictionaries))
+        .isFalse();
 
     Set<Float> floatSet = new HashSet<>();
     floatSet.add(FLOAT_NAN_B);
-    assertFalse(canDrop(in(floatColumn, floatSet), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notIn(floatColumn, floatSet), nanColumns, nanDictionaries));
+    assertThat(canDrop(in(floatColumn, floatSet), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notIn(floatColumn, floatSet), nanColumns, nanDictionaries))
+        .isFalse();
 
     Set<Binary> float16Set = new HashSet<>();
     float16Set.add(FLOAT16_NAN_B);
-    assertFalse(canDrop(in(float16Column, float16Set), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notIn(float16Column, float16Set), nanColumns, nanDictionaries));
+    assertThat(canDrop(in(float16Column, float16Set), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notIn(float16Column, float16Set), nanColumns, nanDictionaries))
+        .isFalse();
 
-    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN_A), nanColumns, nanDictionaries));
-    assertFalse(canDrop(eq(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN_A), nanColumns, nanDictionaries));
-    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(lt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
-    assertFalse(canDrop(gt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries));
+    assertThat(canDrop(eq(float16Column, FLOAT16_NAN_A), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(eq(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_NAN_A), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(notEq(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(lt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
+    assertThat(canDrop(gt(float16Column, FLOAT16_NAN_B), nanColumns, nanDictionaries))
+        .isFalse();
   }
 
-  @Test
-  public void testNaNDictionaryValuesMakeRangeFiltersConservative() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNaNDictionaryValuesMakeRangeFiltersConservative(WriterVersion version) throws Exception {
+    setUp(version);
     DictionaryPageReadStore dictionariesWithNaNs = dictionariesWithNaNs();
     assertNaNDictionaryRangeFiltersAreConservative(nanColumns(), dictionariesWithNaNs);
     assertNaNDictionaryRangeFiltersAreConservative(ieeeNaNColumns(), dictionariesWithNaNs);
@@ -586,36 +673,53 @@ public class DictionaryFilterTest {
     FloatColumn floatColumn = floatColumn("float_nan_field");
     BinaryColumn float16Column = binaryColumn("float16_nan_field");
 
-    assertFalse(canDrop(gt(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(gtEq(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(lt(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(ltEq(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs));
+    assertThat(canDrop(gt(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(gtEq(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(lt(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(ltEq(doubleColumn, 0.0D), nanColumns, dictionariesWithNaNs))
+        .isFalse();
 
-    assertFalse(canDrop(gt(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(gtEq(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(lt(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(ltEq(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs));
+    assertThat(canDrop(gt(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(gtEq(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(lt(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(ltEq(floatColumn, 0.0F), nanColumns, dictionariesWithNaNs))
+        .isFalse();
 
     Binary zero = Binary.fromConstantByteArray(new byte[] {0x00, 0x00});
-    assertFalse(canDrop(gt(float16Column, zero), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(gtEq(float16Column, zero), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(lt(float16Column, zero), nanColumns, dictionariesWithNaNs));
-    assertFalse(canDrop(ltEq(float16Column, zero), nanColumns, dictionariesWithNaNs));
+    assertThat(canDrop(gt(float16Column, zero), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(gtEq(float16Column, zero), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(lt(float16Column, zero), nanColumns, dictionariesWithNaNs))
+        .isFalse();
+    assertThat(canDrop(ltEq(float16Column, zero), nanColumns, dictionariesWithNaNs))
+        .isFalse();
   }
 
   private static List<ColumnChunkMetaData> nanColumns() {
     return List.of(
         nanColumn(
             "double_nan_field",
-            Types.required(PrimitiveTypeName.DOUBLE).named("double_nan_field")),
+            Types.required(PrimitiveTypeName.DOUBLE)
+                .columnOrder(ColumnOrder.typeDefined())
+                .named("double_nan_field")),
         nanColumn(
             "float_nan_field",
-            Types.required(PrimitiveTypeName.FLOAT).named("float_nan_field")),
+            Types.required(PrimitiveTypeName.FLOAT)
+                .columnOrder(ColumnOrder.typeDefined())
+                .named("float_nan_field")),
         nanColumn(
             "float16_nan_field",
             Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
                 .length(2)
                 .as(LogicalTypeAnnotation.float16Type())
+                .columnOrder(ColumnOrder.typeDefined())
                 .named("float16_nan_field")));
   }
 
@@ -718,8 +822,10 @@ public class DictionaryFilterTest {
     return buffer.array();
   }
 
-  @Test
-  public void testInBinary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInBinary(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("binary_field");
 
     Set<Binary> set1 = new HashSet<>();
@@ -729,8 +835,12 @@ public class DictionaryFilterTest {
     set1.add(Binary.fromString("E"));
     FilterPredicate predIn1 = in(b, set1);
     FilterPredicate predNotIn1 = notIn(b, set1);
-    assertFalse("Should not drop block", canDrop(predIn1, ccmd, dictionaries));
-    assertFalse("Should not drop block", canDrop(predNotIn1, ccmd, dictionaries));
+    assertThat(canDrop(predIn1, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isFalse();
+    assertThat(canDrop(predNotIn1, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isFalse();
 
     Set<Binary> set2 = new HashSet<>();
     for (int i = 0; i < 26; i++) {
@@ -739,8 +849,12 @@ public class DictionaryFilterTest {
     set2.add(Binary.fromString("A"));
     FilterPredicate predIn2 = in(b, set2);
     FilterPredicate predNotIn2 = notIn(b, set2);
-    assertFalse("Should not drop block", canDrop(predIn2, ccmd, dictionaries));
-    assertTrue("Should not drop block", canDrop(predNotIn2, ccmd, dictionaries));
+    assertThat(canDrop(predIn2, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isFalse();
+    assertThat(canDrop(predNotIn2, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isTrue();
 
     Set<Binary> set3 = new HashSet<>();
     set3.add(Binary.fromString("F"));
@@ -749,15 +863,21 @@ public class DictionaryFilterTest {
     set3.add(Binary.fromString("E"));
     FilterPredicate predIn3 = in(b, set3);
     FilterPredicate predNotIn3 = notIn(b, set3);
-    assertTrue("Should drop block", canDrop(predIn3, ccmd, dictionaries));
-    assertFalse("Should not drop block", canDrop(predNotIn3, ccmd, dictionaries));
+    assertThat(canDrop(predIn3, ccmd, dictionaries)).as("Should drop block").isTrue();
+    assertThat(canDrop(predNotIn3, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isFalse();
 
     Set<Binary> set4 = new HashSet<>();
     set4.add(null);
     FilterPredicate predIn4 = in(b, set4);
     FilterPredicate predNotIn4 = notIn(b, set4);
-    assertFalse("Should not drop block for null", canDrop(predIn4, ccmd, dictionaries));
-    assertFalse("Should not drop block for null", canDrop(predNotIn4, ccmd, dictionaries));
+    assertThat(canDrop(predIn4, ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
+    assertThat(canDrop(predNotIn4, ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
 
     BinaryColumn sharpAndNull = binaryColumn("optional_single_value_field");
 
@@ -766,12 +886,18 @@ public class DictionaryFilterTest {
     set5.add(Binary.fromString("sharp"));
     FilterPredicate predNotIn5 = notIn(sharpAndNull, set5);
     FilterPredicate predIn5 = in(sharpAndNull, set5);
-    assertFalse("Should not drop block", canDrop(predNotIn5, ccmd, dictionaries));
-    assertFalse("Should not drop block", canDrop(predIn5, ccmd, dictionaries));
+    assertThat(canDrop(predNotIn5, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isFalse();
+    assertThat(canDrop(predIn5, ccmd, dictionaries))
+        .as("Should not drop block")
+        .isFalse();
   }
 
-  @Test
-  public void testInFixed() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInFixed(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("fixed_field");
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
@@ -782,27 +908,41 @@ public class DictionaryFilterTest {
       set1.add(toBinary("12345", 17));
       FilterPredicate predIn1 = in(b, set1);
       FilterPredicate predNotIn1 = notIn(b, set1);
-      assertTrue("Should drop block for in (-2, -22, 12345)", canDrop(predIn1, ccmd, dictionaries));
-      assertFalse("Should not drop block for notIn (-2, -22, 12345)", canDrop(predNotIn1, ccmd, dictionaries));
+      assertThat(canDrop(predIn1, ccmd, dictionaries))
+          .as("Should drop block for in (-2, -22, 12345)")
+          .isTrue();
+      assertThat(canDrop(predNotIn1, ccmd, dictionaries))
+          .as("Should not drop block for notIn (-2, -22, 12345)")
+          .isFalse();
 
       Set<Binary> set2 = new HashSet<>();
       set2.add(toBinary("-1", 17));
       set2.add(toBinary("0", 17));
       set2.add(toBinary("12345", 17));
-      assertFalse("Should not drop block for in (-1, 0, 12345)", canDrop(in(b, set2), ccmd, dictionaries));
-      assertFalse("Should not drop block for in (-1, 0, 12345)", canDrop(notIn(b, set2), ccmd, dictionaries));
+      assertThat(canDrop(in(b, set2), ccmd, dictionaries))
+          .as("Should not drop block for in (-1, 0, 12345)")
+          .isFalse();
+      assertThat(canDrop(notIn(b, set2), ccmd, dictionaries))
+          .as("Should not drop block for in (-1, 0, 12345)")
+          .isFalse();
     }
 
     Set<Binary> set3 = new HashSet<>();
     set3.add(null);
     FilterPredicate predIn3 = in(b, set3);
     FilterPredicate predNotIn3 = notIn(b, set3);
-    assertFalse("Should not drop block for null", canDrop(predIn3, ccmd, dictionaries));
-    assertFalse("Should not drop block for null", canDrop(predNotIn3, ccmd, dictionaries));
+    assertThat(canDrop(predIn3, ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
+    assertThat(canDrop(predNotIn3, ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
   }
 
-  @Test
-  public void testInInt96() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInInt96(WriterVersion version) throws Exception {
+    setUp(version);
     // INT96 ordering is undefined => no filtering shall be done
     BinaryColumn b = binaryColumn("int96_field");
 
@@ -812,8 +952,12 @@ public class DictionaryFilterTest {
     set1.add(toBinary("12345", 12));
     FilterPredicate predIn1 = in(b, set1);
     FilterPredicate predNotIn1 = notIn(b, set1);
-    assertFalse("Should not drop block for in (-2, -0, 12345)", canDrop(predIn1, ccmd, dictionaries));
-    assertFalse("Should not drop block for notIn (-2, -0, 12345)", canDrop(predNotIn1, ccmd, dictionaries));
+    assertThat(canDrop(predIn1, ccmd, dictionaries))
+        .as("Should not drop block for in (-2, -0, 12345)")
+        .isFalse();
+    assertThat(canDrop(predNotIn1, ccmd, dictionaries))
+        .as("Should not drop block for notIn (-2, -0, 12345)")
+        .isFalse();
 
     Set<Binary> set2 = new HashSet<>();
     set2.add(toBinary("-2", 17));
@@ -821,19 +965,29 @@ public class DictionaryFilterTest {
     set2.add(toBinary("-789", 17));
     FilterPredicate predIn2 = in(b, set2);
     FilterPredicate predNotIn2 = notIn(b, set2);
-    assertFalse("Should not drop block for in (-2, 12345, -789)", canDrop(predIn2, ccmd, dictionaries));
-    assertFalse("Should not drop block for notIn (-2, 12345, -789)", canDrop(predNotIn2, ccmd, dictionaries));
+    assertThat(canDrop(predIn2, ccmd, dictionaries))
+        .as("Should not drop block for in (-2, 12345, -789)")
+        .isFalse();
+    assertThat(canDrop(predNotIn2, ccmd, dictionaries))
+        .as("Should not drop block for notIn (-2, 12345, -789)")
+        .isFalse();
 
     Set<Binary> set3 = new HashSet<>();
     set3.add(null);
     FilterPredicate predIn3 = in(b, set3);
     FilterPredicate predNotIn3 = notIn(b, set3);
-    assertFalse("Should not drop block for null", canDrop(predIn3, ccmd, dictionaries));
-    assertFalse("Should not drop block for null", canDrop(predNotIn3, ccmd, dictionaries));
+    assertThat(canDrop(predIn3, ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
+    assertThat(canDrop(predNotIn3, ccmd, dictionaries))
+        .as("Should not drop block for null")
+        .isFalse();
   }
 
-  @Test
-  public void testAnd() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testAnd(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -844,14 +998,24 @@ public class DictionaryFilterTest {
     FilterPredicate x = eq(col, Binary.fromString("x"));
     FilterPredicate y = eq(col, Binary.fromString("y"));
 
-    assertTrue("Should drop when either predicate must be false", canDrop(and(B, y), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false", canDrop(and(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false", canDrop(and(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when either predicate could be true", canDrop(and(x, y), ccmd, dictionaries));
+    assertThat(canDrop(and(B, y), ccmd, dictionaries))
+        .as("Should drop when either predicate must be false")
+        .isTrue();
+    assertThat(canDrop(and(x, C), ccmd, dictionaries))
+        .as("Should drop when either predicate must be false")
+        .isTrue();
+    assertThat(canDrop(and(B, C), ccmd, dictionaries))
+        .as("Should drop when either predicate must be false")
+        .isTrue();
+    assertThat(canDrop(and(x, y), ccmd, dictionaries))
+        .as("Should not drop when either predicate could be true")
+        .isFalse();
   }
 
-  @Test
-  public void testOr() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testOr(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -862,42 +1026,58 @@ public class DictionaryFilterTest {
     FilterPredicate x = eq(col, Binary.fromString("x"));
     FilterPredicate y = eq(col, Binary.fromString("y"));
 
-    assertFalse("Should not drop when one predicate could be true", canDrop(or(B, y), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when both predicates must be false", canDrop(or(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, y), ccmd, dictionaries));
+    assertThat(canDrop(or(B, y), ccmd, dictionaries))
+        .as("Should not drop when one predicate could be true")
+        .isFalse();
+    assertThat(canDrop(or(x, C), ccmd, dictionaries))
+        .as("Should not drop when one predicate could be true")
+        .isFalse();
+    assertThat(canDrop(or(B, C), ccmd, dictionaries))
+        .as("Should drop when both predicates must be false")
+        .isTrue();
+    assertThat(canDrop(or(x, y), ccmd, dictionaries))
+        .as("Should not drop when one predicate could be true")
+        .isFalse();
   }
 
-  @Test
-  public void testUdp() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testUdp(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP dropabble = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
 
-    assertTrue(
-        "Should drop block for non-matching UDP",
-        canDrop(userDefined(intColumn("int32_field"), dropabble), ccmd, dictionaries));
+    assertThat(canDrop(userDefined(intColumn("int32_field"), dropabble), ccmd, dictionaries))
+        .as("Should drop block for non-matching UDP")
+        .isTrue();
 
-    assertFalse(
-        "Should not drop block for matching UDP",
-        canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries));
+    assertThat(canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries))
+        .as("Should not drop block for matching UDP")
+        .isFalse();
   }
 
-  @Test
-  public void testNullAcceptingUdp() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNullAcceptingUdp(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP drop42DenyNulls = new InInt32UDP(Sets.newHashSet(205));
     InInt32UDP drop42AcceptNulls = new InInt32UDP(Sets.newHashSet(null, 205));
 
     // A column with value 42 and 10% nulls
     IntColumn intColumnWithNulls = intColumn("optional_single_value_int32_field");
 
-    assertTrue("Should drop block", canDrop(userDefined(intColumnWithNulls, drop42DenyNulls), ccmd, dictionaries));
-    assertFalse(
-        "Should not drop block for null accepting udp",
-        canDrop(userDefined(intColumnWithNulls, drop42AcceptNulls), ccmd, dictionaries));
+    assertThat(canDrop(userDefined(intColumnWithNulls, drop42DenyNulls), ccmd, dictionaries))
+        .as("Should drop block")
+        .isTrue();
+    assertThat(canDrop(userDefined(intColumnWithNulls, drop42AcceptNulls), ccmd, dictionaries))
+        .as("Should not drop block for null accepting udp")
+        .isFalse();
   }
 
-  @Test
-  public void testInverseUdp() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInverseUdp(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP droppable = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
     Set<Integer> allValues = ImmutableSet.copyOf(Ints.asList(intValues));
@@ -909,153 +1089,197 @@ public class DictionaryFilterTest {
     FilterPredicate inverse2 =
         LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), completeMatch)));
 
-    assertFalse("Should not drop block for inverse of non-matching UDP", canDrop(inverse, ccmd, dictionaries));
+    assertThat(canDrop(inverse, ccmd, dictionaries))
+        .as("Should not drop block for inverse of non-matching UDP")
+        .isFalse();
 
-    assertFalse(
-        "Should not drop block for inverse of UDP with some matches", canDrop(inverse1, ccmd, dictionaries));
+    assertThat(canDrop(inverse1, ccmd, dictionaries))
+        .as("Should not drop block for inverse of UDP with some matches")
+        .isFalse();
 
-    assertTrue("Should drop block for inverse of UDP with all matches", canDrop(inverse2, ccmd, dictionaries));
+    assertThat(canDrop(inverse2, ccmd, dictionaries))
+        .as("Should drop block for inverse of UDP with all matches")
+        .isTrue();
   }
 
-  @Test
-  public void testColumnWithoutDictionary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testColumnWithoutDictionary(WriterVersion version) throws Exception {
+    setUp(version);
     IntColumn plain = intColumn("plain_int32_field");
     DictionaryPageReadStore dictionaryStore = mock(DictionaryPageReadStore.class);
 
-    assertFalse("Should never drop block using plain encoding", canDrop(eq(plain, -10), ccmd, dictionaryStore));
+    assertThat(canDrop(eq(plain, -10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse("Should never drop block using plain encoding", canDrop(lt(plain, -10), ccmd, dictionaryStore));
+    assertThat(canDrop(lt(plain, -10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse("Should never drop block using plain encoding", canDrop(ltEq(plain, -10), ccmd, dictionaryStore));
+    assertThat(canDrop(ltEq(plain, -10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse(
-        "Should never drop block using plain encoding",
-        canDrop(gt(plain, nElements + 10), ccmd, dictionaryStore));
+    assertThat(canDrop(gt(plain, nElements + 10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse(
-        "Should never drop block using plain encoding",
-        canDrop(gtEq(plain, nElements + 10), ccmd, dictionaryStore));
+    assertThat(canDrop(gtEq(plain, nElements + 10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse(
-        "Should never drop block using plain encoding",
-        canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore));
+    assertThat(canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
     verifyNoInteractions(dictionaryStore);
   }
 
-  @Test
-  public void testColumnWithDictionaryAndPlainEncodings() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testColumnWithDictionaryAndPlainEncodings(WriterVersion version) throws Exception {
+    setUp(version);
     IntColumn plain = intColumn("fallback_binary_field");
     DictionaryPageReadStore dictionaryStore = mock(DictionaryPageReadStore.class);
 
-    assertFalse("Should never drop block using plain encoding", canDrop(eq(plain, -10), ccmd, dictionaryStore));
+    assertThat(canDrop(eq(plain, -10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse("Should never drop block using plain encoding", canDrop(lt(plain, -10), ccmd, dictionaryStore));
+    assertThat(canDrop(lt(plain, -10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse("Should never drop block using plain encoding", canDrop(ltEq(plain, -10), ccmd, dictionaryStore));
+    assertThat(canDrop(ltEq(plain, -10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse(
-        "Should never drop block using plain encoding",
-        canDrop(gt(plain, nElements + 10), ccmd, dictionaryStore));
+    assertThat(canDrop(gt(plain, nElements + 10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse(
-        "Should never drop block using plain encoding",
-        canDrop(gtEq(plain, nElements + 10), ccmd, dictionaryStore));
+    assertThat(canDrop(gtEq(plain, nElements + 10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
-    assertFalse(
-        "Should never drop block using plain encoding",
-        canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore));
+    assertThat(canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore))
+        .as("Should never drop block using plain encoding")
+        .isFalse();
 
     verifyNoInteractions(dictionaryStore);
   }
 
-  @Test
-  public void testEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for non-null query", canDrop(eq(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, Binary.fromString("any")), ccmd, dictionaries))
+        .as("Should drop block for non-null query")
+        .isTrue();
 
-    assertFalse("Should not drop block null query", canDrop(eq(b, null), ccmd, dictionaries));
+    assertThat(canDrop(eq(b, null), ccmd, dictionaries))
+        .as("Should not drop block null query")
+        .isFalse();
   }
 
-  @Test
-  public void testNotEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNotEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertFalse(
-        "Should not drop block for non-null query",
-        canDrop(notEq(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertThat(canDrop(notEq(b, Binary.fromString("any")), ccmd, dictionaries))
+        .as("Should not drop block for non-null query")
+        .isFalse();
 
-    assertTrue("Should not drop block null query", canDrop(notEq(b, null), ccmd, dictionaries));
+    assertThat(canDrop(notEq(b, null), ccmd, dictionaries))
+        .as("Should not drop block null query")
+        .isTrue();
   }
 
-  @Test
-  public void testLtMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for any non-null query",
-        canDrop(lt(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertThat(canDrop(lt(b, Binary.fromString("any")), ccmd, dictionaries))
+        .as("Should drop block for any non-null query")
+        .isTrue();
   }
 
-  @Test
-  public void testLtEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for any non-null query",
-        canDrop(ltEq(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertThat(canDrop(ltEq(b, Binary.fromString("any")), ccmd, dictionaries))
+        .as("Should drop block for any non-null query")
+        .isTrue();
   }
 
-  @Test
-  public void testGtMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for any non-null query",
-        canDrop(gt(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertThat(canDrop(gt(b, Binary.fromString("any")), ccmd, dictionaries))
+        .as("Should drop block for any non-null query")
+        .isTrue();
   }
 
-  @Test
-  public void testGtEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for any non-null query",
-        canDrop(gtEq(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertThat(canDrop(gtEq(b, Binary.fromString("any")), ccmd, dictionaries))
+        .as("Should drop block for any non-null query")
+        .isTrue();
   }
 
-  @Test
-  public void testUdpMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testUdpMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
     IntColumn fake = intColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for null rejecting udp",
-        canDrop(userDefined(fake, nullRejecting), ccmd, dictionaries));
-    assertFalse(
-        "Should not drop block for null accepting udp",
-        canDrop(userDefined(fake, nullAccepting), ccmd, dictionaries));
+    assertThat(canDrop(userDefined(fake, nullRejecting), ccmd, dictionaries))
+        .as("Should drop block for null rejecting udp")
+        .isTrue();
+    assertThat(canDrop(userDefined(fake, nullAccepting), ccmd, dictionaries))
+        .as("Should not drop block for null accepting udp")
+        .isFalse();
   }
 
-  @Test
-  public void testInverseUdpMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInverseUdpMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
     IntColumn fake = intColumn("missing_column");
 
-    assertTrue(
-        "Should drop block for null accepting udp",
-        canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
-    assertFalse(
-        "Should not drop block for null rejecting udp",
-        canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+    assertThat(canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries))
+        .as("Should drop block for null accepting udp")
+        .isTrue();
+    assertThat(canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries))
+        .as("Should not drop block for null rejecting udp")
+        .isFalse();
   }
 
-  @Test
-  public void testContainsAnd() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testContainsAnd(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -1066,14 +1290,24 @@ public class DictionaryFilterTest {
     Operators.Contains<Binary> x = contains(eq(col, Binary.fromString("x")));
     Operators.Contains<Binary> y = contains(eq(col, Binary.fromString("y")));
 
-    assertTrue("Should drop when either predicate must be false", canDrop(and(B, y), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false", canDrop(and(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false", canDrop(and(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when either predicate could be true", canDrop(and(x, y), ccmd, dictionaries));
+    assertThat(canDrop(and(B, y), ccmd, dictionaries))
+        .as("Should drop when either predicate must be false")
+        .isTrue();
+    assertThat(canDrop(and(x, C), ccmd, dictionaries))
+        .as("Should drop when either predicate must be false")
+        .isTrue();
+    assertThat(canDrop(and(B, C), ccmd, dictionaries))
+        .as("Should drop when either predicate must be false")
+        .isTrue();
+    assertThat(canDrop(and(x, y), ccmd, dictionaries))
+        .as("Should not drop when either predicate could be true")
+        .isFalse();
   }
 
-  @Test
-  public void testContainsOr() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testContainsOr(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -1084,10 +1318,18 @@ public class DictionaryFilterTest {
     Operators.Contains<Binary> x = contains(eq(col, Binary.fromString("x")));
     Operators.Contains<Binary> y = contains(eq(col, Binary.fromString("y")));
 
-    assertFalse("Should not drop when one predicate could be true", canDrop(or(B, y), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when both predicates must be false", canDrop(or(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, y), ccmd, dictionaries));
+    assertThat(canDrop(or(B, y), ccmd, dictionaries))
+        .as("Should not drop when one predicate could be true")
+        .isFalse();
+    assertThat(canDrop(or(x, C), ccmd, dictionaries))
+        .as("Should not drop when one predicate could be true")
+        .isFalse();
+    assertThat(canDrop(or(B, C), ccmd, dictionaries))
+        .as("Should drop when both predicates must be false")
+        .isTrue();
+    assertThat(canDrop(or(x, y), ccmd, dictionaries))
+        .as("Should not drop when one predicate could be true")
+        .isFalse();
   }
 
   private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {

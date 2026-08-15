@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -38,22 +37,17 @@ import org.apache.parquet.schema.Types;
 import org.apache.parquet.thrift.ThriftParquetReader;
 import org.apache.parquet.thrift.ThriftParquetWriter;
 import org.apache.parquet.thrift.test.binary.StringAndBinary;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestBinary {
-  @Rule
-  public TemporaryFolder tempDir = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testBinary() throws IOException {
     StringAndBinary expected = new StringAndBinary("test", ByteBuffer.wrap(new byte[] {-123, 20, 33}));
-    File temp = tempDir.newFile(UUID.randomUUID().toString());
-    temp.deleteOnExit();
-    temp.delete();
-
-    Path path = new Path(temp.getPath());
+    Path path = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
 
     ThriftParquetWriter<StringAndBinary> writer =
         new ThriftParquetWriter<StringAndBinary>(path, StringAndBinary.class, CompressionCodecName.SNAPPY);
@@ -68,19 +62,20 @@ public class TestBinary {
     reader.close();
 
     assertSchema(ParquetFileReader.readFooter(new Configuration(), path));
-    assertEquals("Should match after serialization round trip", expected, record);
+    assertThat(record).as("Should match after serialization round trip").isEqualTo(expected);
   }
 
   private void assertSchema(ParquetMetadata parquetMetadata) {
     List<Type> fields = parquetMetadata.getFileMetaData().getSchema().getFields();
-    assertEquals(2, fields.size());
-    assertEquals(
-        Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
+    assertThat(fields).hasSize(2);
+    assertThat(fields.get(0))
+        .isEqualTo(Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
             .as(OriginalType.UTF8)
             .id(1)
-            .named("s"),
-        fields.get(0));
-    assertEquals(
-        Types.required(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("b"), fields.get(1));
+            .named("s"));
+    assertThat(fields.get(1))
+        .isEqualTo(Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
+            .id(2)
+            .named("b"));
   }
 }

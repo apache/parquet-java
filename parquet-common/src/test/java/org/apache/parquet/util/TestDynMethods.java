@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.util.Concatenator.SomeCheckedException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestDynMethods {
   @Test

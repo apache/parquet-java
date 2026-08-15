@@ -19,12 +19,12 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +50,7 @@ public class TestParquetReadRouter {
       ParquetReadRouter.read(bitWidth, inputStream, 0, output);
       ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
       assertThat(outputBatch).isEqualTo(output);
-      Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+      assumeThat(ParquetReadRouter.getSupportVectorFromCPUFlags()).isEqualTo(VectorSupport.VECTOR_512);
       ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
       assertThat(outputBatchVector).isEqualTo(output);
     }

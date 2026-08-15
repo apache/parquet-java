@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.column.values.plain;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,9 +28,9 @@ import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.io.api.Binary;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for {@link FixedLenByteArrayPlainValuesWriter} and
@@ -44,12 +43,12 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -76,7 +75,7 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
   @Test
   public void testEncoding() {
     try (FixedLenByteArrayPlainValuesWriter writer = newWriter()) {
-      assertEquals(Encoding.PLAIN, writer.getEncoding());
+      assertThat(writer.getEncoding()).isEqualTo(Encoding.PLAIN);
     }
   }
 
@@ -94,10 +93,9 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
       reader.initFromPage(expected.length, wrapForReading(writer));
 
       for (int i = 0; i < expected.length; i++) {
-        assertArrayEquals(
-            "value at index " + i,
-            expected[i].getBytes(),
-            reader.readBytes().getBytes());
+        assertThat(reader.readBytes().getBytes())
+            .as("value at index " + i)
+            .isEqualTo(expected[i].getBytes());
       }
     }
   }
@@ -116,9 +114,9 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
       reader.initFromPage(4, wrapForReading(writer));
 
       reader.skip(); // skip 1
-      assertArrayEquals(fixedBinary(2).getBytes(), reader.readBytes().getBytes());
+      assertThat(reader.readBytes().getBytes()).isEqualTo(fixedBinary(2).getBytes());
       reader.skip(1); // skip 3
-      assertArrayEquals(fixedBinary(4).getBytes(), reader.readBytes().getBytes());
+      assertThat(reader.readBytes().getBytes()).isEqualTo(fixedBinary(4).getBytes());
     }
   }
 
@@ -128,12 +126,9 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
   public void testRejectWrongLengthScalar() {
     try (FixedLenByteArrayPlainValuesWriter writer = newWriter()) {
       Binary wrongLen = Binary.fromConstantByteArray(new byte[FIXED_LEN + 1]);
-      try {
-        writer.writeBytes(wrongLen);
-        fail("Should have thrown IllegalArgumentException");
-      } catch (IllegalArgumentException e) {
-        // expected
-      }
+      assertThatThrownBy(() -> writer.writeBytes(wrongLen))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Fixed Binary size 13 does not match field type length 12");
     }
   }
 
@@ -144,14 +139,14 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
     try (FixedLenByteArrayPlainValuesWriter writer = newWriter()) {
       writer.writeBytes(fixedBinary(99));
       writer.reset();
-      assertEquals(0, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isZero();
 
       writer.writeBytes(fixedBinary(42));
 
       FixedLenByteArrayPlainValuesReader reader = new FixedLenByteArrayPlainValuesReader(FIXED_LEN);
       reader.initFromPage(1, wrapForReading(writer));
 
-      assertArrayEquals(fixedBinary(42).getBytes(), reader.readBytes().getBytes());
+      assertThat(reader.readBytes().getBytes()).isEqualTo(fixedBinary(42).getBytes());
     }
   }
 
