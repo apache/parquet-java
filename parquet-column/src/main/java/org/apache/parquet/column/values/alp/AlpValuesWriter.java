@@ -481,7 +481,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
       }
 
-      int bitWidth = AlpEncoderDecoder.bitWidthForLong(maxDelta);
+      int bitWidth = BytesUtils.getWidthFromMaxLong(maxDelta);
 
       long startSize = encodedVectors.size();
 
