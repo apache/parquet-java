@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.thrift.protocol.TProtocol;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 // Test to verify UUID converter support in ThriftRecordConverter.
 public class TestUUIDRecordConverterFailure {
@@ -44,12 +44,7 @@ public class TestUUIDRecordConverterFailure {
     ThriftRecordConverter.FieldUUIDConverter uuidConverter =
         new ThriftRecordConverter.FieldUUIDConverter(new ArrayList<TProtocol>(), uuidField);
 
-    try {
-      uuidConverter.addBinary(binary);
-      assertTrue("UUID converter handled binary data", true);
-    } catch (UnsupportedOperationException e) {
-      fail("UUID converter should handle binary data, but got: " + e.getMessage());
-    }
+    assertThatCode(() -> uuidConverter.addBinary(binary)).doesNotThrowAnyException();
   }
 
   private byte[] uuidToBytes(UUID uuid) {

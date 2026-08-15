@@ -492,6 +492,9 @@ public final class PrimitiveType extends Type {
     }
   }
 
+  // Keyword used to render/parse a non-default column order in the text schema representation.
+  static final String COLUMN_ORDER_KEYWORD = "columnorder";
+
   private final PrimitiveTypeName primitive;
   private final int length;
   private final DecimalMetadata decimalMeta;
@@ -578,9 +581,7 @@ public final class PrimitiveType extends Type {
     this.decimalMeta = decimalMeta;
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      columnOrder = defaultColumnOrder(primitive, originalType, getLogicalTypeAnnotation());
     } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
       Preconditions.checkArgument(
           primitive == PrimitiveTypeName.FLOAT || primitive == PrimitiveTypeName.DOUBLE,
@@ -629,10 +630,7 @@ public final class PrimitiveType extends Type {
     }
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96
-              || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      columnOrder = defaultColumnOrder(primitive, getOriginalType(), logicalTypeAnnotation);
     } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
       Preconditions.checkArgument(
           primitive == PrimitiveTypeName.FLOAT
@@ -646,6 +644,27 @@ public final class PrimitiveType extends Type {
           logicalTypeAnnotation);
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
+  }
+
+  /**
+   * The column order used when none is specified explicitly. INT96 and INTERVAL have no defined
+   * ordering, so they default to undefined. Floating-point types default to IEEE 754 total order so
+   * that NaN values and the sign of zero are ordered deterministically and nan_count statistics can
+   * be written; this is skipped when the logical type annotation does not accept IEEE 754 total
+   * order (e.g. an unknown annotation), leaving the type constructible with the type-defined order.
+   */
+  private static ColumnOrder defaultColumnOrder(
+      PrimitiveTypeName primitive, OriginalType originalType, LogicalTypeAnnotation logicalTypeAnnotation) {
+    if (primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL) {
+      return ColumnOrder.undefined();
+    }
+    boolean isFloatingType = primitive == PrimitiveTypeName.FLOAT
+        || primitive == PrimitiveTypeName.DOUBLE
+        || (logicalTypeAnnotation != null
+            && logicalTypeAnnotation.getType() == LogicalTypeAnnotation.LogicalTypeToken.FLOAT16);
+    boolean acceptsIeee754 = logicalTypeAnnotation == null
+        || logicalTypeAnnotation.isValidColumnOrder(ColumnOrder.ieee754TotalOrder());
+    return isFloatingType && acceptsIeee754 ? ColumnOrder.ieee754TotalOrder() : ColumnOrder.typeDefined();
   }
 
   private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
@@ -747,6 +766,13 @@ public final class PrimitiveType extends Type {
     if (getLogicalTypeAnnotation() != null) {
       // TODO: should we print decimal metadata too?
       sb.append(" (").append(getLogicalTypeAnnotation().toString()).append(")");
+    }
+    // Only emit the column order when it differs from the default, so schemas that rely on the
+    // default stay textually unchanged.
+    if (!columnOrder.equals(defaultColumnOrder(primitive, getOriginalType(), getLogicalTypeAnnotation()))) {
+      sb.append(" ").append(COLUMN_ORDER_KEYWORD).append("(");
+      sb.append(columnOrder.getColumnOrderName().name());
+      sb.append(")");
     }
     if (getId() != null) {
       sb.append(" = ").append(getId());
@@ -857,17 +883,13 @@ public final class PrimitiveType extends Type {
     throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
   }
 
-  private void reportSchemaMergeErrorWithColumnOrder(Type toMerge) {
-    throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " with column order "
-        + toMerge.asPrimitiveType().columnOrder() + " into " + this + " with column order " + columnOrder());
-  }
-
   @Override
   protected Type union(Type toMerge, boolean strict) {
     if (!toMerge.isPrimitive()) {
       reportSchemaMergeError(toMerge);
     }
 
+    ColumnOrder mergedColumnOrder = columnOrder();
     if (strict) {
       // Can't merge primitive fields of different type names or different original types
       if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())
@@ -881,9 +903,14 @@ public final class PrimitiveType extends Type {
         reportSchemaMergeError(toMerge);
       }
 
-      // Can't merge primitive fields with different column orders
+      // A column-order difference is the only remaining difference here (type, logical type and
+      // length already match). Reconcile to UNDEFINED instead of failing the merge: it lets an
+      // aggregation over otherwise-identical files with different column orders succeed -- e.g. a
+      // pre-upgrade float footer read as TYPE_DEFINED_ORDER merged with a post-upgrade one written
+      // as IEEE_754_TOTAL_ORDER. Per-file statistics are still read under each file's own column
+      // order, so this only drops the merged schema's (now ambiguous) ordering claim.
       if (!columnOrder().equals(toMerge.asPrimitiveType().columnOrder())) {
-        reportSchemaMergeErrorWithColumnOrder(toMerge);
+        mergedColumnOrder = ColumnOrder.undefined();
       }
     }
 
@@ -894,7 +921,9 @@ public final class PrimitiveType extends Type {
       builder.length(length);
     }
 
-    return builder.as(getLogicalTypeAnnotation()).columnOrder(columnOrder()).named(getName());
+    return builder.as(getLogicalTypeAnnotation())
+        .columnOrder(mergedColumnOrder)
+        .named(getName());
   }
 
   /**

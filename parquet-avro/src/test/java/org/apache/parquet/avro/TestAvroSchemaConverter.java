@@ -63,10 +63,10 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -75,17 +75,17 @@ public class TestAvroSchemaConverter {
   private static final Configuration NEW_BEHAVIOR = new Configuration(false);
   private MockedStatic<AvroRecordConverter> avroRecordConverterMock;
 
-  @Before
+  @BeforeEach
   public void setupMockito() {
     avroRecordConverterMock = Mockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
   }
 
-  @After
+  @AfterEach
   public void tearDown() {
     avroRecordConverterMock.close();
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void setupConf() {
     NEW_BEHAVIOR.setBoolean("parquet.avro.add-list-element-records", false);
     NEW_BEHAVIOR.setBoolean("parquet.avro.write-old-list-structure", false);

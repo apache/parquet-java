@@ -56,7 +56,7 @@ public class DataGenerationContext {
         boolean disableAllStatistics)
         throws IOException {
       this.path = path;
-      this.fsPath = new Path(path.toString());
+      this.fsPath = new Path(path.toURI());
       this.schema = schema;
       this.blockSize = blockSize;
       this.pageSize = pageSize;

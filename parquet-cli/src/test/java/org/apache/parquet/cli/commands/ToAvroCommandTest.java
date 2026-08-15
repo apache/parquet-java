@@ -27,15 +27,16 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class ToAvroCommandTest extends AvroFileTest {
-  @Rule
-  public TemporaryFolder folder = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void testToAvroCommandFromParquet() throws IOException {
@@ -45,8 +46,10 @@ public class ToAvroCommandTest extends AvroFileTest {
 
   @Test
   public void testToAvroCommandFromJson() throws IOException {
-    final File jsonInputFile = folder.newFile("sample.json");
-    final File avroOutputFile = folder.newFile("sample.avro");
+    final File jsonInputFile = tempDir.resolve("sample.json").toFile();
+    Files.createFile(jsonInputFile.toPath());
+    final File avroOutputFile = tempDir.resolve("sample.avro").toFile();
+    Files.createFile(avroOutputFile.toPath());
 
     // Write the json to the file, so we can read it again.
     final String inputJson = "{\"id\": 1, \"name\": \"Alice\"}\n" + "{\"id\": 2, \"name\": \"Bob\"}\n"

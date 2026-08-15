@@ -36,7 +36,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 

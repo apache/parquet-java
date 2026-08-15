@@ -25,13 +25,13 @@ import java.util.Random;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 @AxisRange(min = 0, max = 2)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random-small")
 public class SmallRangeWritingBenchmarkTest extends RandomWritingBenchmarkTest {
-  @BeforeClass
+  @BeforeAll
   public static void prepare() {
     Random random = new Random();
     data = new int[100000 * blockSize];

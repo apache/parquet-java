@@ -24,8 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -51,8 +50,8 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,7 @@ public class SchemaControlEncryptionTest {
   private Map<String, Map<String, Object>> cryptoMetadata = new HashMap<>();
   private Map<String, Object[]> testData = new HashMap<>();
 
-  @Before
+  @BeforeEach
   public void generateTestData() {
     String[] names = new String[numRecord];
     Long[] ages = new Long[numRecord];
@@ -172,14 +171,14 @@ public class SchemaControlEncryptionTest {
         .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      assertEquals(testData.get("Name")[i], group.getBinary("Name", 0).toStringUsingUTF8());
-      assertEquals(testData.get("Age")[i], group.getLong("Age", 0));
+      assertThat(group.getBinary("Name", 0).toStringUsingUTF8()).isEqualTo(testData.get("Name")[i]);
+      assertThat(group.getLong("Age", 0)).isEqualTo(testData.get("Age")[i]);
 
       Group subGroup = group.getGroup("WebLinks", 0);
-      assertArrayEquals(
-          subGroup.getBinary("LinkedIn", 0).getBytes(), ((String) testData.get("LinkedIn")[i]).getBytes());
-      assertArrayEquals(
-          subGroup.getBinary("Twitter", 0).getBytes(), ((String) testData.get("Twitter")[i]).getBytes());
+      assertThat(((String) testData.get("LinkedIn")[i]).getBytes())
+          .isEqualTo(subGroup.getBinary("LinkedIn", 0).getBytes());
+      assertThat(((String) testData.get("Twitter")[i]).getBytes())
+          .isEqualTo(subGroup.getBinary("Twitter", 0).getBytes());
     }
     reader.close();
   }

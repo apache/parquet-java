@@ -24,7 +24,7 @@ import java.io.File;
 import java.io.FileWriter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 public class MainTest {

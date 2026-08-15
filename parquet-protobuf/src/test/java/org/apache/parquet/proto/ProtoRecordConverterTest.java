@@ -27,7 +27,7 @@ import com.google.protobuf.ByteString;
 import java.util.List;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ProtoRecordConverterTest {
 

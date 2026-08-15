@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -59,7 +59,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -378,6 +378,6 @@ public class TestParquetToThriftReadWriteAndProjection {
         }
       }
     }
-    assertEquals(exptectedReadResult, readValue);
+    assertThat(readValue).isEqualTo(exptectedReadResult);
   }
 }

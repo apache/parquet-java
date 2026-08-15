@@ -28,10 +28,12 @@ import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
+@EnableRuleMigrationSupport
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
 public class RandomWritingBenchmarkTest extends BenchMarkTest {
@@ -41,7 +43,7 @@ public class RandomWritingBenchmarkTest extends BenchMarkTest {
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
 
-  @BeforeClass
+  @BeforeAll
   public static void prepare() {
     Random random = new Random();
     data = new int[10000 * blockSize];

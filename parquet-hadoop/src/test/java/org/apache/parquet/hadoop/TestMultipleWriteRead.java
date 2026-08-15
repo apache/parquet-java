@@ -32,7 +32,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.io.Files;
 import java.io.IOException;
@@ -63,9 +63,9 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests writing/reading multiple files in the same time (using multiple threads). Readers/writers do not support
@@ -135,12 +135,12 @@ public class TestMultipleWriteRead {
 
   private static Path tmpDir;
 
-  @BeforeClass
+  @BeforeAll
   public static void createTmpDir() {
     tmpDir = new Path(Files.createTempDir().getAbsolutePath().toString());
   }
 
-  @AfterClass
+  @AfterAll
   public static void deleteTmpDir() throws IOException {
     tmpDir.getFileSystem(new Configuration()).delete(tmpDir, true);
   }
@@ -161,7 +161,7 @@ public class TestMultipleWriteRead {
     try (ParquetReader<Group> reader =
         ParquetReader.builder(new GroupReadSupport(), file).build()) {
       for (Group group : data) {
-        assertEquals(group.toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(group.toString());
       }
     }
   }
@@ -171,7 +171,7 @@ public class TestMultipleWriteRead {
         .withFilter(filter)
         .build()) {
       for (Iterator<Group> it = data.iterator(); it.hasNext(); ) {
-        assertEquals(it.next().toString(), reader.read().toString());
+        assertThat(reader.read()).asString().isEqualTo(it.next().toString());
       }
     }
   }

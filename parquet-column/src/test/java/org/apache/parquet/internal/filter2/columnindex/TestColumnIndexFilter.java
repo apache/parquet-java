@@ -49,7 +49,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.optional;
 import static org.apache.parquet.schema.Types.repeated;
-import static org.junit.Assert.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
@@ -77,7 +77,7 @@ import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.Int
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests of {@link ColumnIndexFilter}
@@ -399,13 +399,17 @@ public class TestColumnIndexFilter {
     ranges.iterator().forEachRemaining((long value) -> actualList.add(value));
     LongList expectedList = new LongArrayList();
     LongStream.range(0, rowCount).forEach(expectedList::add);
-    assertArrayEquals(expectedList + " != " + actualList, expectedList.toLongArray(), actualList.toLongArray());
+    assertThat(actualList.toLongArray())
+        .as(expectedList + " != " + actualList)
+        .isEqualTo(expectedList.toLongArray());
   }
 
   private static void assertRows(RowRanges ranges, long... expectedRows) {
     LongList actualList = new LongArrayList();
     ranges.iterator().forEachRemaining((long value) -> actualList.add(value));
-    assertArrayEquals(Arrays.toString(expectedRows) + " != " + actualList, expectedRows, actualList.toLongArray());
+    assertThat(actualList.toLongArray())
+        .as(Arrays.toString(expectedRows) + " != " + actualList)
+        .isEqualTo(expectedRows);
   }
 
   @Test
