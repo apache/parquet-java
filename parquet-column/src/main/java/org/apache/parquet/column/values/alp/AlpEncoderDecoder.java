@@ -20,6 +20,8 @@ package org.apache.parquet.column.values.alp;
 
 import static org.apache.parquet.column.values.alp.AlpConstants.*;
 
+import org.apache.parquet.bytes.BytesUtils;
+
 /**
  * Core ALP (Adaptive Lossless floating-Point) encoding and decoding logic.
  *
@@ -145,17 +147,6 @@ final class AlpEncoderDecoder {
     return encoded * DOUBLE_POW10[factor] * DOUBLE_POW10_NEGATIVE[exponent];
   }
 
-  /**
-   * Number of bits needed to represent maxDelta as an unsigned value. This is the long counterpart
-   * to {@link org.apache.parquet.bytes.BytesUtils#getWidthFromMaxInt}, which only handles ints.
-   */
-  static int bitWidthForLong(long maxDelta) {
-    if (maxDelta == 0) {
-      return 0;
-    }
-    return Long.SIZE - Long.numberOfLeadingZeros(maxDelta);
-  }
-
   public static class EncodingParams {
     final int exponent;
     final int factor;
@@ -235,11 +226,11 @@ final class AlpEncoderDecoder {
       }
       int nonExceptions = length - exceptions;
       if (nonExceptions == 0) continue;
-      // Signed subtraction gives the true FOR span; Long.numberOfLeadingZeros yields the correct
+      // Signed subtraction gives the true FOR span; getWidthFromMaxLong yields the correct
       // unsigned bit width, and an overflowing large range is penalized with 64 bits. This matches
       // the writer's FOR packing.
       long delta = (nonExceptions < 2) ? 0 : ((long) maxEncoded - (long) minEncoded);
-      int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
+      int bitsPerValue = BytesUtils.getWidthFromMaxLong(delta);
       long estimatedSize = (long) length * bitsPerValue + (long) exceptions * (Float.SIZE + Short.SIZE);
       if (estimatedSize < bestEstimatedSize
           || (estimatedSize == bestEstimatedSize
@@ -292,7 +283,7 @@ final class AlpEncoderDecoder {
       int nonExceptions = length - exceptions;
       if (nonExceptions == 0) continue;
       long delta = (nonExceptions < 2) ? 0 : (maxEncoded - minEncoded);
-      int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
+      int bitsPerValue = BytesUtils.getWidthFromMaxLong(delta);
       long estimatedSize = (long) length * bitsPerValue + (long) exceptions * (Double.SIZE + Short.SIZE);
       if (estimatedSize < bestEstimatedSize
           || (estimatedSize == bestEstimatedSize

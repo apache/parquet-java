@@ -213,22 +213,6 @@ public class AlpEncoderDecoderTest {
     }
   }
 
-  // ========== Bit Width Tests ==========
-
-  @Test
-  public void testBitWidthForLong() {
-    assertThat(AlpEncoderDecoder.bitWidthForLong(0L)).isEqualTo(0);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(1L)).isEqualTo(1);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(2L)).isEqualTo(2);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(3L)).isEqualTo(2);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(4L)).isEqualTo(3);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(255L)).isEqualTo(8);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(256L)).isEqualTo(9);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(65535L)).isEqualTo(16);
-    assertThat(AlpEncoderDecoder.bitWidthForLong((long) Integer.MAX_VALUE)).isEqualTo(31);
-    assertThat(AlpEncoderDecoder.bitWidthForLong(Long.MAX_VALUE)).isEqualTo(63);
-  }
-
   // ========== Best Parameters Tests ==========
 
   @Test

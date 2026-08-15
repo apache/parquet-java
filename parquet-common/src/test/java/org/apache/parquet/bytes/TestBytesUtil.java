@@ -19,6 +19,7 @@
 package org.apache.parquet.bytes;
 
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxLong;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -45,5 +46,23 @@ public class TestBytesUtil {
     assertThat(getWidthFromMaxInt(127)).isEqualTo(7);
     assertThat(getWidthFromMaxInt(128)).isEqualTo(8);
     assertThat(getWidthFromMaxInt(255)).isEqualTo(8);
+  }
+
+  @Test
+  public void testWidthLong() {
+    assertThat(getWidthFromMaxLong(0L)).isEqualTo(0);
+    assertThat(getWidthFromMaxLong(1L)).isEqualTo(1);
+    assertThat(getWidthFromMaxLong(2L)).isEqualTo(2);
+    assertThat(getWidthFromMaxLong(3L)).isEqualTo(2);
+    assertThat(getWidthFromMaxLong(4L)).isEqualTo(3);
+    assertThat(getWidthFromMaxLong(255L)).isEqualTo(8);
+    assertThat(getWidthFromMaxLong(256L)).isEqualTo(9);
+    assertThat(getWidthFromMaxLong(65535L)).isEqualTo(16);
+    assertThat(getWidthFromMaxLong((long) Integer.MAX_VALUE)).isEqualTo(31);
+    // Beyond the int range, where getWidthFromMaxInt cannot be used
+    assertThat(getWidthFromMaxLong(1L << 32)).isEqualTo(33);
+    assertThat(getWidthFromMaxLong(Long.MAX_VALUE)).isEqualTo(63);
+    // A negative bound has the sign bit set, so it occupies the full 64 bits
+    assertThat(getWidthFromMaxLong(-1L)).isEqualTo(64);
   }
 }
