@@ -40,6 +40,7 @@ public abstract class FileTest {
   static final String BINARY_FIELD = "binary_field";
   static final String FIXED_LEN_BYTE_ARRAY_FIELD = "flba_field";
   static final String DATE_FIELD = "date_field";
+  static final String INT96_FIELD = "int96_field";
 
   static final String[] COLORS = {"RED", "BLUE", "YELLOW", "GREEN", "WHITE"};
 
