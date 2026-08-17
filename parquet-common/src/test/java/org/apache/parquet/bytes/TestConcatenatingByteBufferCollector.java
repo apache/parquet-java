@@ -118,17 +118,17 @@ public class TestConcatenatingByteBufferCollector {
     collector.collect(BytesInput.from(bytes(" ")));
     collector.collect(BytesInput.from(bytes("World")));
 
-    Assert.assertEquals(11, collector.size());
+    assertThat(collector.size()).isEqualTo(11);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     collector.writeAllTo(baos);
     result = baos.toByteArray();
 
     // After writeAllTo, the collector should be empty (buffers released progressively)
-    Assert.assertEquals(0, collector.size());
+    assertThat(collector.size()).isEqualTo(0);
 
     // Verify the data was written correctly
-    Assert.assertEquals("Hello World", new String(result, StandardCharsets.UTF_8));
+    assertThat(new String(result, StandardCharsets.UTF_8)).isEqualTo("Hello World");
 
     // close() after writeAllTo is a safe no-op
     collector.close();
@@ -139,11 +139,11 @@ public class TestConcatenatingByteBufferCollector {
     ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
     collector.collect(BytesInput.from(bytes("test data")));
 
-    Assert.assertEquals(9, collector.size());
+    assertThat(collector.size()).isEqualTo(9);
 
     // First close releases the buffers
     collector.close();
-    Assert.assertEquals(0, collector.size());
+    assertThat(collector.size()).isEqualTo(0);
 
     // Second close should be a no-op and not throw
     collector.close();
@@ -172,7 +172,7 @@ public class TestConcatenatingByteBufferCollector {
     result = baos.toByteArray();
 
     // Verify size: 4 (int) + 7 (string) + 4 (int) = 15 bytes
-    Assert.assertEquals(15, result.length);
+    assertThat(result.length).isEqualTo(15);
 
     // Already released by writeAllTo, close is a no-op
     collector.close();
