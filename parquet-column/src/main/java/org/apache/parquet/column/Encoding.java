@@ -36,6 +36,8 @@ import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesRea
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForInteger;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForLong;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import org.apache.parquet.column.values.pfor.PforValuesReaderForInt;
+import org.apache.parquet.column.values.pfor.PforValuesReaderForLong;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
@@ -143,6 +145,27 @@ public enum Encoding {
           return new ByteStreamSplitValuesReaderForFLBA(descriptor.getTypeLength());
         default:
           throw new ParquetDecodingException("no byte stream split reader for type " + descriptor.getType());
+      }
+    }
+  },
+
+  /**
+   * PFOR (Patched Frame of Reference) encoding for INT32 and INT64 types.
+   * Compresses integer columns by subtracting the minimum value, selecting an
+   * optimal bit width via a cost model, bit-packing the deltas, and storing
+   * outlier values as exceptions.
+   */
+  PFOR {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      switch (descriptor.getType()) {
+        case INT32:
+          return new PforValuesReaderForInt();
+        case INT64:
+          return new PforValuesReaderForLong();
+        default:
+          throw new ParquetDecodingException(
+              "PFOR encoding is only supported for INT32 and INT64, not " + descriptor.getType());
       }
     }
   },
