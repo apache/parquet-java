@@ -773,6 +773,10 @@ public class ParquetFileReader implements Closeable {
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
 
+  // Some InputFile implementations fetch remote metadata for getLength(). Cache the
+  // vectored range-validation length lazily so ordinary reads need no extra lookup.
+  private long vectoredReadFileLength = -1;
+
   private int currentBlock = 0;
   private ColumnChunkPageReadStore currentRowGroup = null;
   private DictionaryPageReader nextDictionaryReader = null;
@@ -1311,15 +1315,10 @@ public class ParquetFileReader implements Closeable {
 
   /**
    * Should the read use vectored IO?
-   * <p>
-   * This returns true if all necessary conditions are met:
-   * <ol>
-   *   <li> The option is enabled</li>
-   *   <li> The Hadoop version supports vectored IO</li>
-   *   <li> The stream implementation explicitly supports the API; for other streams the classic
-   *         API is always used.</li>
-   *   <li> The allocator is not direct. This is to avoid HADOOP-19101 surfacing.
-   * </ol>
+   * <p>The option must be enabled and the stream's availability probe must accept the
+   * allocator. For Hadoop streams, that probe checks runtime API availability and excludes
+   * direct allocators to avoid HADOOP-19101. It does not guarantee that a particular
+   * vectored-read request will be accepted.
    * @return true or false.
    */
   private boolean shouldUseVectoredIo() {
@@ -1345,7 +1344,10 @@ public class ParquetFileReader implements Closeable {
   private void readVectored(List<ConsecutivePartList> allParts, ChunkListBuilder builder) throws IOException {
     final int maximumAllocation = options.getMaxAllocationSize();
     Preconditions.checkArgument(maximumAllocation > 0, "Invalid maximum allocation size %s", maximumAllocation);
-    final long fileLength = file.getLength();
+    if (vectoredReadFileLength < 0) {
+      vectoredReadFileLength = file.getLength();
+    }
+    final long fileLength = vectoredReadFileLength;
     List<ParquetFileRange> ranges = new ArrayList<>(allParts.size());
     List<Integer> partRangeCounts = new ArrayList<>(allParts.size());
     long totalSize = 0;
@@ -1372,8 +1374,9 @@ public class ParquetFileReader implements Closeable {
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     final long readStart = System.nanoTime();
     try {
-      // Even a synchronous failure can occur after some reads have been scheduled,
-      // so falling back to normal IO is unsafe once this call has been entered.
+      // Even a synchronous rejection can follow partial submission. The Hadoop bridge
+      // publishes futures only after submission returns, so missing futures do not prove
+      // that no reads started. Once this call is entered, normal-read fallback is unsafe.
       f.readVectored(ranges, options.getAllocator());
       int firstRange = 0;
       for (int partIndex = 0; partIndex < allParts.size(); partIndex++) {
@@ -1382,6 +1385,7 @@ public class ParquetFileReader implements Closeable {
         firstRange = endRange;
       }
     } catch (IllegalArgumentException | UnsupportedOperationException e) {
+      // Consumption may also have populated the builder. Do not replay those chunks.
       IOException failure =
           new IOException("Vectored read failed after asynchronous reads may have been submitted", e);
       awaitRemainingVectoredReads(ranges, readStart, failure);

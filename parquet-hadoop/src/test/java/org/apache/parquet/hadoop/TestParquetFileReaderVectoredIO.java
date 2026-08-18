@@ -52,10 +52,12 @@ import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetFileRange;
 import org.apache.parquet.io.RecordReader;
@@ -104,6 +106,64 @@ public class TestParquetFileReaderVectoredIO {
       }
     }
     inputFile = HadoopInputFile.fromPath(path, configuration);
+  }
+
+  @Test
+  public void testCachesFileLengthAcrossVectoredReads() throws Exception {
+    assertCachesFileLengthAcrossVectoredReads(false);
+  }
+
+  @Test
+  public void testCachesFileLengthWithSuppliedFooter() throws Exception {
+    assertCachesFileLengthAcrossVectoredReads(true);
+  }
+
+  private void assertCachesFileLengthAcrossVectoredReads(boolean supplyFooter) throws Exception {
+    ParquetMetadata footer = ParquetFileReader.readFooter(new Configuration(), path);
+    CountingInputFile countingFile = new CountingInputFile(inputFile);
+    RecordingSeekableInputStream stream = newStream(FailureMode.NONE);
+    ParquetReadOptions options = readOptions(new RecordingAllocator(), 128, true);
+
+    try (ParquetFileReader reader = supplyFooter
+        ? ParquetFileReader.open(countingFile, footer, options, stream)
+        : ParquetFileReader.open(countingFile, options, stream)) {
+      // Reading the footer needs the length, but a supplied footer does not.
+      int initialLengthCalls = supplyFooter ? 0 : 1;
+      assertEquals(initialLengthCalls, countingFile.lengthCalls);
+      reader.setRequestedSchema(PROJECTED_SCHEMA);
+
+      try (PageReadStore pages = reader.readRowGroup(0)) {
+        assertRows(pages, PROJECTED_SCHEMA, false);
+      }
+      assertEquals(initialLengthCalls + 1, countingFile.lengthCalls);
+
+      try (PageReadStore pages = reader.readFilteredRowGroup(0)) {
+        assertRows(pages, PROJECTED_SCHEMA, true);
+      }
+      try (PageReadStore pages = reader.readRowGroup(0)) {
+        assertRows(pages, PROJECTED_SCHEMA, false);
+      }
+      assertEquals(initialLengthCalls + 1, countingFile.lengthCalls);
+    }
+
+    assertEquals(3, stream.vectorCalls);
+  }
+
+  @Test
+  public void testSuppliedFooterAvoidsLengthLookupForOrdinaryReads() throws Exception {
+    ParquetMetadata footer = ParquetFileReader.readFooter(new Configuration(), path);
+    CountingInputFile countingFile = new CountingInputFile(inputFile);
+    RecordingSeekableInputStream stream = newStream(FailureMode.NONE);
+    ParquetReadOptions options =
+        ParquetReadOptions.builder().withUseHadoopVectoredIo(false).build();
+
+    try (ParquetFileReader reader = ParquetFileReader.open(countingFile, footer, options, stream)) {
+      try (PageReadStore pages = reader.readRowGroup(0)) {
+        assertRows(pages, SCHEMA, false);
+      }
+      assertEquals(0, countingFile.lengthCalls);
+    }
+    assertEquals(0, stream.vectorCalls);
   }
 
   @Test
@@ -482,7 +542,8 @@ public class TestParquetFileReaderVectoredIO {
   }
 
   @Test
-  public void testFailsFastWhenVectoredSubmissionFails() throws Exception {
+  public void testFailsFastWhenVectoredSubmissionRejectsBeforeStartingReads() throws Exception {
+    // A synchronous rejection cannot be distinguished from the partial-submission case below.
     assertFailsAfterVectoredSubmission(FailureMode.SUBMISSION_ILLEGAL_ARGUMENT, IllegalArgumentException.class);
     assertFailsAfterVectoredSubmission(FailureMode.SUBMISSION_UNSUPPORTED, UnsupportedOperationException.class);
   }
@@ -655,6 +716,31 @@ public class TestParquetFileReaderVectoredIO {
           || this == FIRST_IO_EXCEPTION_PENDING_SIBLING_NO_CLOSE_CANCELLATION
           || this == FIRST_SOCKET_TIMEOUT_PENDING_SIBLING_NO_CLOSE_CANCELLATION
           || this == FIRST_IO_EXCEPTION_THEN_SOCKET_TIMEOUT_PENDING_SIBLING_NO_CLOSE_CANCELLATION;
+    }
+  }
+
+  private static final class CountingInputFile implements InputFile {
+    private final InputFile delegate;
+    private int lengthCalls;
+
+    private CountingInputFile(InputFile delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public long getLength() throws IOException {
+      lengthCalls++;
+      return delegate.getLength();
+    }
+
+    @Override
+    public SeekableInputStream newStream() throws IOException {
+      return delegate.newStream();
+    }
+
+    @Override
+    public String toString() {
+      return delegate.toString();
     }
   }
 
