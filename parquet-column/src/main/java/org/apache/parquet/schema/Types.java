@@ -446,9 +446,7 @@ public class Types {
       try {
         return validateAndBuild(name);
       } catch (IllegalStateException e) {
-        boolean canDrop = dropUnsupportedLogicalTypeCombinations
-            && !(logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation);
-        if (!canDrop) {
+        if (!dropUnsupportedLogicalTypeCombinations) {
           throw e;
         }
 
