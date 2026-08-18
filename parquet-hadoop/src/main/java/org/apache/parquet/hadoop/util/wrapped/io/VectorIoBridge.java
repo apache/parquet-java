@@ -124,7 +124,8 @@ public final class VectorIoBridge {
    * @param stream input stream to query.
    * @param allocator allocator to be used.
    *
-   * @return true if the stream declares the capability is available.
+   * @return true if the runtime API and allocator are supported; an individual request
+   * may still be rejected.
    */
   public boolean readVectoredAvailable(final FSDataInputStream stream, final ByteBufferAllocator allocator) {
     return available() && !allocator.isDirect();
