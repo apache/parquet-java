@@ -318,7 +318,14 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getLogicalTypeAnnotation() != null) {
-          element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          // The TimestampType logical type may have a converted type, but only for the INT64
+          // physical type.
+          boolean suppressConvertedType = primitiveType.getLogicalTypeAnnotation()
+                  instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation
+              && primitiveType.getPrimitiveTypeName() != PrimitiveTypeName.INT64;
+          if (!suppressConvertedType) {
+            element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          }
           element.setLogicalType(convertToLogicalType(primitiveType.getLogicalTypeAnnotation()));
         }
         if (primitiveType.getDecimalMetadata() != null) {
