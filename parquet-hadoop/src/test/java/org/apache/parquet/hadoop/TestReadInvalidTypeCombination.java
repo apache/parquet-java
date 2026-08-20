@@ -37,12 +37,8 @@ public class TestReadInvalidTypeCombination {
   // Path to a Parquet file that contains an invalid logical/physical type combination.
   private static final String FILE_PATH = "/invalid_type_combination.parquet";
 
-  private static Path getFilePath() {
-    try {
-      return new Path(TestReadInvalidTypeCombination.class.getResource(FILE_PATH).toURI());
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
-    }
+  private static Path getFilePath() throws Exception {
+    return new Path(TestReadInvalidTypeCombination.class.getResource(FILE_PATH).toURI());
   }
 
   @Test
