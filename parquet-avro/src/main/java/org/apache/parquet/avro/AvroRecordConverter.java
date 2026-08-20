@@ -355,7 +355,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     LogicalType logicalType = schema.getLogicalType();
     Conversion<?> conversion;
 
-    if (knownClass != null) {
+    if (knownClass != null && logicalType != null) {
       conversion = model.getConversionByClass(knownClass, logicalType);
     } else {
       conversion = model.getConversionFor(logicalType);
@@ -787,7 +787,8 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       } else if (elementClass == double.class) {
         parent.add(((DoubleArrayList) container).toDoubleArray());
       } else {
-        parent.add(((ArrayList) container).toArray());
+        parent.add(((ArrayList) container)
+            .toArray((Object[]) java.lang.reflect.Array.newInstance(elementClass, 0)));
       }
     }
 
