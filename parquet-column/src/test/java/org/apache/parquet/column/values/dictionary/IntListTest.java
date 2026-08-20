@@ -54,7 +54,14 @@ public class IntListTest {
 
   private void doTestIntList(int testSize, int expectedSlabSize) {
     IntList testList = new IntList();
+
+    // size() must be 0 before any adds
+    Assert.assertEquals(0, testList.size());
+
     populateList(testList, testSize);
+
+    // size() must match the number of elements added
+    Assert.assertEquals(testSize, testList.size());
 
     verifyIteratorResults(testSize, testList);
 

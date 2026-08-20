@@ -99,6 +99,7 @@ public class IntList {
   // not be added
   private int[] currentSlab;
   private int currentSlabPos;
+  private int totalSize;
 
   private void allocateSlab() {
     currentSlab = new int[currentSlabSize];
@@ -129,6 +130,7 @@ public class IntList {
 
     currentSlab[currentSlabPos] = i;
     ++currentSlabPos;
+    ++totalSize;
   }
 
   /**
@@ -150,11 +152,6 @@ public class IntList {
    * @return the current size of the list
    */
   public int size() {
-    int size = currentSlabPos;
-    for (int[] slab : slabs) {
-      size += slab.length;
-    }
-
-    return size;
+    return totalSize;
   }
 }
