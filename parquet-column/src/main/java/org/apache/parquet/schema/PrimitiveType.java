@@ -385,7 +385,9 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
-        return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+        return columnOrder != null && columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER
+            ? PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR
+            : PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -647,15 +649,20 @@ public final class PrimitiveType extends Type {
   }
 
   /**
-   * The column order used when none is specified explicitly. INT96 and INTERVAL have no defined
-   * ordering, so they default to undefined. Floating-point types default to IEEE 754 total order so
-   * that NaN values and the sign of zero are ordered deterministically and nan_count statistics can
-   * be written; this is skipped when the logical type annotation does not accept IEEE 754 total
+   * The column order used when none is specified explicitly. A plain INT96 is the deprecated
+   * timestamp encoding and defaults to INT96 timestamp order so its min/max are chronological and
+   * usable for pruning; an annotated INT96 carries other semantics and, like INTERVAL, has no
+   * defined ordering and defaults to undefined. Floating-point types default to IEEE 754 total order
+   * so that NaN values and the sign of zero are ordered deterministically and nan_count statistics
+   * can be written; this is skipped when the logical type annotation does not accept IEEE 754 total
    * order (e.g. an unknown annotation), leaving the type constructible with the type-defined order.
    */
   private static ColumnOrder defaultColumnOrder(
       PrimitiveTypeName primitive, OriginalType originalType, LogicalTypeAnnotation logicalTypeAnnotation) {
-    if (primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL) {
+    if (primitive == PrimitiveTypeName.INT96) {
+      return logicalTypeAnnotation == null ? ColumnOrder.int96TimestampOrder() : ColumnOrder.undefined();
+    }
+    if (originalType == OriginalType.INTERVAL) {
       return ColumnOrder.undefined();
     }
     boolean isFloatingType = primitive == PrimitiveTypeName.FLOAT
@@ -670,8 +677,14 @@ public final class PrimitiveType extends Type {
   private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
     if (primitive == PrimitiveTypeName.INT96) {
       Preconditions.checkArgument(
-          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED
+              || columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER,
           "The column order %s is not supported by INT96",
+          columnOrder);
+    } else {
+      Preconditions.checkArgument(
+          columnOrder.getColumnOrderName() != ColumnOrderName.INT96_TIMESTAMP_ORDER,
+          "The column order %s is only supported by INT96",
           columnOrder);
     }
     if (getLogicalTypeAnnotation() != null) {

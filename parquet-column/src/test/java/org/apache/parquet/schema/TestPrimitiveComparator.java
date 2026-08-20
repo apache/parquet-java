@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
@@ -39,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
 
@@ -350,6 +352,47 @@ public class TestPrimitiveComparator {
             .usingComparator(BINARY_AS_SIGNED_INTEGER_COMPARATOR)
             .isEqualTo(v2);
       }
+    }
+  }
+
+  private static Binary int96(int julianDay, long nanosOfDay) {
+    return new NanoTime(julianDay, nanosOfDay).toBinary();
+  }
+
+  @Test
+  public void testInt96TimestampComparator() {
+    Binary[] valuesInAscendingOrder = {
+      int96(Integer.MIN_VALUE, 0), // most negative julian day
+      int96(-1, 86_399_999_999_999L), // negative julian days sort before day 0
+      int96(0, 0), // start of the julian period
+      int96(0, 86_399_999_999_999L), // same day, later time of day
+      int96(2440000, 123L), // 1968-05-23T00:00:00.000000123, pre-epoch but positive julian day
+      int96(2458850, 43_200_000_000_000L), // 2020-01-01T12:00:00
+      int96(2458881, 39_600_000_000_000L), // 2020-02-01T11:00:00, later day even though earlier time of day
+      int96(2458881, 39_600_000_000_001L), // 2020-02-01T11:00:00.000000001, nanos tie-break
+      int96(Integer.MAX_VALUE, 86_399_999_999_999L)
+    };
+
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        assertThat(Integer.signum(BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(
+                valuesInAscendingOrder[i], valuesInAscendingOrder[j])))
+            .as("comparing value " + i + " to value " + j)
+            .isEqualTo(Integer.signum(Integer.compare(i, j)));
+      }
+    }
+  }
+
+  @Test
+  public void testInt96TimestampComparatorRejectsInvalidNanos() {
+    // Same Julian day so the comparator reaches the nanos validation instead of
+    // returning early on the day comparison.
+    Binary valid = int96(0, 0);
+    for (long invalidNanos : new long[] {-1L, Long.MIN_VALUE, 86_400_000_000_001L, Long.MAX_VALUE}) {
+      Binary invalid = int96(0, invalidNanos);
+      assertThatThrownBy(() -> BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(valid, invalid))
+          .as("Expected IllegalArgumentException for nanos=" + invalidNanos)
+          .isInstanceOf(IllegalArgumentException.class);
     }
   }
 
