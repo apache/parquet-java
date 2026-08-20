@@ -36,6 +36,7 @@ import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -772,6 +773,10 @@ public class ParquetFileReader implements Closeable {
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
 
+  // Some InputFile implementations fetch remote metadata for getLength(). Cache the
+  // vectored range-validation length lazily so ordinary reads need no extra lookup.
+  private long vectoredReadFileLength = -1;
+
   private int currentBlock = 0;
   private ColumnChunkPageReadStore currentRowGroup = null;
   private DictionaryPageReader nextDictionaryReader = null;
@@ -1293,14 +1298,14 @@ public class ParquetFileReader implements Closeable {
   private void readAllPartsVectoredOrNormal(List<ConsecutivePartList> allParts, ChunkListBuilder builder)
       throws IOException {
 
-    if (shouldUseVectoredIo(allParts)) {
+    if (shouldUseVectoredIo()) {
       try {
         readVectored(allParts, builder);
         return;
       } catch (IllegalArgumentException | UnsupportedOperationException e) {
-        // Either the arguments are wrong or somehow this is being invoked against
-        // a hadoop release which doesn't have the API and yet somehow it got here.
-        LOG.warn("readVectored() failed; falling back to normal IO against {}", f, e);
+        // At this point only range preparation can have failed; exceptions from the
+        // vectored call itself are wrapped below because reads may already be active.
+        LOG.warn("Preparing vectored reads failed; falling back to normal IO against {}", f, e);
       }
     }
     for (ConsecutivePartList consecutiveChunks : allParts) {
@@ -1310,42 +1315,14 @@ public class ParquetFileReader implements Closeable {
 
   /**
    * Should the read use vectored IO?
-   * <p>
-   * This returns true if all necessary conditions are met:
-   * <ol>
-   *   <li> The option is enabled</li>
-   *   <li> The Hadoop version supports vectored IO</li>
-   *   <li> The part lengths are all valid for vectored IO</li>
-   *   <li> The stream implementation explicitly supports the API; for other streams the classic
-   *         API is always used.</li>
-   *   <li> The allocator is not direct. This is to avoid HADOOP-19101 surfacing.
-   * </ol>
-   * @param allParts all parts to read.
+   * <p>The option must be enabled and the stream's availability probe must accept the
+   * allocator. For Hadoop streams, that probe checks runtime API availability and excludes
+   * direct allocators to avoid HADOOP-19101. It does not guarantee that a particular
+   * vectored-read request will be accepted.
    * @return true or false.
    */
-  private boolean shouldUseVectoredIo(final List<ConsecutivePartList> allParts) {
-    return options.useHadoopVectoredIo()
-        && f.readVectoredAvailable(options.getAllocator())
-        && arePartsValidForVectoredIo(allParts);
-  }
-
-  /**
-   * Validate the parts for vectored IO.
-   * Vectored IO doesn't support reading ranges of size greater than
-   * Integer.MAX_VALUE.
-   * @param allParts all parts to read.
-   * @return true or false.
-   */
-  private boolean arePartsValidForVectoredIo(List<ConsecutivePartList> allParts) {
-    for (ConsecutivePartList consecutivePart : allParts) {
-      if (consecutivePart.length >= Integer.MAX_VALUE) {
-        LOG.debug(
-            "Part length {} greater than Integer.MAX_VALUE thus disabling vectored IO",
-            consecutivePart.length);
-        return false;
-      }
-    }
-    return true;
+  private boolean shouldUseVectoredIo() {
+    return options.useHadoopVectoredIo() && f.readVectoredAvailable(options.getAllocator());
   }
 
   /**
@@ -1357,32 +1334,105 @@ public class ParquetFileReader implements Closeable {
    * If directly implemented by a Filesystem then it is likely to be a more efficient
    * operation such as a scatter-gather read (native IO) or set of parallel
    * GET requests against an object store.
+   * The allocation limit applies to filesystem buffers; decoders can still require a
+   * contiguous buffer for an individual logical value larger than that limit.
    * @param allParts all parts to be read.
    * @param builder used to build chunk list to read the pages for the different columns.
-   * @throws IOException any IOE.
-   * @throws IllegalArgumentException arguments are invalid.
-   * @throws UnsupportedOperationException if the filesystem does not support vectored IO.
+   * @throws IOException if submitting or consuming the vectored reads fails.
+   * @throws IllegalArgumentException if range preparation fails before any reads are submitted.
    */
   private void readVectored(List<ConsecutivePartList> allParts, ChunkListBuilder builder) throws IOException {
-
+    final int maximumAllocation = options.getMaxAllocationSize();
+    Preconditions.checkArgument(maximumAllocation > 0, "Invalid maximum allocation size %s", maximumAllocation);
+    if (vectoredReadFileLength < 0) {
+      vectoredReadFileLength = file.getLength();
+    }
+    final long fileLength = vectoredReadFileLength;
     List<ParquetFileRange> ranges = new ArrayList<>(allParts.size());
+    List<Integer> partRangeCounts = new ArrayList<>(allParts.size());
     long totalSize = 0;
     for (ConsecutivePartList consecutiveChunks : allParts) {
       final long len = consecutiveChunks.length;
-      Preconditions.checkArgument(
-          len < Integer.MAX_VALUE,
-          "Invalid length %s for vectored read operation. It must be less than max integer value.",
-          len);
-      ranges.add(new ParquetFileRange(consecutiveChunks.offset, (int) len));
+      final long start = consecutiveChunks.offset;
+      if (start < 0 || len < 0 || start > fileLength || len > fileLength - start) {
+        throw new IOException(String.format(
+            "Invalid vectored read range (offset %d, length %d) for file length %d",
+            start, len, fileLength));
+      }
+      final int firstRange = ranges.size();
+      long remaining = len;
+      long offset = start;
+      do {
+        int rangeLength = (int) Math.min(remaining, maximumAllocation);
+        ranges.add(new ParquetFileRange(offset, rangeLength));
+        offset += rangeLength;
+        remaining -= rangeLength;
+      } while (remaining > 0);
+      partRangeCounts.add(ranges.size() - firstRange);
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    // Request a vectored read;
-    f.readVectored(ranges, options.getAllocator());
-    int k = 0;
-    for (ConsecutivePartList consecutivePart : allParts) {
-      ParquetFileRange currRange = ranges.get(k++);
-      consecutivePart.readFromVectoredRange(currRange, builder);
+    final long readStart = System.nanoTime();
+    try {
+      // Even a synchronous rejection can follow partial submission. The Hadoop bridge
+      // publishes futures only after submission returns, so missing futures do not prove
+      // that no reads started. Once this call is entered, normal-read fallback is unsafe.
+      f.readVectored(ranges, options.getAllocator());
+      int firstRange = 0;
+      for (int partIndex = 0; partIndex < allParts.size(); partIndex++) {
+        int endRange = firstRange + partRangeCounts.get(partIndex);
+        allParts.get(partIndex).readFromVectoredRanges(ranges.subList(firstRange, endRange), builder);
+        firstRange = endRange;
+      }
+    } catch (IllegalArgumentException | UnsupportedOperationException e) {
+      // Consumption may also have populated the builder. Do not replay those chunks.
+      IOException failure =
+          new IOException("Vectored read failed after asynchronous reads may have been submitted", e);
+      awaitRemainingVectoredReads(ranges, readStart, failure);
+      throw failure;
+    } catch (IOException | RuntimeException e) {
+      awaitRemainingVectoredReads(ranges, readStart, e);
+      throw e;
+    }
+  }
+
+  /**
+   * Wait for submitted reads with published futures to finish before their stream can be
+   * closed. Cancelling result futures does not stop all Hadoop backends from continuing IO.
+   */
+  private void awaitRemainingVectoredReads(List<ParquetFileRange> ranges, long readStart, Throwable failure) {
+    if (Thread.currentThread().isInterrupted()
+        || failure instanceof InterruptedIOException && failure.getCause() instanceof InterruptedException) {
+      return;
+    }
+
+    final long timeoutNanos = TimeUnit.SECONDS.toNanos(HADOOP_VECTORED_READ_TIMEOUT_SECONDS);
+    for (ParquetFileRange range : ranges) {
+      Future<ByteBuffer> future = range.getDataReadFuture();
+      if (future == null || future.isDone()) {
+        continue;
+      }
+
+      long remainingNanos = Math.max(timeoutNanos - (System.nanoTime() - readStart), 0L);
+      try {
+        FutureIO.awaitFuture(future, remainingNanos, TimeUnit.NANOSECONDS);
+      } catch (InterruptedIOException e) {
+        if (failure != e) {
+          failure.addSuppressed(e);
+        }
+        if (e.getCause() instanceof InterruptedException) {
+          Thread.currentThread().interrupt();
+          return;
+        }
+      } catch (TimeoutException e) {
+        failure.addSuppressed(e);
+        LOG.warn("Timed out waiting for vectored read {} after another read failed", range, e);
+        return;
+      } catch (IOException | RuntimeException e) {
+        if (failure != e) {
+          failure.addSuppressed(e);
+        }
+      }
     }
   }
 
@@ -1951,10 +2001,12 @@ public class ParquetFileReader implements Closeable {
      * Calculate checksum of input bytes, throw decoding exception if it does not match the provided
      * reference crc
      */
-    private void verifyCrc(int referenceCrc, BytesInput bytes, String exceptionMsg) {
+    private void verifyCrc(int referenceCrc, String exceptionMsg, BytesInput... inputs) throws IOException {
       crc.reset();
-      try (ByteBufferReleaser releaser = crcAllocator.getReleaser()) {
-        crc.update(bytes.toByteBuffer(releaser));
+      for (BytesInput input : inputs) {
+        for (ByteBuffer buffer : input.toInputStream().remainingBuffers()) {
+          crc.update(buffer);
+        }
       }
       if (crc.getValue() != ((long) referenceCrc & 0xffffffffL)) {
         throw new ParquetDecodingException(exceptionMsg);
@@ -2021,8 +2073,8 @@ public class ParquetFileReader implements Closeable {
             if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
               verifyCrc(
                   pageHeader.getCrc(),
-                  pageBytes,
-                  "could not verify dictionary page integrity, CRC checksum verification failed");
+                  "could not verify dictionary page integrity, CRC checksum verification failed",
+                  pageBytes);
             }
             DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
             dictionaryPage = new DictionaryPage(
@@ -2041,8 +2093,8 @@ public class ParquetFileReader implements Closeable {
             if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
               verifyCrc(
                   pageHeader.getCrc(),
-                  pageBytes,
-                  "could not verify page integrity, CRC checksum verification failed");
+                  "could not verify page integrity, CRC checksum verification failed",
+                  pageBytes);
             }
             DataPageV1 dataPageV1 = new DataPageV1(
                 pageBytes,
@@ -2072,11 +2124,12 @@ public class ParquetFileReader implements Closeable {
                 this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length());
             final BytesInput values = this.readAsBytesInput(dataSize);
             if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-              pageBytes = BytesInput.concat(repetitionLevels, definitionLevels, values);
               verifyCrc(
                   pageHeader.getCrc(),
-                  pageBytes,
-                  "could not verify page integrity, CRC checksum verification failed");
+                  "could not verify page integrity, CRC checksum verification failed",
+                  repetitionLevels,
+                  definitionLevels,
+                  values);
             }
             DataPageV2 dataPageV2 = new DataPageV2(
                 dataHeaderV2.getNum_rows(),
@@ -2343,32 +2396,39 @@ public class ParquetFileReader implements Closeable {
     }
 
     /**
-     * Populate data in a parquet file range from a vectored range; will block for up
-     * to {@link #HADOOP_VECTORED_READ_TIMEOUT_SECONDS} seconds.
-     * @param currRange range to populated.
+     * Populate data in a parquet file range from one or more bounded vectored ranges; together
+     * they may block for up to {@link #HADOOP_VECTORED_READ_TIMEOUT_SECONDS} seconds.
+     * @param ranges bounded ranges containing this part.
      * @param builder used to build chunk list to read the pages for the different columns.
      * @throws IOException if there is an error while reading from the stream, including a timeout.
      */
-    public void readFromVectoredRange(ParquetFileRange currRange, ChunkListBuilder builder) throws IOException {
-      ByteBuffer buffer;
+    public void readFromVectoredRanges(List<ParquetFileRange> ranges, ChunkListBuilder builder) throws IOException {
+      List<ByteBuffer> buffers = new ArrayList<>(ranges.size());
+      ParquetFileRange currentRange = null;
       final long timeoutSeconds = HADOOP_VECTORED_READ_TIMEOUT_SECONDS;
+      final long timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
       long readStart = System.nanoTime();
       try {
-        LOG.debug(
-            "Waiting for vectored read to finish for range {} with timeout {} seconds",
-            currRange,
-            timeoutSeconds);
-        buffer = FutureIO.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
-        setReadMetrics(readStart, currRange.getLength());
+        for (ParquetFileRange range : ranges) {
+          currentRange = range;
+          LOG.debug(
+              "Waiting for vectored read to finish for range {} with timeout {} seconds",
+              range,
+              timeoutSeconds);
+          long remainingNanos = Math.max(timeoutNanos - (System.nanoTime() - readStart), 0L);
+          buffers.add(FutureIO.awaitFuture(range.getDataReadFuture(), remainingNanos, TimeUnit.NANOSECONDS));
+        }
+        setReadMetrics(readStart, length);
         // report in a counter the data we just scanned
-        BenchmarkCounter.incrementBytesRead(currRange.getLength());
+        BenchmarkCounter.incrementBytesRead(length);
       } catch (TimeoutException e) {
         String error = String.format(
-            "Timeout while fetching result for %s with time limit %d seconds", currRange, timeoutSeconds);
+            "Timeout while fetching result for %s with time limit %d seconds",
+            currentRange, timeoutSeconds);
         LOG.error(error, e);
         throw new IOException(error, e);
       }
-      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
+      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
       }
