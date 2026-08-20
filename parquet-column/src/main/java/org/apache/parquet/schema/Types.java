@@ -192,6 +192,15 @@ public class Types {
   private static final int NOT_SET = 0;
 
   /**
+   * Thrown when a logical type annotation is not applicable to a column's physical type.
+   */
+  public static class UnsupportedLogicalTypeAnnotation extends IllegalStateException {
+    public UnsupportedLogicalTypeAnnotation(String message) {
+      super(message);
+    }
+  }
+
+  /**
    * A base builder for {@link Type} objects.
    *
    * @param <P> The type that this builder will return from
@@ -344,6 +353,9 @@ public class Types {
     private int precision = NOT_SET;
     private int scale = NOT_SET;
     private ColumnOrder columnOrder;
+    // When true and an unsupported logical/physical type combination is encountered, the
+    // annotation is dropped and the column order is forced to "undefined" so stats are ignored.
+    private boolean dropUnsupportedLogicalTypeCombinations = false;
 
     private BasePrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
@@ -428,8 +440,38 @@ public class Types {
       return self();
     }
 
+    /**
+     * When set, an unsupported combination results in the logical type annotation being dropped
+     * rather than throwing. The associated statistics are also forcefully ignored by setting the
+     * column order to {@link ColumnOrderName#UNDEFINED}.
+     *
+     * @return this builder for method chaining
+     */
+    public THIS dropUnsupportedLogicalTypeCombinations() {
+      this.dropUnsupportedLogicalTypeCombinations = true;
+      return self();
+    }
+
     @Override
     protected PrimitiveType build(String name) {
+      try {
+        return validateAndBuild(name);
+      } catch (UnsupportedLogicalTypeAnnotation e) {
+        if (!dropUnsupportedLogicalTypeCombinations) {
+          throw e;
+        }
+
+        LOGGER.warn(
+            "Dropping unsupported logical type annotation {} on physical type {}: {}",
+            logicalTypeAnnotation,
+            primitiveType,
+            e.getMessage());
+        return new PrimitiveType(
+            repetition, primitiveType, length, name, null, null, id, ColumnOrder.undefined());
+      }
+    }
+
+    private PrimitiveType validateAndBuild(String name) {
       if (length == 0 && logicalTypeAnnotation instanceof LogicalTypeAnnotation.UUIDLogicalTypeAnnotation) {
         length = LogicalTypeAnnotation.UUIDLogicalTypeAnnotation.BYTES;
       }
@@ -592,9 +634,15 @@ public class Types {
                 return checkBinaryPrimitiveType(geographyLogicalType);
               }
 
+              private void checkAnnotation(boolean valid, String message, Object... args) {
+                if (!valid) {
+                  throw new UnsupportedLogicalTypeAnnotation(String.format(message, args));
+                }
+              }
+
               private Optional<Boolean> checkFixedPrimitiveType(
                   int l, LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
+                checkAnnotation(
                     primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY && length == l,
                     "%s can only annotate FIXED_LEN_BYTE_ARRAY(%s)",
                     logicalTypeAnnotation,
@@ -604,7 +652,7 @@ public class Types {
 
               private Optional<Boolean> checkBinaryPrimitiveType(
                   LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
+                checkAnnotation(
                     primitiveType == PrimitiveTypeName.BINARY,
                     "%s can only annotate BINARY",
                     logicalTypeAnnotation);
@@ -613,7 +661,7 @@ public class Types {
 
               private Optional<Boolean> checkInt32PrimitiveType(
                   LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
+                checkAnnotation(
                     primitiveType == PrimitiveTypeName.INT32,
                     "%s can only annotate INT32",
                     logicalTypeAnnotation);
@@ -622,14 +670,14 @@ public class Types {
 
               private Optional<Boolean> checkInt64PrimitiveType(
                   LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
+                checkAnnotation(
                     primitiveType == PrimitiveTypeName.INT64,
                     "%s can only annotate INT64",
                     logicalTypeAnnotation);
                 return Optional.of(true);
               }
             })
-            .orElseThrow(() -> new IllegalStateException(
+            .orElseThrow(() -> new UnsupportedLogicalTypeAnnotation(
                 logicalTypeAnnotation + " can not be applied to a primitive type"));
       }
 

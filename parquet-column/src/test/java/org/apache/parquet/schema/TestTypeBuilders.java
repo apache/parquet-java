@@ -1605,4 +1605,17 @@ public class TestTypeBuilders {
         Types.optional(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
     assertThat(optionalGeographyActual).isEqualTo(optionalGeographyExpected);
   }
+
+  @Test
+  public void testDropUnsupportedLogicalTypeCombinations() {
+    // Other tests already validate that unsupported type combinations throw by default, so this
+    // test only validates that the dropUnsupportedLogicalTypeCombinations flag works.
+    PrimitiveType pt = Types.required(BOOLEAN)
+        .dropUnsupportedLogicalTypeCombinations()
+        .as(LogicalTypeAnnotation.timestampType(true, MILLIS))
+        .named("bool_ts");
+    assertThat(pt.getPrimitiveTypeName()).isEqualTo(BOOLEAN);
+    assertThat(pt.getLogicalTypeAnnotation()).isNull(); // Dropped
+    assertThat(pt.columnOrder().getColumnOrderName()).isEqualTo(ColumnOrder.ColumnOrderName.UNDEFINED);
+  }
 }
