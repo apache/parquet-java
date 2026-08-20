@@ -549,4 +549,285 @@ public class TestTypeBuildersWithLogicalTypes {
     assertThat(((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion())
         .isEqualTo(specVersion);
   }
+
+  @Test
+  public void testFileLogicalTypeUriOnly() {
+    String name = "file_field";
+    GroupType file = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.fileType(),
+        Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("uri"));
+
+    assertThat(file.toString())
+        .isEqualTo("required group file_field (FILE) {\n" + "  optional binary uri (STRING);\n" + "}");
+
+    LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
+    assertThat(annotation.getType()).isEqualTo(LogicalTypeAnnotation.LogicalTypeToken.FILE);
+    assertThat(annotation.toOriginalType()).isNull();
+    assertThat(annotation).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeAllFields() {
+    String name = "file_field";
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(INT64)
+        .named("offset")
+        .optional(INT64)
+        .named("size")
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("checksum")
+        .optional(BINARY)
+        .named("inline")
+        .named(name);
+
+    LogicalTypeAnnotation annotation = file.getLogicalTypeAnnotation();
+    assertThat(annotation).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(6);
+    assertThat(file.getType("uri").getName()).isEqualTo("uri");
+    assertThat(file.getType("offset").getName()).isEqualTo("offset");
+    assertThat(file.getType("size").getName()).isEqualTo("size");
+    assertThat(file.getType("content_type").getName()).isEqualTo("content_type");
+    assertThat(file.getType("checksum").getName()).isEqualTo("checksum");
+    assertThat(file.getType("inline").getName()).isEqualTo("inline");
+  }
+
+  @Test
+  public void testFileLogicalTypeInlineOnly() {
+    // Every field is optional, so an inline-only group is valid (spec inline case).
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .named("inline")
+        .named("inline_file");
+
+    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(1);
+    assertThat(file.getType("inline").getName()).isEqualTo("inline");
+  }
+
+  @Test
+  public void testFileLogicalTypeSelfReference() {
+    // A self-reference omits 'uri' and locates bytes within the current file via offset/size.
+    // A schema that permits self-references must declare 'inline' as the storage-inheritance
+    // reference point.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(INT64)
+        .named("offset")
+        .optional(INT64)
+        .named("size")
+        .optional(BINARY)
+        .named("inline")
+        .named("self_ref_file");
+
+    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(3);
+  }
+
+  @Test
+  public void testFileLogicalTypeOffsetRequiresInline() {
+    // A schema that permits self-references (declares 'offset' but not 'uri') must declare 'inline'
+    // as the reference point for storage inheritance. A group declaring 'offset'/'size' with
+    // neither 'uri' nor 'inline' is rejected at build time.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64)
+            .named("offset")
+            .optional(INT64)
+            .named("size")
+            .named("self_ref_without_inline"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeExternalRangedReferenceWithoutInline() {
+    // An external ranged reference declares 'uri' + 'offset' + 'size' to point at a byte range of
+    // an external file. Because 'uri' is declared, the schema is treated as an external-reference
+    // schema and is not required to declare 'inline', even though it declares 'offset'.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(INT64)
+        .named("offset")
+        .optional(INT64)
+        .named("size")
+        .named("external_ranged_file");
+
+    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(3);
+  }
+
+  @Test
+  public void testFileLogicalTypeMetadataOnlyRejected() {
+    // Per the spec resolution table, a value resolves to bytes only via 'inline', 'uri', or
+    // 'offset'. A group declaring only metadata fields can never produce a resolvable value.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("content_type")
+            .optional(BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("checksum")
+            .named("file_metadata_only"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeSizeOnlyRejected() {
+    // 'size' alone never resolves to bytes (spec resolution table), so a size-only group is
+    // rejected: it declares no locator ('inline', 'uri', or 'offset').
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64)
+            .named("size")
+            .named("file_size_only"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeOffsetRequiresSize() {
+    // The spec requires 'size' whenever 'offset' is set, so a group declaring 'offset'
+    // without 'size' can never produce a valid value and is rejected at build time.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("uri")
+            .optional(INT64)
+            .named("offset")
+            .named("file_offset_without_size"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeOffsetWithSize() {
+    // 'offset' accompanied by 'size' is valid.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(INT64)
+        .named("offset")
+        .optional(INT64)
+        .named("size")
+        .named("file_offset_with_size");
+
+    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(3);
+  }
+
+  @Test
+  public void testFileLogicalTypeSizeWithoutOffset() {
+    // 'uri' + 'size' (without 'offset') is valid: an external reference to '[0, size)'.
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(INT64)
+        .named("size")
+        .named("file_size_without_offset");
+
+    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(file.getFieldCount()).isEqualTo(2);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsUnrecognizedField() {
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("uri")
+            .optional(BINARY)
+            .named("unknown_field")
+            .named("file_with_bad_field"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsRequiredField() {
+    // All FILE fields must have OPTIONAL repetition under the current spec.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .required(BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("uri")
+            .named("file_with_required_uri"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsGroupField() {
+    // FILE fields must be primitives, not nested groups.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optionalGroup()
+            .optional(BINARY)
+            .named("nested")
+            .named("uri")
+            .named("file_with_group_field"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsWrongStringPhysicalType() {
+    // 'uri' must be a STRING (BINARY annotated as STRING); an INT64 is rejected.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64)
+            .named("uri")
+            .named("file_uri_wrong_type"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsUnannotatedStringField() {
+    // A STRING field must carry the STRING logical annotation; plain BINARY is rejected.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .named("uri")
+            .named("file_uri_unannotated"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsWrongInt64PhysicalType() {
+    // 'offset' and 'size' must be INT64; an INT32 is rejected.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("uri")
+            .optional(INT32)
+            .named("size")
+            .named("file_size_wrong_type"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsWrongInlinePhysicalType() {
+    // 'inline' must be a BYTE_ARRAY (BINARY); an INT64 is rejected.
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64)
+            .named("inline")
+            .named("file_inline_wrong_type"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
 }

@@ -188,6 +188,12 @@ public abstract class LogicalTypeAnnotation {
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return unknownType();
       }
+    },
+    FILE {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return fileType();
+      }
     };
 
     protected abstract LogicalTypeAnnotation fromString(List<String> params);
@@ -376,6 +382,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static UnknownLogicalTypeAnnotation unknownType() {
     return UnknownLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static FileLogicalTypeAnnotation fileType() {
+    return FileLogicalTypeAnnotation.INSTANCE;
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1229,6 +1239,100 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  /**
+   * File logical type annotation. Annotates a group (struct) that represents a reference to a
+   * range of bytes, which may be stored inline in the value, elsewhere within the current file,
+   * or in an external file. Every field is optional, both in the schema (a writer may omit any
+   * field from the group definition) and in the data (any field that is present has a field
+   * repetition type of {@code OPTIONAL}). Fields are identified by name (case sensitively), not by
+   * field order. A group need only define the fields it uses. The group may contain the following
+   * fields:
+   * <ul>
+   *   <li>{@code uri} (STRING): a URI-reference (RFC 3986) that identifies an external file, for
+   *       example {@code s3://bucket/file.jpg}. If not set, the value refers to the current file
+   *       (a self-reference).</li>
+   *   <li>{@code offset} (INT64): start of the byte range within the referenced data; if not set,
+   *       treated as 0. Must not be negative.</li>
+   *   <li>{@code size} (INT64): byte length of the referenced data. Must be set whenever
+   *       {@code offset} is set or {@code uri} is not set; may be omitted only for a whole-file
+   *       external reference, in which case the range runs to the end of the referenced file. Must
+   *       not be negative.</li>
+   *   <li>{@code content_type} (STRING): the media (MIME) type (RFC 2046) of the resolved bytes;
+   *       when not set, {@code application/octet-stream} is assumed.</li>
+   *   <li>{@code checksum} (STRING): a self-describing integrity token for the resolved bytes, of
+   *       the form {@code <algorithm>:<digest>}.</li>
+   *   <li>{@code inline} (BYTE_ARRAY): the referenced bytes stored inline in the value.</li>
+   * </ul>
+   * No fields with names other than the above are permitted. The schema builder additionally
+   * rejects group definitions that could never produce a valid value: a group that declares
+   * {@code offset} must also declare {@code size}, and a group must declare at least one of
+   * {@code inline}, {@code uri}, or {@code offset} (a value resolves to bytes only via one of
+   * these; a group declaring none of them — even if it declares {@code size} — can never produce a
+   * resolvable value). A group that declares {@code offset} but not {@code uri} permits only
+   * self-references (a value with {@code uri} unset that locates bytes within the current file) and
+   * must therefore also declare {@code inline}: the {@code inline} column chunk of the same row
+   * group is the reference point whose compression and encryption a self-reference inherits. A
+   * group that declares {@code uri} is treated as an external-reference schema and is not required
+   * to declare {@code inline}. Each declared field must also match its required physical type.
+   * Per-value
+   * rules that depend on the data in each row — {@code offset} being set for a self-reference
+   * (unset {@code uri}), {@code size} being set whenever {@code offset} is set, and
+   * {@code offset}/{@code size} being non-negative — cannot be enforced here and are the
+   * responsibility of writers and consumers.
+   */
+  public static class FileLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final FileLogicalTypeAnnotation INSTANCE = new FileLogicalTypeAnnotation();
+
+    /** Field name holding the URI-reference of an external file. */
+    public static final String URI_FIELD = "uri";
+
+    /** Field name holding the start of the byte range. */
+    public static final String OFFSET_FIELD = "offset";
+
+    /** Field name holding the byte length of the referenced data. */
+    public static final String SIZE_FIELD = "size";
+
+    /** Field name holding the media (MIME) type of the resolved bytes. */
+    public static final String CONTENT_TYPE_FIELD = "content_type";
+
+    /** Field name holding the integrity token for the resolved bytes. */
+    public static final String CHECKSUM_FIELD = "checksum";
+
+    /** Field name holding the referenced bytes stored inline. */
+    public static final String INLINE_FIELD = "inline";
+
+    /** All recognized field names in a FILE-annotated group. All fields are optional. */
+    public static final Set<String> FIELD_NAMES =
+        Set.of(URI_FIELD, OFFSET_FIELD, SIZE_FIELD, CONTENT_TYPE_FIELD, CHECKSUM_FIELD, INLINE_FIELD);
+
+    private FileLogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.FILE;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof FileLogicalTypeAnnotation;
+    }
+
+    @Override
+    public int hashCode() {
+      return getClass().hashCode();
+    }
+  }
+
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
 
@@ -1432,6 +1536,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+      return empty();
+    }
+
+    default Optional<T> visit(FileLogicalTypeAnnotation fileLogicalType) {
       return empty();
     }
   }

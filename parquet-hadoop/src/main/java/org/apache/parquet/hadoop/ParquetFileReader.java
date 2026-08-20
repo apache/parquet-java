@@ -78,6 +78,7 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -1068,6 +1069,71 @@ public class ParquetFileReader implements Closeable {
 
   public String getFile() {
     return file.toString();
+  }
+
+  /**
+   * Resolves a {@code FILE} self-reference to its logical bytes. A self-reference (a {@code FILE}
+   * value with {@code uri} unset) records the {@code offset} and {@code size} of a stored
+   * representation within this file; the stored bytes inherit the compression and encryption of the
+   * {@code inline} column chunk in the same row group. This method reads the stored bytes, decrypts
+   * them when the {@code inline} column chunk is encrypted, and decompresses them with the column
+   * chunk's codec, returning the resolved bytes. See {@link SelfReferenceStorage} and the Parquet
+   * format's "FILE" logical type specification.
+   *
+   * <p>Everything needed to resolve the value comes from the value itself plus the {@code inline}
+   * column chunk's metadata, so a self-reference can be read without decoding the pages that
+   * precede it.
+   *
+   * @param inlineColumn the {@link ColumnChunkMetaData} of the {@code inline} column chunk whose
+   *     compression and encryption the self-reference inherits
+   * @param offset the self-reference {@code offset} field (start of the stored representation)
+   * @param size the self-reference {@code size} field (byte length of the stored representation)
+   * @return the resolved (logical) bytes of the self-reference
+   * @throws IOException if reading or resolving fails
+   */
+  public BytesInput resolveSelfReference(ColumnChunkMetaData inlineColumn, long offset, long size)
+      throws IOException {
+    if (offset < 0) {
+      throw new IllegalArgumentException("Self-reference offset must not be negative: " + offset);
+    }
+    if (size < 0) {
+      throw new IllegalArgumentException("Self-reference size must not be negative: " + size);
+    }
+    if (size > SelfReferenceStorage.MAX_ENCRYPTED_MODULE_SIZE) {
+      throw new IllegalArgumentException("Self-reference size exceeds the maximum readable range: " + size);
+    }
+
+    byte[] stored = new byte[(int) size];
+    f.seek(offset);
+    f.readFully(stored);
+
+    BlockCipher.Decryptor pageDecryptor = null;
+    byte[] fileAAD = null;
+    int columnOrdinal = -1;
+    if (null != fileDecryptor && !fileDecryptor.plaintextFile()) {
+      InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.getColumnSetup(inlineColumn.getPath());
+      if (columnDecryptionSetup.isEncrypted()) {
+        pageDecryptor = columnDecryptionSetup.getDataDecryptor();
+        fileAAD = fileDecryptor.getFileAAD();
+        columnOrdinal = columnDecryptionSetup.getOrdinal();
+      }
+    }
+
+    CompressionCodecFactory codecFactory = options.getCodecFactory();
+    if (!(codecFactory instanceof CodecFactory)) {
+      throw new IllegalStateException("Resolving FILE self-references requires a CodecFactory-based "
+          + "codec factory but found: " + codecFactory.getClass().getName());
+    }
+
+    return SelfReferenceStorage.resolve(
+        BytesInput.from(stored),
+        inlineColumn.getCodec(),
+        (CodecFactory) codecFactory,
+        pageDecryptor,
+        fileAAD,
+        inlineColumn.getRowGroupOrdinal(),
+        columnOrdinal,
+        offset);
   }
 
   private List<BlockMetaData> filterRowGroups(List<BlockMetaData> blocks) throws IOException {
