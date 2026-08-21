@@ -70,37 +70,67 @@ public class CorruptStatistics {
 
     try {
       ParsedVersion version = VersionParser.parse(createdBy);
-
-      if (!"parquet-mr".equals(version.application)) {
-        // assume other applications don't have this bug
-        return false;
-      }
-
-      if (Strings.isNullOrEmpty(version.version)) {
-        warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): "
-            + createdBy);
-        return true;
-      }
-
-      SemanticVersion semver = SemanticVersion.parse(version.version);
-
-      if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0
-          && !(semver.compareTo(CDH_5_PARQUET_251_FIXED_START) >= 0
-              && semver.compareTo(CDH_5_PARQUET_251_FIXED_END) < 0)) {
-        warnOnce("Ignoring statistics because this file was created prior to "
-            + PARQUET_251_FIXED_VERSION
-            + ", see PARQUET-251");
-        return true;
-      }
-
-      // this file was created after the fix
-      return false;
-    } catch (RuntimeException | SemanticVersionParseException | VersionParseException e) {
-      // couldn't parse the created_by field, log what went wrong, don't trust the stats,
-      // but don't make this fatal.
+      return shouldIgnoreStatistics(version, createdBy, columnType);
+    } catch (RuntimeException | VersionParseException e) {
+      // couldn't parse the created_by field, log what went wrong, don't trust the
+      // stats, but don't make this fatal.
       warnParseErrorOnce(createdBy, e);
       return true;
     }
+  }
+
+  /**
+   * Decides if the statistics from a file should be ignored because they are potentially corrupt.
+   * Use this when the writer version has already been parsed to avoid redundant parsing.
+   *
+   * @param writerVersion the pre-parsed writer version, or {@code null} if unknown/unparseable
+   * @param createdBy     the original created-by string from the file footer (used for logging)
+   * @param columnType    the type of the column that this is checking
+   * @return true if the statistics may be invalid and should be ignored, false otherwise
+   */
+  public static boolean shouldIgnoreStatistics(
+      ParsedVersion writerVersion, String createdBy, PrimitiveTypeName columnType) {
+
+    if (columnType != PrimitiveTypeName.BINARY && columnType != PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+      return false;
+    }
+
+    if (writerVersion == null) {
+      warnOnce("Ignoring statistics because created_by is null or empty! See PARQUET-251 and PARQUET-297");
+      return true;
+    }
+
+    if (!"parquet-mr".equals(writerVersion.application)) {
+      return false;
+    }
+
+    if (Strings.isNullOrEmpty(writerVersion.version)) {
+      warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
+      return true;
+    }
+
+    if (!writerVersion.hasSemanticVersion()) {
+      try {
+        SemanticVersion.parse(writerVersion.version);
+      } catch (SemanticVersionParseException e) {
+        warnParseErrorOnce(createdBy, e);
+      }
+      return true;
+    }
+
+    SemanticVersion semver = writerVersion.getSemanticVersion();
+
+    if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0
+        && !(semver.compareTo(CDH_5_PARQUET_251_FIXED_START) >= 0
+            && semver.compareTo(CDH_5_PARQUET_251_FIXED_END) < 0)) {
+      warnOnce("Ignoring statistics because this file was created prior to "
+          + PARQUET_251_FIXED_VERSION
+          + ", see PARQUET-251");
+      return true;
+    }
+
+    // this file was created after the fix
+    return false;
   }
 
   private static void warnParseErrorOnce(String createdBy, Throwable e) {

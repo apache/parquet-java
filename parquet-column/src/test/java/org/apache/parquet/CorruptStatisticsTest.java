@@ -20,6 +20,7 @@ package org.apache.parquet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.jupiter.api.Test;
 
@@ -127,6 +128,49 @@ public class CorruptStatisticsTest {
         .isFalse();
     assertThat(CorruptStatistics.shouldIgnoreStatistics("impala version (build)", PrimitiveTypeName.BINARY))
         .isFalse();
+  }
+
+  @Test
+  public void testShouldIgnoreStatisticsWithParsedVersion() throws Exception {
+    String createdBy = "parquet-mr version 1.6.0 (build abc)";
+
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(null, null, PrimitiveTypeName.BINARY))
+        .isTrue();
+
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(null, null, PrimitiveTypeName.INT32))
+        .isFalse();
+
+    ParsedVersion impala = VersionParser.parse("impala version 1.2.0 (build abc)");
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(
+            impala, "impala version 1.2.0 (build abc)", PrimitiveTypeName.BINARY))
+        .isFalse();
+
+    ParsedVersion corrupt = VersionParser.parse(createdBy);
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(corrupt, createdBy, PrimitiveTypeName.BINARY))
+        .isTrue();
+
+    ParsedVersion fixed = VersionParser.parse("parquet-mr version 1.8.0 (build abc)");
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(
+            fixed, "parquet-mr version 1.8.0 (build abc)", PrimitiveTypeName.BINARY))
+        .isFalse();
+
+    ParsedVersion newer = VersionParser.parse("parquet-mr version 1.12.0 (build abc)");
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(
+            newer, "parquet-mr version 1.12.0 (build abc)", PrimitiveTypeName.BINARY))
+        .isFalse();
+
+    // version field present but not a valid semantic version
+    ParsedVersion invalidSemver = new ParsedVersion("parquet-mr", "not-a-semver", "abc");
+    assertThat(invalidSemver.hasSemanticVersion()).isFalse();
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(
+            invalidSemver, "parquet-mr version not-a-semver (build abc)", PrimitiveTypeName.BINARY))
+        .isTrue();
+
+    // empty version field
+    ParsedVersion emptyVersion = new ParsedVersion("parquet-mr", "", "abc");
+    assertThat(CorruptStatistics.shouldIgnoreStatistics(
+            emptyVersion, "parquet-mr version (build abc)", PrimitiveTypeName.BINARY))
+        .isTrue();
   }
 
   @Test
