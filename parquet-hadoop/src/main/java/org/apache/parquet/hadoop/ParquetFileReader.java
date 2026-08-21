@@ -1190,10 +1190,18 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    readAllPartsVectoredOrNormal(allParts, builder);
-    rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      rowGroup.setReleaser(builder.releaser);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+    } catch (RuntimeException | IOException e) {
+      // If we fail before the releaser is transferred to the row group (e.g. a vectored range
+      // times out after earlier ranges already registered their buffers), release any buffers
+      // that were registered so far so that partially-read row groups do not leak.
+      builder.releaser.close();
+      throw e;
     }
 
     return rowGroup;
@@ -1464,10 +1472,18 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    readAllPartsVectoredOrNormal(allParts, builder);
-    rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      rowGroup.setReleaser(builder.releaser);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+    } catch (RuntimeException | IOException e) {
+      // If we fail before the releaser is transferred to the row group (e.g. a vectored range
+      // times out after earlier ranges already registered their buffers), release any buffers
+      // that were registered so far so that partially-read row groups do not leak.
+      builder.releaser.close();
+      throw e;
     }
 
     return rowGroup;
@@ -2368,6 +2384,10 @@ public class ParquetFileReader implements Closeable {
         LOG.error(error, e);
         throw new IOException(error, e);
       }
+      // Release the vectored-read buffer back to the allocator when the row group is closed.
+      // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
+      // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
+      builder.addBuffersToRelease(Collections.singletonList(buffer));
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
