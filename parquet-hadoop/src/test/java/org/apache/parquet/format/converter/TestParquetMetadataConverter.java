@@ -546,6 +546,10 @@ public class TestParquetMetadataConverter {
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
+      // Skip ALP encoding as it's not yet in the parquet-format specification
+      if (encoding == org.apache.parquet.column.Encoding.ALP) {
+        continue;
+      }
       assertThat(parquetMetadataConverter.getEncoding(parquetMetadataConverter.getEncoding(encoding)))
           .isEqualTo(encoding);
     }

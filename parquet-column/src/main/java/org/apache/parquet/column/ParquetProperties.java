@@ -21,10 +21,12 @@ package org.apache.parquet.column;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
+import java.util.Set;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -33,12 +35,15 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.alp.AlpConfig;
+import org.apache.parquet.column.values.alp.AlpConstants;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
@@ -51,6 +56,8 @@ public class ParquetProperties {
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
+  public static final boolean DEFAULT_IS_ALP_ENABLED = false;
+  public static final int DEFAULT_ALP_VECTOR_SIZE = AlpConstants.DEFAULT_VECTOR_SIZE;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -133,6 +140,7 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
+  private final ColumnProperty<AlpConfig> alp;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
@@ -167,6 +175,7 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
+    this.alp = builder.buildAlp();
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
@@ -262,6 +271,34 @@ public class ParquetProperties {
       default:
         return false;
     }
+  }
+
+  /**
+   * Check if ALP encoding is enabled for the given column.
+   * ALP encoding is only supported for FLOAT and DOUBLE types.
+   *
+   * @param column the column descriptor
+   * @return true if ALP encoding is enabled for this column
+   */
+  public boolean isAlpEnabled(ColumnDescriptor column) {
+    switch (column.getPrimitiveType().getPrimitiveTypeName()) {
+      case FLOAT:
+      case DOUBLE:
+        return alp.getValue(column).isEnabled();
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Get the ALP vector size (number of values per encoded vector) for the given column.
+   * Must be a power of 2 between 8 and 32768.
+   *
+   * @param column the column descriptor
+   * @return the ALP vector size for this column
+   */
+  public int getAlpVectorSize(ColumnDescriptor column) {
+    return alp.getValue(column).getVectorSize();
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -415,7 +452,8 @@ public class ParquetProperties {
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
-        + "Size statistics enabled: " + sizeStatisticsEnabled;
+        + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
+        + "ALP: " + alp;
     String perColumn = "";
     if (!columnCodecs.toString().equals(Objects.toString(columnCodecs.getDefaultValue()))) {
       perColumn = "Per-column codecs: " + columnCodecs;
@@ -455,6 +493,8 @@ public class ParquetProperties {
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
+    private final ColumnProperty.Builder<Boolean> alpEnabled;
+    private final ColumnProperty.Builder<Integer> alpVectorSize;
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
@@ -468,6 +508,8 @@ public class ParquetProperties {
               DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED
                   ? ByteStreamSplitMode.FLOATING_POINT
                   : ByteStreamSplitMode.NONE);
+      alpEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_ALP_ENABLED);
+      alpVectorSize = ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_ALP_VECTOR_SIZE);
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
@@ -504,6 +546,16 @@ public class ParquetProperties {
       this.numBloomFilterCandidates = ColumnProperty.builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
+      // Split the bundled per-column AlpConfig back into the two independent builder scaffolds
+      // so the withAlpEncoding/withAlpVectorSize setters can keep operating on them independently.
+      AlpConfig alpDefault = toCopy.alp.getDefaultValue();
+      this.alpEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(alpDefault.isEnabled());
+      this.alpVectorSize = ColumnProperty.<Integer>builder().withDefaultValue(alpDefault.getVectorSize());
+      for (ColumnPath column : toCopy.alp.getColumnPaths()) {
+        AlpConfig columnConfig = toCopy.alp.getValue(column);
+        this.alpEnabled.withValue(column, columnConfig.isEnabled());
+        this.alpVectorSize.withValue(column, columnConfig.getVectorSize());
+      }
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.statisticsEnabled = toCopy.statisticsEnabled;
@@ -583,6 +635,74 @@ public class ParquetProperties {
       this.byteStreamSplitEnabled.withDefaultValue(
           enable ? ByteStreamSplitMode.EXTENDED : ByteStreamSplitMode.NONE);
       return this;
+    }
+
+    /**
+     * Enable or disable ALP encoding for FLOAT and DOUBLE columns.
+     *
+     * @param enable whether ALP encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withAlpEncoding(boolean enable) {
+      this.alpEnabled.withDefaultValue(enable);
+      return this;
+    }
+
+    /**
+     * Enable or disable ALP encoding for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enable     whether ALP encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withAlpEncoding(String columnPath, boolean enable) {
+      this.alpEnabled.withValue(columnPath, enable);
+      return this;
+    }
+
+    /**
+     * Set the ALP vector size (number of values per encoded vector) for FLOAT and DOUBLE columns.
+     * Must be a power of 2 in the range supported by {@link AlpConstants}.
+     *
+     * @param vectorSize the vector size
+     * @return this builder for method chaining.
+     */
+    public Builder withAlpVectorSize(int vectorSize) {
+      AlpConstants.validateVectorSize(vectorSize);
+      this.alpVectorSize.withDefaultValue(vectorSize);
+      return this;
+    }
+
+    /**
+     * Set the ALP vector size for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param vectorSize the vector size
+     * @return this builder for method chaining.
+     */
+    public Builder withAlpVectorSize(String columnPath, int vectorSize) {
+      AlpConstants.validateVectorSize(vectorSize);
+      this.alpVectorSize.withValue(columnPath, vectorSize);
+      return this;
+    }
+
+    /**
+     * Merge the independently-tracked ALP enabled flag and vector size into a single per-column
+     * {@link AlpConfig} property. A column gets an explicit config when either setter touched it;
+     * for every other column the default config applies.
+     */
+    private ColumnProperty<AlpConfig> buildAlp() {
+      ColumnProperty<Boolean> enabled = alpEnabled.build();
+      ColumnProperty<Integer> vectorSize = alpVectorSize.build();
+      ColumnProperty.Builder<AlpConfig> builder = ColumnProperty.<AlpConfig>builder()
+          .withDefaultValue(new AlpConfig(enabled.getDefaultValue(), vectorSize.getDefaultValue()));
+      Set<ColumnPath> columns = new HashSet<>();
+      columns.addAll(enabled.getColumnPaths());
+      columns.addAll(vectorSize.getColumnPaths());
+      for (ColumnPath column : columns) {
+        builder.withValue(column, new AlpConfig(enabled.getValue(column), vectorSize.getValue(column)));
+      }
+      return builder.build();
     }
 
     /**

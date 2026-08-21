@@ -32,6 +32,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.alp.AlpValuesWriter;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
@@ -461,6 +462,42 @@ public class DefaultValuesWriterFactoryTest {
   }
 
   @Test
+  public void testFloat_V1_WithAlp() {
+    testFloatingPoint_WithAlp(
+        PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0, AlpValuesWriter.FloatAlpValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_V1_WithAlp() {
+    testFloatingPoint_WithAlp(
+        PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0, AlpValuesWriter.DoubleAlpValuesWriter.class);
+  }
+
+  @Test
+  public void testFloat_V2_WithAlp() {
+    testFloatingPoint_WithAlp(
+        PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0, AlpValuesWriter.FloatAlpValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_V2_WithAlp() {
+    testFloatingPoint_WithAlp(
+        PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0, AlpValuesWriter.DoubleAlpValuesWriter.class);
+  }
+
+  @Test
+  public void testFloat_Alp_TakesPrecedenceOverByteStreamSplit() {
+    testAlpTakesPrecedenceOverByteStreamSplit(
+        PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0, AlpValuesWriter.FloatAlpValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_Alp_TakesPrecedenceOverByteStreamSplit() {
+    testAlpTakesPrecedenceOverByteStreamSplit(
+        PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0, AlpValuesWriter.DoubleAlpValuesWriter.class);
+  }
+
+  @Test
   public void testColumnWiseDictionaryWithFalseDefault() {
     ValuesWriterFactory factory = getDefaultFactory(
         WriterVersion.PARQUET_2_0, false, "binary_dict", "boolean_dict", "float_dict", "int32_dict");
@@ -629,6 +666,50 @@ public class DefaultValuesWriterFactoryTest {
         properties,
         DictionaryValuesWriter.class,
         PlainValuesWriter.class);
+  }
+
+  private void testFloatingPoint_WithAlp(
+      PrimitiveTypeName typeName, WriterVersion writerVersion, Class<? extends ValuesWriter> alpWriterClass) {
+    // Cross-column ALP without a dictionary: the ALP writer is produced directly.
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withDictionaryEncoding(false)
+            .withAlpEncoding(true)
+            .build(),
+        alpWriterClass);
+    // Cross-column ALP with a dictionary: the ALP writer is the dictionary's fallback.
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withAlpEncoding(true)
+            .build(),
+        DictionaryValuesWriter.class,
+        alpWriterClass);
+    // Per-column ALP: only colA opts in, colB keeps the plain fallback.
+    ParquetProperties properties = ParquetProperties.builder()
+        .withWriterVersion(writerVersion)
+        .withDictionaryEncoding(false)
+        .withAlpEncoding("colA", true)
+        .build();
+    doTestValueWriter(createColumnDescriptor(typeName, "colA"), properties, alpWriterClass);
+    doTestValueWriter(createColumnDescriptor(typeName, "colB"), properties, PlainValuesWriter.class);
+  }
+
+  private void testAlpTakesPrecedenceOverByteStreamSplit(
+      PrimitiveTypeName typeName, WriterVersion writerVersion, Class<? extends ValuesWriter> alpWriterClass) {
+    // When both ALP and byte-stream-split are enabled the factory prefers ALP.
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withDictionaryEncoding(false)
+            .withAlpEncoding(true)
+            .withByteStreamSplitEncoding(true)
+            .build(),
+        alpWriterClass);
   }
 
   private void validateFactory(
