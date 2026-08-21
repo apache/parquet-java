@@ -45,6 +45,7 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainD
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
+import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainBooleanDictionary;
 import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
@@ -801,6 +802,17 @@ public class TestDictionary {
       int offset = bytes.remaining();
       reader.initFromPage(100, bytes, offset);
     }
+  }
+
+  @Test
+  public void testDictionaryPageCopyDoesNotAliasSourceBytes() throws IOException {
+    byte[] source = {1, 0, 0, 0, 'a'};
+    DictionaryPage copied = new DictionaryPage(BytesInput.from(source), 1, PLAIN).copy();
+
+    source[4] = 'b';
+
+    PlainBinaryDictionary dictionary = new PlainBinaryDictionary(copied);
+    assertThat(dictionary.decodeToBinary(0).toStringUsingUTF8()).isEqualTo("a");
   }
 
   @Test
