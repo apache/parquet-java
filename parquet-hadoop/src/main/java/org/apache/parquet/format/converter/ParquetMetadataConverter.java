@@ -947,25 +947,6 @@ public class ParquetMetadataConverter {
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
       String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
-    return fromParquetStatisticsInternal(
-        CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()),
-        formatStats,
-        type,
-        typeSortOrder);
-  }
-
-  // Visible for testing
-  static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
-      ParsedVersion writerVersion, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
-    return fromParquetStatisticsInternal(
-        CorruptStatistics.shouldIgnoreStatistics(writerVersion, type.getPrimitiveTypeName()),
-        formatStats,
-        type,
-        typeSortOrder);
-  }
-
-  private static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
-      boolean shouldIgnoreStatistics, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
         org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
 
@@ -982,7 +963,60 @@ public class ParquetMetadataConverter {
         boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
         boolean maxEqualsMin = isSet ? Arrays.equals(formatStats.getMin(), formatStats.getMax()) : false;
         boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
-        if (!shouldIgnoreStatistics && (sortOrdersMatch || maxEqualsMin)) {
+        // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
+        // The sort order is checked to avoid returning min/max stats that are not
+        // valid with the type's sort order. In previous releases, all stats were
+        // aggregated using a signed byte-wise ordering, which isn't valid for all the
+        // types (e.g. strings, decimals etc.).
+        if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName())
+            && (sortOrdersMatch || maxEqualsMin)) {
+          if (isSet) {
+            statsBuilder.withMin(formatStats.min.array());
+            statsBuilder.withMax(formatStats.max.array());
+          }
+        }
+      }
+
+      if (formatStats.isSetNull_count()) {
+        statsBuilder.withNumNulls(formatStats.null_count);
+      }
+      if (formatStats.isSetNan_count()) {
+        statsBuilder.withNanCount(formatStats.getNan_count());
+      }
+    }
+    return statsBuilder.build();
+  }
+
+  // Visible for testing
+  static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+      ParsedVersion writerVersion,
+      String createdBy,
+      Statistics formatStats,
+      PrimitiveType type,
+      SortOrder typeSortOrder) {
+    org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
+
+    if (formatStats != null) {
+      // Use the new V2 min-max statistics over the former one if it is filled
+      if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
+        byte[] min = formatStats.min_value.array();
+        byte[] max = formatStats.max_value.array();
+        if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
+          statsBuilder.withMin(min);
+          statsBuilder.withMax(max);
+        }
+      } else {
+        boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
+        boolean maxEqualsMin = isSet ? Arrays.equals(formatStats.getMin(), formatStats.getMax()) : false;
+        boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
+        // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
+        // The sort order is checked to avoid returning min/max stats that are not
+        // valid with the type's sort order. In previous releases, all stats were
+        // aggregated using a signed byte-wise ordering, which isn't valid for all the
+        // types (e.g. strings, decimals etc.).
+        if (!CorruptStatistics.shouldIgnoreStatistics(writerVersion, createdBy, type.getPrimitiveTypeName())
+            && (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
             statsBuilder.withMin(formatStats.min.array());
             statsBuilder.withMax(formatStats.max.array());
@@ -1007,9 +1041,9 @@ public class ParquetMetadataConverter {
   }
 
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
-      ParsedVersion writerVersion, Statistics statistics, PrimitiveType type) {
+      ParsedVersion writerVersion, String createdBy, Statistics statistics, PrimitiveType type) {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
-    return fromParquetStatisticsInternal(writerVersion, statistics, type, expectedOrder);
+    return fromParquetStatisticsInternal(writerVersion, createdBy, statistics, type, expectedOrder);
   }
 
   GeospatialStatistics toParquetGeospatialStatistics(
@@ -1858,14 +1892,18 @@ public class ParquetMetadataConverter {
   }
 
   public ColumnChunkMetaData buildColumnChunkMetaData(
-      ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, ParsedVersion writerVersion) {
+      ColumnMetaData metaData,
+      ColumnPath columnPath,
+      PrimitiveType type,
+      ParsedVersion writerVersion,
+      String createdBy) {
     return ColumnChunkMetaData.get(
         columnPath,
         type,
         fromFormatCodec(metaData.codec),
         convertEncodingStats(metaData.getEncoding_stats()),
         fromFormatEncodings(metaData.encodings),
-        fromParquetStatistics(writerVersion, metaData.statistics, type),
+        fromParquetStatistics(writerVersion, createdBy, metaData.statistics, type),
         metaData.data_page_offset,
         metaData.dictionary_page_offset,
         metaData.num_values,
@@ -1983,7 +2021,8 @@ public class ParquetMetadataConverter {
             PrimitiveType primitiveType =
                 messageType.getType(columnPath.toArray()).asPrimitiveType();
             column = useWriterVersion
-                ? buildColumnChunkMetaData(metaData, columnPath, primitiveType, writerVersion)
+                ? buildColumnChunkMetaData(
+                    metaData, columnPath, primitiveType, writerVersion, createdBy)
                 : buildColumnChunkMetaData(metaData, columnPath, primitiveType, createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             if (metaData.isSetBloom_filter_offset()) {

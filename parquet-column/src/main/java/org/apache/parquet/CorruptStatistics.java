@@ -19,6 +19,7 @@
 package org.apache.parquet;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -69,8 +70,10 @@ public class CorruptStatistics {
 
     try {
       ParsedVersion version = VersionParser.parse(createdBy);
-      return shouldIgnoreStatistics(version, columnType);
+      return shouldIgnoreStatistics(version, createdBy, columnType);
     } catch (RuntimeException | VersionParseException e) {
+      // couldn't parse the created_by field, log what went wrong, don't trust the
+      // stats, but don't make this fatal.
       warnParseErrorOnce(createdBy, e);
       return true;
     }
@@ -78,13 +81,15 @@ public class CorruptStatistics {
 
   /**
    * Decides if the statistics from a file should be ignored because they are potentially corrupt.
-   * Use this overload when the writer version has already been parsed to avoid redundant parsing.
+   * Use this when the writer version has already been parsed to avoid redundant parsing.
    *
    * @param writerVersion the pre-parsed writer version, or {@code null} if unknown/unparseable
+   * @param createdBy     the original created-by string from the file footer (used for logging)
    * @param columnType    the type of the column that this is checking
    * @return true if the statistics may be invalid and should be ignored, false otherwise
    */
-  public static boolean shouldIgnoreStatistics(ParsedVersion writerVersion, PrimitiveTypeName columnType) {
+  public static boolean shouldIgnoreStatistics(
+      ParsedVersion writerVersion, String createdBy, PrimitiveTypeName columnType) {
 
     if (columnType != PrimitiveTypeName.BINARY && columnType != PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       return false;
@@ -100,13 +105,16 @@ public class CorruptStatistics {
     }
 
     if (Strings.isNullOrEmpty(writerVersion.version)) {
-      warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): "
-          + writerVersion);
+      warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
       return true;
     }
 
     if (!writerVersion.hasSemanticVersion()) {
-      warnOnce("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + writerVersion);
+      try {
+        SemanticVersion.parse(writerVersion.version);
+      } catch (SemanticVersionParseException e) {
+        warnParseErrorOnce(createdBy, e);
+      }
       return true;
     }
 
