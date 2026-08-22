@@ -282,7 +282,7 @@ public final class Variant {
         int mid = (low + high) >>> 1;
         int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
         String midKey = getMetadataKeyCached(midId);
-        int cmp = midKey.compareTo(key);
+        int cmp = VariantUtil.compareKeys(midKey, key);
         if (cmp < 0) {
           low = mid + 1;
         } else if (cmp > 0) {
