@@ -878,7 +878,7 @@ public class TestParquetMetadataConverter {
     }
     assertThat(formatStats.getNull_count()).as("Num nulls should match").isEqualTo(3004);
 
-    // convert to empty stats because the values are too large
+    // min/max are not written because the values are too large, but null count is always written
     stats.setMinMaxFromBytes(max, max);
 
     formatStats = helper.toParquetStatistics(stats);
@@ -891,9 +891,7 @@ public class TestParquetMetadataConverter {
     assertThat(formatStats.isSetMax_value())
         .as("Max_value should not be set")
         .isFalse();
-    assertThat(formatStats.isSetNull_count())
-        .as("Num nulls should not be set")
-        .isFalse();
+    assertThat(formatStats.getNull_count()).as("Num nulls should match").isEqualTo(3004);
 
     Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
         Version.FULL_VERSION,
@@ -903,7 +901,10 @@ public class TestParquetMetadataConverter {
 
     assertThat(roundTripStats.isEmpty())
         .as("Round-trip stats should not be empty (null count is set)")
-        .isTrue();
+        .isFalse();
+    assertThat(roundTripStats.getNumNulls())
+        .as("Round-trip null count should match")
+        .isEqualTo(3004);
   }
 
   @Test
