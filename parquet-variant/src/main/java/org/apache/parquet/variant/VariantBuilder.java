@@ -679,6 +679,12 @@ public class VariantBuilder {
     final int offset;
     int valueSize = 0;
 
+    /**
+     * Lazy cache of the UTF-8 encoding of `key`, which sorting an object compares O(log n) times
+     * per entry. Encoded on demand so single-field objects, which are never compared, skip it.
+     */
+    private byte[] keyBytes;
+
     FieldEntry(String key, int id, int offset) {
       this.key = key;
       this.id = id;
@@ -689,9 +695,16 @@ public class VariantBuilder {
       valueSize = size;
     }
 
+    private byte[] keyBytes() {
+      if (keyBytes == null) {
+        keyBytes = VariantUtil.encodeKey(key);
+      }
+      return keyBytes;
+    }
+
     @Override
     public int compareTo(FieldEntry other) {
-      return VariantUtil.compareKeys(key, other.key);
+      return VariantUtil.compareKeys(keyBytes(), other.keyBytes());
     }
   }
 

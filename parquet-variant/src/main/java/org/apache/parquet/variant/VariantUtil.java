@@ -302,8 +302,17 @@ class VariantUtil {
   }
 
   /**
-   * Compares two object field keys by the unsigned lexicographic order of their UTF-8 encoded
-   * bytes, as required by the Variant spec for object field ordering.
+   * Encodes an object field key to the UTF-8 bytes that {@link #compareKeys} orders. Callers that
+   * compare the same key repeatedly - sorting an object, or binary-searching it for one key -
+   * should encode it once and reuse the result rather than re-encoding per comparison.
+   */
+  static byte[] encodeKey(String key) {
+    return key.getBytes(StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Compares two object field keys, given their UTF-8 encodings, by unsigned lexicographic byte
+   * order, as required by the Variant spec for object field ordering.
    *
    * <p>This intentionally differs from {@link String#compareTo}, which compares UTF-16 code
    * units. The two orderings agree for all keys in the Basic Multilingual Plane but diverge for
@@ -313,9 +322,8 @@ class VariantUtil {
    * ids are mis-sorted relative to the spec, breaking binary-search lookups by any reader that
    * follows the spec's UTF-8 byte ordering.
    */
-  static int compareKeys(String a, String b) {
-    return Arrays.compareUnsigned(
-        a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
+  static int compareKeys(byte[] a, byte[] b) {
+    return Arrays.compareUnsigned(a, b);
   }
 
   /**
