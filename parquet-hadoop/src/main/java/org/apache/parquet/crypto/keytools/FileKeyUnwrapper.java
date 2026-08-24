@@ -157,10 +157,13 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
     String kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME);
     if (stringIsEmpty(kmsInstanceURL)) {
-      kmsInstanceURL = keyMaterial.getKmsInstanceURL();
+      if (hadoopConfiguration.getBoolean(KeyToolkit.KMS_ENABLE_URL_READ_PROPERTY_NAME,
+              KeyToolkit.KMS_ENABLE_URL_READ_DEFAULT)) {
+        kmsInstanceURL = keyMaterial.getKmsInstanceURL();
+      }
+
       if (null == kmsInstanceURL) {
-        throw new ParquetCryptoRuntimeException(
-            "KMS instance URL is missing both in properties and file key material");
+        kmsInstanceURL = KmsClient.KMS_INSTANCE_URL_DEFAULT;
       }
     }
 
