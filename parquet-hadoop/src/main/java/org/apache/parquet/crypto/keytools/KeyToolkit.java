@@ -61,6 +61,7 @@ public class KeyToolkit {
    * access token to a malicious URL end point.
    */
   public static final String KMS_ENABLE_URL_READ_PROPERTY_NAME = "parquet.encryption.kms.enable.url.read";
+
   public static final boolean KMS_ENABLE_URL_READ_DEFAULT = false;
   /**
    * Authorization token that will be passed to KMS.
