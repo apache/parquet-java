@@ -1,0 +1,3 @@
+# Provenance of the inlined parquet.thrift. Maintained by dev/update-parquet-thrift.sh.
+parquet-format.commit=c47e2a66e88943fc46fde1b028a9432f14fdf5c0
+parquet-format.version=2.13.0

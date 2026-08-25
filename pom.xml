@@ -84,7 +84,6 @@
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.3.0</hadoop.version>
-    <parquet.format.version>2.13.0</parquet.format.version>
     <previous.version>1.18.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
@@ -572,6 +571,7 @@
             <exclude>thrift-${thrift.version}.tar.gz</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>**/*.rej</exclude>
+            <exclude>**/src/main/thrift/parquet-format.version</exclude>
           </excludes>
         </configuration>
       </plugin>
