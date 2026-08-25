@@ -442,16 +442,14 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
       if (value.hasArray()) {
         ret = new String(value.array(), value.arrayOffset() + offset, length, StandardCharsets.UTF_8);
       } else {
-        int limit = value.limit();
-        value.limit(offset + length);
-        int position = value.position();
-        value.position(offset);
-        // no corresponding interface to read a subset of a buffer, would have to slice it
-        // which creates another ByteBuffer object or do what is done here to adjust the
-        // limit/offset and set them back after
-        ret = StandardCharsets.UTF_8.decode(value).toString();
-        value.limit(limit);
-        value.position(position);
+        // Duplicate before adjusting position/limit so we never mutate the shared
+        // buffer's own position: readBytes() may have already advanced it past
+        // this value's range (e.g. lazily-consumed values in a repeated field),
+        // and limit(offset + length) would otherwise silently clamp it backwards.
+        ByteBuffer duplicate = value.duplicate();
+        duplicate.position(offset);
+        duplicate.limit(offset + length);
+        ret = StandardCharsets.UTF_8.decode(duplicate).toString();
       }
 
       return ret;
@@ -475,13 +473,18 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
     public byte[] getBytes() {
       byte[] bytes = new byte[length];
 
-      int limit = value.limit();
-      value.limit(offset + length);
-      int position = value.position();
-      value.position(offset);
-      value.get(bytes);
-      value.limit(limit);
-      value.position(position);
+      if (value.hasArray()) {
+        System.arraycopy(value.array(), value.arrayOffset() + offset, bytes, 0, length);
+      } else {
+        // Duplicate before adjusting position/limit so we never mutate the shared
+        // buffer's own position: readBytes() may have already advanced it past
+        // this value's range (e.g. lazily-consumed values in a repeated field),
+        // and limit(offset + length) would otherwise silently clamp it backwards.
+        ByteBuffer duplicate = value.duplicate();
+        duplicate.position(offset);
+        duplicate.limit(offset + length);
+        duplicate.get(bytes);
+      }
       if (!isBackingBytesReused) { // backing buffer might change
         cachedBytes = bytes;
       }
