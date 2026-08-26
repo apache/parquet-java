@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.pfor;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -41,6 +42,11 @@ import org.junit.Test;
 public class PforAdversarialTest {
 
   private static final int VECTOR_SIZE = PforConstants.DEFAULT_VECTOR_SIZE;
+
+  // The five-element pages below hold one vector, so the page is a 7-byte header,
+  // a single 4-byte offset, and then that vector's info.
+  private static final int VECTOR_START = PforConstants.PFOR_HEADER_SIZE + Integer.BYTES;
+  private static final int OUTLIER_VECTOR_LEN = 5;
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -86,6 +92,80 @@ public class PforAdversarialTest {
         writer.close();
       }
     }
+  }
+
+  // One value far above the cluster, which is the shape the cost model stores as an
+  // exception; a low outlier would become the frame of reference instead.
+  private static final int[] OUTLIER_INTS = {100, 101, 102, 103, 50000};
+
+  // An INT64 exception costs 80 bits, so the outlier has to sit further out still:
+  // 50,000 would be cheaper to pack at full width than to store as an exception.
+  private static final long[] OUTLIER_LONGS = {100L, 101L, 102L, 103L, 100L + (1L << 40)};
+
+  private static byte[] outlierIntPage() throws Exception {
+    PforValuesWriter.IntPforValuesWriter writer = null;
+    try {
+      writer = new PforValuesWriter.IntPforValuesWriter(512, 512, new DirectByteBufferAllocator(), 8);
+      for (int value : OUTLIER_INTS) {
+        writer.writeInteger(value);
+      }
+      return toBytes(writer.getBytes());
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  private static byte[] outlierLongPage() throws Exception {
+    PforValuesWriter.LongPforValuesWriter writer = null;
+    try {
+      writer = new PforValuesWriter.LongPforValuesWriter(512, 512, new DirectByteBufferAllocator(), 8);
+      for (long value : OUTLIER_LONGS) {
+        writer.writeLong(value);
+      }
+      return toBytes(writer.getBytes());
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  private static byte[] toBytes(BytesInput bytes) throws Exception {
+    ByteBuffer bb = bytes.toByteBuffer();
+    byte[] out = new byte[bb.remaining()];
+    bb.duplicate().get(out);
+    return out;
+  }
+
+  private static int bitWidthOffset(int vectorInfoSize) {
+    return VECTOR_START + vectorInfoSize - 3;
+  }
+
+  private static int numExceptionsOffset(int vectorInfoSize) {
+    return VECTOR_START + vectorInfoSize - 2;
+  }
+
+  // Offset of the first stored exception position: past the vector info and the
+  // packed deltas, whose length depends on the width the writer chose.
+  private static int exceptionPositionOffset(byte[] page, int vectorInfoSize) {
+    int bitWidth = page[bitWidthOffset(vectorInfoSize)] & PforConstants.BIT_WIDTH_MASK;
+    int packedBytes = (OUTLIER_VECTOR_LEN * bitWidth + 7) / 8;
+    return VECTOR_START + vectorInfoSize + packedBytes;
+  }
+
+  private static int shortLE(byte[] page, int pos) {
+    return (page[pos] & 0xFF) | ((page[pos + 1] & 0xFF) << 8);
+  }
+
+  private static byte[] putShortLE(byte[] original, int pos, int value) {
+    byte[] copy = original.clone();
+    copy[pos] = (byte) (value & 0xFF);
+    copy[pos + 1] = (byte) ((value >>> 8) & 0xFF);
+    return copy;
   }
 
   private static byte[] mutate(byte[] original, int offset, byte value) {
@@ -253,6 +333,70 @@ public class PforAdversarialTest {
       fail("Expected exception for corrupted offset");
     } catch (Throwable t) {
       assertNotNull(t);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-vector info validation
+  // ---------------------------------------------------------------------------
+
+  @Test
+  public void sanityOutlierPagesCarryAnException() throws Exception {
+    assertTrue(
+        "the tests below relocate a stored exception, so the int page must have one",
+        shortLE(outlierIntPage(), numExceptionsOffset(PforConstants.INT32_VECTOR_INFO_SIZE)) > 0);
+    assertTrue(
+        "the tests below relocate a stored exception, so the long page must have one",
+        shortLE(outlierLongPage(), numExceptionsOffset(PforConstants.INT64_VECTOR_INFO_SIZE)) > 0);
+  }
+
+  @Test
+  public void rejectsExceptionCountAboveVectorLength() throws Exception {
+    byte[] page = outlierIntPage();
+    byte[] bad = putShortLE(page, numExceptionsOffset(PforConstants.INT32_VECTOR_INFO_SIZE), 6);
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, OUTLIER_VECTOR_LEN));
+  }
+
+  @Test
+  public void rejectsExceptionPositionPastEndOfVector() throws Exception {
+    byte[] page = outlierIntPage();
+    byte[] bad = putShortLE(page, exceptionPositionOffset(page, PforConstants.INT32_VECTOR_INFO_SIZE), 100);
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, OUTLIER_VECTOR_LEN));
+  }
+
+  @Test
+  public void rejectsExceptionPositionPastEndOfVectorLong() throws Exception {
+    byte[] page = outlierLongPage();
+    byte[] bad = putShortLE(page, exceptionPositionOffset(page, PforConstants.INT64_VECTOR_INFO_SIZE), 100);
+    assertThrows(ParquetDecodingException.class, () -> initLongReader(bad, OUTLIER_VECTOR_LEN));
+  }
+
+  @Test
+  public void rejectsBitWidthAboveValueWidth() throws Exception {
+    byte[] page = outlierIntPage();
+    byte[] bad = mutate(page, bitWidthOffset(PforConstants.INT32_VECTOR_INFO_SIZE), (byte) 33);
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, OUTLIER_VECTOR_LEN));
+  }
+
+  @Test
+  public void rejectsExceptionValuesTruncated() throws Exception {
+    byte[] page = outlierIntPage();
+    byte[] bad = truncate(page, page.length - Integer.BYTES);
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, OUTLIER_VECTOR_LEN));
+  }
+
+  // Bit 7 of the bit width byte is reserved, so a writer that sets it must not
+  // change what a reader decodes.
+  @Test
+  public void ignoresReservedBitInBitWidth() throws Exception {
+    byte[] page = outlierIntPage();
+    int at = bitWidthOffset(PforConstants.INT32_VECTOR_INFO_SIZE);
+    byte[] withReservedBit = mutate(page, at, (byte) (page[at] | 0x80));
+
+    PforValuesReaderForInt reader = new PforValuesReaderForInt();
+    reader.initFromPage(OUTLIER_VECTOR_LEN, ByteBufferInputStream.wrap(ByteBuffer.wrap(withReservedBit)));
+    for (int expected : OUTLIER_INTS) {
+      assertEquals(expected, reader.readInteger());
     }
   }
 

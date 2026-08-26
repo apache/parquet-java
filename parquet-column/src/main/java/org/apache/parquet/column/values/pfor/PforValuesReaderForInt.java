@@ -80,9 +80,10 @@ public class PforValuesReaderForInt extends PforValuesReader {
 
     // Read PforVectorInfo (7 bytes)
     int frameOfReference = getIntLE(vectorsData, pos);
-    int bitWidth = vectorsData.get(pos + 4) & 0xFF;
+    int bitWidth = vectorsData.get(pos + 4) & BIT_WIDTH_MASK;
     int numExceptions = getShortLE(vectorsData, pos + 5) & 0xFFFF;
     pos += INT32_VECTOR_INFO_SIZE;
+    checkVectorInfo(pos, bitWidth, numExceptions, vectorLen);
 
     // Unpack bit-packed deltas into reusable buffer
     if (bitWidth > 0) {
@@ -101,7 +102,9 @@ public class PforValuesReaderForInt extends PforValuesReader {
     // Overwrite exception slots with their original values
     if (numExceptions > 0) {
       for (int e = 0; e < numExceptions; e++) {
-        excPositionsBuffer[e] = getShortLE(vectorsData, pos) & 0xFFFF;
+        int position = getShortLE(vectorsData, pos) & 0xFFFF;
+        checkExceptionPosition(position, vectorLen);
+        excPositionsBuffer[e] = position;
         pos += Short.BYTES;
       }
       for (int e = 0; e < numExceptions; e++) {

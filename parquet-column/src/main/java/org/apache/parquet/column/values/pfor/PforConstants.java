@@ -52,6 +52,10 @@ public final class PforConstants {
   // Maximum exceptions per vector (uint16)
   public static final int MAX_EXCEPTIONS = 65535;
 
+  // The bit width occupies bits 0..6 of its byte; bit 7 is reserved and must be
+  // masked off before the width is used or range-checked.
+  public static final int BIT_WIDTH_MASK = 0x7F;
+
   // Per-vector metadata sizes in bytes
   // INT32: frame_of_reference(4) + bit_width(1) + num_exceptions(2) = 7
   public static final int INT32_VECTOR_INFO_SIZE = 7;

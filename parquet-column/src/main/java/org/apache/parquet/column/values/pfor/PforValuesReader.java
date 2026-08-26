@@ -49,6 +49,7 @@ abstract class PforValuesReader extends ValuesReader {
   protected int currentIndex;
   protected int currentVectorIndex;
   protected int valueByteWidth;
+  protected int vectorInfoSize;
 
   protected int[] vectorOffsets;
   protected ByteBuffer vectorsData;
@@ -90,6 +91,7 @@ abstract class PforValuesReader extends ValuesReader {
     this.vectorSize = 1 << logVectorSize;
     this.totalCount = numElements;
     this.valueByteWidth = valueBW;
+    this.vectorInfoSize = valueBW == INT32_VALUE_BYTE_WIDTH ? INT32_VECTOR_INFO_SIZE : INT64_VECTOR_INFO_SIZE;
     this.numVectors = (numElements + vectorSize - 1) / vectorSize;
     this.currentIndex = 0;
     this.currentVectorIndex = -1;
@@ -120,9 +122,48 @@ abstract class PforValuesReader extends ValuesReader {
   }
 
   // Offsets in the page are relative to the compression body (after header),
-  // but vectorsData starts after the offset array, so adjust.
+  // but vectorsData starts after the offset array, so adjust. The offset came off
+  // the wire, so it has to leave room for the vector info it points at.
   protected int getVectorDataPosition(int vectorIdx) {
-    return vectorOffsets[vectorIdx] - offsetArraySize;
+    int pos = vectorOffsets[vectorIdx] - offsetArraySize;
+    if (pos < 0 || pos + vectorInfoSize > vectorsData.limit()) {
+      throw new ParquetDecodingException("PFOR vector " + vectorIdx + " offset "
+          + vectorOffsets[vectorIdx] + " is outside a page body of " + vectorsData.limit()
+          + " bytes");
+    }
+    return pos;
+  }
+
+  /**
+   * Checks a vector's header fields against the vector they describe and the bytes
+   * that remain. All three come off the wire and size every read and write that
+   * follows, including the writes into the fixed-size decode buffers.
+   *
+   * @param pos position of the packed values, that is, just past the vector info
+   */
+  protected void checkVectorInfo(int pos, int bitWidth, int numExceptions, int vectorLen) {
+    int maxBitWidth = valueByteWidth * Byte.SIZE;
+    if (bitWidth > maxBitWidth) {
+      throw new ParquetDecodingException("PFOR bit width " + bitWidth + " exceeds " + maxBitWidth);
+    }
+    if (numExceptions > vectorLen) {
+      throw new ParquetDecodingException(
+          "PFOR vector has " + numExceptions + " exceptions but only " + vectorLen + " elements");
+    }
+    long needed = ((long) vectorLen * bitWidth + 7) / 8 + (long) numExceptions * (Short.BYTES + valueByteWidth);
+    long remaining = vectorsData.limit() - (long) pos;
+    if (needed > remaining) {
+      throw new ParquetDecodingException(
+          "PFOR vector needs " + needed + " bytes but only " + remaining + " remain");
+    }
+  }
+
+  /** Exception positions index the decode buffer, so one past the end is a bad write. */
+  protected static void checkExceptionPosition(int position, int vectorLen) {
+    if (position >= vectorLen) {
+      throw new ParquetDecodingException(
+          "PFOR exception position " + position + " is outside a vector of " + vectorLen + " elements");
+    }
   }
 
   @Override
