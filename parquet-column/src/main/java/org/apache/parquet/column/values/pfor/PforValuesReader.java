@@ -73,12 +73,11 @@ abstract class PforValuesReader extends ValuesReader {
       throw new ParquetDecodingException("Unsupported PFOR packing mode: " + packingMode);
     }
     if (logVectorSize < MIN_LOG_VECTOR_SIZE || logVectorSize > MAX_LOG_VECTOR_SIZE) {
-      throw new ParquetDecodingException("Invalid PFOR log vector size: " + logVectorSize
-          + ", must be between " + MIN_LOG_VECTOR_SIZE + " and " + MAX_LOG_VECTOR_SIZE);
+      throw new ParquetDecodingException("Invalid PFOR log vector size: " + logVectorSize + ", must be between "
+          + MIN_LOG_VECTOR_SIZE + " and " + MAX_LOG_VECTOR_SIZE);
     }
     if (valueBW != INT32_VALUE_BYTE_WIDTH && valueBW != INT64_VALUE_BYTE_WIDTH) {
-      throw new ParquetDecodingException(
-          "Invalid PFOR value byte width: " + valueBW + ", must be 4 or 8");
+      throw new ParquetDecodingException("Invalid PFOR value byte width: " + valueBW + ", must be 4 or 8");
     }
     if (numElements < 0) {
       throw new ParquetDecodingException("Invalid PFOR element count: " + numElements);

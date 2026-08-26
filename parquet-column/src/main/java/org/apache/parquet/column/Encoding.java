@@ -36,8 +36,6 @@ import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesRea
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForInteger;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForLong;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
-import org.apache.parquet.column.values.pfor.PforValuesReaderForInt;
-import org.apache.parquet.column.values.pfor.PforValuesReaderForLong;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
@@ -47,6 +45,8 @@ import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainDo
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
+import org.apache.parquet.column.values.pfor.PforValuesReaderForInt;
+import org.apache.parquet.column.values.pfor.PforValuesReaderForLong;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.BooleanPlainValuesReader;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;

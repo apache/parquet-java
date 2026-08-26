@@ -180,10 +180,10 @@ public class PforEncoderDecoderTest {
     // storing half the values as exceptions
     int[] deltas = new int[100];
     for (int i = 0; i < 50; i++) {
-      deltas[i] = i;          // 0..49 fit in 6 bits
+      deltas[i] = i; // 0..49 fit in 6 bits
     }
     for (int i = 50; i < 100; i++) {
-      deltas[i] = 1000 + i;   // need ~10 bits
+      deltas[i] = 1000 + i; // need ~10 bits
     }
     PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForInt(deltas, 100);
     // Should choose to pack everything (10-11 bits) rather than 50 exceptions

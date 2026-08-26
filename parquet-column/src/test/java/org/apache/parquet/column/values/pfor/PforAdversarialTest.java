@@ -24,7 +24,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -51,8 +50,7 @@ public class PforAdversarialTest {
     PforValuesWriter.IntPforValuesWriter writer = null;
     try {
       int cap = Math.max(512, valueCount * 8);
-      writer = new PforValuesWriter.IntPforValuesWriter(
-          cap, cap, new DirectByteBufferAllocator(), vectorSize);
+      writer = new PforValuesWriter.IntPforValuesWriter(cap, cap, new DirectByteBufferAllocator(), vectorSize);
       for (int i = 0; i < valueCount; i++) {
         writer.writeInteger(i * 7 + 3);
       }
@@ -73,8 +71,7 @@ public class PforAdversarialTest {
     PforValuesWriter.LongPforValuesWriter writer = null;
     try {
       int cap = Math.max(512, valueCount * 16);
-      writer = new PforValuesWriter.LongPforValuesWriter(
-          cap, cap, new DirectByteBufferAllocator(), vectorSize);
+      writer = new PforValuesWriter.LongPforValuesWriter(cap, cap, new DirectByteBufferAllocator(), vectorSize);
       for (int i = 0; i < valueCount; i++) {
         writer.writeLong((long) i * 13 + 5);
       }

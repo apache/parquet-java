@@ -36,8 +36,8 @@ public class PforBitPackingTest {
   // Round-trip helper that verifies bit-packing for int values in a given range
   private void verifyIntRoundTrip(int[] values) throws Exception {
     int capacity = Math.max(256, values.length * 8);
-    PforValuesWriter.IntPforValuesWriter writer = new PforValuesWriter.IntPforValuesWriter(
-        capacity, capacity, new DirectByteBufferAllocator());
+    PforValuesWriter.IntPforValuesWriter writer =
+        new PforValuesWriter.IntPforValuesWriter(capacity, capacity, new DirectByteBufferAllocator());
 
     for (int v : values) {
       writer.writeInteger(v);
@@ -56,8 +56,8 @@ public class PforBitPackingTest {
 
   private void verifyLongRoundTrip(long[] values) throws Exception {
     int capacity = Math.max(512, values.length * 16);
-    PforValuesWriter.LongPforValuesWriter writer = new PforValuesWriter.LongPforValuesWriter(
-        capacity, capacity, new DirectByteBufferAllocator());
+    PforValuesWriter.LongPforValuesWriter writer =
+        new PforValuesWriter.LongPforValuesWriter(capacity, capacity, new DirectByteBufferAllocator());
 
     for (long v : values) {
       writer.writeLong(v);
@@ -115,8 +115,7 @@ public class PforBitPackingTest {
   @Test
   public void testIntBitWidth32() throws Exception {
     // Full range int values
-    int[] values = {Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE,
-        0x7FFFFFFF, 0x40000000, -2147483648};
+    int[] values = {Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE, 0x7FFFFFFF, 0x40000000, -2147483648};
     verifyIntRoundTrip(values);
   }
 
@@ -195,8 +194,8 @@ public class PforBitPackingTest {
       values[i] = i;
     }
 
-    PforValuesWriter.IntPforValuesWriter writer = new PforValuesWriter.IntPforValuesWriter(
-        1024, 1024, new DirectByteBufferAllocator());
+    PforValuesWriter.IntPforValuesWriter writer =
+        new PforValuesWriter.IntPforValuesWriter(1024, 1024, new DirectByteBufferAllocator());
     for (int v : values) {
       writer.writeInteger(v);
     }
@@ -221,8 +220,8 @@ public class PforBitPackingTest {
       values[i] = i;
     }
 
-    PforValuesWriter.LongPforValuesWriter writer = new PforValuesWriter.LongPforValuesWriter(
-        1024, 1024, new DirectByteBufferAllocator());
+    PforValuesWriter.LongPforValuesWriter writer =
+        new PforValuesWriter.LongPforValuesWriter(1024, 1024, new DirectByteBufferAllocator());
     for (long v : values) {
       writer.writeLong(v);
     }

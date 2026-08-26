@@ -138,7 +138,8 @@ public abstract class PforValuesWriter extends ValuesWriter {
       }
 
       // Find optimal bit width via cost model
-      PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForInt(deltasBuffer, vectorLen);
+      PforEncoderDecoder.BitWidthResult result =
+          PforEncoderDecoder.findOptimalBitWidthForInt(deltasBuffer, vectorLen);
       int bitWidth = result.bitWidth;
       int numExceptions = result.numExceptions;
 
@@ -336,7 +337,8 @@ public abstract class PforValuesWriter extends ValuesWriter {
         deltasBuffer[i] = vectorBuffer[i] - minValue;
       }
 
-      PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForLong(deltasBuffer, vectorLen);
+      PforEncoderDecoder.BitWidthResult result =
+          PforEncoderDecoder.findOptimalBitWidthForLong(deltasBuffer, vectorLen);
       int bitWidth = result.bitWidth;
       int numExceptions = result.numExceptions;
 

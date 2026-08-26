@@ -25,7 +25,6 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.pfor.PforValuesReaderForInt;
 import org.apache.parquet.column.values.pfor.PforValuesReaderForLong;
@@ -359,8 +358,7 @@ public class BenchmarkPforEncoding {
 
   private void benchmarkIntDecode(byte[] encoded, int numValues) throws IOException {
     PforValuesReaderForInt reader = new PforValuesReaderForInt();
-    reader.initFromPage(numValues,
-        ByteBufferInputStream.wrap(java.nio.ByteBuffer.wrap(encoded)));
+    reader.initFromPage(numValues, ByteBufferInputStream.wrap(java.nio.ByteBuffer.wrap(encoded)));
     for (int i = 0; i < numValues; i++) {
       reader.readInteger();
     }
@@ -379,8 +377,7 @@ public class BenchmarkPforEncoding {
 
   private void benchmarkLongDecode(byte[] encoded, int numValues) throws IOException {
     PforValuesReaderForLong reader = new PforValuesReaderForLong();
-    reader.initFromPage(numValues,
-        ByteBufferInputStream.wrap(java.nio.ByteBuffer.wrap(encoded)));
+    reader.initFromPage(numValues, ByteBufferInputStream.wrap(java.nio.ByteBuffer.wrap(encoded)));
     for (int i = 0; i < numValues; i++) {
       reader.readLong();
     }
@@ -528,13 +525,13 @@ public class BenchmarkPforEncoding {
 
   private static void printIntRatio(String name, byte[] encoded, int numValues) {
     double ratio = 100.0 * encoded.length / (numValues * 4);
-    System.out.printf("  INT32 %-25s: %6d bytes -> %6d bytes (%.1f%%)\n",
-        name, numValues * 4, encoded.length, ratio);
+    System.out.printf(
+        "  INT32 %-25s: %6d bytes -> %6d bytes (%.1f%%)\n", name, numValues * 4, encoded.length, ratio);
   }
 
   private static void printLongRatio(String name, byte[] encoded, int numValues) {
     double ratio = 100.0 * encoded.length / (numValues * 8);
-    System.out.printf("  INT64 %-25s: %6d bytes -> %6d bytes (%.1f%%)\n",
-        name, numValues * 8, encoded.length, ratio);
+    System.out.printf(
+        "  INT64 %-25s: %6d bytes -> %6d bytes (%.1f%%)\n", name, numValues * 8, encoded.length, ratio);
   }
 }

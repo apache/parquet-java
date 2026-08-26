@@ -129,7 +129,7 @@ public class PforValuesEndToEndTest {
 
   @Test
   public void testIntSingleElement() throws Exception {
-    roundTripInt(new int[]{12345});
+    roundTripInt(new int[] {12345});
   }
 
   @Test
@@ -249,7 +249,7 @@ public class PforValuesEndToEndTest {
 
   @Test
   public void testLongSingleElement() throws Exception {
-    roundTripLong(new long[]{Long.MAX_VALUE});
+    roundTripLong(new long[] {Long.MAX_VALUE});
   }
 
   @Test
@@ -317,8 +317,8 @@ public class PforValuesEndToEndTest {
 
   @Test
   public void testIntWriterReset() throws Exception {
-    PforValuesWriter.IntPforValuesWriter writer = new PforValuesWriter.IntPforValuesWriter(
-        1024, 1024, new DirectByteBufferAllocator());
+    PforValuesWriter.IntPforValuesWriter writer =
+        new PforValuesWriter.IntPforValuesWriter(1024, 1024, new DirectByteBufferAllocator());
 
     // First batch
     for (int i = 0; i < 100; i++) {
@@ -347,8 +347,8 @@ public class PforValuesEndToEndTest {
 
   @Test
   public void testLongWriterReset() throws Exception {
-    PforValuesWriter.LongPforValuesWriter writer = new PforValuesWriter.LongPforValuesWriter(
-        1024, 1024, new DirectByteBufferAllocator());
+    PforValuesWriter.LongPforValuesWriter writer =
+        new PforValuesWriter.LongPforValuesWriter(1024, 1024, new DirectByteBufferAllocator());
 
     for (int i = 0; i < 100; i++) {
       writer.writeLong(i * 1000L);
@@ -379,8 +379,8 @@ public class PforValuesEndToEndTest {
       values[i] = i;
     }
 
-    PforValuesWriter.IntPforValuesWriter writer = new PforValuesWriter.IntPforValuesWriter(
-        4096, 4096, new DirectByteBufferAllocator());
+    PforValuesWriter.IntPforValuesWriter writer =
+        new PforValuesWriter.IntPforValuesWriter(4096, 4096, new DirectByteBufferAllocator());
     for (int v : values) {
       writer.writeInteger(v);
     }
@@ -408,8 +408,8 @@ public class PforValuesEndToEndTest {
       values[i] = i * 100L;
     }
 
-    PforValuesWriter.LongPforValuesWriter writer = new PforValuesWriter.LongPforValuesWriter(
-        4096, 4096, new DirectByteBufferAllocator());
+    PforValuesWriter.LongPforValuesWriter writer =
+        new PforValuesWriter.LongPforValuesWriter(4096, 4096, new DirectByteBufferAllocator());
     for (long v : values) {
       writer.writeLong(v);
     }
@@ -428,8 +428,8 @@ public class PforValuesEndToEndTest {
 
   @Test
   public void testIntEmptyInput() throws Exception {
-    PforValuesWriter.IntPforValuesWriter writer = new PforValuesWriter.IntPforValuesWriter(
-        256, 256, new DirectByteBufferAllocator());
+    PforValuesWriter.IntPforValuesWriter writer =
+        new PforValuesWriter.IntPforValuesWriter(256, 256, new DirectByteBufferAllocator());
     BytesInput bytes = writer.getBytes();
     // Empty page still emits a valid 7-byte header (numElements=0)
     assertEquals(PforConstants.PFOR_HEADER_SIZE, bytes.size());
@@ -438,8 +438,8 @@ public class PforValuesEndToEndTest {
 
   @Test
   public void testLongEmptyInput() throws Exception {
-    PforValuesWriter.LongPforValuesWriter writer = new PforValuesWriter.LongPforValuesWriter(
-        256, 256, new DirectByteBufferAllocator());
+    PforValuesWriter.LongPforValuesWriter writer =
+        new PforValuesWriter.LongPforValuesWriter(256, 256, new DirectByteBufferAllocator());
     BytesInput bytes = writer.getBytes();
     assertEquals(PforConstants.PFOR_HEADER_SIZE, bytes.size());
     writer.close();
