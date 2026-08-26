@@ -300,8 +300,18 @@ public class TestRunLengthBitPackingHybridEncoder {
 
   @Test
   public void testSmallerPackedRunAfterLargerPackedRun() throws Exception {
-    byte[] bytes = {(byte) 5, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4,
-        (byte) 16, (byte) 2, (byte) 3, (byte) 0x39, (byte) 0x39};
+    byte[] bytes = {
+      (byte) 5,
+      (byte) 0xe4,
+      (byte) 0xe4,
+      (byte) 0xe4,
+      (byte) 0xe4,
+      (byte) 16,
+      (byte) 2,
+      (byte) 3,
+      (byte) 0x39,
+      (byte) 0x39
+    };
     RunLengthBitPackingHybridDecoder decoder =
         new RunLengthBitPackingHybridDecoder(2, new ByteArrayInputStream(bytes));
 
@@ -323,8 +333,9 @@ public class TestRunLengthBitPackingHybridEncoder {
 
   @Test
   public void testTruncatedPackedRunClearsReusedBytes() throws Exception {
-    byte[] bytes = {(byte) 5, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4,
-        (byte) 16, (byte) 2, (byte) 3, (byte) 0x39};
+    byte[] bytes = {
+      (byte) 5, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4, (byte) 16, (byte) 2, (byte) 3, (byte) 0x39
+    };
     RunLengthBitPackingHybridDecoder decoder =
         new RunLengthBitPackingHybridDecoder(2, new ByteArrayInputStream(bytes));
 
