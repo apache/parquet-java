@@ -327,6 +327,18 @@ public class ProtoSchemaConverter {
       return addMapField(descriptor, builder, seen, depth);
     }
 
+    // Parquet forbids empty groups, so a field of an empty message type is terminated as proto
+    // bytes (zero bytes when the message is set - presence still round-trips), preserving the
+    // field's repetition so the write path (Array/Repeated/MapWriter) still matches the schema.
+    if (descriptor.getMessageType().getFields().isEmpty()) {
+      if (descriptor.isRepeated() && parquetSpecsCompliant) {
+        // LIST-wrap the truncated bytes the same way any repeated primitive is wrapped
+        return addRepeatedPrimitive(BINARY, null, builder);
+      }
+      // optional, required, or repeated in the old schema style
+      return builder.primitive(BINARY, getRepetition(descriptor)).as((LogicalTypeAnnotation) null);
+    }
+
     seen = ImmutableSetMultimap.<String, Integer>builder()
         .putAll(seen)
         .put(typeName, depth)
