@@ -298,6 +298,49 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertThat(stream.available()).isEqualTo(0);
   }
 
+  @Test
+  public void testSmallerPackedRunAfterLargerPackedRun() throws Exception {
+    byte[] bytes = {(byte) 5, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4,
+        (byte) 16, (byte) 2, (byte) 3, (byte) 0x39, (byte) 0x39};
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(2, new ByteArrayInputStream(bytes));
+
+    for (int i = 0; i < 16; i++) {
+      assertThat(decoder.readInt()).isEqualTo(i % 4);
+    }
+    for (int i = 0; i < 8; i++) {
+      assertThat(decoder.readInt()).isEqualTo(2);
+    }
+    assertThat(decoder.readInt()).isEqualTo(1);
+    assertThat(decoder.readInt()).isEqualTo(2);
+    assertThat(decoder.readInt()).isEqualTo(3);
+    assertThat(decoder.readInt()).isEqualTo(0);
+    assertThat(decoder.readInt()).isEqualTo(1);
+    assertThat(decoder.readInt()).isEqualTo(2);
+    assertThat(decoder.readInt()).isEqualTo(3);
+    assertThat(decoder.readInt()).isEqualTo(0);
+  }
+
+  @Test
+  public void testTruncatedPackedRunClearsReusedBytes() throws Exception {
+    byte[] bytes = {(byte) 5, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4, (byte) 0xe4,
+        (byte) 16, (byte) 2, (byte) 3, (byte) 0x39};
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(2, new ByteArrayInputStream(bytes));
+
+    for (int i = 0; i < 24; i++) {
+      decoder.readInt();
+    }
+    assertThat(decoder.readInt()).isEqualTo(1);
+    assertThat(decoder.readInt()).isEqualTo(2);
+    assertThat(decoder.readInt()).isEqualTo(3);
+    assertThat(decoder.readInt()).isEqualTo(0);
+    assertThat(decoder.readInt()).isEqualTo(0);
+    assertThat(decoder.readInt()).isEqualTo(0);
+    assertThat(decoder.readInt()).isEqualTo(0);
+    assertThat(decoder.readInt()).isEqualTo(0);
+  }
+
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
 
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
