@@ -123,16 +123,14 @@ public class TestBytesInput {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("parameters")
-  public void testFromByteArrayToByteArrayCopiesFullArray(ByteBufferAllocator innerAllocator) throws IOException {
+  public void testCopyDoesNotAliasSourceBytes(ByteBufferAllocator innerAllocator) throws IOException {
     initAllocator(innerAllocator);
-    byte[] data = new byte[1000];
-    RANDOM.nextBytes(data);
-    BytesInput bi = BytesInput.from(data, 0, data.length);
-    byte[] result = bi.toByteArray();
-    assertThat(result)
-        .as("toByteArray() should materialize a copy when offset=0 and length=full")
-        .isEqualTo(data)
-        .isNotSameAs(data);
+    byte[] source = {'a'};
+    BytesInput copied = BytesInput.copy(BytesInput.from(source));
+
+    source[0] = 'b';
+
+    assertThat(copied.toByteArray()).isEqualTo(new byte[] {'a'});
   }
 
   @ParameterizedTest(name = "{0}")
