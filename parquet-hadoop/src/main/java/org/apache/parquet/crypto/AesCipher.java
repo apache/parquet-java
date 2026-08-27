@@ -120,60 +120,6 @@ public class AesCipher {
     return createModuleAAD(aadPrefixBytes, ModuleType.Footer, -1, -1, -1);
   }
 
-  /**
-   * Builds the module AAD for a self-reference (FILE self-reference payload). Unlike pages, which
-   * are identified by a 2-byte page ordinal, a self-reference is identified by the 8-byte
-   * little-endian offset of its stored representation within the file, following the row group and
-   * column ordinals. The column ordinal is that of the {@code inline} column whose encryption the
-   * self-reference inherits.
-   *
-   * <p>The offset is the value the writer records in the {@code offset} field of the {@code FILE}
-   * group. Because it is carried in the data, a reader can rebuild this AAD from the value alone,
-   * without counting the self-references that precede it and therefore without decoding the pages
-   * it skips.
-   *
-   * @param fileAAD the file AAD (AAD prefix concatenated with the AAD file-unique bytes)
-   * @param rowGroupOrdinal the row group ordinal of the self-reference
-   * @param columnOrdinal the ordinal of the {@code inline} column the self-reference inherits from
-   * @param selfReferenceOffset the offset of the stored representation within the file, i.e. the
-   *     value of the self-reference's {@code offset} field
-   * @return the module AAD bytes
-   */
-  public static byte[] createSelfReferenceAAD(
-      byte[] fileAAD, int rowGroupOrdinal, int columnOrdinal, long selfReferenceOffset) {
-
-    byte[] typeOrdinalBytes = new byte[1];
-    typeOrdinalBytes[0] = ModuleType.SelfReference.getValue();
-
-    if (rowGroupOrdinal < 0) {
-      throw new IllegalArgumentException("Wrong row group ordinal: " + rowGroupOrdinal);
-    }
-    short shortRGOrdinal = (short) rowGroupOrdinal;
-    if (shortRGOrdinal != rowGroupOrdinal) {
-      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have " + "more than "
-          + Short.MAX_VALUE + " row groups: " + rowGroupOrdinal);
-    }
-    byte[] rowGroupOrdinalBytes = shortToBytesLE(shortRGOrdinal);
-
-    if (columnOrdinal < 0) {
-      throw new IllegalArgumentException("Wrong column ordinal: " + columnOrdinal);
-    }
-    short shortColumnOrdinal = (short) columnOrdinal;
-    if (shortColumnOrdinal != columnOrdinal) {
-      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have " + "more than "
-          + Short.MAX_VALUE + " columns: " + columnOrdinal);
-    }
-    byte[] columnOrdinalBytes = shortToBytesLE(shortColumnOrdinal);
-
-    if (selfReferenceOffset < 0) {
-      throw new IllegalArgumentException("Wrong self-reference offset: " + selfReferenceOffset);
-    }
-    byte[] selfReferenceOffsetBytes = longToBytesLE(selfReferenceOffset);
-
-    return concatByteArrays(
-        fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, selfReferenceOffsetBytes);
-  }
-
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
   public static void quickUpdatePageAAD(byte[] pageAAD, int newPageOrdinal) {
     java.util.Objects.requireNonNull(pageAAD);
@@ -210,15 +156,6 @@ public class AesCipher {
     byte[] output = new byte[2];
     output[1] = (byte) (0xff & (input >> 8));
     output[0] = (byte) (0xff & input);
-
-    return output;
-  }
-
-  private static byte[] longToBytesLE(long input) {
-    byte[] output = new byte[8];
-    for (int i = 0; i < 8; i++) {
-      output[i] = (byte) (0xff & (input >> (8 * i)));
-    }
 
     return output;
   }

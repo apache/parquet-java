@@ -616,36 +616,19 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
-  public void testFileLogicalTypeSelfReference() {
-    // A self-reference omits 'uri' and locates bytes within the current file via offset/size.
-    // A schema that permits self-references must declare 'inline' as the storage-inheritance
-    // reference point.
-    GroupType file = Types.requiredGroup()
-        .as(LogicalTypeAnnotation.fileType())
-        .optional(INT64)
-        .named("offset")
-        .optional(INT64)
-        .named("size")
-        .optional(BINARY)
-        .named("inline")
-        .named("self_ref_file");
-
-    assertThat(file.getLogicalTypeAnnotation()).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
-    assertThat(file.getFieldCount()).isEqualTo(3);
-  }
-
-  @Test
-  public void testFileLogicalTypeOffsetRequiresInline() {
-    // A schema that permits self-references (declares 'offset' but not 'uri') must declare 'inline'
-    // as the reference point for storage inheritance. A group declaring 'offset'/'size' with
-    // neither 'uri' nor 'inline' is rejected at build time.
+  public void testFileLogicalTypeOffsetRequiresUri() {
+    // 'offset' locates a byte range within the external file identified by 'uri', so it is
+    // meaningless without 'uri'. A group declaring 'offset' (with 'size' and even 'inline') but
+    // no 'uri' is rejected at build time.
     assertThatThrownBy(() -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
             .optional(INT64)
             .named("offset")
             .optional(INT64)
             .named("size")
-            .named("self_ref_without_inline"))
+            .optional(BINARY)
+            .named("inline")
+            .named("file_offset_without_uri"))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -671,8 +654,8 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testFileLogicalTypeMetadataOnlyRejected() {
-    // Per the spec resolution table, a value resolves to bytes only via 'inline', 'uri', or
-    // 'offset'. A group declaring only metadata fields can never produce a resolvable value.
+    // A value resolves to bytes only via 'inline' or 'uri'. A group declaring only metadata fields
+    // can never produce a resolvable value.
     assertThatThrownBy(() -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
             .optional(BINARY)
@@ -687,8 +670,8 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testFileLogicalTypeSizeOnlyRejected() {
-    // 'size' alone never resolves to bytes (spec resolution table), so a size-only group is
-    // rejected: it declares no locator ('inline', 'uri', or 'offset').
+    // 'size' alone never resolves to bytes, so a size-only group is rejected: it declares neither
+    // 'inline' nor 'uri'.
     assertThatThrownBy(() -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
             .optional(INT64)

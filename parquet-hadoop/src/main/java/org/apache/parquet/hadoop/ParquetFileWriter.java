@@ -610,50 +610,6 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Writes a {@code FILE} self-reference payload into the file body, inheriting the compression and
-   * encryption of the {@code inline} column chunk, and returns the {@code offset} and {@code size} a
-   * writer records in the self-reference's {@code offset} and {@code size} fields. See
-   * {@link SelfReferenceStorage} for the layout and the Parquet format's "FILE" logical type
-   * specification for the storage-inheritance semantics.
-   *
-   * <p>The payload is compressed as an independent compression block using {@code compressor} (the
-   * compressor for the {@code inline} column chunk's {@link CompressionCodecName}) and, when
-   * {@code pageBlockEncryptor} is non-null, encrypted as an independent module with the
-   * {@code Self-Reference} module type. The row group ordinal is that of the block currently being
-   * written.
-   *
-   * <p>Payloads are written while a block is open but before its column chunks are flushed, so they
-   * land in a contiguous run ahead of the row group's chunks. This keeps each column chunk
-   * contiguous on disk, which the read path relies on when coalescing adjacent chunks into a single
-   * range read.
-   *
-   * <p>This must be called while a block is open (after {@link #startBlock(long)} and before
-   * {@link #endBlock()}) so that the returned offset falls within the file body.
-   *
-   * @param resolvedBytes the resolved (logical) bytes of the self-reference
-   * @param compressor the compressor for the {@code inline} column chunk's codec
-   * @param pageBlockEncryptor the data-module encryptor of the {@code inline} column chunk, or
-   *     {@code null} if the column chunk is not encrypted
-   * @param columnOrdinal the ordinal of the {@code inline} column the self-reference inherits from
-   * @return the offset and size of the stored representation
-   * @throws IOException if writing or compression fails
-   */
-  public SelfReferenceStorage.StoredRange writeSelfReference(
-      BytesInput resolvedBytes,
-      CodecFactory.BytesCompressor compressor,
-      BlockCipher.Encryptor pageBlockEncryptor,
-      int columnOrdinal)
-      throws IOException {
-    return withAbortOnFailure(() -> {
-      // The block currently being written will be assigned ordinal blocks.size() in endBlock().
-      int rowGroupOrdinal = blocks.size();
-      byte[] fileAAD = (null == fileEncryptor) ? null : fileEncryptor.getFileAAD();
-      return SelfReferenceStorage.write(
-          resolvedBytes, compressor, pageBlockEncryptor, fileAAD, rowGroupOrdinal, columnOrdinal, out);
-    });
-  }
-
-  /**
    * start a block
    *
    * @param recordCount the record count in this block

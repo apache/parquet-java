@@ -858,6 +858,24 @@ public class Types {
           hasInline = true;
         }
       }
+      // A value resolves to bytes only via inline storage or an external reference, so a group must
+      // declare at least one of `inline` or `uri`. A group declaring neither — even if it declares
+      // `offset` or `size` — can never produce a resolvable value, so reject it at schema-build
+      // time.
+      Preconditions.checkArgument(
+          hasInline || hasUri,
+          "FILE type group '%s' must declare at least one of 'inline' or 'uri'; a value resolves to "
+              + "bytes only via inline storage or an external reference, so a group declaring "
+              + "neither can never produce a valid value",
+          name);
+      // `offset` locates a byte range within the external file identified by `uri`, so it is
+      // meaningless without `uri`. A group that declares `offset` but not `uri` can never produce a
+      // valid value, so reject it at schema-build time.
+      Preconditions.checkArgument(
+          !hasOffset || hasUri,
+          "FILE type group '%s' declares field 'offset' but not 'uri'; 'offset' locates a range "
+              + "within an external file and may only be set together with 'uri'",
+          name);
       // The spec requires `size` to be set whenever `offset` is set. A group that declares
       // `offset` but not `size` can never produce a valid value, so reject it at schema-build
       // time.
@@ -865,38 +883,10 @@ public class Types {
           !hasOffset || hasSize,
           "FILE type group '%s' declares field 'offset' but not 'size'; 'size' is required whenever 'offset' is set",
           name);
-      // Per the spec resolution table, a value resolves to bytes only if `inline`, `uri`, or
-      // `offset` is set; `size` on its own never resolves. A group that declares none of `inline`,
-      // `uri`, or `offset` can therefore never produce a resolvable value, so reject it at
-      // schema-build time.
-      Preconditions.checkArgument(
-          hasInline || hasUri || hasOffset,
-          "FILE type group '%s' must declare at least one of 'inline', 'uri', or 'offset'; a value "
-              + "resolves to bytes only via one of these, so a group declaring none of them can "
-              + "never produce a valid value",
-          name);
-      // A schema that permits self-references must declare `inline`. A self-reference (`uri` not
-      // set) always sets `offset`, and the `inline` column chunk of the same row group is the
-      // reference point whose compression and encryption a self-reference inherits. A group that
-      // declares `offset` but not `uri` can only produce self-references (an offset-based read with
-      // no `uri` is a self-reference), so it must also declare `inline`. A group that declares
-      // `uri` is not required to declare `inline`: `offset`/`size` there describe an external
-      // ranged reference, and although the per-value `uri` could be left unset in some rows, the
-      // schema is treated as an external-reference schema and the `inline` requirement is not
-      // imposed. A writer must therefore not emit a self-reference under such a schema, since there
-      // would be no `inline` column chunk to inherit compression and encryption from; that is
-      // enforced on the write path rather than here.
-      Preconditions.checkArgument(
-          !(hasOffset && !hasUri) || hasInline,
-          "FILE type group '%s' declares field 'offset' but neither 'uri' nor 'inline'; a schema "
-              + "that permits self-references (offset without uri) must declare 'inline' as the "
-              + "reference point for storage inheritance",
-          name);
-      // The remaining spec rules are per-value constraints that the schema builder cannot verify
-      // because it sees only which fields are declared, not their values in each row: a
-      // self-reference (unset `uri`) must set `offset`, `size` must be set whenever `offset` is
-      // set, and `offset`/`size` must be non-negative. Those are the responsibility of writers and
-      // consumers of FILE values.
+      // The remaining spec rules are per-value constraints the schema builder cannot verify because
+      // it sees only which fields are declared, not their values in each row: `size` being set
+      // whenever `offset` is set, and `offset`/`size` being non-negative. Those are the
+      // responsibility of writers and consumers of FILE values.
     }
 
     /**
