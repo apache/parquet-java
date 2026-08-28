@@ -541,7 +541,7 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     boolean equals(ByteBuffer otherBytes, int otherOffset, int otherLength) {
-      return Binary.equals(value, 0, length, otherBytes, otherOffset, otherLength);
+      return Binary.equals(value, offset, length, otherBytes, otherOffset, otherLength);
     }
 
     @Override
