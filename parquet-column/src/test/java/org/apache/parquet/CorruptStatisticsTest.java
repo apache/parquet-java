@@ -162,6 +162,8 @@ public class CorruptStatisticsTest {
     // version field present but not a valid semantic version
     ParsedVersion invalidSemver = new ParsedVersion("parquet-mr", "not-a-semver", "abc");
     assertThat(invalidSemver.hasSemanticVersion()).isFalse();
+    assertThat(invalidSemver.getSemanticVersionParseFailure())
+        .isInstanceOf(SemanticVersion.SemanticVersionParseException.class);
     assertThat(CorruptStatistics.shouldIgnoreStatistics(
             invalidSemver, "parquet-mr version not-a-semver (build abc)", PrimitiveTypeName.BINARY))
         .isTrue();

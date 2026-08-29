@@ -19,7 +19,6 @@
 package org.apache.parquet;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -110,11 +109,7 @@ public class CorruptStatistics {
     }
 
     if (!writerVersion.hasSemanticVersion()) {
-      try {
-        SemanticVersion.parse(writerVersion.version);
-      } catch (SemanticVersionParseException e) {
-        warnParseErrorOnce(createdBy, e);
-      }
+      warnParseErrorOnce(createdBy, writerVersion.getSemanticVersionParseFailure());
       return true;
     }
 
