@@ -156,13 +156,15 @@ public final class VectorIoBridge {
    * The default iterates through the ranges to read each synchronously, but
    * the intent is that FSDataInputStream subclasses can make more efficient
    * readers.
-   * The {@link ParquetFileRange} parameters all have their
-   * data read futures set to the range reads of the associated
-   * operations; callers must await these to complete.
+   * After a successful return, the {@link ParquetFileRange} parameters all have
+   * their data read futures set to the associated operations; callers can await
+   * these futures for the read results.
    * <p>
-   * As a result of the call, each range will have FileRange.setData(CompletableFuture)
-   * called with a future that when complete will have a ByteBuffer with the
-   * data from the file's range.
+   * If submission throws, futures already assigned by Hadoop are still published.
+   * A null future does not prove that no work started. A non-null future may have
+   * been created for a read that was never submitted and may never complete after
+   * a submission failure. Callers must handle that failure without waiting for
+   * every such future.
    * <p>
    *   The position returned by getPos() after readVectored() is undefined.
    * </p>
@@ -199,15 +201,36 @@ public final class VectorIoBridge {
     // Setting the parquet range as a reference.
     List<FileRangeBridge.WrappedFileRange> fileRanges =
         sorted.stream().map(rangeBridge::toFileRange).collect(Collectors.toList());
-    readWrappedRanges(stream, fileRanges, allocator::allocate);
+    Throwable submissionFailure = null;
+    try {
+      readWrappedRanges(stream, fileRanges, allocator::allocate);
+    } catch (IOException | RuntimeException | Error failure) {
+      submissionFailure = failure;
+      throw failure;
+    } finally {
+      publishReadFutures(fileRanges, submissionFailure);
+    }
+  }
 
-    // copy back the completable futures from the scheduled
-    // vector reads to the ParquetFileRange entries passed in.
-    fileRanges.forEach(fileRange -> {
-      // toFileRange() sets up this back reference
-      ParquetFileRange parquetFileRange = (ParquetFileRange) fileRange.getReference();
-      parquetFileRange.setDataReadFuture(fileRange.getData());
-    });
+  /**
+   * Publish available futures even after partial submission, without replacing
+   * the submission failure if a future cannot be retrieved.
+   */
+  static void publishReadFutures(List<FileRangeBridge.WrappedFileRange> fileRanges, Throwable submissionFailure) {
+    for (FileRangeBridge.WrappedFileRange fileRange : fileRanges) {
+      try {
+        // toFileRange() sets up this back reference.
+        ParquetFileRange parquetFileRange = (ParquetFileRange) fileRange.getReference();
+        parquetFileRange.setDataReadFuture(fileRange.getData());
+      } catch (RuntimeException | Error publicationFailure) {
+        if (submissionFailure == null) {
+          throw publicationFailure;
+        }
+        if (submissionFailure != publicationFailure) {
+          submissionFailure.addSuppressed(publicationFailure);
+        }
+      }
+    }
   }
 
   /**

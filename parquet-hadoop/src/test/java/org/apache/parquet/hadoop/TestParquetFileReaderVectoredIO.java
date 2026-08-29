@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -164,6 +165,58 @@ public class TestParquetFileReaderVectoredIO {
       assertEquals(0, countingFile.lengthCalls);
     }
     assertEquals(0, stream.vectorCalls);
+  }
+
+  @Test
+  public void testLengthLookupFailureFallsBackWithSuppliedFooter() throws Exception {
+    assertLengthLookupFailureFallsBack(true);
+  }
+
+  @Test
+  public void testLengthLookupFailureFallsBackWithoutSuppliedFooter() throws Exception {
+    assertLengthLookupFailureFallsBack(false);
+  }
+
+  private void assertLengthLookupFailureFallsBack(boolean supplyFooter) throws Exception {
+    ParquetMetadata footer = ParquetFileReader.readFooter(new Configuration(), path);
+    CountingInputFile countingFile = new CountingInputFile(inputFile);
+    countingFile.successfulLengthCalls = supplyFooter ? 0 : 1;
+    RecordingSeekableInputStream stream = newStream(FailureMode.NONE);
+    ParquetReadOptions options = readOptions(new RecordingAllocator(), 128, true);
+    try (ParquetFileReader reader = supplyFooter
+        ? ParquetFileReader.open(countingFile, footer, options, stream)
+        : ParquetFileReader.open(countingFile, options, stream)) {
+      reader.setRequestedSchema(PROJECTED_SCHEMA);
+      try (PageReadStore pages = reader.readRowGroup(0)) {
+        assertRows(pages, PROJECTED_SCHEMA, false);
+      }
+      try (PageReadStore pages = reader.readFilteredRowGroup(0)) {
+        assertRows(pages, PROJECTED_SCHEMA, true);
+      }
+      // Once this reader has selected ordinary IO, it must not repeat a failed
+      // metadata lookup on each subsequent row-group read.
+      assertEquals(countingFile.successfulLengthCalls + 1, countingFile.lengthCalls);
+      assertEquals(0, stream.vectorCalls);
+    }
+  }
+
+  @Test
+  public void testInterruptedLengthLookupDoesNotFallBack() throws Exception {
+    ParquetMetadata footer = ParquetFileReader.readFooter(new Configuration(), path);
+    CountingInputFile countingFile = new CountingInputFile(inputFile);
+    countingFile.successfulLengthCalls = 0;
+    countingFile.lengthFailure = new InterruptedIOException("interrupted metadata lookup");
+    countingFile.lengthFailure.initCause(new InterruptedException("cancelled read"));
+    RecordingSeekableInputStream stream = newStream(FailureMode.NONE);
+    try (ParquetFileReader reader = ParquetFileReader.open(
+        countingFile, footer, readOptions(new RecordingAllocator(), 128, false), stream)) {
+      stream.resetOrdinaryReads();
+      IOException failure = assertThrows(InterruptedIOException.class, () -> reader.readRowGroup(0));
+      assertThat(failure).isSameAs(countingFile.lengthFailure);
+      assertEquals(0, stream.vectorCalls);
+      assertEquals(0, stream.normalSeekCalls);
+      assertEquals(0, stream.normalReadCalls);
+    }
   }
 
   @Test
@@ -572,14 +625,18 @@ public class TestParquetFileReaderVectoredIO {
       assertThat(causeType.isInstance(failure.getCause())).isTrue();
       assertEquals(0, stream.normalSeekCalls);
       assertEquals(0, stream.normalReadCalls);
+      IOException retryFailure = assertThrows(IOException.class, () -> reader.readRowGroup(0));
+      assertThat(retryFailure).hasMessageContaining("Cannot reuse a reader after a vectored read failure");
+      assertEquals(1, stream.vectorCalls);
+      assertEquals(0, stream.normalSeekCalls);
+      assertEquals(0, stream.normalReadCalls);
       if (failureMode.hasPendingRead()) {
         if (failureMode.hasPublishedPendingRead()) {
           assertEquals(0, stream.pendingFutureCount());
-        } else {
-          assertThat(stream.pendingFutureCount() > 0).isTrue();
         }
       }
     }
+    stream.closeCompleted.get(10, TimeUnit.SECONDS);
     assertEquals(1, stream.vectorCalls);
     assertEquals(0, stream.pendingFutureCount());
   }
@@ -722,6 +779,8 @@ public class TestParquetFileReaderVectoredIO {
   private static final class CountingInputFile implements InputFile {
     private final InputFile delegate;
     private int lengthCalls;
+    private int successfulLengthCalls = Integer.MAX_VALUE;
+    private IOException lengthFailure = new IOException("injected metadata lookup failure");
 
     private CountingInputFile(InputFile delegate) {
       this.delegate = delegate;
@@ -730,6 +789,9 @@ public class TestParquetFileReaderVectoredIO {
     @Override
     public long getLength() throws IOException {
       lengthCalls++;
+      if (lengthCalls > successfulLengthCalls) {
+        throw lengthFailure;
+      }
       return delegate.getLength();
     }
 
@@ -767,6 +829,7 @@ public class TestParquetFileReaderVectoredIO {
     private final CompletableFuture<Void> allowPendingPhysicalReads = new CompletableFuture<>();
     private final CompletableFuture<Void> pendingDrainStarted = new CompletableFuture<>();
     private final CompletableFuture<Void> socketTimeoutDrainStarted = new CompletableFuture<>();
+    private final CompletableFuture<Void> closeCompleted = new CompletableFuture<>();
     private final AtomicInteger completedPendingPhysicalReads = new AtomicInteger();
     private final AtomicInteger postClosePhysicalReads = new AtomicInteger();
     private volatile boolean closed;
@@ -941,7 +1004,11 @@ public class TestParquetFileReaderVectoredIO {
           pendingFuture.cancel(false);
         }
       }
-      super.close();
+      try {
+        super.close();
+      } finally {
+        closeCompleted.complete(null);
+      }
     }
   }
 
