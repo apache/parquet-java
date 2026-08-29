@@ -1003,7 +1003,7 @@ public class ParquetMetadataConverter {
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveType type) {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
-    return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
+    return fromParquetStatisticsInternal(null, createdBy, statistics, type, expectedOrder);
   }
 
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
