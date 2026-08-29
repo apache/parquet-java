@@ -114,6 +114,7 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetFileRange;
@@ -776,6 +777,8 @@ public class ParquetFileReader implements Closeable {
   // Some InputFile implementations fetch remote metadata for getLength(). Cache the
   // vectored range-validation length lazily so ordinary reads need no extra lookup.
   private long vectoredReadFileLength = -1;
+  private boolean vectoredIoDisabled;
+  private ExecutorService vectoredReadExecutor;
 
   private int currentBlock = 0;
   private ColumnChunkPageReadStore currentRowGroup = null;
@@ -1195,13 +1198,17 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    readAllPartsVectoredOrNormal(allParts, builder);
     rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+      return rowGroup;
+    } catch (IOException | RuntimeException | Error failure) {
+      closeRowGroupAfterFailure(rowGroup, failure);
+      throw failure;
     }
-
-    return rowGroup;
   }
 
   /**
@@ -1300,8 +1307,10 @@ public class ParquetFileReader implements Closeable {
 
     if (shouldUseVectoredIo()) {
       try {
-        readVectored(allParts, builder);
-        return;
+        if (prepareVectoredReadFileLength()) {
+          readVectored(allParts, builder);
+          return;
+        }
       } catch (IllegalArgumentException | UnsupportedOperationException e) {
         // At this point only range preparation can have failed; exceptions from the
         // vectored call itself are wrapped below because reads may already be active.
@@ -1322,7 +1331,28 @@ public class ParquetFileReader implements Closeable {
    * @return true or false.
    */
   private boolean shouldUseVectoredIo() {
-    return options.useHadoopVectoredIo() && f.readVectoredAvailable(options.getAllocator());
+    return !vectoredIoDisabled && options.useHadoopVectoredIo() && f.readVectoredAvailable(options.getAllocator());
+  }
+
+  private boolean prepareVectoredReadFileLength() throws IOException {
+    if (vectoredReadFileLength >= 0) {
+      return true;
+    }
+    try {
+      vectoredReadFileLength = file.getLength();
+      return true;
+    } catch (IOException failure) {
+      if (Thread.currentThread().isInterrupted()
+          || failure instanceof InterruptedIOException
+              && failure.getCause() instanceof InterruptedException) {
+        throw failure;
+      }
+      // No requests have been submitted and the builder is still empty. An already
+      // open stream can remain readable when a remote metadata lookup fails.
+      vectoredIoDisabled = true;
+      LOG.warn("Cannot determine file length for vectored IO; using normal IO against {}", f, failure);
+      return false;
+    }
   }
 
   /**
@@ -1334,6 +1364,9 @@ public class ParquetFileReader implements Closeable {
    * If directly implemented by a Filesystem then it is likely to be a more efficient
    * operation such as a scatter-gather read (native IO) or set of parallel
    * GET requests against an object store.
+   * Submission and all requested ranges share the vectored-read timeout. Failed
+   * operations invalidate the stream; cleanup waits for submission to exit before
+   * closing it, even if the backend does not respond promptly to interruption.
    * The allocation limit applies to filesystem buffers; decoders can still require a
    * contiguous buffer for an individual logical value larger than that limit.
    * @param allParts all parts to be read.
@@ -1344,9 +1377,6 @@ public class ParquetFileReader implements Closeable {
   private void readVectored(List<ConsecutivePartList> allParts, ChunkListBuilder builder) throws IOException {
     final int maximumAllocation = options.getMaxAllocationSize();
     Preconditions.checkArgument(maximumAllocation > 0, "Invalid maximum allocation size %s", maximumAllocation);
-    if (vectoredReadFileLength < 0) {
-      vectoredReadFileLength = file.getLength();
-    }
     final long fileLength = vectoredReadFileLength;
     List<ParquetFileRange> ranges = new ArrayList<>(allParts.size());
     List<Integer> partRangeCounts = new ArrayList<>(allParts.size());
@@ -1372,50 +1402,98 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    final long readStart = System.nanoTime();
+    if (vectoredReadExecutor == null) {
+      vectoredReadExecutor = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "parquet-vectored-read");
+        thread.setDaemon(true);
+        return thread;
+      });
+    }
+    VectoredReadOperation operation = new VectoredReadOperation(
+        f,
+        ranges,
+        options.getAllocator(),
+        vectoredReadExecutor,
+        HADOOP_VECTORED_READ_TIMEOUT_SECONDS,
+        TimeUnit.SECONDS);
     try {
       // Even a synchronous rejection can follow partial submission. The Hadoop bridge
-      // publishes futures only after submission returns, so missing futures do not prove
-      // that no reads started. Once this call is entered, normal-read fallback is unsafe.
-      f.readVectored(ranges, options.getAllocator());
+      // may expose futures for reads which were never scheduled. Once submission is
+      // attempted, neither missing futures nor a synchronous error permit replay.
+      operation.awaitSubmission();
       int firstRange = 0;
       for (int partIndex = 0; partIndex < allParts.size(); partIndex++) {
         int endRange = firstRange + partRangeCounts.get(partIndex);
-        allParts.get(partIndex).readFromVectoredRanges(ranges.subList(firstRange, endRange), builder);
+        allParts.get(partIndex)
+            .readFromVectoredRanges(ranges.subList(firstRange, endRange), builder, operation);
         firstRange = endRange;
       }
+      operation.transferTo(builder.releaser);
+    } catch (TimeoutException e) {
+      IOException failure = new IOException("Timed out submitting vectored reads", e);
+      abortVectoredRead(operation, failure);
+      throw failure;
     } catch (IllegalArgumentException | UnsupportedOperationException e) {
       // Consumption may also have populated the builder. Do not replay those chunks.
       IOException failure =
           new IOException("Vectored read failed after asynchronous reads may have been submitted", e);
-      awaitRemainingVectoredReads(ranges, readStart, failure);
+      if (operation.submissionSucceeded()) {
+        awaitRemainingVectoredReads(ranges, operation, failure);
+      }
+      abortVectoredRead(operation, failure);
       throw failure;
-    } catch (IOException | RuntimeException e) {
-      awaitRemainingVectoredReads(ranges, readStart, e);
+    } catch (IOException | RuntimeException | Error e) {
+      if (operation.submissionSucceeded()) {
+        awaitRemainingVectoredReads(ranges, operation, e);
+      }
+      abortVectoredRead(operation, e);
       throw e;
     }
+  }
+
+  private void abortVectoredRead(VectoredReadOperation operation, Throwable failure) {
+    // Deferred cleanup now owns the original stream and executor. Prevent a later
+    // call (including an attempted ordinary read) from racing that cleanup.
+    f =
+        new DelegatingSeekableInputStream(new InputStream() {
+          @Override
+          public int read() throws IOException {
+            throw new IOException("Cannot reuse a reader after a vectored read failure", failure);
+          }
+        }) {
+          @Override
+          public long getPos() throws IOException {
+            throw new IOException("Cannot reuse a reader after a vectored read failure", failure);
+          }
+
+          @Override
+          public void seek(long position) throws IOException {
+            throw new IOException("Cannot reuse a reader after a vectored read failure", failure);
+          }
+        };
+    vectoredReadExecutor = null;
+    operation.abort(failure);
   }
 
   /**
    * Wait for submitted reads with published futures to finish before their stream can be
    * closed. Cancelling result futures does not stop all Hadoop backends from continuing IO.
    */
-  private void awaitRemainingVectoredReads(List<ParquetFileRange> ranges, long readStart, Throwable failure) {
+  private void awaitRemainingVectoredReads(
+      List<ParquetFileRange> ranges, VectoredReadOperation operation, Throwable failure) {
     if (Thread.currentThread().isInterrupted()
         || failure instanceof InterruptedIOException && failure.getCause() instanceof InterruptedException) {
       return;
     }
 
-    final long timeoutNanos = TimeUnit.SECONDS.toNanos(HADOOP_VECTORED_READ_TIMEOUT_SECONDS);
     for (ParquetFileRange range : ranges) {
       Future<ByteBuffer> future = range.getDataReadFuture();
       if (future == null || future.isDone()) {
         continue;
       }
 
-      long remainingNanos = Math.max(timeoutNanos - (System.nanoTime() - readStart), 0L);
       try {
-        FutureIO.awaitFuture(future, remainingNanos, TimeUnit.NANOSECONDS);
+        FutureIO.awaitFuture(future, operation.remainingNanos(), TimeUnit.NANOSECONDS);
       } catch (InterruptedIOException e) {
         if (failure != e) {
           failure.addSuppressed(e);
@@ -1514,13 +1592,27 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    readAllPartsVectoredOrNormal(allParts, builder);
     rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+      return rowGroup;
+    } catch (IOException | RuntimeException | Error failure) {
+      closeRowGroupAfterFailure(rowGroup, failure);
+      throw failure;
     }
+  }
 
-    return rowGroup;
+  private static void closeRowGroupAfterFailure(ColumnChunkPageReadStore rowGroup, Throwable failure) {
+    try {
+      rowGroup.close();
+    } catch (RuntimeException closeFailure) {
+      if (failure != closeFailure) {
+        failure.addSuppressed(closeFailure);
+      }
+    }
   }
 
   private void readChunkPages(Chunk chunk, BlockMetaData block, ColumnChunkPageReadStore rowGroup)
@@ -1910,6 +2002,9 @@ public class ParquetFileReader implements Closeable {
         f.close();
       }
     } finally {
+      if (vectoredReadExecutor != null) {
+        vectoredReadExecutor.shutdownNow();
+      }
       AutoCloseables.uncheckedClose(nextDictionaryReader, crcAllocator);
       options.getCodecFactory().release();
     }
@@ -2400,13 +2495,15 @@ public class ParquetFileReader implements Closeable {
      * they may block for up to {@link #HADOOP_VECTORED_READ_TIMEOUT_SECONDS} seconds.
      * @param ranges bounded ranges containing this part.
      * @param builder used to build chunk list to read the pages for the different columns.
+     * @param operation owns the allocations and the deadline shared with submission and other parts.
      * @throws IOException if there is an error while reading from the stream, including a timeout.
      */
-    public void readFromVectoredRanges(List<ParquetFileRange> ranges, ChunkListBuilder builder) throws IOException {
+    public void readFromVectoredRanges(
+        List<ParquetFileRange> ranges, ChunkListBuilder builder, VectoredReadOperation operation)
+        throws IOException {
       List<ByteBuffer> buffers = new ArrayList<>(ranges.size());
       ParquetFileRange currentRange = null;
       final long timeoutSeconds = HADOOP_VECTORED_READ_TIMEOUT_SECONDS;
-      final long timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
       long readStart = System.nanoTime();
       try {
         for (ParquetFileRange range : ranges) {
@@ -2415,8 +2512,8 @@ public class ParquetFileReader implements Closeable {
               "Waiting for vectored read to finish for range {} with timeout {} seconds",
               range,
               timeoutSeconds);
-          long remainingNanos = Math.max(timeoutNanos - (System.nanoTime() - readStart), 0L);
-          buffers.add(FutureIO.awaitFuture(range.getDataReadFuture(), remainingNanos, TimeUnit.NANOSECONDS));
+          buffers.add(FutureIO.awaitFuture(
+              range.getDataReadFuture(), operation.remainingNanos(), TimeUnit.NANOSECONDS));
         }
         setReadMetrics(readStart, length);
         // report in a counter the data we just scanned
