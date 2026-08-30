@@ -20,8 +20,8 @@
 package org.apache.parquet.crypto;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -42,11 +42,10 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestKmsUrlRead {
 
@@ -74,10 +73,10 @@ public class TestKmsUrlRead {
     }
   }
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  @Before
+  @BeforeEach
   public void writeEncryptedFile() throws IOException {
 
     // 1. Writing encrypted file
@@ -91,8 +90,8 @@ public class TestKmsUrlRead {
     writeConf.set(InMemoryKMS.KEY_LIST_PROPERTY_NAME, KEY_LIST);
     writeConf.set(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, "writer-token");
 
-    Path rootPath = new Path(temporaryFolder.getRoot().getPath());
-    filePath = new Path(rootPath, "test.parquet");
+    filePath =
+        new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
 
     MessageType schema = SingleRow.getSchema();
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
@@ -124,7 +123,9 @@ public class TestKmsUrlRead {
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), filePath)
         .withConf(readConf)
         .build()) {
-      assertThrows("Must fail to read without keys", ParquetCryptoRuntimeException.class, reader::read);
+      assertThatThrownBy(reader::read)
+          .isInstanceOf(ParquetCryptoRuntimeException.class)
+          .hasMessageContaining("Trying to read file with encrypted footer. No keys available");
     }
   }
 
@@ -142,7 +143,7 @@ public class TestKmsUrlRead {
     }
 
     // Make sure KMS URL is the default string (not taken from storage).
-    assertEquals(KmsClient.KMS_INSTANCE_ID_DEFAULT, UnitestUrlReadKMS.getStaticKmsURL());
+    assertThat(KmsClient.KMS_INSTANCE_ID_DEFAULT.equals(UnitestUrlReadKMS.getStaticKmsURL()));
   }
 
   @Test
@@ -160,7 +161,7 @@ public class TestKmsUrlRead {
     }
 
     // Verify the stored value
-    assertEquals(STORED_KMS_URL, UnitestUrlReadKMS.getStaticKmsURL());
+    assertThat(STORED_KMS_URL.equals(UnitestUrlReadKMS.getStaticKmsURL()));
   }
 
   @Test
@@ -179,10 +180,10 @@ public class TestKmsUrlRead {
     }
 
     // Verify the set value
-    assertEquals(readerSetURL, UnitestUrlReadKMS.getStaticKmsURL());
+    assertThat(readerSetURL.equals(UnitestUrlReadKMS.getStaticKmsURL()));
   }
 
-  @After
+  @AfterEach
   public void deleteFile() throws IOException {
     filePath.getFileSystem(new Configuration()).delete(filePath, false);
   }
