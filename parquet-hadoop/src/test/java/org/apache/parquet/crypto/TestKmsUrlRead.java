@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -42,10 +43,9 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class TestKmsUrlRead {
 
@@ -56,7 +56,7 @@ public class TestKmsUrlRead {
   private static final String KEY_LIST = UNIFORM_MASTER_KEY_ID + ": " + UNIFORM_MASTER_KEY;
   private static final String STORED_KMS_URL = "stored-kms-url";
 
-  private Path filePath;
+  private static Path filePath;
 
   public static class UnitestUrlReadKMS extends InMemoryKMS {
     private static String staticKmsURL;
@@ -73,13 +73,8 @@ public class TestKmsUrlRead {
     }
   }
 
-  @TempDir
-  private java.nio.file.Path tempDir;
-
-  @BeforeEach
-  public void writeEncryptedFile() throws IOException {
-
-    // 1. Writing encrypted file
+  @BeforeAll
+  public static void writeEncryptedFile() throws IOException {
     Configuration writeConf = new Configuration();
     writeConf.set(
         EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
@@ -90,8 +85,9 @@ public class TestKmsUrlRead {
     writeConf.set(InMemoryKMS.KEY_LIST_PROPERTY_NAME, KEY_LIST);
     writeConf.set(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, "writer-token");
 
-    filePath =
-        new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
+    filePath = new Path(Files.createTempFile("test-kms-url_", ".parquet")
+        .toAbsolutePath()
+        .toString());
 
     MessageType schema = SingleRow.getSchema();
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
@@ -183,8 +179,8 @@ public class TestKmsUrlRead {
     assertThat(readerSetURL.equals(UnitestUrlReadKMS.getStaticKmsURL()));
   }
 
-  @AfterEach
-  public void deleteFile() throws IOException {
+  @AfterAll
+  public static void deleteFile() throws IOException {
     filePath.getFileSystem(new Configuration()).delete(filePath, false);
   }
 
