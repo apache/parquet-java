@@ -50,9 +50,7 @@ EOF
 
 ref="$1"
 
-# Resolve ref -> full commit sha.
-# A 40-hex string is used as-is; anything else is resolved via git ls-remote,
-# preferring the ^{} deref line so annotated tags resolve to the underlying commit.
+# Resolve ref to a full commit SHA.
 if [[ "$ref" =~ ^[0-9a-f]{40}$ ]]; then
   resolved_sha="$ref"
 else
@@ -66,7 +64,8 @@ else
     exit 1
   fi
   resolved_sha="$(printf '%s\n' "$ls_out" \
-    | awk '{ if ($2 ~ /\^\{\}$/) deref=$1; else plain=$1 } END { print (deref != "" ? deref : plain) }')"
+    | awk '{ if ($2 ~ /\^\{\}$/) deref=$1; else plain=$1 }
+           END { print (deref != "" ? deref : plain) }')"
   if [[ -z "$resolved_sha" ]]; then
     echo "ERROR: could not resolve commit SHA for '${ref}'" >&2
     exit 1
@@ -74,14 +73,14 @@ else
   echo "  -> commit: ${resolved_sha}"
 fi
 
-# Read the old commit from the sidecar (for the summary).
+# Read the old commit from the sidecar for the summary.
 old_commit="(none)"
 if [[ -f "$SIDECAR_FILE" ]]; then
   old_commit="$(grep '^parquet-format.commit=' "$SIDECAR_FILE" | cut -d= -f2 || true)"
 fi
 
 # Fetch upstream parquet.thrift to a temp file. Only overwrite the inlined file after fetch and
-# validation succeed, so a failure never clobbers the tracked IDL.
+# validation succeed, so a failure never overwrites the tracked IDL.
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
