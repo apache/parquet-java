@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Mark and close stale pull requests
-        uses: actions/stale@v11
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           # Don't touch issues.
