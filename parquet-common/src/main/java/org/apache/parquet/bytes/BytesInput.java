@@ -690,12 +690,6 @@ public abstract class BytesInput {
       return java.nio.ByteBuffer.wrap(in, offset, length);
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public byte[] toByteArray() {
-      return Arrays.copyOfRange(in, offset, offset + length);
-    }
-
     @Override
     public long size() {
       return length;
