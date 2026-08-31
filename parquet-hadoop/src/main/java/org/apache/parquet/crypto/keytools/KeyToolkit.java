@@ -53,6 +53,17 @@ public class KeyToolkit {
    */
   public static final String KMS_INSTANCE_URL_PROPERTY_NAME = "parquet.encryption.kms.instance.url";
   /**
+   * If a KMS URL is set by writers, it will be stored in the key material. However, by default, it will not be
+   * provided to readers because the storage is untrusted. Readers that need the URL should set the
+   * KMS URL property. If they cannot do so, they can enable retrieving the KMS URL from the stored material
+   * by setting this parameter to true. KMS client implementations must validate the URL value and
+   * use authentication to prevent key material tampering attacks, which could, for example, send a KMS
+   * access token to a malicious URL endpoint.
+   */
+  public static final String KMS_ENABLE_URL_READ_PROPERTY_NAME = "parquet.encryption.kms.enable.url.read";
+
+  public static final boolean KMS_ENABLE_URL_READ_DEFAULT = false;
+  /**
    * Authorization token that will be passed to KMS.
    */
   public static final String KEY_ACCESS_TOKEN_PROPERTY_NAME = "parquet.encryption.key.access.token";
