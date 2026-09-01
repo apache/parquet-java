@@ -25,6 +25,9 @@
 #
 #   <ref> is a full 40-char parquet-format commit SHA, or a parquet-format tag
 #   (e.g. apache-parquet-format-2.13.0).
+#
+#   Set PARQUET_FORMAT_REPO to pull from a fork instead of apache/parquet-format,
+#   e.g. PARQUET_FORMAT_REPO=https://github.com/<user>/parquet-format.
 
 set -euo pipefail
 
@@ -33,8 +36,10 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 THRIFT_FILE="${REPO_ROOT}/parquet-format-structures/src/main/thrift/parquet.thrift"
 SIDECAR_FILE="${REPO_ROOT}/parquet-format-structures/src/main/thrift/parquet-format.version"
 
-PARQUET_FORMAT_REPO="https://github.com/apache/parquet-format"
-PARQUET_FORMAT_RAW="https://raw.githubusercontent.com/apache/parquet-format"
+# Source repo, overridable via the PARQUET_FORMAT_REPO env var to pull from a fork.
+# The raw-download host is derived from it (assumes a GitHub-hosted repo).
+PARQUET_FORMAT_REPO="${PARQUET_FORMAT_REPO:-https://github.com/apache/parquet-format}"
+PARQUET_FORMAT_RAW="${PARQUET_FORMAT_REPO/github.com/raw.githubusercontent.com}"
 THRIFT_PATH_IN_FORMAT="src/main/thrift/parquet.thrift"
 
 usage() {
