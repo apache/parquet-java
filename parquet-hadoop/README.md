@@ -176,7 +176,7 @@ If the frequency is low, the performance will be better.
 ---
 
 **Property:** `parquet.page.value.count.threshold`  
-**Description:** The value count threshold within a Parquet page used on each page check.
+**Description:** The value count threshold within a Parquet page used on each page check.  
 **Default value:** `Integer.MAX_VALUE / 2`
 
 ---
@@ -524,7 +524,7 @@ if not found then the library will use the classic non-vectored reads: it is saf
 If `true`, statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, statistics will be disabled for all columns regardless of column-specific settings.
 It is possible to enable or disable statistics for specific columns by appending `#` followed by the column path.  
-**Default value:** `true`
+**Default value:** `true`  
 **Example:**
 ```java
 // Enable statistics for all columns
@@ -540,8 +540,8 @@ conf.set("parquet.column.statistics.enabled#column.path", false);
 **Description:** Whether to enable size statistics collection.  
 If `true`, size statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, size statistics will be disabled for all columns regardless of column-specific settings.
-It is possible to enable or disable size statistics for specific columns by appending `#` followed by the column path.
-**Default value:** `true`
+It is possible to enable or disable size statistics for specific columns by appending `#` followed by the column path.  
+**Default value:** `true`  
 **Example:**
 ```java
 // Enable size statistics for all columns
