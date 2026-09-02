@@ -222,7 +222,7 @@ conf.set("parquet.bloom.filter.enabled#column.path", false);
 If it is true, the bloom filter will be generated with the optimal bit size 
 according to the number of real data distinct values. If it is false, it will not take effect.
 Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration (if it is 
-set too small, the generated bloom filter will not be efficient).
+set too small, the generated bloom filter will not be efficient).  
 **Default value:** `false`
 
 ---
@@ -230,7 +230,7 @@ set too small, the generated bloom filter will not be efficient).
 **Property:** `parquet.bloom.filter.candidates.number`  
 **Description:** The number of candidate bloom filters written at the same time.  
 When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be inserted 
-at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.
+at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.  
 **Default value:** `5`
 
 ---
@@ -268,13 +268,13 @@ conf.set("parquet.bloom.filter.fpp#column.path", 0.02)
 
 **Property:** `parquet.decrypt.off-heap.buffer.enabled`  
 **Description:** Whether to use direct buffers to decrypt encrypted files. This should be set to 
-true if the reader is using a `DirectByteBufferAllocator`
+true if the reader is using a `DirectByteBufferAllocator`  
 **Default value:** `false`
 
 ---
 
-**Property:** `parquet.block.row.count.limit`
-**Description:** The maximum number of rows per row group.
+**Property:** `parquet.block.row.count.limit`  
+**Description:** The maximum number of rows per row group.  
 **Default value:** `2147483647` (Integer.MAX_VALUE)
 
 ---
@@ -287,12 +287,6 @@ true if the reader is using a `DirectByteBufferAllocator`
 **Property:** `parquet.page.write-checksum.enabled`  
 **Description:** Whether to write out page level checksums.  
 **Default value:** `true`
-
----
-
-**Property:** `parquet.crypto.factory.class`  
-**Description:** Class implementing EncryptionPropertiesFactory.  
-**Default value:** None. If not set, the file won't be encrypted by a crypto factory.  
 
 ## Class: ParquetInputFormat
 
@@ -406,7 +400,7 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 ## Class: HadoopReadOptions
 
 **Property:** `parquet.crypto.factory.class`  
-**Description:** Class implementing DecryptionPropertiesFactory.
+**Description:** Class implementing DecryptionPropertiesFactory.  
 **Default value:** None. If not set, the file won't be decrypted by a crypto factory.
 
 ## Class: PropertiesDrivenCryptoFactory
@@ -520,16 +514,16 @@ If `false`, key material is stored in separate new files, created in the same fo
 **Property:** `parquet.hadoop.vectored.io.enabled`  
 **Description:** Flag to enable use of the FileSystem Vector IO API on Hadoop releases which support the feature.
 If `true` then an attempt will be made to dynamically load the relevant classes; 
-if not found then the library will use the classic non-vectored reads: it is safe to enable this option on older releases. 
+if not found then the library will use the classic non-vectored reads: it is safe to enable this option on older releases.  
 **Default value:** `true`
 
 ---
 
-**Property:** `parquet.column.statistics.enabled`
+**Property:** `parquet.column.statistics.enabled`  
 **Description:** Whether to enable column statistics collection.
 If `true`, statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, statistics will be disabled for all columns regardless of column-specific settings.
-It is possible to enable or disable statistics for specific columns by appending `#` followed by the column path.
+It is possible to enable or disable statistics for specific columns by appending `#` followed by the column path.  
 **Default value:** `true`
 **Example:**
 ```java
@@ -542,8 +536,8 @@ conf.set("parquet.column.statistics.enabled#column.path", false);
 
 ---
 
-**Property:** `parquet.size.statistics.enabled`
-**Description:** Whether to enable size statistics collection.
+**Property:** `parquet.size.statistics.enabled`  
+**Description:** Whether to enable size statistics collection.  
 If `true`, size statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, size statistics will be disabled for all columns regardless of column-specific settings.
 It is possible to enable or disable size statistics for specific columns by appending `#` followed by the column path.
