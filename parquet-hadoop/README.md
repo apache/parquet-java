@@ -469,12 +469,12 @@ If `false`, write files in encrypted footer mode, that fully encrypts the footer
 
 ---
 
-**Property:** `parquet.encryption.kms.enable.url.read`
+**Property:** `parquet.encryption.kms.enable.url.read`  
 **Description:** If a KMS URL is set by writers, it will be stored in the key material. However, by default, it will not be
 given to readers because the storage is untrusted. Readers that need the URL should set the KMS URL property.
 If they cannot do so, they can enable retrieving the KMS URL from the stored key material by setting this parameter
 to `true`. KMS client implementations must validate the URL value and use authentication to prevent key material
-tampering attacks that could, for example, result in a KMS access token being sent to a malicious URL endpoint.
+tampering attacks that could, for example, result in a KMS access token being sent to a malicious URL endpoint.  
 **Default value:** `false`
 
 ---
