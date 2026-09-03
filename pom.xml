@@ -547,32 +547,7 @@
         </executions>
         <configuration>
           <consoleOutput>true</consoleOutput>
-          <excludes>
-            <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
-            <exclude>**/*.parquet</exclude>
-            <exclude>**/*.avro</exclude>
-            <exclude>**/*.json</exclude>
-            <exclude>**/*.avsc</exclude>
-            <exclude>**/*.iml</exclude>
-            <exclude>**/*.log</exclude>
-            <exclude>**/*.md.vm</exclude>
-            <exclude>**/.classpath</exclude>
-            <exclude>**/.project</exclude>
-            <exclude>**/.settings/**</exclude>
-            <exclude>**/build/**</exclude>
-            <exclude>**/target/**</exclude>
-            <exclude>.git/**</exclude>
-            <exclude>.gitignore</exclude>
-            <exclude>.gitmodules</exclude>
-            <exclude>.idea/**</exclude>
-            <exclude>*/jdiff/*.xml</exclude>
-            <exclude>licenses/**</exclude>
-            <exclude>protobuf_install/**</exclude>
-            <exclude>thrift-${thrift.version}/**</exclude>
-            <exclude>thrift-${thrift.version}.tar.gz</exclude>
-            <exclude>**/dependency-reduced-pom.xml</exclude>
-            <exclude>**/*.rej</exclude>
-          </excludes>
+          <excludesFile>${maven.multiModuleProjectDirectory}/.rat-excludes</excludesFile>
         </configuration>
       </plugin>
 
