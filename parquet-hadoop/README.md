@@ -288,6 +288,12 @@ true if the reader is using a `DirectByteBufferAllocator`
 **Description:** Whether to write out page level checksums.  
 **Default value:** `true`
 
+---
+
+**Property:** `parquet.crypto.factory.class`  
+**Description:** Class implementing EncryptionPropertiesFactory.  
+**Default value:** None. If not set, the file won't be encrypted by a crypto factory. 
+
 ## Class: ParquetInputFormat
 
 **Property:** `parquet.read.support.class`  
