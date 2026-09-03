@@ -106,45 +106,7 @@ JSON
   [[ "$output" == *"CI Hadoop 3"* ]]
 }
 
-@test "check_github_checks_passed: ignores in-progress release-*.yml self-reference" {
-  export GITHUB_TOKEN="fake-token"
-  DRY_RUN=0
-
-  gh() {
-    cat <<'JSON'
-{"workflow_runs": [
-  {"name": "Release - Prepare RC", "path": ".github/workflows/release-prepare-rc.yml", "status": "in_progress", "conclusion": null},
-  {"name": "CI Hadoop 3",          "path": ".github/workflows/ci-hadoop3.yml",         "status": "completed",   "conclusion": "success"}
-]}
-JSON
-  }
-  export -f gh
-
-  run check_github_checks_passed "abc123"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"All GitHub checks passed"* ]]
-}
-
-@test "check_github_checks_passed: ignores historical failed release-*.yml on same commit" {
-  export GITHUB_TOKEN="fake-token"
-  DRY_RUN=0
-
-  gh() {
-    cat <<'JSON'
-{"workflow_runs": [
-  {"name": "Release - Prepare RC", "path": ".github/workflows/release-prepare-rc.yml", "status": "completed", "conclusion": "failure"},
-  {"name": "CI Hadoop 3",          "path": ".github/workflows/ci-hadoop3.yml",         "status": "completed", "conclusion": "success"}
-]}
-JSON
-  }
-  export -f gh
-
-  run check_github_checks_passed "abc123"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"All GitHub checks passed"* ]]
-}
-
-@test "check_github_checks_passed: detects CI failures when release workflows are present" {
+@test "check_github_checks_passed: ignores release-*.yml runs and still catches CI failures" {
   export GITHUB_TOKEN="fake-token"
   DRY_RUN=0
 
