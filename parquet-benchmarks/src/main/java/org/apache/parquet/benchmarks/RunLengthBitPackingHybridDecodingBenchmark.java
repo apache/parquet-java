@@ -56,9 +56,8 @@ public class RunLengthBitPackingHybridDecodingBenchmark {
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
-    RunLengthBitPackingHybridEncoder encoder =
-        new RunLengthBitPackingHybridEncoder(bitWidth, 64 * 1024, 4 * 1024 * 1024,
-            new DirectByteBufferAllocator());
+    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(
+        bitWidth, 64 * 1024, 4 * 1024 * 1024, new DirectByteBufferAllocator());
     int mask = (1 << bitWidth) - 1;
     for (int i = 0; i < VALUE_COUNT; i += 32) {
       for (int j = 0; j < 16 && i + j < VALUE_COUNT; j++) {
