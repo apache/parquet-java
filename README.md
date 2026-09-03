@@ -62,6 +62,23 @@ brew install thrift
 export PATH="$(brew --prefix thrift)/bin:$PATH"
 ```
 
+### Update Parquet Thrift Definitions
+
+Parquet-Java uses an inlined version of the `parquet.thrift` IDL, located at
+`parquet-format-structures/src/main/thrift`. To update this definition to include
+changes from the canonical definition in [parquet-format](https://github.com/apache/parquet-format), you can use:
+
+```
+# Update to a parquet-format release
+> ./dev/update-parquet-thrift.sh apache-parquet-format-2.13.0
+
+# Update to an arbitrary parquet-format commit (can be unreleased)
+> ./dev/update-parquet-thrift.sh <commit hash>
+
+# Update to a commit from a parquet-format fork (e.g. for a reference implementation of an in-progress spec change)
+> PARQUET_FORMAT_REPO="https://github.com/divjotarora/parquet-format" ./dev/update-parquet-thrift.sh <commit hash>
+```
+
 ### Build Parquet with Maven
 
 Once protobuf and thrift are available in your path, you can build the project by running:
