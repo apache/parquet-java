@@ -255,7 +255,7 @@ step_summary "Created tag \`${rc_tag}\` at \`${tag_commit}\`"
 step_summary ""
 step_summary "### Nexus Deployment"
 
-settings_file=$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/parquet-release-settings.XXXXXX")
+settings_file=$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/parquet-release-settings.xml")
 generate_maven_settings "${settings_file}"
 
 maven_deploy "${settings_file}"
