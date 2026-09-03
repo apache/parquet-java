@@ -54,8 +54,12 @@ setup() {
   DRY_RUN=0
 
   gh() {
-    echo "0"
-    return 0
+    cat <<'JSON'
+{"workflow_runs": [
+  {"name": "CI Hadoop 3",    "path": ".github/workflows/ci-hadoop3.yml",     "status": "completed", "conclusion": "success"},
+  {"name": "Vector Plugins", "path": ".github/workflows/vector-plugins.yml", "status": "completed", "conclusion": "success"}
+]}
+JSON
   }
   export -f gh
 
@@ -69,20 +73,18 @@ setup() {
   DRY_RUN=0
 
   gh() {
-    if [[ "$*" == *"status"* && "$*" == *"length"* ]]; then
-      echo "1"
-    elif [[ "$*" == *"status"* ]]; then
-      echo "  - CI Hadoop 3: in_progress"
-    else
-      echo "0"
-    fi
-    return 0
+    cat <<'JSON'
+{"workflow_runs": [
+  {"name": "CI Hadoop 3", "path": ".github/workflows/ci-hadoop3.yml", "status": "in_progress", "conclusion": null}
+]}
+JSON
   }
   export -f gh
 
   run check_github_checks_passed "abc123"
   [ "$status" -eq 1 ]
   [[ "$output" == *"still-running"* ]]
+  [[ "$output" == *"CI Hadoop 3"* ]]
 }
 
 @test "check_github_checks_passed: fails when checks have failed conclusions" {
@@ -90,22 +92,38 @@ setup() {
   DRY_RUN=0
 
   gh() {
-    if [[ "$*" == *"status"* && "$*" == *"length"* ]]; then
-      echo "0"
-    elif [[ "$*" == *"conclusion"* && "$*" == *"length"* ]]; then
-      echo "2"
-    elif [[ "$*" == *"conclusion"* ]]; then
-      echo "  - CI Hadoop 3: failure"
-    else
-      echo "0"
-    fi
-    return 0
+    cat <<'JSON'
+{"workflow_runs": [
+  {"name": "CI Hadoop 3", "path": ".github/workflows/ci-hadoop3.yml", "status": "completed", "conclusion": "failure"}
+]}
+JSON
   }
   export -f gh
 
   run check_github_checks_passed "abc123"
   [ "$status" -eq 1 ]
   [[ "$output" == *"failed GitHub checks"* ]]
+  [[ "$output" == *"CI Hadoop 3"* ]]
+}
+
+@test "check_github_checks_passed: ignores release-*.yml runs and still catches CI failures" {
+  export GITHUB_TOKEN="fake-token"
+  DRY_RUN=0
+
+  gh() {
+    cat <<'JSON'
+{"workflow_runs": [
+  {"name": "Release - Prepare RC", "path": ".github/workflows/release-prepare-rc.yml", "status": "in_progress", "conclusion": null},
+  {"name": "Vector Plugins",       "path": ".github/workflows/vector-plugins.yml",     "status": "completed",   "conclusion": "failure"}
+]}
+JSON
+  }
+  export -f gh
+
+  run check_github_checks_passed "abc123"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"failed GitHub checks"* ]]
+  [[ "$output" == *"Vector Plugins"* ]]
 }
 
 @test "check_github_checks_passed: fails when gh api errors" {

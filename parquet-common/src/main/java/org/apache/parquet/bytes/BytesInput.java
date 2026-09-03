@@ -690,21 +690,6 @@ public abstract class BytesInput {
       return java.nio.ByteBuffer.wrap(in, offset, length);
     }
 
-    /**
-     * Zero-copy override: returns the backing array directly when fully used,
-     * skipping the base-class BAOS allocation + copy on every decompressor call.
-     * Returning the mutable array is safe — the base class already exposes a
-     * mutable {@code BAOS.getBuf()}.
-     */
-    @SuppressWarnings("deprecation")
-    @Override
-    public byte[] toByteArray() {
-      if (offset == 0 && length == in.length) {
-        return in;
-      }
-      return Arrays.copyOfRange(in, offset, offset + length);
-    }
-
     @Override
     public long size() {
       return length;
