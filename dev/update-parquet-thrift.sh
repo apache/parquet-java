@@ -60,6 +60,7 @@ if [[ "$ref" =~ ^[0-9a-f]{40}$ ]]; then
   resolved_sha="$ref"
 else
   echo "Resolving ${ref} ..."
+  # ^{} refers to the unwrapped commit of an annotated tag, if present
   ls_out="$(git ls-remote "$PARQUET_FORMAT_REPO" "$ref" "${ref}^{}")" || {
     echo "ERROR: git ls-remote failed for '${ref}' in ${PARQUET_FORMAT_REPO}" >&2
     exit 1
@@ -68,9 +69,8 @@ else
     echo "ERROR: ref '${ref}' not found in ${PARQUET_FORMAT_REPO}" >&2
     exit 1
   fi
-  resolved_sha="$(printf '%s\n' "$ls_out" \
-    | awk '{ if ($2 ~ /\^\{\}$/) deref=$1; else plain=$1 }
-           END { print (deref != "" ? deref : plain) }')"
+  # The ^{} peeled commit (annotated tags) is listed last, so tail -1 selects it.
+  resolved_sha="$(printf '%s\n' "$ls_out" | tail -1 | cut -f1)"
   if [[ -z "$resolved_sha" ]]; then
     echo "ERROR: could not resolve commit SHA for '${ref}'" >&2
     exit 1
@@ -99,12 +99,10 @@ fi
 
 if [[ ! -s "$tmp" ]]; then
   echo "ERROR: fetched parquet.thrift is empty" >&2
-  echo "       The tracked files were not modified." >&2
   exit 1
 fi
 if ! grep -q 'namespace java org.apache.parquet.format' "$tmp"; then
   echo "ERROR: fetched file does not look like parquet.thrift (missing namespace declaration)" >&2
-  echo "       The tracked files were not modified." >&2
   exit 1
 fi
 
