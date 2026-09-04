@@ -31,7 +31,10 @@ import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +65,11 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   // Support reading Parquet INT96 as a 12-byte array.
   public static final String READ_INT96_AS_FIXED = "parquet.avro.readInt96AsFixed";
   public static final boolean READ_INT96_AS_FIXED_DEFAULT = false;
+
+  // Automatically detect whether a Parquet file uses 2-level or 3-level encoding;
+  // Ignored if AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE is also set
+  public static final String AUTO_DETECT_LIST_STRUCTURE = "parquet.avro.read.autoDetectListStructure";
+  static final boolean AUTO_DETECT_LIST_STRUCTURE_DEFAULT = true;
 
   /**
    * List of the fully qualified class names separated by ',' that may be referenced from the Avro schema by
@@ -127,6 +135,18 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       ParquetConfiguration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     MessageType projection = fileSchema;
     Map<String, String> metadata = new LinkedHashMap<String, String>();
+
+    boolean autoDetectListStructure =
+        configuration.getBoolean(AUTO_DETECT_LIST_STRUCTURE, AUTO_DETECT_LIST_STRUCTURE_DEFAULT);
+
+    if (autoDetectListStructure
+        && configuration.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE) == null
+        && configuration.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) == null) {
+      if (writesNewListStructure(fileSchema)) {
+        configuration.setBoolean(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, false);
+        configuration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+      }
+    }
 
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
@@ -229,5 +249,40 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         conf.getClass(AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf))
         .get();
+  }
+
+  private static boolean writesNewListStructure(MessageType schema) {
+    return Boolean.TRUE.equals(allListStructuresAreThreeLevel(schema));
+  }
+
+  // Given a Parquet schema, return true only if the schema:
+  // - contains one or more List fields
+  // - encodes every List field using 3-level list structure
+  private static Boolean allListStructuresAreThreeLevel(Type type) {
+    if (type.isPrimitive()) {
+      return null;
+    }
+    GroupType group = type.asGroupType();
+    if (group.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
+      if (group.getFieldCount() != 1) {
+        return false;
+      }
+      Type repeated = group.getType(0);
+      return !repeated.isPrimitive()
+          && repeated.getName().equals("list")
+          && repeated.asGroupType().getFieldCount() == 1
+          && repeated.asGroupType().getType(0).getName().equals("element");
+    }
+    Boolean result = null;
+    for (Type field : group.getFields()) {
+      Boolean fieldListStructuresAreThreeLevel = allListStructuresAreThreeLevel(field);
+      if (Boolean.FALSE.equals(fieldListStructuresAreThreeLevel)) {
+        return false;
+      }
+      if (Boolean.TRUE.equals(fieldListStructuresAreThreeLevel)) {
+        result = true;
+      }
+    }
+    return result;
   }
 }

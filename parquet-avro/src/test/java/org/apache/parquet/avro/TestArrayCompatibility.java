@@ -51,11 +51,14 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
   public static final Configuration OLD_BEHAVIOR_CONF = new Configuration();
   public static final Configuration NEW_BEHAVIOR_CONF = new Configuration();
+  public static final Configuration AUTO_DETECT_CONF = new Configuration();
 
   @BeforeAll
   public static void setupNewBehaviorConfiguration() {
     OLD_BEHAVIOR_CONF.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, true);
+    OLD_BEHAVIOR_CONF.setBoolean(AvroReadSupport.AUTO_DETECT_LIST_STRUCTURE, false);
     NEW_BEHAVIOR_CONF.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+    AUTO_DETECT_CONF.setBoolean(AvroReadSupport.AUTO_DETECT_LIST_STRUCTURE, true);
   }
 
   @Test
@@ -1254,6 +1257,309 @@ public class TestArrayCompatibility extends DirectWriterTest {
     assertThatThrownBy(reader::read)
         .isInstanceOf(InvalidRecordException.class)
         .hasMessage("Parquet/Avro schema mismatch. Avro field 'element' not found.");
+  }
+
+  @Test
+  public void testAutoDetectThreeLevelListEncoding() throws Exception {
+    Path test = writeDirect(
+        "message AutoDetectThreeLevel {"
+            + "  optional group locations (LIST) {"
+            + "    repeated group list {"
+            + "      required group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("locations", 0);
+
+          rc.startGroup();
+          rc.startField("list", 0);
+
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.startGroup();
+          rc.startField("latitude", 0);
+          rc.addDouble(0.0);
+          rc.endField("latitude", 0);
+          rc.startField("longitude", 1);
+          rc.addDouble(180.0);
+          rc.endField("longitude", 1);
+          rc.endGroup();
+          rc.endField("element", 0);
+          rc.endGroup();
+
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.startGroup();
+          rc.startField("latitude", 0);
+          rc.addDouble(0.0);
+          rc.endField("latitude", 0);
+          rc.startField("longitude", 1);
+          rc.addDouble(0.0);
+          rc.endField("longitude", 1);
+          rc.endGroup();
+          rc.endField("element", 0);
+          rc.endGroup();
+
+          rc.endField("list", 0);
+          rc.endGroup();
+
+          rc.endField("locations", 0);
+          rc.endMessage();
+        });
+
+    Schema location = record(
+        "element",
+        field("latitude", primitive(Schema.Type.DOUBLE)),
+        field("longitude", primitive(Schema.Type.DOUBLE)));
+
+    // without auto-detect, old behavior wraps repeated group in an extra "element" record,
+    // e.g. {"locations": [{"element": {"latitude": 0.0, ... }}]}
+    Schema elementRecord = record("list", field("element", location));
+    Schema oldSchema = record("AutoDetectThreeLevel", optionalField("locations", array(elementRecord)));
+    GenericRecord oldRecord = instance(
+        oldSchema,
+        "locations",
+        Arrays.asList(
+            instance(elementRecord, "element", instance(location, "latitude", 0.0, "longitude", 180.0)),
+            instance(elementRecord, "element", instance(location, "latitude", 0.0, "longitude", 0.0))));
+
+    Configuration nonAutoDetectConf = new Configuration(OLD_BEHAVIOR_CONF);
+    assertReaderContains(new AvroParquetReader<>(nonAutoDetectConf, test), oldSchema, oldRecord);
+
+    // with auto-detect, repeated group is represented correctly,
+    // e.g. {"locations": [{"latitude": 0.0, ... }]}
+    Schema newSchema = record("AutoDetectThreeLevel", optionalField("locations", array(location)));
+    GenericRecord newRecord = instance(
+        newSchema,
+        "locations",
+        Arrays.asList(
+            instance(location, "latitude", 0.0, "longitude", 180.0),
+            instance(location, "latitude", 0.0, "longitude", 0.0)));
+
+    assertReaderContains(autoDetectReader(test), newSchema, newRecord);
+  }
+
+  @Test
+  public void testAutoDetectThreeLevelListEncodingWithProjection() throws Exception {
+    Path test = writeDirect(
+        "message AutoDetectThreeLevelProjection {"
+            + "  required int64 year;"
+            + "  optional group locations (LIST) {"
+            + "    repeated group list {"
+            + "      required group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("year", 0);
+          rc.addLong(2010L);
+          rc.endField("year", 0);
+
+          rc.startField("locations", 1);
+
+          rc.startGroup();
+          rc.startField("list", 0);
+
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.startGroup();
+          rc.startField("latitude", 0);
+          rc.addDouble(0.0);
+          rc.endField("latitude", 0);
+          rc.startField("longitude", 1);
+          rc.addDouble(180.0);
+          rc.endField("longitude", 1);
+          rc.endGroup();
+          rc.endField("element", 0);
+          rc.endGroup();
+
+          rc.endField("list", 0);
+          rc.endGroup();
+
+          rc.endField("locations", 1);
+          rc.endMessage();
+        });
+
+    Schema location = record(
+        "element",
+        field("latitude", primitive(Schema.Type.DOUBLE)),
+        field("longitude", primitive(Schema.Type.DOUBLE)));
+
+    Schema projectionSchema = record("AutoDetectThreeLevelProjection", optionalField("locations", array(location)));
+
+    Configuration autoDetectConf = new Configuration(AUTO_DETECT_CONF);
+    AvroReadSupport.setRequestedProjection(autoDetectConf, projectionSchema);
+
+    GenericRecord expectedRecord = instance(
+        projectionSchema, "locations", Arrays.asList(instance(location, "latitude", 0.0, "longitude", 180.0)));
+
+    assertReaderContains(new AvroParquetReader<>(autoDetectConf, test), projectionSchema, expectedRecord);
+  }
+
+  @Test
+  public void testAutoDetectTwoLevelListWithArrayGroupName() throws Exception {
+    // A 2-level list where the repeated group is named "array" (a standard
+    // backward-compat name). The "array" name causes isElementType to always
+    // treat the repeated group as the element, regardless of the list structure flag.
+    Path test = writeDirect(
+        "message TwoLevelListWithArrayGroup {"
+            + "  optional group list (LIST) {"
+            + "    repeated group array {"
+            + "      required int32 str;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("list", 0);
+
+          rc.startGroup();
+          rc.startField("array", 0);
+
+          rc.startGroup();
+          rc.startField("str", 0);
+          rc.addInteger(34);
+          rc.endField("str", 0);
+          rc.endGroup();
+
+          rc.startGroup();
+          rc.startField("str", 0);
+          rc.addInteger(35);
+          rc.endField("str", 0);
+          rc.endGroup();
+
+          rc.endField("array", 0);
+          rc.endGroup();
+
+          rc.endField("list", 0);
+          rc.endMessage();
+        });
+
+    // "array"-named group is always treated as the element type
+    Schema elementRecord = record("array", field("str", primitive(Schema.Type.INT)));
+    Schema expectedSchema =
+        record("TwoLevelListWithArrayGroup", optionalField("list", array(elementRecord)));
+    GenericRecord expectedRecord = instance(
+        expectedSchema,
+        "list",
+        Arrays.asList(instance(elementRecord, "str", 34), instance(elementRecord, "str", 35)));
+
+    // all three modes produce the same result
+    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(new AvroParquetReader<>(newAutoDetectConf(), test), expectedSchema, expectedRecord);
+  }
+
+  @Test
+  public void testAutoDetectTwoLevelListWithArrayGroupAndElementChild() throws Exception {
+    // A 2-level list where the repeated group is named "array" and its single
+    // child is named "element". The "array" group name dominates: isElementType
+    // treats the group as the element regardless of the child's name.
+    Path test = writeDirect(
+        "message TwoLevelListWithArrayGroupAndElementChild {"
+            + "  optional group my_list (LIST) {"
+            + "    repeated group array {"
+            + "      required int32 element;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("my_list", 0);
+
+          rc.startGroup();
+          rc.startField("array", 0);
+
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(34);
+          rc.endField("element", 0);
+          rc.endGroup();
+
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(35);
+          rc.endField("element", 0);
+          rc.endGroup();
+
+          rc.endField("array", 0);
+          rc.endGroup();
+
+          rc.endField("my_list", 0);
+          rc.endMessage();
+        });
+
+    // "array"-named group is always the element, even with child named "element"
+    Schema elementRecord = record("array", field("element", primitive(Schema.Type.INT)));
+    Schema expectedSchema = record(
+        "TwoLevelListWithArrayGroupAndElementChild", optionalField("my_list", array(elementRecord)));
+    GenericRecord expectedRecord = instance(
+        expectedSchema,
+        "my_list",
+        Arrays.asList(instance(elementRecord, "element", 34), instance(elementRecord, "element", 35)));
+
+    // all three modes produce the same result
+    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(new AvroParquetReader<>(newAutoDetectConf(), test), expectedSchema, expectedRecord);
+  }
+
+  @Test
+  public void testAutoDetectTwoLevelRepeatedPrimitive() throws Exception {
+    // The most basic backward-compat rule: a repeated primitive inside a LIST
+    // group is the element type directly, producing a required list of
+    // non-nullable elements.
+    Path test = writeDirect(
+        "message TwoLevelRepeatedPrimitive {"
+            + "  required group my_list (LIST) {"
+            + "    repeated int32 element;"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("my_list", 0);
+
+          rc.startGroup();
+          rc.startField("element", 0);
+
+          rc.addInteger(34);
+          rc.addInteger(35);
+          rc.addInteger(36);
+
+          rc.endField("element", 0);
+          rc.endGroup();
+
+          rc.endField("my_list", 0);
+          rc.endMessage();
+        });
+
+    Schema expectedSchema =
+        record("TwoLevelRepeatedPrimitive", field("my_list", array(Schema.create(Schema.Type.INT))));
+    GenericRecord expectedRecord = instance(expectedSchema, "my_list", Arrays.asList(34, 35, 36));
+
+    // all three modes produce the same result for repeated primitives
+    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(new AvroParquetReader<>(newAutoDetectConf(), test), expectedSchema, expectedRecord);
+  }
+
+  private static Configuration newAutoDetectConf() {
+    Configuration conf = new Configuration();
+    conf.setBoolean(AvroReadSupport.AUTO_DETECT_LIST_STRUCTURE, true);
+    return conf;
+  }
+
+  public <T extends IndexedRecord> AvroParquetReader<T> autoDetectReader(Path path) throws IOException {
+    return new AvroParquetReader<T>(AUTO_DETECT_CONF, path);
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(Path path) throws IOException {
