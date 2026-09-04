@@ -20,10 +20,10 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,9 +44,8 @@ import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for GH-3487: Verify that PageReadStore buffers are properly released when
@@ -69,8 +68,8 @@ public class TestParquetFileReaderBufferLeak {
 
   private static final Configuration CONF = new Configuration();
 
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   /**
    * Helper: write a parquet file with multiple row groups using the high-level writer API.
@@ -80,8 +79,7 @@ public class TestParquetFileReaderBufferLeak {
   private Path writeMultiRowGroupFile(int numRecords) throws IOException {
     GroupWriteSupport.setSchema(SCHEMA, CONF);
 
-    File testFile = temp.newFile();
-    testFile.delete();
+    File testFile = tempDir.resolve("test.parquet").toFile();
     Path path = new Path(testFile.toURI());
 
     try (TrackingByteBufferAllocator writeAllocator =
@@ -123,7 +121,7 @@ public class TestParquetFileReaderBufferLeak {
   public void testReadNextRowGroupReleasesBuffersOfPreviousRowGroup() throws Exception {
     Path path = writeMultiRowGroupFile(500);
     int expectedRowGroups = getRowGroupCount(path);
-    assertTrue("Expected multiple row groups but got " + expectedRowGroups, expectedRowGroups > 1);
+    assertTrue(expectedRowGroups > 1, "Expected multiple row groups but got " + expectedRowGroups);
 
     try (TrackingByteBufferAllocator readAllocator =
         TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
@@ -153,7 +151,7 @@ public class TestParquetFileReaderBufferLeak {
   public void testCloseReleasesCurrentRowGroupBuffers() throws Exception {
     Path path = writeMultiRowGroupFile(500);
     int expectedRowGroups = getRowGroupCount(path);
-    assertTrue("Expected multiple row groups but got " + expectedRowGroups, expectedRowGroups > 1);
+    assertTrue(expectedRowGroups > 1, "Expected multiple row groups but got " + expectedRowGroups);
 
     try (TrackingByteBufferAllocator readAllocator =
         TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
@@ -179,7 +177,7 @@ public class TestParquetFileReaderBufferLeak {
   public void testReadNextFilteredRowGroupReleasesBuffersWhenNoFilter() throws Exception {
     Path path = writeMultiRowGroupFile(500);
     int expectedRowGroups = getRowGroupCount(path);
-    assertTrue("Expected multiple row groups but got " + expectedRowGroups, expectedRowGroups > 1);
+    assertTrue(expectedRowGroups > 1, "Expected multiple row groups but got " + expectedRowGroups);
 
     try (TrackingByteBufferAllocator readAllocator =
         TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
@@ -209,7 +207,7 @@ public class TestParquetFileReaderBufferLeak {
   public void testReadNextFilteredRowGroupReleasesBuffersWithFilter() throws Exception {
     Path path = writeMultiRowGroupFile(500);
     int expectedRowGroups = getRowGroupCount(path);
-    assertTrue("Expected multiple row groups but got " + expectedRowGroups, expectedRowGroups > 1);
+    assertTrue(expectedRowGroups > 1, "Expected multiple row groups but got " + expectedRowGroups);
 
     try (TrackingByteBufferAllocator readAllocator =
         TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
@@ -245,7 +243,7 @@ public class TestParquetFileReaderBufferLeak {
   public void testReadNextFilteredRowGroupWithColumnIndexFilteringReleasesBuffers() throws Exception {
     Path path = writeMultiRowGroupFile(500);
     int totalRowGroups = getRowGroupCount(path);
-    assertTrue("Expected multiple row groups but got " + totalRowGroups, totalRowGroups > 1);
+    assertTrue(totalRowGroups > 1, "Expected multiple row groups but got " + totalRowGroups);
 
     try (TrackingByteBufferAllocator readAllocator =
         TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
@@ -269,7 +267,7 @@ public class TestParquetFileReaderBufferLeak {
           rowGroupCount++;
         }
         // At least some row groups should be returned (those containing id < 10)
-        assertTrue("Expected at least 1 row group returned", rowGroupCount >= 1);
+        assertTrue(rowGroupCount >= 1, "Expected at least 1 row group returned");
       }
     }
   }
@@ -282,7 +280,7 @@ public class TestParquetFileReaderBufferLeak {
   public void testPartialReadThenCloseReleasesBuffers() throws Exception {
     Path path = writeMultiRowGroupFile(500);
     int expectedRowGroups = getRowGroupCount(path);
-    assertTrue("Expected at least 3 row groups but got " + expectedRowGroups, expectedRowGroups >= 3);
+    assertTrue(expectedRowGroups >= 3, "Expected at least 3 row groups but got " + expectedRowGroups);
 
     try (TrackingByteBufferAllocator readAllocator =
         TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
