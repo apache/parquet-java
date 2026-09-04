@@ -32,7 +32,7 @@ source "${LIBS_DIR}/_nexus.sh"
 source "${LIBS_DIR}/_maven.sh"
 source "${LIBS_DIR}/_svn.sh"
 
-trap 'rm -f .release-settings.xml' EXIT
+trap 'rm -f "${settings_file:-}"' EXIT
 
 # ---------------------------------------------------------------------------
 # Usage
@@ -255,7 +255,7 @@ step_summary "Created tag \`${rc_tag}\` at \`${tag_commit}\`"
 step_summary ""
 step_summary "### Nexus Deployment"
 
-settings_file=".release-settings.xml"
+settings_file=$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/parquet-release-settings.xml")
 generate_maven_settings "${settings_file}"
 
 maven_deploy "${settings_file}"
