@@ -24,7 +24,6 @@ import java.io.ObjectStreamException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
@@ -590,7 +589,7 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
         throw new IllegalArgumentException("length must be 2");
       }
 
-      return value.order(ByteOrder.LITTLE_ENDIAN).getShort(offset);
+      return (short) (((value.get(offset + 1) & 0xff) << 8) | (value.get(offset) & 0xff));
     }
 
     @Override
