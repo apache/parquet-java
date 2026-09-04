@@ -385,12 +385,7 @@ public class CodecFactory implements CompressionCodecFactory {
         break;
       case GZIP:
         validateGzipLevel(level);
-        // Store the enum constant name rather than using Configuration#setEnum, which persists
-        // Enum#toString(). Hadoop reads this back via Configuration#getEnum -> Enum#valueOf, which
-        // requires the constant name. In some Hadoop builds ZlibCompressor.CompressionLevel
-        // overrides toString() to return the numeric level (e.g. "5"), so setEnum would write a
-        // value that valueOf cannot resolve, throwing "No enum constant ...CompressionLevel.5".
-        levelConf.set(GZIP_COMPRESS_LEVEL, zlibCompressionLevel(level).name());
+        levelConf.setEnum(GZIP_COMPRESS_LEVEL, zlibCompressionLevel(level));
         break;
       case BROTLI:
         validateBrotliLevel(level);
