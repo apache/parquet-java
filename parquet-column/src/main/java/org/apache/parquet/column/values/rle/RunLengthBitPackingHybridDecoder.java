@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
@@ -35,7 +36,7 @@ import org.slf4j.LoggerFactory;
 public class RunLengthBitPackingHybridDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridDecoder.class);
 
-  private static enum MODE {
+  private enum MODE {
     RLE,
     PACKED
   }
@@ -47,7 +48,12 @@ public class RunLengthBitPackingHybridDecoder {
   private MODE mode;
   private int currentCount;
   private int currentValue;
-  private int[] currentBuffer;
+  // Reused across readNext() calls to avoid per-run allocations on the hot decode path.
+  // packedRunSize tracks the valid range of currentBuffer for the current run (the buffer
+  // may be larger than the run when reused across shorter runs).
+  private int[] currentBuffer = new int[0];
+  private int packedRunSize;
+  private byte[] packedBuffer = new byte[0];
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     LOG.debug("decoding bitWidth {}", bitWidth);
@@ -69,7 +75,7 @@ public class RunLengthBitPackingHybridDecoder {
         result = currentValue;
         break;
       case PACKED:
-        result = currentBuffer[currentBuffer.length - 1 - currentCount];
+        result = currentBuffer[packedRunSize - 1 - currentCount];
         break;
       default:
         throw new ParquetDecodingException("not a valid mode " + mode);
@@ -90,13 +96,32 @@ public class RunLengthBitPackingHybridDecoder {
       case PACKED:
         int numGroups = header >>> 1;
         currentCount = numGroups * 8;
+        packedRunSize = currentCount;
         LOG.debug("reading {} values BIT PACKED", currentCount);
-        currentBuffer = new int[currentCount]; // TODO: reuse a buffer
-        byte[] bytes = new byte[numGroups * bitWidth];
+        if (currentBuffer.length < currentCount) {
+          currentBuffer = new int[currentCount];
+        }
+        final int packedLen = numGroups * bitWidth;
+        if (packedBuffer.length < packedLen) {
+          packedBuffer = new byte[packedLen];
+        }
+        final byte[] bytes = packedBuffer;
         // At the end of the file RLE data though, there might not be that many bytes left.
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
         bytesToRead = Math.min(bytesToRead, in.available());
-        new DataInputStream(in).readFully(bytes, 0, bytesToRead);
+        int off = 0;
+        while (off < bytesToRead) {
+          int r = in.read(bytes, off, bytesToRead - off);
+          if (r < 0) {
+            throw new EOFException();
+          }
+          off += r;
+        }
+        // Zero-fill any tail truncated by end-of-stream — the pre-reuse code got this
+        // implicitly from `new byte[]`; the reused buffer may hold stale bytes.
+        if (bytesToRead < packedLen) {
+          Arrays.fill(bytes, bytesToRead, packedLen, (byte) 0);
+        }
         for (int valueIndex = 0, byteIndex = 0;
             valueIndex < currentCount;
             valueIndex += 8, byteIndex += bitWidth) {
