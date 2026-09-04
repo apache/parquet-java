@@ -338,7 +338,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       }
     }
 
-    private void releaseBuffers() {
+    @Override
+    public void close() {
       releaser.close();
     }
   }
@@ -415,7 +416,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     // Wrap each reader + the releaser as an AutoCloseable so AutoCloseables.uncheckedClose()
     // releases every resource even if one fails, and aggregates failures via suppressed exceptions
     List<AutoCloseable> toClose = new ArrayList<>(readers.size() + 1);
-    readers.values().forEach(reader -> toClose.add(reader::releaseBuffers));
+    readers.values().forEach(reader -> toClose.add(reader));
     toClose.add(releaser);
     AutoCloseables.uncheckedClose(toClose);
   }
