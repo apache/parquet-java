@@ -34,6 +34,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  * <p>Per-vector format:
  * <pre>
  * PforVectorInfo (11B): frame_of_reference(8) + bit_width(1) + num_exceptions(2)
+ * StartValue: 8 bytes, only when bit 7 of bit_width is set
  * PackedValues: ceil(N * bit_width / 8) bytes
  * ExceptionPositions: num_exceptions * 2 bytes
  * ExceptionValues: num_exceptions * 8 bytes
@@ -44,7 +45,7 @@ public class PforValuesReaderForLong extends PforValuesReader {
   private long[] decodedValues;
 
   // Reusable per-vector decode buffers
-  private long[] deltasBuffer;
+  private long[] residualsBuffer;
   private int[] excPositionsBuffer;
   private byte[] unpackPadBuf;
   private long[] unpackTempBuf;
@@ -56,7 +57,7 @@ public class PforValuesReaderForLong extends PforValuesReader {
   @Override
   protected void allocateDecodedBuffer(int capacity) {
     this.decodedValues = new long[capacity];
-    this.deltasBuffer = new long[capacity];
+    this.residualsBuffer = new long[capacity];
     this.excPositionsBuffer = new int[capacity];
     this.unpackPadBuf = new byte[Long.SIZE]; // max bit width = 64 bytes
     this.unpackTempBuf = new long[8];
@@ -80,26 +81,37 @@ public class PforValuesReaderForLong extends PforValuesReader {
 
     // Read PforVectorInfo (11 bytes)
     long frameOfReference = getLongLE(vectorsData, pos);
-    int bitWidth = vectorsData.get(pos + 8) & BIT_WIDTH_MASK;
+    int bitWidthByte = vectorsData.get(pos + 8) & 0xFF;
+    int bitWidth = bitWidthByte & BIT_WIDTH_MASK;
+    boolean delta = (bitWidthByte & DELTA_FLAG) != 0;
     int numExceptions = getShortLE(vectorsData, pos + 9) & 0xFFFF;
     pos += INT64_VECTOR_INFO_SIZE;
+
+    // A delta vector stores its own first value, which is what lets it decode without
+    // the vector before it -- the property the whole mode exists for.
+    long startValue = 0;
+    if (delta) {
+      checkStartValueRoom(pos);
+      startValue = getLongLE(vectorsData, pos);
+      pos += INT64_VALUE_BYTE_WIDTH;
+    }
     checkVectorInfo(pos, bitWidth, numExceptions, vectorLen);
 
-    // Unpack bit-packed deltas into reusable buffer
+    // Unpack bit-packed residuals into reusable buffer
     if (bitWidth > 0) {
-      pos = unpackLongsWithBytePacker(vectorsData, pos, deltasBuffer, vectorLen, bitWidth);
+      pos = unpackLongsWithBytePacker(vectorsData, pos, residualsBuffer, vectorLen, bitWidth);
     } else {
       for (int i = 0; i < vectorLen; i++) {
-        deltasBuffer[i] = 0;
+        residualsBuffer[i] = 0;
       }
     }
 
-    // Add frame of reference to reconstruct values
+    // Add frame of reference
     for (int i = 0; i < vectorLen; i++) {
-      decodedValues[i] = deltasBuffer[i] + frameOfReference;
+      decodedValues[i] = residualsBuffer[i] + frameOfReference;
     }
 
-    // Overwrite exception slots with their original values
+    // Overwrite exception slots with their unreduced values
     if (numExceptions > 0) {
       for (int e = 0; e < numExceptions; e++) {
         int position = getShortLE(vectorsData, pos) & 0xFFFF;
@@ -110,6 +122,18 @@ public class PforValuesReaderForLong extends PforValuesReader {
       for (int e = 0; e < numExceptions; e++) {
         decodedValues[excPositionsBuffer[e]] = getLongLE(vectorsData, pos);
         pos += Long.BYTES;
+      }
+    }
+
+    // Everything above produced differences in a delta vector, so sum them. This has to
+    // come after the patch: an exception there is a difference like any other, and
+    // summing first would carry its zero placeholder into every value that follows it.
+    // The addition wraps, matching how the writer took the differences.
+    if (delta) {
+      long acc = startValue;
+      for (int i = 0; i < vectorLen; i++) {
+        acc += decodedValues[i];
+        decodedValues[i] = acc;
       }
     }
   }

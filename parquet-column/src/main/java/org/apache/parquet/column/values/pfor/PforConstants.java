@@ -27,9 +27,15 @@ import org.apache.parquet.Preconditions;
  * <ol>
  *   <li>Subtracting the minimum value (Frame of Reference)</li>
  *   <li>Choosing an optimal bit width via a cost model</li>
- *   <li>Bit-packing the deltas at the chosen width</li>
+ *   <li>Bit-packing the residuals at the chosen width</li>
  *   <li>Storing outlier values (exceptions) separately with their positions</li>
  * </ol>
+ *
+ * <p>A writer may first replace the values of a vector with the differences
+ * between successive values -- the delta mode -- and run all of the above on
+ * those instead. The choice is recorded per vector in bit 7 of the bit width
+ * byte, and such a vector carries its own first value so that it still decodes
+ * without the vector before it.
  */
 public final class PforConstants {
 
@@ -52,9 +58,23 @@ public final class PforConstants {
   // Maximum exceptions per vector (uint16)
   public static final int MAX_EXCEPTIONS = 65535;
 
-  // The bit width occupies bits 0..6 of its byte; bit 7 is reserved and must be
-  // masked off before the width is used or range-checked.
+  // The bit width occupies bits 0..6 of its byte and must be masked off before it
+  // is used or range-checked; bit 7 says the vector holds differences.
+  //
+  // The width takes seven bits rather than six because its range is 0..64
+  // inclusive, and 64 does not fit in six: masking with six bits would read an
+  // INT64 vector whose residuals need the full 64 bits as width 0, which has no
+  // packed bytes and no exceptions, so the misreading looks like a constant
+  // vector and neither a size mismatch nor an error reveals it.
   public static final int BIT_WIDTH_MASK = 0x7F;
+  public static final int DELTA_FLAG = 0x80;
+
+  // A delta vector stores its first value between its info block and its packed
+  // residuals, so its header is that much longer.
+  public static int vectorInfoSize(int valueByteWidth, boolean delta) {
+    int base = valueByteWidth == INT32_VALUE_BYTE_WIDTH ? INT32_VECTOR_INFO_SIZE : INT64_VECTOR_INFO_SIZE;
+    return delta ? base + valueByteWidth : base;
+  }
 
   // Per-vector metadata sizes in bytes
   // INT32: frame_of_reference(4) + bit_width(1) + num_exceptions(2) = 7

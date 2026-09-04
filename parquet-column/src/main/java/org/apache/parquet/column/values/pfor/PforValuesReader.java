@@ -139,7 +139,8 @@ abstract class PforValuesReader extends ValuesReader {
    * that remain. All three come off the wire and size every read and write that
    * follows, including the writes into the fixed-size decode buffers.
    *
-   * @param pos position of the packed values, that is, just past the vector info
+   * @param pos position of the packed values, that is, just past the vector info and,
+   *     in a delta vector, just past the start value that follows it
    */
   protected void checkVectorInfo(int pos, int bitWidth, int numExceptions, int vectorLen) {
     int maxBitWidth = valueByteWidth * Byte.SIZE;
@@ -155,6 +156,23 @@ abstract class PforValuesReader extends ValuesReader {
     if (needed > remaining) {
       throw new ParquetDecodingException(
           "PFOR vector needs " + needed + " bytes but only " + remaining + " remain");
+    }
+  }
+
+  /**
+   * Checks that a delta vector's start value is inside the page.
+   *
+   * <p>These bytes need a bound of their own because the header bound was satisfied
+   * before the delta flag was known. Without it the start value is read from past the
+   * end of the page, and the residual bound is then checked from an offset that has
+   * already moved past the end.
+   *
+   * @param pos position of the start value, that is, just past the vector info
+   */
+  protected void checkStartValueRoom(int pos) {
+    if (pos + valueByteWidth > vectorsData.limit()) {
+      throw new ParquetDecodingException("PFOR delta vector needs " + valueByteWidth
+          + " bytes for its start value but only " + (vectorsData.limit() - pos) + " remain");
     }
   }
 

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.pfor;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -132,6 +131,85 @@ public class PforAdversarialTest {
         writer.close();
       }
     }
+  }
+
+  // A delta vector has to be worth choosing before the writer will write one: over 64
+  // values a step of 1000 takes the width from 16 bits to 10, which more than pays for
+  // the 32-bit start value.
+  private static final int DELTA_VECTOR_LEN = 64;
+
+  private static byte[] deltaIntPage() throws Exception {
+    PforValuesWriter.IntPforValuesWriter writer = null;
+    try {
+      writer = new PforValuesWriter.IntPforValuesWriter(
+          512, 512, new DirectByteBufferAllocator(), DELTA_VECTOR_LEN);
+      for (int i = 0; i < DELTA_VECTOR_LEN; i++) {
+        writer.writeInteger(1_000_000 + i * 1000);
+      }
+      return requireDeltaVector(toBytes(writer.getBytes()), PforConstants.INT32_VECTOR_INFO_SIZE);
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  private static byte[] deltaLongPage() throws Exception {
+    PforValuesWriter.LongPforValuesWriter writer = null;
+    try {
+      writer = new PforValuesWriter.LongPforValuesWriter(
+          512, 512, new DirectByteBufferAllocator(), DELTA_VECTOR_LEN);
+      for (int i = 0; i < DELTA_VECTOR_LEN; i++) {
+        writer.writeLong(1_700_000_000_000L + (long) i * 100_000);
+      }
+      return requireDeltaVector(toBytes(writer.getBytes()), PforConstants.INT64_VECTOR_INFO_SIZE);
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  // A delta vector with one difference far outside the cluster, so it carries an
+  // exception whose position the tests below can corrupt.
+  private static byte[] deltaOutlierIntPage() throws Exception {
+    PforValuesWriter.IntPforValuesWriter writer = null;
+    try {
+      writer = new PforValuesWriter.IntPforValuesWriter(
+          512, 512, new DirectByteBufferAllocator(), DELTA_VECTOR_LEN);
+      for (int i = 0; i < DELTA_VECTOR_LEN; i++) {
+        writer.writeInteger(500 + i * 3 + (i >= 40 ? 5_000_000 : 0));
+      }
+      return requireDeltaVector(toBytes(writer.getBytes()), PforConstants.INT32_VECTOR_INFO_SIZE);
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
+
+  // The tests that corrupt a delta vector only mean something if the writer chose the
+  // mode in the first place.
+  private static byte[] requireDeltaVector(byte[] page, int vectorInfoSize) {
+    int bitWidthByte = page[bitWidthOffset(vectorInfoSize)] & 0xFF;
+    if ((bitWidthByte & PforConstants.DELTA_FLAG) == 0) {
+      fail("expected the writer to choose the delta mode for this vector");
+    }
+    return page;
+  }
+
+  private static int numExceptionsOfFirstVector(byte[] page) {
+    return shortLE(page, numExceptionsOffset(PforConstants.INT32_VECTOR_INFO_SIZE));
+  }
+
+  // Past the vector info, the start value, and the packed residuals.
+  private static int deltaExceptionPositionOffset(byte[] page, int vectorInfoSize) {
+    int bitWidth = page[bitWidthOffset(vectorInfoSize)] & PforConstants.BIT_WIDTH_MASK;
+    int packedBytes = (DELTA_VECTOR_LEN * bitWidth + 7) / 8;
+    return VECTOR_START + vectorInfoSize + Integer.BYTES + packedBytes;
   }
 
   private static byte[] toBytes(BytesInput bytes) throws Exception {
@@ -385,19 +463,57 @@ public class PforAdversarialTest {
     assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, OUTLIER_VECTOR_LEN));
   }
 
-  // Bit 7 of the bit width byte is reserved, so a writer that sets it must not
-  // change what a reader decodes.
+  // Bit 7 of the bit width byte is the delta flag, so a reader cannot ignore it: with
+  // the bit set, the four bytes after the vector info are the start value and the
+  // residuals begin further along. This page has no room for that, and saying so is
+  // the only safe reading -- decoding it as if the bit were absent would silently
+  // return values the writer never wrote.
   @Test
-  public void ignoresReservedBitInBitWidth() throws Exception {
+  public void rejectsDeltaFlagOnAVectorWithoutRoomForIt() throws Exception {
     byte[] page = outlierIntPage();
     int at = bitWidthOffset(PforConstants.INT32_VECTOR_INFO_SIZE);
-    byte[] withReservedBit = mutate(page, at, (byte) (page[at] | 0x80));
+    byte[] withDeltaFlag = mutate(page, at, (byte) (page[at] | PforConstants.DELTA_FLAG));
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(withDeltaFlag, OUTLIER_VECTOR_LEN));
+  }
 
-    PforValuesReaderForInt reader = new PforValuesReaderForInt();
-    reader.initFromPage(OUTLIER_VECTOR_LEN, ByteBufferInputStream.wrap(ByteBuffer.wrap(withReservedBit)));
-    for (int expected : OUTLIER_INTS) {
-      assertEquals(expected, reader.readInteger());
-    }
+  // A delta vector's start value is bounded separately from its residuals, because the
+  // header bound was checked before the flag was known.
+  @Test
+  public void rejectsDeltaVectorWithTruncatedStartValue() throws Exception {
+    byte[] page = deltaIntPage();
+    // Keep the vector info and two of the start value's four bytes.
+    byte[] bad = truncate(page, VECTOR_START + PforConstants.INT32_VECTOR_INFO_SIZE + 2);
+    ParquetDecodingException e =
+        assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, DELTA_VECTOR_LEN));
+    assertTrue(e.getMessage(), e.getMessage().contains("start value"));
+  }
+
+  @Test
+  public void rejectsDeltaVectorWithTruncatedStartValueLong() throws Exception {
+    byte[] page = deltaLongPage();
+    byte[] bad = truncate(page, VECTOR_START + PforConstants.INT64_VECTOR_INFO_SIZE + 3);
+    ParquetDecodingException e =
+        assertThrows(ParquetDecodingException.class, () -> initLongReader(bad, DELTA_VECTOR_LEN));
+    assertTrue(e.getMessage(), e.getMessage().contains("start value"));
+  }
+
+  // Nothing stops a corrupt page from claiming a width the value type cannot hold, and
+  // the flag must not smuggle one past the check.
+  @Test
+  public void rejectsBitWidthAboveValueWidthInADeltaVector() throws Exception {
+    byte[] page = deltaIntPage();
+    int at = bitWidthOffset(PforConstants.INT32_VECTOR_INFO_SIZE);
+    byte[] bad = mutate(page, at, (byte) (PforConstants.DELTA_FLAG | 33));
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, DELTA_VECTOR_LEN));
+  }
+
+  @Test
+  public void rejectsExceptionPositionPastEndOfDeltaVector() throws Exception {
+    byte[] page = deltaOutlierIntPage();
+    assertTrue("the outlier is stored as an exception", numExceptionsOfFirstVector(page) >= 1);
+    int at = deltaExceptionPositionOffset(page, PforConstants.INT32_VECTOR_INFO_SIZE);
+    byte[] bad = putShortLE(page, at, 100);
+    assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, DELTA_VECTOR_LEN));
   }
 
   // ---------------------------------------------------------------------------

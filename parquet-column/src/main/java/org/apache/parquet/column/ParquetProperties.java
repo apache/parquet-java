@@ -51,6 +51,7 @@ public class ParquetProperties {
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
   public static final boolean DEFAULT_IS_PFOR_ENABLED = false;
+  public static final boolean DEFAULT_IS_PFOR_DELTA_ENABLED = true;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -134,6 +135,7 @@ public class ParquetProperties {
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
   private final ColumnProperty<Boolean> pforEnabled;
+  private final ColumnProperty<Boolean> pforDeltaEnabled;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
@@ -167,6 +169,7 @@ public class ParquetProperties {
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
     this.pforEnabled = builder.pforEnabled.build();
+    this.pforDeltaEnabled = builder.pforDeltaEnabled.build();
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
@@ -277,6 +280,17 @@ public class ParquetProperties {
       default:
         return false;
     }
+  }
+
+  /**
+   * Check whether a PFOR writer may encode a vector as the differences between its
+   * successive values. Only consulted where PFOR itself is enabled.
+   *
+   * @param column the column descriptor
+   * @return true if the PFOR delta mode is enabled for this column
+   */
+  public boolean isPforDeltaEnabled(ColumnDescriptor column) {
+    return pforDeltaEnabled.getValue(column);
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -437,6 +451,7 @@ public class ParquetProperties {
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
     private final ColumnProperty.Builder<Boolean> pforEnabled;
+    private final ColumnProperty.Builder<Boolean> pforDeltaEnabled;
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
@@ -449,6 +464,7 @@ public class ParquetProperties {
                   ? ByteStreamSplitMode.FLOATING_POINT
                   : ByteStreamSplitMode.NONE);
       pforEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_PFOR_ENABLED);
+      pforDeltaEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_PFOR_DELTA_ENABLED);
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
@@ -480,6 +496,7 @@ public class ParquetProperties {
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
       this.pforEnabled = ColumnProperty.builder(toCopy.pforEnabled);
+      this.pforDeltaEnabled = ColumnProperty.builder(toCopy.pforDeltaEnabled);
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
@@ -577,6 +594,32 @@ public class ParquetProperties {
      */
     public Builder withPforEncoding(String columnPath, boolean enable) {
       this.pforEnabled.withValue(columnPath, enable);
+      return this;
+    }
+
+    /**
+     * Enable or disable the PFOR delta mode, in which a vector may be encoded as the
+     * differences between its successive values rather than as the values. Enabled by
+     * default: the writer costs both and keeps the cheaper, per vector, so leaving it on
+     * cannot make a page larger than leaving it off, only slower to write.
+     *
+     * @param enable whether the PFOR delta mode should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withPforDeltaEncoding(boolean enable) {
+      this.pforDeltaEnabled.withDefaultValue(enable);
+      return this;
+    }
+
+    /**
+     * Enable or disable the PFOR delta mode for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enable     whether the PFOR delta mode should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withPforDeltaEncoding(String columnPath, boolean enable) {
+      this.pforDeltaEnabled.withValue(columnPath, enable);
       return this;
     }
 
