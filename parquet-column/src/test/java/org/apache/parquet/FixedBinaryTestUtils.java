@@ -25,7 +25,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Some utility methods for generating Binary values that length if fixed (e.g. for FIXED_LEN_BYTE_ARRAY or INT96).

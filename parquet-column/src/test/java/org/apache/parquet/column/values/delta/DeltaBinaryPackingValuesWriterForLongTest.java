@@ -29,8 +29,8 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class DeltaBinaryPackingValuesWriterForLongTest {
   DeltaBinaryPackingValuesReader reader;
@@ -39,7 +39,7 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
   private ValuesWriter writer;
   private Random random;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;

@@ -21,9 +21,9 @@ package org.apache.parquet.hadoop;
 import static java.lang.Thread.sleep;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -48,10 +48,8 @@ import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestInputOutputFormatWithPadding {
   public static final String FILE_CONTENT = "" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
@@ -100,24 +98,18 @@ public class TestInputOutputFormatWithPadding {
     }
   }
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testBasicBehaviorWithPadding() throws Exception {
     HadoopOutputFile.getBlockFileSystems().add("file");
 
-    File inputFile = temp.newFile();
-    FileOutputStream out = new FileOutputStream(inputFile);
-    out.write(FILE_CONTENT.getBytes("UTF-8"));
-    out.close();
+    java.nio.file.Path inputFile = Files.createTempFile(tempDir, "input", ".txt");
+    Files.write(inputFile, FILE_CONTENT.getBytes(StandardCharsets.UTF_8));
 
-    File tempFolder = temp.newFolder();
-    tempFolder.delete();
-    Path tempPath = new Path(tempFolder.toURI());
-
-    File outputFolder = temp.newFile();
-    outputFolder.delete();
+    java.nio.file.Path parquetOut = tempDir.resolve("parquet-out");
+    java.nio.file.Path textOut = tempDir.resolve("text-out");
 
     Configuration conf = new Configuration();
     // May test against multiple hadoop versions
@@ -136,7 +128,7 @@ public class TestInputOutputFormatWithPadding {
     {
       Job writeJob = new Job(conf, "write");
       writeJob.setInputFormatClass(TextInputFormat.class);
-      TextInputFormat.addInputPath(writeJob, new Path(inputFile.toString()));
+      TextInputFormat.addInputPath(writeJob, new Path(inputFile.toUri()));
 
       writeJob.setOutputFormatClass(ParquetOutputFormat.class);
       writeJob.setMapperClass(Writer.class);
@@ -147,42 +139,43 @@ public class TestInputOutputFormatWithPadding {
       ParquetOutputFormat.setDictionaryPageSize(writeJob, 512);
       ParquetOutputFormat.setEnableDictionary(writeJob, true);
       ParquetOutputFormat.setMaxPaddingSize(writeJob, 1023); // always pad
-      ParquetOutputFormat.setOutputPath(writeJob, tempPath);
+      ParquetOutputFormat.setOutputPath(writeJob, new Path(parquetOut.toUri()));
 
       waitForJob(writeJob);
     }
 
     // make sure padding was added
-    File parquetFile = getDataFile(tempFolder);
     ParquetMetadata footer = ParquetFileReader.readFooter(
-        conf, new Path(parquetFile.toString()), ParquetMetadataConverter.NO_FILTER);
+        conf, new Path(getDataFile(parquetOut).toURI()), ParquetMetadataConverter.NO_FILTER);
     for (BlockMetaData block : footer.getBlocks()) {
-      Assert.assertTrue("Block should start at a multiple of the block size", block.getStartingPos() % 1024 == 0);
+      assertThat(block.getStartingPos() % 1024)
+          .as("Block should start at a multiple of the block size")
+          .isZero();
     }
 
     {
       Job readJob = new Job(conf, "read");
       readJob.setInputFormatClass(NoSplits.class);
       ParquetInputFormat.setReadSupportClass(readJob, GroupReadSupport.class);
-      TextInputFormat.addInputPath(readJob, tempPath);
+      TextInputFormat.addInputPath(readJob, new Path(parquetOut.toUri()));
 
       readJob.setOutputFormatClass(TextOutputFormat.class);
       readJob.setMapperClass(Reader.class);
       readJob.setNumReduceTasks(0); // write directly to text without reduce
-      TextOutputFormat.setOutputPath(readJob, new Path(outputFolder.toString()));
+      TextOutputFormat.setOutputPath(readJob, new Path(textOut.toUri()));
 
       waitForJob(readJob);
     }
 
-    File dataFile = getDataFile(outputFolder);
-    Assert.assertNotNull("Should find a data file", dataFile);
+    File dataFile = getDataFile(textOut);
+    assertThat(dataFile).as("Should find a data file").isNotNull();
 
     StringBuilder contentBuilder = new StringBuilder();
     for (String line : Files.readAllLines(dataFile.toPath(), StandardCharsets.UTF_8)) {
       contentBuilder.append(line);
     }
     String reconstructed = contentBuilder.toString();
-    Assert.assertEquals("Should match written file content", FILE_CONTENT, reconstructed);
+    assertThat(reconstructed).as("Should match written file content").isEqualTo(FILE_CONTENT);
 
     HadoopOutputFile.getBlockFileSystems().remove("file");
   }
@@ -197,17 +190,12 @@ public class TestInputOutputFormatWithPadding {
     }
   }
 
-  private File getDataFile(File location) {
-    File[] files = location.listFiles();
-    File dataFile = null;
-    if (files != null) {
-      for (File file : files) {
-        if (file.getName().startsWith("part-")) {
-          dataFile = file;
-          break;
-        }
-      }
+  private File getDataFile(java.nio.file.Path location) throws IOException {
+    try (var files = Files.list(location)) {
+      return files.filter(path -> path.getFileName().toString().startsWith("part-"))
+          .map(java.nio.file.Path::toFile)
+          .findFirst()
+          .orElse(null);
     }
-    return dataFile;
   }
 }

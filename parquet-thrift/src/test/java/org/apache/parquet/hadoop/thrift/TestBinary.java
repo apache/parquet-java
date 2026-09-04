@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop.thrift;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -38,22 +37,17 @@ import org.apache.parquet.schema.Types;
 import org.apache.parquet.thrift.ThriftParquetReader;
 import org.apache.parquet.thrift.ThriftParquetWriter;
 import org.apache.parquet.thrift.test.binary.StringAndBinary;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestBinary {
-  @Rule
-  public TemporaryFolder tempDir = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void testBinary() throws IOException {
     StringAndBinary expected = new StringAndBinary("test", ByteBuffer.wrap(new byte[] {-123, 20, 33}));
-    File temp = tempDir.newFile(UUID.randomUUID().toString());
-    temp.deleteOnExit();
-    temp.delete();
-
-    Path path = new Path(temp.getPath());
+    Path path = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
 
     ThriftParquetWriter<StringAndBinary> writer =
         new ThriftParquetWriter<StringAndBinary>(path, StringAndBinary.class, CompressionCodecName.SNAPPY);

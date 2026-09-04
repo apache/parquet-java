@@ -26,8 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TestParquetProperties {
 
@@ -38,7 +38,7 @@ public class TestParquetProperties {
   private ColumnDescriptor colB;
   private ColumnDescriptor colC;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     colA = SCHEMA.getColumns().get(0);
     colB = SCHEMA.getColumns().get(1);

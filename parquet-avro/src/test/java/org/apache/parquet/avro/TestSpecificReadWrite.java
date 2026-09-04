@@ -31,8 +31,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -43,34 +41,25 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Other tests exercise the use of Avro Generic, a dynamic data representation. This class focuses
  * on Avro Speific whose schemas are pre-compiled to POJOs with built in SerDe for faster serialization.
  */
-@RunWith(Parameterized.class)
 public class TestSpecificReadWrite {
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-      {false}, // use the new converters
-      {true}
-    }; // use the old converters
-    return Arrays.asList(data);
+  private static Configuration testConf(boolean compat) {
+    Configuration conf = new Configuration(false);
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+    return conf;
   }
 
-  private final Configuration testConf = new Configuration(false);
-
-  public TestSpecificReadWrite(boolean compat) {
-    this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
-  }
-
-  @Test
-  public void testCompatReadWriteSpecific() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testCompatReadWriteSpecific(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
@@ -82,8 +71,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testReadWriteSpecificWithDictionary() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testReadWriteSpecificWithDictionary(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
@@ -95,8 +86,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testFilterMatchesMultiple() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesMultiple(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
@@ -108,8 +101,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testFilterMatchesMultipleBlocks() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesMultipleBlocks(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(
         10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
     try (ParquetReader<Car> reader =
@@ -122,8 +117,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testFilterMatchesNoBlocks() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesNoBlocks(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(
         10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
     try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Bogus")))) {
@@ -131,8 +128,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testFilterMatchesFinalBlockOnly() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterMatchesFinalBlockOnly(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
@@ -163,8 +162,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testFilterWithDictionary() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterWithDictionary(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, true);
     try (ParquetReader<Car> reader =
         new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
@@ -174,8 +175,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testFilterOnSubAttribute() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testFilterOnSubAttribute(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
 
     ParquetReader<Car> reader =
@@ -192,8 +195,10 @@ public class TestSpecificReadWrite {
     assertThat(reader.read()).isNull();
   }
 
-  @Test
-  public void testProjection() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testProjection(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
 
@@ -232,8 +237,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testRepeatedRecordProjection() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testRepeatedRecordProjection(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
     Schema schema = Car.getClassSchema();
@@ -270,8 +277,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testAvroReadSchema() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAvroReadSchema(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
     AvroReadSupport.setAvroReadSchema(conf, NewCar.SCHEMA$);
@@ -288,8 +297,10 @@ public class TestSpecificReadWrite {
     }
   }
 
-  @Test
-  public void testParsesSpecificDataModel() throws IOException {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testParsesSpecificDataModel(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
     // SpecificRecord contains a logical type and will fail to decode unless its SpecificData model is parsed
     List<LogicalTypesTest> records = IntStream.range(0, 25)
         .mapToObj(i -> LogicalTypesTest.newBuilder()

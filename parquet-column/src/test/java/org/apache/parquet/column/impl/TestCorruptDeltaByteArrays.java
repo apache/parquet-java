@@ -44,7 +44,7 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class TestCorruptDeltaByteArrays {

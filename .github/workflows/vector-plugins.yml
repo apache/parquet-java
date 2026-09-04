@@ -28,6 +28,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -36,9 +38,11 @@ jobs:
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
 
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
@@ -49,8 +53,6 @@ jobs:
           bash dev/ci-before_install.sh
       - name: install
         run: |
-          EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
-          export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           # Spotless check uses palantir-java-format which relies on internal javac APIs
           # that are not available on all JDK versions (e.g. JDK 25+). Since the formatting
           # result is JDK-independent, running the check on JDK 17 alone is sufficient.
@@ -64,8 +66,6 @@ jobs:
           TEST_CODECS: ${{ matrix.codes }}
           JAVA_VERSION: ${{ matrix.java }}
         run: |
-          EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
-          export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
           # Spotless check uses palantir-java-format which relies on internal javac APIs
           # that are not available on all JDK versions (e.g. JDK 25+). Since the formatting
           # result is JDK-independent, running the check on JDK 17 alone is sufficient.

@@ -38,9 +38,9 @@ import org.apache.parquet.filter.ColumnPredicates;
 import org.apache.parquet.filter.ColumnRecordFilter;
 import org.apache.parquet.filter.RecordFilter;
 import org.apache.parquet.filter.UnboundRecordFilter;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,7 +125,7 @@ public class TestSpecificInputOutputFormat {
   final Path parquetPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/parquet");
   final Path outputPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/out");
 
-  @Before
+  @BeforeEach
   public void createParquetFile() throws Exception {
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
@@ -267,7 +267,7 @@ public class TestSpecificInputOutputFormat {
     }
   }
 
-  @After
+  @AfterEach
   public void deleteOutputFile() throws IOException {
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);

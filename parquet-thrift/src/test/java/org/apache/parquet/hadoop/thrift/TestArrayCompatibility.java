@@ -40,13 +40,13 @@ import org.apache.parquet.thrift.test.compat.ListOfSingleElementGroups;
 import org.apache.parquet.thrift.test.compat.Location;
 import org.apache.parquet.thrift.test.compat.SingleElementGroup;
 import org.apache.thrift.TBase;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
   @Test
-  @Ignore("Not yet supported")
+  @Disabled("Not yet supported")
   public void testUnannotatedListOfPrimitives() throws Exception {
     Path test = writeDirect(
         "message UnannotatedListOfPrimitives {" + "  repeated int32 list_of_ints;" + "}", new DirectWriter() {
@@ -66,7 +66,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
   }
 
   @Test
-  @Ignore("Not yet supported")
+  @Disabled("Not yet supported")
   public void testUnannotatedListOfGroups() throws Exception {
     Path test = writeDirect(
         "message UnannotatedListOfGroups {" + "  repeated group list_of_points {"

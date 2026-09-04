@@ -1147,6 +1147,7 @@ public class ParquetFileReader implements Closeable {
       return readNextRowGroup();
     }
 
+    closeCurrentRowGroup();
     if (rowGroup == null) {
       return null;
     }
@@ -1430,6 +1431,7 @@ public class ParquetFileReader implements Closeable {
       return readNextRowGroup();
     }
 
+    closeCurrentRowGroup();
     this.currentRowGroup = internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(currentBlock));
 
     // avoid re-reading bytes the dictionary reader is used after this call
@@ -1876,8 +1878,16 @@ public class ParquetFileReader implements Closeable {
         f.close();
       }
     } finally {
-      AutoCloseables.uncheckedClose(nextDictionaryReader, crcAllocator);
+      AutoCloseables.uncheckedClose(currentRowGroup, nextDictionaryReader, crcAllocator);
+      currentRowGroup = null;
       options.getCodecFactory().release();
+    }
+  }
+
+  private void closeCurrentRowGroup() {
+    if (currentRowGroup != null) {
+      currentRowGroup.close();
+      currentRowGroup = null;
     }
   }
 

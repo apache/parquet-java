@@ -27,9 +27,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test class of {@link ConcatenatingByteBufferCollector}.
@@ -38,12 +38,12 @@ public class TestConcatenatingByteBufferCollector {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -108,5 +108,73 @@ public class TestConcatenatingByteBufferCollector {
       cbaos.write(b);
     }
     return cbaos;
+  }
+
+  @Test
+  public void testWriteAllToReleasesProgressively() throws IOException {
+    byte[] result;
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.collect(BytesInput.from(bytes("Hello")));
+    collector.collect(BytesInput.from(bytes(" ")));
+    collector.collect(BytesInput.from(bytes("World")));
+
+    assertThat(collector.size()).isEqualTo(11);
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    collector.writeAllTo(baos);
+    result = baos.toByteArray();
+
+    // After writeAllTo, the collector should be empty (buffers released progressively)
+    assertThat(collector.size()).isEqualTo(0);
+
+    // Verify the data was written correctly
+    assertThat(new String(result, StandardCharsets.UTF_8)).isEqualTo("Hello World");
+
+    // close() after writeAllTo is a safe no-op
+    collector.close();
+  }
+
+  @Test
+  public void testDoubleCloseIsSafe() throws IOException {
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.collect(BytesInput.from(bytes("test data")));
+
+    assertThat(collector.size()).isEqualTo(9);
+
+    // First close releases the buffers
+    collector.close();
+    assertThat(collector.size()).isEqualTo(0);
+
+    // Second close should be a no-op and not throw
+    collector.close();
+  }
+
+  @Test
+  public void testCloseOnEmpty() {
+    // Close on an empty collector should not throw
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.close();
+    collector.close(); // double close on empty
+  }
+
+  @Test
+  public void testWriteAllToProducesCorrectOutputWithMultipleTypes() throws IOException {
+    // Verify that writeAllTo produces correct output with mixed BytesInput types
+    byte[] result;
+
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.collect(BytesInput.fromInt(42));
+    collector.collect(BytesInput.from(bytes("parquet")));
+    collector.collect(BytesInput.fromInt(99));
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    collector.writeAllTo(baos);
+    result = baos.toByteArray();
+
+    // Verify size: 4 (int) + 7 (string) + 4 (int) = 15 bytes
+    assertThat(result.length).isEqualTo(15);
+
+    // Already released by writeAllTo, close is a no-op
+    collector.close();
   }
 }

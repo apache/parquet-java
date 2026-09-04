@@ -36,30 +36,47 @@ You can find additional details about the format and intended use cases in our [
 
 ## Building
 
-Parquet-Java uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
+Parquet-Java requires Java 17 or higher and uses Maven to build. It also depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
 To build and install the thrift compiler, run:
 
 ```
-wget -nv https://archive.apache.org/dist/thrift/0.23.0/thrift-0.23.0.tar.gz
-tar xzf thrift-0.23.0.tar.gz
-cd thrift-0.23.0
+wget -nv https://archive.apache.org/dist/thrift/0.24.0/thrift-0.24.0.tar.gz
+tar xzf thrift-0.24.0.tar.gz
+cd thrift-0.24.0
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install -j
 ```
 
 Note: if you wish to verify the signature and checksum of a release:
-1. The GPG and sha checksums can be found under https://archive.apache.org/dist/thrift/0.23.0/
+1. The GPG and sha checksums can be found under https://archive.apache.org/dist/thrift/0.24.0/
 2. Validate the signature of the artifact against the [Thrift committer KEYS](https://downloads.apache.org/thrift/KEYS).
 
-If you're on OSX and use homebrew, you can instead install Thrift 0.23.0 with `brew` and ensure that it comes first in your `PATH`.
+If you're on OSX and use homebrew, you can instead install Thrift 0.24.0 with `brew` and ensure that it comes first in your `PATH`.
 
 ```
 brew install thrift
-export PATH="/usr/local/opt/thrift@0.23.0/bin:$PATH"
+export PATH="$(brew --prefix thrift)/bin:$PATH"
+```
+
+### Update Parquet Thrift Definitions
+
+Parquet-Java uses an inlined version of the `parquet.thrift` IDL, located at
+`parquet-format-structures/src/main/thrift`. To update this definition to include
+changes from the canonical definition in [parquet-format](https://github.com/apache/parquet-format), you can use:
+
+```
+# Update to a parquet-format release
+> ./dev/update-parquet-thrift.sh apache-parquet-format-2.13.0
+
+# Update to an arbitrary parquet-format commit (can be unreleased)
+> ./dev/update-parquet-thrift.sh <commit hash>
+
+# Update to a commit from a parquet-format fork (e.g. for a reference implementation of an in-progress spec change)
+> PARQUET_FORMAT_REPO="https://github.com/divjotarora/parquet-format" ./dev/update-parquet-thrift.sh <commit hash>
 ```
 
 ### Build Parquet with Maven

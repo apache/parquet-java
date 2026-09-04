@@ -31,9 +31,9 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.specific.SpecificData;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -41,13 +41,13 @@ public class TestAvroRecordConverter {
 
   private MockedStatic<AvroRecordConverter> avroRecordConverterMock;
 
-  @Before
+  @BeforeEach
   public void setup() {
     // Default to calling real methods unless overridden in specific test
     avroRecordConverterMock = Mockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
   }
 
-  @After
+  @AfterEach
   public void tearDown() {
     avroRecordConverterMock.close();
   }

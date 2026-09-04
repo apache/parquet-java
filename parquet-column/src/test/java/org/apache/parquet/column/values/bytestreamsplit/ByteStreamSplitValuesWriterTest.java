@@ -24,16 +24,15 @@ import static org.assertj.core.data.Offset.offset;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
-import org.junit.experimental.runners.Enclosed;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
-@RunWith(Enclosed.class)
 public class ByteStreamSplitValuesWriterTest {
 
-  public static class FloatTest {
+  @Nested
+  class FloatTest {
 
-    static float convertType(byte[] bytes) {
+    float convertType(byte[] bytes) {
       int v = 0;
       for (int i = 0; i < bytes.length; ++i) {
         v |= ((bytes[i] & 0xFF) << (i * 8));
@@ -106,9 +105,10 @@ public class ByteStreamSplitValuesWriterTest {
     }
   }
 
-  public static class DoubleTest {
+  @Nested
+  class DoubleTest {
 
-    static double convertType(byte[] bytes) {
+    double convertType(byte[] bytes) {
       long v = 0;
       for (int i = 0; i < bytes.length; ++i) {
         v |= (((long) (bytes[i] & 0xFF)) << (i * 8));
@@ -185,7 +185,8 @@ public class ByteStreamSplitValuesWriterTest {
     }
   }
 
-  public static class IntegerTest {
+  @Nested
+  class IntegerTest {
     private ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter getWriter(int capacity) {
       return new ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter(
           capacity, capacity, new DirectByteBufferAllocator());
@@ -213,7 +214,8 @@ public class ByteStreamSplitValuesWriterTest {
     }
   }
 
-  public static class LongTest {
+  @Nested
+  class LongTest {
     private ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter getWriter(int capacity) {
       return new ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter(
           capacity, capacity, new DirectByteBufferAllocator());
@@ -244,7 +246,8 @@ public class ByteStreamSplitValuesWriterTest {
     }
   }
 
-  public static class FixedLenByteArrayTest {
+  @Nested
+  class FixedLenByteArrayTest {
     private ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter getWriter(
         int length, int capacity) {
       return new ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter(

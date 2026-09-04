@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -42,10 +43,9 @@ import org.apache.avro.reflect.AvroSchema;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.specific.SpecificData;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * This class is based on org.apache.avro.reflect.TestReflectLogicalTypes
@@ -56,12 +56,12 @@ import org.junit.rules.TemporaryFolder;
  * * record => Pair
  */
 public class TestReflectLogicalTypes {
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   public static final ReflectData REFLECT = new ReflectData();
 
-  @BeforeClass
+  @BeforeAll
   public static void addUUID() {
     REFLECT.addLogicalTypeConversion(new Conversions.UUIDConversion());
     REFLECT.addLogicalTypeConversion(new Conversions.DecimalConversion());
@@ -973,12 +973,12 @@ public class TestReflectLogicalTypes {
 
   @SuppressWarnings("unchecked")
   private <D> File write(GenericData model, Schema schema, D... data) throws IOException {
-    return AvroTestUtil.write(temp, model, schema, data);
+    return AvroTestUtil.write(tempDir, model, schema, data);
   }
 
   @SuppressWarnings("unchecked")
   private <D> File write(Configuration conf, GenericData model, Schema schema, D... data) throws IOException {
-    return AvroTestUtil.write(temp, conf, model, schema, data);
+    return AvroTestUtil.write(tempDir, conf, model, schema, data);
   }
 }
 

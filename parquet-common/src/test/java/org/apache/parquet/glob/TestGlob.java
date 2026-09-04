@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.Strings;
 import org.apache.parquet.glob.GlobParser.GlobParseException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestGlob {
 

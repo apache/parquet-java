@@ -27,7 +27,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.thrift.protocol.TProtocol;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 // Test to verify UUID converter support in ThriftRecordConverter.
 public class TestUUIDRecordConverterFailure {

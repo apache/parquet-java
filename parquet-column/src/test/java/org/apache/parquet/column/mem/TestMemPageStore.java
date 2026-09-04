@@ -32,7 +32,7 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

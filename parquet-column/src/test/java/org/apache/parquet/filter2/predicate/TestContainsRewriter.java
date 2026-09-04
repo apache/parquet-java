@@ -37,7 +37,7 @@ import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestContainsRewriter {
   private static final IntColumn intColumn = intColumn("a.b.c");

@@ -28,17 +28,20 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestStatisticsNanCount {
 
-  private static final PrimitiveType FLOAT_TYPE =
-      Types.optional(PrimitiveTypeName.FLOAT).named("test_float");
-  private static final PrimitiveType DOUBLE_TYPE =
-      Types.optional(PrimitiveTypeName.DOUBLE).named("test_double");
+  private static final PrimitiveType FLOAT_TYPE = Types.optional(PrimitiveTypeName.FLOAT)
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("test_float");
+  private static final PrimitiveType DOUBLE_TYPE = Types.optional(PrimitiveTypeName.DOUBLE)
+      .columnOrder(ColumnOrder.typeDefined())
+      .named("test_double");
   private static final PrimitiveType FLOAT16_TYPE = Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
       .length(2)
       .as(LogicalTypeAnnotation.float16Type())
+      .columnOrder(ColumnOrder.typeDefined())
       .named("test_float16");
 
   private static final PrimitiveType FLOAT_IEEE754_TYPE = Types.optional(PrimitiveTypeName.FLOAT)
