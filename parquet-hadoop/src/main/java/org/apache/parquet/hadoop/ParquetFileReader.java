@@ -2385,6 +2385,12 @@ public class ParquetFileReader implements Closeable {
             currRange,
             timeoutSeconds);
         buffer = FutureIO.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
+        // Register the buffer for release as soon as it is acquired, before running any code that
+        // could throw (the metrics callback below is user-supplied). Otherwise an exception here
+        // would leak this buffer, since the row group has not yet taken ownership of the releaser.
+        // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
+        // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
+        builder.addBuffersToRelease(Collections.singletonList(buffer));
         setReadMetrics(readStart, currRange.getLength());
         // report in a counter the data we just scanned
         BenchmarkCounter.incrementBytesRead(currRange.getLength());
@@ -2394,10 +2400,6 @@ public class ParquetFileReader implements Closeable {
         LOG.error(error, e);
         throw new IOException(error, e);
       }
-      // Release the vectored-read buffer back to the allocator when the row group is closed.
-      // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
-      // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
-      builder.addBuffersToRelease(Collections.singletonList(buffer));
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
