@@ -85,7 +85,9 @@ class SynchronizingColumnReader extends ColumnReaderBase {
 
   @Override
   boolean isFullyConsumed() {
-    return !rowIndexes.hasNext();
+    // The final target may have been taken from the iterator without being reached yet.
+    // Long.MAX_VALUE marks that there are no more target rows.
+    return !rowIndexes.hasNext() && (currentRow >= targetRow || targetRow == Long.MAX_VALUE);
   }
 
   @Override
