@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop.util;
 
 import static org.apache.hadoop.fs.FileSystemTestBinder.addFileSystemForTesting;
+import static org.apache.hadoop.fs.Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doNothing;
@@ -44,6 +45,7 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 /**
@@ -59,6 +61,10 @@ import org.mockito.Mockito;
 public class TestHadoopOpenFile {
 
   private static final int FIRST = MockHadoopInputStream.TEST_ARRAY[0];
+
+  @TempDir
+  private java.nio.file.Path tempDir;
+
   private URI fsUri;
   private FileStatus status;
   private Path path;
@@ -101,8 +107,56 @@ public class TestHadoopOpenFile {
     // this looks up the FS binding via the status file path.
     openAndRead(fileFromStatus());
 
+    assertThat(opener.getFileStatus()).as("file status").isSameAs(status);
+
     // The fallback call of open(path) never took place.
     Mockito.verify(mockFS, never()).open(path);
+  }
+
+  /**
+   * A caller-supplied length avoids a status lookup and is passed to openFile().
+   */
+  @Test
+  public void testOpenFileWithKnownLength() throws Throwable {
+    final FileSystem mockFS = prepareMockFS();
+    final FSDataInputStream in = new FSDataInputStream(new MockHadoopInputStream());
+    final StubOpenFileBuilder opener = new StubOpenFileBuilder(mockFS, path, CompletableFuture.completedFuture(in));
+    doReturn(opener).when(mockFS).openFile(path);
+
+    final HadoopInputFile inputFile = HadoopInputFile.fromPath(path, status.getLen(), conf);
+    assertThat(inputFile.getPath()).as("path").isEqualTo(path);
+    assertThat(inputFile.getLength()).as("length").isEqualTo(status.getLen());
+    openAndRead(inputFile);
+
+    Mockito.verify(mockFS, never()).getFileStatus(path);
+    assertThat(opener.getFileStatus()).as("file status").isNull();
+    assertThat(opener.getOptions().get(FS_OPTION_OPENFILE_LENGTH))
+        .as("openFile length")
+        .isEqualTo(Long.toString(status.getLen()));
+  }
+
+  @Test
+  public void testRejectsNegativeKnownLength() {
+    assertThatThrownBy(() -> HadoopInputFile.fromPath(path, -1, conf))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid file length: -1");
+  }
+
+  /**
+   * Opening a nonexistent file with a caller-supplied length must fail either
+   * when opening the stream or on the first read.
+   */
+  @Test
+  public void testKnownLengthMissingFile() throws IOException {
+    final Path missingPath = new Path(new Path(tempDir.toUri()), "missing.parquet");
+    final HadoopInputFile inputFile = HadoopInputFile.fromPath(missingPath, 1, conf);
+
+    assertThatThrownBy(() -> {
+          try (SeekableInputStream stream = inputFile.newStream()) {
+            stream.read();
+          }
+        })
+        .isInstanceOf(FileNotFoundException.class);
   }
 
   /**
@@ -273,6 +327,10 @@ public class TestHadoopOpenFile {
         final FileSystem fileSystem, Path path, final CompletableFuture<FSDataInputStream> result) {
       super(fileSystem, path);
       this.result = result;
+    }
+
+    private FileStatus getFileStatus() {
+      return getStatus();
     }
 
     @Override
