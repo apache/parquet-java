@@ -1191,10 +1191,18 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    readAllPartsVectoredOrNormal(allParts, builder);
-    rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      rowGroup.setReleaser(builder.releaser);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+    } catch (RuntimeException | IOException e) {
+      // If we fail before the releaser is transferred to the row group (e.g. a vectored range
+      // times out after earlier ranges already registered their buffers), release any buffers
+      // that were registered so far so that partially-read row groups do not leak.
+      builder.releaser.close();
+      throw e;
     }
 
     return rowGroup;
@@ -1466,10 +1474,18 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    readAllPartsVectoredOrNormal(allParts, builder);
-    rowGroup.setReleaser(builder.releaser);
-    for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block, rowGroup);
+    try {
+      readAllPartsVectoredOrNormal(allParts, builder);
+      rowGroup.setReleaser(builder.releaser);
+      for (Chunk chunk : builder.build()) {
+        readChunkPages(chunk, block, rowGroup);
+      }
+    } catch (RuntimeException | IOException e) {
+      // If we fail before the releaser is transferred to the row group (e.g. a vectored range
+      // times out after earlier ranges already registered their buffers), release any buffers
+      // that were registered so far so that partially-read row groups do not leak.
+      builder.releaser.close();
+      throw e;
     }
 
     return rowGroup;
@@ -2369,6 +2385,12 @@ public class ParquetFileReader implements Closeable {
             currRange,
             timeoutSeconds);
         buffer = FutureIO.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
+        // Register the buffer for release as soon as it is acquired, before running any code that
+        // could throw (the metrics callback below is user-supplied). Otherwise an exception here
+        // would leak this buffer, since the row group has not yet taken ownership of the releaser.
+        // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
+        // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
+        builder.addBuffersToRelease(Collections.singletonList(buffer));
         setReadMetrics(readStart, currRange.getLength());
         // report in a counter the data we just scanned
         BenchmarkCounter.incrementBytesRead(currRange.getLength());
