@@ -124,6 +124,58 @@ public class ProtoEmptyMessageTest {
   }
 
   @Test
+  public void emptyMessageFieldsRoundTripThroughProtoReader() throws Exception {
+    Trees.StubBox box = Trees.StubBox.newBuilder()
+        .setStub(Trees.Stub.getDefaultInstance())
+        .addStubs(Trees.Stub.getDefaultInstance())
+        .addStubs(Trees.Stub.getDefaultInstance())
+        .putStubMap("k", Trees.Stub.getDefaultInstance())
+        .setName("x")
+        .build();
+    Trees.StubBox without = Trees.StubBox.newBuilder().setName("y").build();
+
+    assertThat(TestUtils.readMessages(write(true, box, without), Trees.StubBox.class))
+        .as("ProtoParquetReader parses the proto bytes back, presence included")
+        .containsExactly(box, without);
+  }
+
+  @Test
+  public void emptyMessageFieldsRoundTripThroughProtoReaderOldStyle() throws Exception {
+    Trees.StubBox box = Trees.StubBox.newBuilder()
+        .setStub(Trees.Stub.getDefaultInstance())
+        .addStubs(Trees.Stub.getDefaultInstance())
+        .addStubs(Trees.Stub.getDefaultInstance())
+        .putStubMap("k", Trees.Stub.getDefaultInstance())
+        .build();
+
+    assertThat(TestUtils.readMessages(write(false, box), Trees.StubBox.class))
+        .containsExactly(box);
+  }
+
+  @Test
+  public void truncatedRecursionRoundTripsThroughProtoReader() throws Exception {
+    // the same binary-to-message read path serves recursion truncated at maxRecursion
+    Trees.BinaryTree.Builder tree = Trees.BinaryTree.newBuilder();
+    Trees.BinaryTree.Builder cursor = tree;
+    for (int i = 0; i < 6; i++) {
+      cursor.getValueBuilder().setTypeUrl("level-" + i);
+      cursor = cursor.getLeftBuilder();
+    }
+    Path file = TestUtils.someTemporaryFilePath();
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoSchemaConverter.setMaxRecursion(conf, 2);
+    try (ParquetWriter<Message> writer = ProtoParquetWriter.<Message>builder(file)
+        .withMessage(Trees.BinaryTree.class)
+        .withConf(conf)
+        .build()) {
+      writer.write(tree.build());
+    }
+
+    assertThat(TestUtils.readMessages(file, Trees.BinaryTree.class)).containsExactly(tree.build());
+  }
+
+  @Test
   public void emptyRootMessageStillRejected() {
     // the root message itself cannot be terminated as bytes - there is no field to hold them
     assertThatThrownBy(() -> write(true, Trees.Stub.getDefaultInstance()))
