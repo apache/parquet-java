@@ -29,10 +29,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ByteBufferPool;
 import org.apache.hadoop.io.ElasticByteBufferPool;
@@ -203,6 +205,86 @@ public class TestVectorIoBridge {
 
       validateVectoredReadResult(fileRanges, DATASET);
     }
+  }
+
+  @Test
+  public void testPublishesFuturesAfterPartialSubmissionFailure() throws Exception {
+    List<ParquetFileRange> fileRanges = getSampleNonOverlappingRanges();
+    AtomicInteger allocations = new AtomicInteger();
+    IllegalArgumentException failure = new IllegalArgumentException("second allocation failed");
+    ByteBufferAllocator rejectingAllocator = new ByteBufferAllocator() {
+      @Override
+      public ByteBuffer allocate(int size) {
+        if (allocations.incrementAndGet() == 2) {
+          throw failure;
+        }
+        return allocate.allocate(size);
+      }
+
+      @Override
+      public void release(ByteBuffer buffer) {
+        allocate.release(buffer);
+      }
+
+      @Override
+      public boolean isDirect() {
+        return false;
+      }
+    };
+
+    // RawLocalFileSystem queues the first native read before allocating the second
+    // buffer. Its futures are created before any reads are submitted.
+    try (FSDataInputStream in =
+        ((LocalFileSystem) getFileSystem()).getRawFileSystem().open(testFilePath)) {
+      assertThatThrownBy(() -> vectorIOBridge.readVectoredRanges(in, fileRanges, rejectingAllocator))
+          .isSameAs(failure);
+      assertThat(allocations.get()).isEqualTo(2);
+      assertThat(fileRanges.get(0).getDataReadFuture()).isNotNull();
+      assertThat(fileRanges.get(1).getDataReadFuture()).isNotNull();
+      // This future belongs to a read that was never submitted. Waiting for every
+      // published future after a submission failure would not finish.
+      assertThat(fileRanges.get(1).getDataReadFuture().isDone()).isFalse();
+
+      ByteBuffer buffer = FutureIO.awaitFuture(fileRanges.get(0).getDataReadFuture(), 5, TimeUnit.SECONDS);
+      try {
+        assertDatasetEquals(0, "partially submitted vectored read", buffer, 100, DATASET);
+      } finally {
+        allocate.release(buffer);
+      }
+    }
+  }
+
+  @Test
+  public void testFuturePublicationPreservesSubmissionFailure() {
+    FileRangeBridge rangeBridge = FileRangeBridge.instance();
+    ParquetFileRange failedRange = range(0, 100);
+    RuntimeException publicationFailure = new IllegalStateException("future lookup failed");
+    FileRangeBridge.WrappedFileRange failed = rangeBridge.new WrappedFileRange(new Object()) {
+      @Override
+      public Object getReference() {
+        return failedRange;
+      }
+
+      @Override
+      public CompletableFuture<ByteBuffer> getData() {
+        throw publicationFailure;
+      }
+    };
+    ParquetFileRange pendingRange = range(110, 50);
+    FileRangeBridge.WrappedFileRange pending = rangeBridge.toFileRange(pendingRange);
+    CompletableFuture<ByteBuffer> pendingRead = new CompletableFuture<>();
+    pending.setData(pendingRead);
+    ParquetFileRange unassignedRange = range(200, 50);
+    FileRangeBridge.WrappedFileRange unassigned = rangeBridge.toFileRange(unassignedRange);
+    IOException submissionFailure = new IOException("submission failed");
+
+    VectorIoBridge.publishReadFutures(List.of(failed, pending, unassigned), submissionFailure);
+
+    assertThat(submissionFailure.getSuppressed()).containsExactly(publicationFailure);
+    assertThat(pendingRange.getDataReadFuture()).isSameAs(pendingRead);
+    assertThat(unassignedRange.getDataReadFuture()).isNull();
+    assertThatThrownBy(() -> VectorIoBridge.publishReadFutures(List.of(failed), null))
+        .isSameAs(publicationFailure);
   }
 
   /**
