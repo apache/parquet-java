@@ -20,7 +20,6 @@ package org.apache.parquet.column.values.alp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -217,24 +216,152 @@ public class AlpValuesEndToEndTest {
         readAllDoubles(c, values.length);
         // Some single-byte flips may still decode to (wrong but in-bounds) values without throwing;
         // that is acceptable here. What matters is no crash/hang/OOB, which we reached this line.
-      } catch (OutOfMemoryError oom) {
-        fail("Malformed input caused an OutOfMemoryError (allocation bomb) - a corrupt size/count "
-            + "must not drive an unbounded allocation");
-      } catch (Throwable t) {
+      } catch (Exception e) {
         // Any ordinary catchable exception (EOFException, ParquetDecodingException, IndexOutOfBounds,
-        // BufferUnderflow, NegativeArraySize, ...) is a clean failure: no JVM crash, no OOB, no hang.
+        // BufferUnderflow, ...) is a clean failure: no JVM crash, no OOB, no hang. Errors are
+        // deliberately not caught here: an OutOfMemoryError from an allocation bomb, or an
+        // AssertionError from a failed check, must fail this test rather than count as success.
       }
     }
+  }
 
-    // Claiming far more elements than the data supports must be rejected without an OOM allocation.
-    try {
-      readAllDoubles(valid, Integer.MAX_VALUE / 2);
-      fail("Expected a decoding failure for an absurd value count");
-    } catch (OutOfMemoryError oom) {
-      fail("Absurd value count drove an OutOfMemoryError instead of a clean rejection");
-    } catch (Throwable expected) {
-      // clean rejection
+  /** Overwrites the little-endian num_elements field (bytes 3..6) of an ALP page header. */
+  private static byte[] withForgedElementCount(byte[] page, int numElements) {
+    byte[] forged = page.clone();
+    ByteBuffer.wrap(forged).order(ByteOrder.LITTLE_ENDIAN).putInt(3, numElements);
+    return forged;
+  }
+
+  @Test
+  @Timeout(value = 30, unit = TimeUnit.SECONDS)
+  public void testForgedElementCountIsRejectedWithoutHugeAllocation() throws Exception {
+    // A forged num_elements must be bounded against the bytes actually present. Claiming a huge
+    // count on a small page previously overflowed the vector-count arithmetic (negative count) or
+    // drove a multi-hundred-megabyte offset-array allocation before any byte was validated.
+    double[] values = new double[4096];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = i / 8.0;
     }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        65536, 65536, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+    for (double v : values) {
+      writer.writeDouble(v);
+    }
+    byte[] valid = writer.getBytes().toByteArray();
+    writer.reset();
+    writer.close();
+
+    // Counts large enough that the vectors they claim cannot fit in the bytes present. The last
+    // two overflow (numElements + vectorSize - 1) in int arithmetic, which used to yield a
+    // negative vector count. valuesCount is passed as Integer.MAX_VALUE so the numElements <=
+    // valuesCount guard cannot be what rejects these — the allocation bound has to.
+    int[] unfittableCounts = {1 << 20, Integer.MAX_VALUE / 2, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+    for (int forgedCount : unfittableCounts) {
+      byte[] forged = withForgedElementCount(valid, forgedCount);
+      ParquetDecodingException e = assertThrows(
+          ParquetDecodingException.class,
+          () -> readAllDoubles(forged, Integer.MAX_VALUE),
+          "Forged element count " + forgedCount + " must be rejected");
+      assertThat(e.getMessage())
+          .as("count %s must be rejected by the allocation bound", forgedCount)
+          .contains("remain in the page");
+    }
+
+    // A count only slightly too large still fits within the bytes present, so the allocation bound
+    // lets it through; the offset array then no longer describes the vectors it claims and the
+    // offset validation rejects it. Either way the failure is clean and no vector is decoded.
+    byte[] slightlyOver = withForgedElementCount(valid, values.length + 1);
+    assertThrows(
+        ParquetDecodingException.class,
+        () -> readAllDoubles(slightlyOver, Integer.MAX_VALUE),
+        "An element count implying one more vector than was written must be rejected");
+  }
+
+  @Test
+  @Timeout(value = 30, unit = TimeUnit.SECONDS)
+  public void testForgedVectorOffsetsAreRejected() throws Exception {
+    // Offsets are trusted to locate each vector. A forged offset that points into a different
+    // vector must be rejected rather than silently decoding the wrong values.
+    double[] values = new double[4096]; // 4 vectors at the default vector size
+    for (int i = 0; i < values.length; i++) {
+      values[i] = i / 8.0;
+    }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        65536, 65536, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+    for (double v : values) {
+      writer.writeDouble(v);
+    }
+    byte[] valid = writer.getBytes().toByteArray();
+    writer.reset();
+    writer.close();
+
+    int offsetArrayStart = AlpConstants.ALP_HEADER_SIZE;
+    ByteBuffer validOffsets = ByteBuffer.wrap(valid).order(ByteOrder.LITTLE_ENDIAN);
+    int firstOffset = validOffsets.getInt(offsetArrayStart);
+    int secondOffset = validOffsets.getInt(offsetArrayStart + Integer.BYTES);
+
+    // First offset must point exactly past the offset array.
+    byte[] badFirst = valid.clone();
+    ByteBuffer.wrap(badFirst).order(ByteOrder.LITTLE_ENDIAN).putInt(offsetArrayStart, firstOffset + 8);
+    assertThrows(
+        ParquetDecodingException.class,
+        () -> readAllDoubles(badFirst, values.length),
+        "A first offset that does not follow the offset array must be rejected");
+
+    // Offsets must increase: pointing vector 1 back at vector 0 would decode vector 0 twice.
+    byte[] nonIncreasing = valid.clone();
+    ByteBuffer.wrap(nonIncreasing)
+        .order(ByteOrder.LITTLE_ENDIAN)
+        .putInt(offsetArrayStart + Integer.BYTES, firstOffset);
+    assertThrows(
+        ParquetDecodingException.class,
+        () -> readAllDoubles(nonIncreasing, values.length),
+        "Non-increasing vector offsets must be rejected");
+
+    // An offset past the end of the page body must be rejected, not read out of bounds.
+    byte[] pastEnd = valid.clone();
+    ByteBuffer.wrap(pastEnd)
+        .order(ByteOrder.LITTLE_ENDIAN)
+        .putInt(offsetArrayStart + Integer.BYTES, valid.length * 4);
+    assertThrows(
+        ParquetDecodingException.class,
+        () -> readAllDoubles(pastEnd, values.length),
+        "A vector offset past the end of the body must be rejected");
+
+    // Sanity: the untouched page still decodes, so the checks above are not rejecting everything.
+    assertThat(secondOffset).isGreaterThan(firstOffset);
+    readAllDoubles(valid, values.length);
+  }
+
+  @Test
+  public void testSkipRejectsOverflowingCount() throws Exception {
+    double[] values = new double[2048];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = i / 4.0;
+    }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        65536, 65536, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+    for (double v : values) {
+      writer.writeDouble(v);
+    }
+    byte[] page = writer.getBytes().toByteArray();
+    writer.reset();
+    writer.close();
+
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    reader.readDouble();
+
+    // pageValueIndex + n overflows to a negative number for these, which previously slipped past
+    // the bounds check and left the reader at a negative index.
+    for (int n : new int[] {Integer.MAX_VALUE, Integer.MAX_VALUE - 1, values.length}) {
+      assertThrows(ParquetDecodingException.class, () -> reader.skip(n), "skip(" + n + ") must be rejected");
+    }
+    assertThrows(ParquetDecodingException.class, () -> reader.skip(-1));
+
+    // A legal skip still works after the rejections.
+    reader.skip(10);
+    assertThat(reader.readDouble()).isEqualTo(values[11]);
   }
 
   // ========== Large scale + allocator leak ==========

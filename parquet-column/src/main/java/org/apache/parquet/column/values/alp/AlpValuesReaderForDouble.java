@@ -62,6 +62,16 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
   }
 
   @Override
+  protected int forInfoSize() {
+    return DOUBLE_FOR_INFO_SIZE;
+  }
+
+  @Override
+  protected int exceptionValueSize() {
+    return Double.BYTES;
+  }
+
+  @Override
   public double readDouble() {
     if (pageValueIndex >= totalCount) {
       throw new ParquetDecodingException("ALP double data was already exhausted.");

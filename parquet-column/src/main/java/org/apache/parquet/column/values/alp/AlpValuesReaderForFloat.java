@@ -62,6 +62,16 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
   }
 
   @Override
+  protected int forInfoSize() {
+    return FLOAT_FOR_INFO_SIZE;
+  }
+
+  @Override
+  protected int exceptionValueSize() {
+    return Float.BYTES;
+  }
+
+  @Override
   public float readFloat() {
     if (pageValueIndex >= totalCount) {
       throw new ParquetDecodingException("ALP float data was already exhausted.");

@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -36,15 +38,15 @@ import org.junit.jupiter.api.Test;
  *
  * <p>"Fails cleanly" means raising a meaningful exception — preferably
  * {@link ParquetDecodingException}, but at minimum a typed exception (not a JVM-level
- * crash, infinite loop, or wrong answer). The tests cover both:
+ * crash, infinite loop, wrong answer, or an allocation large enough to exhaust the heap).
+ * The tests cover both:
  * <ul>
- *   <li>Already-validated cases — the reader explicitly rejects these with a
+ *   <li>Header and offset validation — the reader explicitly rejects these with a
  *       ParquetDecodingException carrying an explanatory message. These tests pin
  *       the validation behavior in place.
- *   <li>Currently-unvalidated cases (truncation, corrupted offsets) — the reader
- *       relies on the underlying ByteBuffer to surface IndexOutOfBoundsException or
- *       BufferUnderflowException. These tests assert that some Throwable is raised
- *       so the failure mode stays "loud" even if the explicit message is missing.
+ *   <li>Truncation inside a vector body — the reader relies on the underlying ByteBuffer
+ *       to surface IndexOutOfBoundsException or BufferUnderflowException. These tests
+ *       assert a clean typed failure so the mode stays "loud" even without a message.
  * </ul>
  */
 public class AlpAdversarialTest {
@@ -281,20 +283,17 @@ public class AlpAdversarialTest {
   }
 
   // ---------------------------------------------------------------------------
-  // Currently-unvalidated paths: truncation and corrupted offsets
-  // These currently fail with low-level Throwables (BufferUnderflowException,
-  // IndexOutOfBoundsException). The tests assert any Throwable is raised so we
-  // notice if a regression silently swallows the corruption.
+  // Truncation and corrupted offsets
+  // Each of these must fail cleanly: a catchable decoding exception, never an OutOfMemoryError
+  // from an unbounded allocation and never a silent wrong-value decode. See catchClean.
   // ---------------------------------------------------------------------------
 
   /** Page with only the 7-byte header — nothing else. */
   @Test
   public void rejectsHeaderOnlyPage() {
     byte[] tiny = new byte[] {0x00, 0x00, 0x0A, 0x20, 0x00, 0x00, 0x00}; // 32 elements, log_vec=10
-    Throwable t = catchAny(() -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(tiny)));
-    });
-    assertThat(t).as("header-only page must raise").isNotNull();
+    catchClean(() ->
+        new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(tiny))));
   }
 
   @Test
@@ -303,10 +302,8 @@ public class AlpAdversarialTest {
     // num_vectors = ceil(32/16) = 2, so offset array is 8 bytes. Truncate to chop the 2nd offset.
     byte[] truncated = new byte[7 + 4]; // header + first offset only
     System.arraycopy(page, 0, truncated, 0, truncated.length);
-    Throwable t = catchAny(() -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated)));
-    });
-    assertThat(t).as("truncated offset array must raise").isNotNull();
+    catchClean(() -> new AlpValuesReaderForDouble()
+        .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated))));
   }
 
   @Test
@@ -315,14 +312,10 @@ public class AlpAdversarialTest {
     // chop the last 20 bytes — guaranteed to land in the middle of the second vector
     byte[] truncated = new byte[page.length - 20];
     System.arraycopy(page, 0, truncated, 0, truncated.length);
-    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
-    // initFromPage should still succeed (truncation is inside the vectors section,
-    // which initFromPage just slices without parsing). The failure surfaces on decode.
-    reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated)));
-    Throwable t = catchAny(() -> {
-      for (int i = 0; i < 32; i++) reader.readDouble();
-    });
-    assertThat(t).as("truncated vector data must raise on read").isNotNull();
+    // The offset array still describes a second vector that the truncated body cannot hold, so
+    // this is now caught up front when the offsets are validated against the body length.
+    catchClean(() -> new AlpValuesReaderForDouble()
+        .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated))));
   }
 
   @Test
@@ -333,10 +326,10 @@ public class AlpAdversarialTest {
     page[8] = (byte) 0xFF;
     page[9] = (byte) 0xFF;
     page[10] = (byte) 0x7F;
-    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
-    reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    Throwable t = catchAny(() -> reader.readDouble());
-    assertThat(t).as("corrupted offset must raise on decode").isNotNull();
+    // Offsets are validated against the body length in initFromPage, so a bogus offset is
+    // rejected before any vector is decoded rather than reading out of bounds later.
+    catchClean(() ->
+        new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))));
   }
 
   // ---------------------------------------------------------------------------
@@ -377,17 +370,29 @@ public class AlpAdversarialTest {
 
   @FunctionalInterface
   private interface ThrowingRunnable {
-    void run() throws Throwable;
+    void run() throws Exception;
   }
 
-  /** Catch any Throwable (including low-level RuntimeExceptions / Errors). */
-  private static Throwable catchAny(ThrowingRunnable r) {
+  /**
+   * Runs {@code r}, requires it to fail, and requires that failure to be a clean one.
+   *
+   * <p>Errors are deliberately not caught. An {@link OutOfMemoryError} means a corrupt length drove
+   * an unbounded allocation, and an {@link AssertionError} means an assertion inside {@code r}
+   * failed; catching {@link Throwable} here would let either count as a successful rejection.
+   */
+  private static Exception catchClean(ThrowingRunnable r) {
     try {
       r.run();
-    } catch (Throwable t) {
-      return t;
+    } catch (ParquetDecodingException
+        | IOException
+        | IndexOutOfBoundsException
+        | BufferUnderflowException
+        | IllegalArgumentException e) {
+      return e;
+    } catch (Exception e) {
+      fail("Expected a clean decoding failure but got " + e.getClass().getName() + ": " + e.getMessage());
     }
-    fail("Expected a Throwable but none was raised");
+    fail("Expected a decoding failure but none was raised");
     return null; // unreachable
   }
 }
