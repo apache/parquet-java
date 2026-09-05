@@ -273,24 +273,41 @@ public final class Variant {
         }
       }
     } else {
-      int low = 0;
-      int high = info.numElements - 1;
-      while (low <= high) {
-        // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
-        // performance optimization, because it can properly handle the case where `low + high`
-        // overflows int.
-        int mid = (low + high) >>> 1;
-        int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
-        String midKey = getMetadataKeyCached(midId);
-        int cmp = midKey.compareTo(key);
-        if (cmp < 0) {
-          low = mid + 1;
-        } else if (cmp > 0) {
-          high = mid - 1;
-        } else {
-          int offset = VariantUtil.readUnsignedLittleEndian(
-              value, offsetStart + info.offsetSize * mid, info.offsetSize);
-          return childVariant(VariantUtil.slice(value, dataStart + offset));
+      // Encode the lookup key once, outside the loop, rather than on every comparison.
+      byte[] keyBytes = VariantUtil.encodeKey(key);
+      // UTF-8 and UTF-16 orders can only differ for keys containing a code unit at or above
+      // U+D800; for all other keys a single search covers both orders.
+      int numAttempts = 1;
+      for (int i = 0; i < key.length(); ++i) {
+        if (key.charAt(i) >= Character.MIN_SURROGATE) {
+          numAttempts = 2;
+          break;
+        }
+      }
+      // Search in the spec's unsigned UTF-8 byte order first, then retry in the UTF-16 order
+      // written by older versions, so objects written before the ordering fix remain readable.
+      for (int attempt = 0; attempt < numAttempts; ++attempt) {
+        int low = 0;
+        int high = info.numElements - 1;
+        while (low <= high) {
+          // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
+          // performance optimization, because it can properly handle the case where `low + high`
+          // overflows int.
+          int mid = (low + high) >>> 1;
+          int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
+          String midKey = getMetadataKeyCached(midId);
+          int cmp = attempt == 0
+              ? VariantUtil.compareKeys(VariantUtil.encodeKey(midKey), keyBytes)
+              : midKey.compareTo(key);
+          if (cmp < 0) {
+            low = mid + 1;
+          } else if (cmp > 0) {
+            high = mid - 1;
+          } else {
+            int offset = VariantUtil.readUnsignedLittleEndian(
+                value, offsetStart + info.offsetSize * mid, info.offsetSize);
+            return childVariant(VariantUtil.slice(value, dataStart + offset));
+          }
         }
       }
     }

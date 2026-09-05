@@ -85,6 +85,131 @@ public class TestVariantObjectBuilder {
     });
   }
 
+  /**
+   * Object field keys must be ordered by the unsigned byte order of their UTF-8 encoding, not by
+   * {@link String#compareTo} (UTF-16 code-unit order). The two orderings disagree for
+   * supplementary-plane keys: U+FFFF encodes to UTF-8 {@code EF BF BF} and U+10000 to
+   * {@code F0 90 80 80}, so U+FFFF must sort first; but in UTF-16 the leading high surrogate
+   * 0xD800 of U+10000 sorts before 0xFFFF, which would wrongly put U+10000 first. See
+   * {@link VariantUtil#compareKeys}.
+   */
+  @Test
+  public void testObjectKeysSortedByUtf8ByteOrder() {
+    String bmpKey = "￿"; // U+FFFF -> UTF-8 EF BF BF
+    String supplementaryKey = new String(Character.toChars(0x10000)); // UTF-8 F0 90 80 80
+
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder o = b.startObject();
+    // Appended in the "wrong" order on purpose, to prove the builder sorts rather than
+    // preserving insertion order.
+    o.appendKey(supplementaryKey);
+    o.appendLong(2);
+    o.appendKey(bmpKey);
+    o.appendLong(1);
+    b.endObject();
+
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      assertThat(v.numObjectElements()).isEqualTo(2);
+      // UTF-8 byte order: EF BF BF < F0 90 80 80, so the BMP key comes first.
+      assertThat(v.getFieldAtIndex(0).key).isEqualTo(bmpKey);
+      assertThat(v.getFieldAtIndex(1).key).isEqualTo(supplementaryKey);
+      assertThat(v.getFieldByKey(bmpKey).getLong()).isEqualTo(1);
+      assertThat(v.getFieldByKey(supplementaryKey).getLong()).isEqualTo(2);
+    });
+  }
+
+  /**
+   * A large object (>= BINARY_SEARCH_THRESHOLD) that mixes ASCII keys with U+FFFF and a
+   * supplementary-plane key, exercising the reader's binary-search path in
+   * {@link Variant#getFieldByKey}. The binary search must use the same UTF-8 byte ordering as the
+   * builder's sort; with a UTF-16 comparator on the read side, the supplementary key would be
+   * mis-navigated and not found.
+   */
+  @Test
+  public void testLargeObjectBinarySearchWithSupplementaryKey() {
+    String bmpKey = "￿"; // UTF-8 EF BF BF
+    String supplementaryKey = new String(Character.toChars(0x10000)); // UTF-8 F0 90 80 80
+
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder o = b.startObject();
+    for (int i = 0; i < 40; i++) { // well above BINARY_SEARCH_THRESHOLD (32)
+      o.appendKey(String.format("a%03d", i));
+      o.appendLong(i);
+    }
+    o.appendKey(bmpKey);
+    o.appendLong(998);
+    o.appendKey(supplementaryKey);
+    o.appendLong(999);
+    b.endObject();
+
+    VariantTestUtil.testVariant(b.build(), v -> {
+      assertThat(v.numObjectElements()).isEqualTo(42);
+      assertThat(v.getFieldByKey(bmpKey)).isNotNull();
+      assertThat(v.getFieldByKey(bmpKey).getLong()).isEqualTo(998);
+      assertThat(v.getFieldByKey(supplementaryKey)).isNotNull();
+      assertThat(v.getFieldByKey(supplementaryKey).getLong()).isEqualTo(999);
+      assertThat(v.getFieldByKey("a037").getLong()).isEqualTo(37);
+    });
+  }
+
+  /**
+   * Objects written before the ordering fix sorted field ids by {@link String#compareTo} (UTF-16
+   * order). {@link Variant#getFieldByKey} must still find keys in such objects: when a key
+   * contains a code unit at or above U+D800, the lookup retries the binary search in UTF-16 order
+   * after the spec's UTF-8 order fails.
+   */
+  @Test
+  public void testLegacyUtf16OrderedObjectLookup() {
+    String bmpKey = "￿"; // UTF-8 EF BF BF
+    String supplementaryKey = new String(Character.toChars(0x10000)); // UTF-8 F0 90 80 80
+
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder o = b.startObject();
+    for (int i = 0; i < 40; i++) {
+      o.appendKey(String.format("a%03d", i));
+      o.appendLong(i);
+    }
+    o.appendKey(bmpKey);
+    o.appendLong(998);
+    o.appendKey(supplementaryKey);
+    o.appendLong(999);
+    b.endObject();
+    Variant canonical = b.build();
+
+    // Reproduce the layout written by older versions: swap the id and offset entries of the last
+    // two fields, so the supplementary key precedes the BMP key (UTF-16 order).
+    ByteBuffer valueBuffer = canonical.getValueBuffer().duplicate();
+    byte[] legacyValue = new byte[valueBuffer.remaining()];
+    valueBuffer.get(legacyValue);
+    VariantUtil.ObjectInfo info =
+        VariantUtil.getObjectInfo(ByteBuffer.wrap(legacyValue).order(ByteOrder.LITTLE_ENDIAN));
+    swapLastTwoEntries(legacyValue, info.idStartOffset, info.idSize, info.numElements);
+    swapLastTwoEntries(legacyValue, info.offsetStartOffset, info.offsetSize, info.numElements);
+    Variant legacy = new Variant(ByteBuffer.wrap(legacyValue), canonical.getMetadataBuffer());
+
+    assertThat(legacy.getFieldAtIndex(40).key).isEqualTo(supplementaryKey);
+    assertThat(legacy.getFieldAtIndex(41).key).isEqualTo(bmpKey);
+    // ASCII keys are found by the first (UTF-8 order) search.
+    assertThat(legacy.getFieldByKey("a037").getLong()).isEqualTo(37);
+    // Keys at or above U+D800 are found by the UTF-16 order retry.
+    assertThat(legacy.getFieldByKey(bmpKey).getLong()).isEqualTo(998);
+    assertThat(legacy.getFieldByKey(supplementaryKey).getLong()).isEqualTo(999);
+    // Absent keys stay absent after both attempts.
+    assertThat(legacy.getFieldByKey("missing")).isNull();
+    assertThat(legacy.getFieldByKey(new String(Character.toChars(0x10001)))).isNull();
+  }
+
+  private static void swapLastTwoEntries(byte[] bytes, int start, int width, int numElements) {
+    int left = start + (numElements - 2) * width;
+    int right = left + width;
+    ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+    int leftValue = VariantUtil.readUnsignedLittleEndian(buffer, left, width);
+    int rightValue = VariantUtil.readUnsignedLittleEndian(buffer, right, width);
+    VariantUtil.writeLong(bytes, left, rightValue, width);
+    VariantUtil.writeLong(bytes, right, leftValue, width);
+  }
+
   @Test
   public void testMixedObjectBuilder() {
     VariantBuilder b = new VariantBuilder();
