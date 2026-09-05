@@ -86,6 +86,10 @@ import org.slf4j.LoggerFactory;
  * # To enable/disable PFOR encoding for INT32 and INT64 columns
  * parquet.enable.pfor=false # true to enable PFOR encoding
  *
+ * # To allow a PFOR vector to hold the differences between its successive values
+ * # Only consulted where PFOR itself is enabled
+ * parquet.enable.pfor.delta=true # false to keep every PFOR vector on absolute values
+ *
  * # To enable/disable summary metadata aggregation at the end of a MR job
  * # The default is true (enabled)
  * parquet.enable.summary-metadata=true # false to disable summary aggregation
@@ -145,6 +149,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY = "parquet.enable.dictionary";
   public static final String ENABLE_BYTE_STREAM_SPLIT = "parquet.enable.bytestreamsplit";
   public static final String ENABLE_PFOR = "parquet.enable.pfor";
+  public static final String ENABLE_PFOR_DELTA = "parquet.enable.pfor.delta";
   public static final String VALIDATION = "parquet.validation";
   public static final String WRITER_VERSION = "parquet.writer.version";
   public static final String MEMORY_POOL_RATIO = "parquet.memory.pool.ratio";
@@ -285,6 +290,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getPforEnabled(Configuration configuration) {
     return configuration.getBoolean(ENABLE_PFOR, ParquetProperties.DEFAULT_IS_PFOR_ENABLED);
+  }
+
+  public static boolean getPforDeltaEnabled(Configuration configuration) {
+    return configuration.getBoolean(ENABLE_PFOR_DELTA, ParquetProperties.DEFAULT_IS_PFOR_DELTA_ENABLED);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
@@ -522,6 +531,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withDictionaryEncoding(getEnableDictionary(conf))
         .withByteStreamSplitEncoding(getByteStreamSplitEnabled(conf))
         .withPforEncoding(getPforEnabled(conf))
+        .withPforDeltaEncoding(getPforDeltaEnabled(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))

@@ -45,40 +45,58 @@ public class TestPforConfiguration {
   @Test
   public void testDefault() throws Exception {
     Configuration conf = new Configuration();
-    // PFOR is off unless a job asks for it
+    // PFOR is off unless a job asks for it, and the delta mode is on wherever PFOR is
     assertEquals(ParquetProperties.DEFAULT_IS_PFOR_ENABLED, ParquetOutputFormat.getPforEnabled(conf));
+    assertEquals(ParquetProperties.DEFAULT_IS_PFOR_DELTA_ENABLED, ParquetOutputFormat.getPforDeltaEnabled(conf));
   }
 
   @Test
-  public void testTheKeyNameIsTheDocumentedOne() throws Exception {
-    // This string is the public surface; the class javadoc documents it
+  public void testTheKeyNamesAreTheDocumentedOnes() throws Exception {
+    // These strings are the public surface; the class javadoc documents them
     assertEquals("parquet.enable.pfor", ParquetOutputFormat.ENABLE_PFOR);
+    assertEquals("parquet.enable.pfor.delta", ParquetOutputFormat.ENABLE_PFOR_DELTA);
   }
 
   @Test
   public void testSetTrue() throws Exception {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR, true);
+    conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR_DELTA, true);
     assertTrue(ParquetOutputFormat.getPforEnabled(conf));
+    assertTrue(ParquetOutputFormat.getPforDeltaEnabled(conf));
   }
 
   @Test
   public void testSetFalse() throws Exception {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR, false);
+    conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR_DELTA, false);
     assertFalse(ParquetOutputFormat.getPforEnabled(conf));
+    assertFalse(ParquetOutputFormat.getPforDeltaEnabled(conf));
   }
 
   @Test
-  public void testTheKeyReachesTheWriterProperties() throws Exception {
+  public void testTheDeltaModeCanBeTurnedOffWhilePforStaysOn() throws Exception {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR, true);
+    conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR_DELTA, false);
+    assertTrue(ParquetOutputFormat.getPforEnabled(conf));
+    assertFalse(ParquetOutputFormat.getPforDeltaEnabled(conf));
+  }
+
+  @Test
+  public void testTheKeysReachTheWriterProperties() throws Exception {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR, true);
+    conf.setBoolean(ParquetOutputFormat.ENABLE_PFOR_DELTA, false);
 
     ParquetProperties props = ParquetProperties.builder()
         .withPforEncoding(ParquetOutputFormat.getPforEnabled(conf))
+        .withPforDeltaEncoding(ParquetOutputFormat.getPforDeltaEnabled(conf))
         .build();
 
     assertTrue(props.isPforEnabled(intColumn()));
+    assertFalse(props.isPforDeltaEnabled(intColumn()));
     // PFOR encodes INT32 and INT64 only, whatever the configuration says
     assertFalse(props.isPforEnabled(doubleColumn()));
   }
