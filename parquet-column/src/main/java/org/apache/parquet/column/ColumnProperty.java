@@ -19,9 +19,11 @@
 
 package org.apache.parquet.column;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 /**
@@ -70,6 +72,11 @@ abstract class ColumnProperty<T> {
     }
 
     @Override
+    Set<ColumnPath> getColumnPaths() {
+      return values.keySet();
+    }
+
+    @Override
     public String toString() {
       return Objects.toString(getDefaultValue()) + ' ' + values.toString();
     }
@@ -99,6 +106,16 @@ abstract class ColumnProperty<T> {
       return withValue(ColumnPath.get(columnDescriptor.getPath()), value);
     }
 
+    /** The default value set so far, so a caller can modify rather than replace it. */
+    public T getDefaultValue() {
+      return defaultValue;
+    }
+
+    /** The value set so far for {@code columnPath}, falling back to the default. */
+    public T getValue(ColumnPath columnPath) {
+      return values.getOrDefault(columnPath, defaultValue);
+    }
+
     public ColumnProperty<T> build() {
       if (values.isEmpty()) {
         return new DefaultColumnProperty<>(defaultValue);
@@ -124,6 +141,14 @@ abstract class ColumnProperty<T> {
   public abstract T getDefaultValue();
 
   public abstract T getValue(ColumnPath columnPath);
+
+  /**
+   * @return the column paths that have an explicit per-column value set (empty when the property
+   *     only carries a default value)
+   */
+  Set<ColumnPath> getColumnPaths() {
+    return Collections.emptySet();
+  }
 
   public T getValue(String columnPath) {
     return getValue(ColumnPath.fromDotString(columnPath));
