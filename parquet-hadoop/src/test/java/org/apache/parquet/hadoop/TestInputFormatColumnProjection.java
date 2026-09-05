@@ -39,6 +39,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleInputFormat;
@@ -116,7 +117,7 @@ public class TestInputFormatColumnProjection {
 
     Configuration conf = new Configuration();
     // set the vector IO option
-    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, readType);
+    conf.setBoolean(ParquetInputProperties.HADOOP_VECTORED_IO_ENABLED, readType);
     // set the projection schema
     conf.set(
         "parquet.read.schema",

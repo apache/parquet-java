@@ -62,6 +62,7 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -149,7 +150,7 @@ public class TestColumnChunkPageWriteStore {
     Configuration config = new Configuration(conf);
     // we want to test the path with direct buffers so we need to enable this config as well
     // even though this file is not encrypted
-    config.set(ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED, "true");
+    config.set(ParquetInputProperties.OFF_HEAP_DECRYPT_BUFFER_ENABLED, "true");
     test(config, allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator()));
   }
 
