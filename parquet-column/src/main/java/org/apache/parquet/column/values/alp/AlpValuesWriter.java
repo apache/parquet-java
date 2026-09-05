@@ -340,12 +340,23 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       totalCount = 0;
       encodedVectors.reset();
       vectorByteSizes.clear();
-      vectorsProcessed = 0;
-      // Preserve cachedPresets across page boundaries: the preset (exponent, factor) pairs
-      // reflect the column's data distribution and remain valid for subsequent pages.
-      // Clearing them on every reset forces a full parameter search from scratch on each page,
-      // which is the main source of write overhead. Only reset the sampling state.
-      sampledParams.clear();
+      // Sampling state deliberately survives reset(). The sampler's unit is a rowgroup
+      // (SAMPLER_ROWGROUP_SIZE values), but reset() runs at every page boundary, which is far
+      // smaller: at the default page limit a page holds only a few sample points, so clearing
+      // vectorsProcessed and sampledParams here meant the sample count never reached
+      // SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP, buildPresetCache() never ran, and every vector paid
+      // for a full parameter search. Letting samples accumulate across pages restores the
+      // intended behaviour; cachedPresets likewise stays valid since it describes the column's
+      // data distribution, not any one page.
+    }
+
+    /**
+     * Visible for testing: whether enough vectors have been sampled to lock in the preset
+     * (exponent, factor) combinations. This spans several pages at the default page size, so it
+     * only holds if the sampling state survives {@link #reset()}.
+     */
+    boolean hasPresetCache() {
+      return cachedPresets != null;
     }
 
     @Override
@@ -620,12 +631,23 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       totalCount = 0;
       encodedVectors.reset();
       vectorByteSizes.clear();
-      vectorsProcessed = 0;
-      // Preserve cachedPresets across page boundaries: the preset (exponent, factor) pairs
-      // reflect the column's data distribution and remain valid for subsequent pages.
-      // Clearing them on every reset forces a full parameter search from scratch on each page,
-      // which is the main source of write overhead. Only reset the sampling state.
-      sampledParams.clear();
+      // Sampling state deliberately survives reset(). The sampler's unit is a rowgroup
+      // (SAMPLER_ROWGROUP_SIZE values), but reset() runs at every page boundary, which is far
+      // smaller: at the default page limit a page holds only a few sample points, so clearing
+      // vectorsProcessed and sampledParams here meant the sample count never reached
+      // SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP, buildPresetCache() never ran, and every vector paid
+      // for a full parameter search. Letting samples accumulate across pages restores the
+      // intended behaviour; cachedPresets likewise stays valid since it describes the column's
+      // data distribution, not any one page.
+    }
+
+    /**
+     * Visible for testing: whether enough vectors have been sampled to lock in the preset
+     * (exponent, factor) combinations. This spans several pages at the default page size, so it
+     * only holds if the sampling state survives {@link #reset()}.
+     */
+    boolean hasPresetCache() {
+      return cachedPresets != null;
     }
 
     @Override

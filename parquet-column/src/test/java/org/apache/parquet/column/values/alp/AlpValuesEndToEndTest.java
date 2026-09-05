@@ -170,6 +170,37 @@ public class AlpValuesEndToEndTest {
     roundTripDoubleStrict(values);
   }
 
+  // ========== Sampler / preset cache ==========
+
+  @Test
+  public void testPresetCacheBuildsAcrossPageBoundaries() {
+    // The sampler collects one sample every SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS /
+    // vectorSize vectors and needs SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP of them before it can lock
+    // in the preset combinations. Its unit is a rowgroup, but reset() runs at every page boundary,
+    // which is much smaller. Clearing the sampling state there meant the threshold was never
+    // reached and the preset cache never built, so every vector paid for a full parameter search.
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        65536, 65536, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+
+    int vectorsPerPage = 19; // roughly what the default 20k row page limit allows
+    int pages = 12;
+    double value = 0.0;
+    for (int page = 0; page < pages; page++) {
+      for (int i = 0; i < vectorsPerPage * DEFAULT_VECTOR_SIZE; i++) {
+        value += 0.01;
+        writer.writeDouble(Math.round(value * 100.0) / 100.0);
+      }
+      writer.getBytes();
+      writer.reset();
+    }
+
+    assertThat(writer.hasPresetCache())
+        .as("preset cache must build once enough vectors are sampled, even though the samples "
+            + "are spread across pages")
+        .isTrue();
+    writer.close();
+  }
+
   // ========== Reader robustness against malformed input ==========
 
   private void readAllDoubles(byte[] bytes, int valueCount) throws Exception {
