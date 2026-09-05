@@ -25,7 +25,8 @@ import org.apache.parquet.Preconditions;
  *
  * <p>PFOR encoding compresses integer columns (INT32/INT64) by:
  * <ol>
- *   <li>Subtracting the minimum value (Frame of Reference)</li>
+ *   <li>Subtracting a frame of reference: any lower bound on the vector, chosen so the
+ *       residuals pack narrowly, and not necessarily the minimum</li>
  *   <li>Choosing an optimal bit width via a cost model</li>
  *   <li>Bit-packing the residuals at the chosen width</li>
  *   <li>Storing outlier values (exceptions) separately with their positions</li>

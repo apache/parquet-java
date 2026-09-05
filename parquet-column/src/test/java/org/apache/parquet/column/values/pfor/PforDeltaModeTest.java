@@ -202,8 +202,11 @@ public class PforDeltaModeTest {
     byte[] page = intPage(values, 1024, true);
 
     assertTrue("delta flag", intDeltaFlag(page, 0));
-    // Bit 7 is the flag, so the width has to be read out from under it.
-    assertEquals(3, bitWidthByte(page, 0, INT32_VECTOR_INFO_SIZE) & BIT_WIDTH_MASK);
+    // Bit 7 is the flag, so the width has to be read out from under it. Every difference
+    // here is 7 except the leading 0, and the frame search sits the frame on 7 and patches
+    // that one, which leaves nothing to pack.
+    assertEquals(0, bitWidthByte(page, 0, INT32_VECTOR_INFO_SIZE) & BIT_WIDTH_MASK);
+    assertEquals(1, intNumExceptions(page, 0));
     // The start value sits between the vector info and the packed residuals.
     assertEquals(values[0], intLE(page, vectorPos(page, 0) + INT32_VECTOR_INFO_SIZE));
     assertIntRoundTrip(values, 1024, true);
@@ -219,7 +222,8 @@ public class PforDeltaModeTest {
     byte[] page = longPage(values, 1024, true);
 
     assertTrue("delta flag", longDeltaFlag(page, 0));
-    assertEquals(3, bitWidthByte(page, 0, INT64_VECTOR_INFO_SIZE) & BIT_WIDTH_MASK);
+    assertEquals(0, bitWidthByte(page, 0, INT64_VECTOR_INFO_SIZE) & BIT_WIDTH_MASK);
+    assertEquals(1, longNumExceptions(page, 0));
     assertEquals(values[0], longLE(page, vectorPos(page, 0) + INT64_VECTOR_INFO_SIZE));
     assertLongRoundTrip(values, 1024, true);
 
@@ -481,10 +485,12 @@ public class PforDeltaModeTest {
 
     assertTrue(plan.delta);
     assertEquals(values[0], plan.startValue);
-    // The differences are 0 then 7 repeated, so the frame is 0 and 7 needs 3 bits.
-    assertEquals(0, plan.frameOfReference);
-    assertEquals(3, plan.bitWidth);
-    assertEquals(0, plan.numExceptions);
+    // The differences are 0 then 7 repeated. A frame of 7 packs the run at width 0 and
+    // leaves the leading 0 as the one exception, which costs less than charging every
+    // value the 3 bits that a frame at the minimum would need.
+    assertEquals(7, plan.frameOfReference);
+    assertEquals(0, plan.bitWidth);
+    assertEquals(1, plan.numExceptions);
   }
 
   @Test
@@ -495,8 +501,9 @@ public class PforDeltaModeTest {
 
     assertTrue(plan.delta);
     assertEquals(values[0], plan.startValue);
-    assertEquals(0, plan.frameOfReference);
-    assertEquals(3, plan.bitWidth);
+    assertEquals(7, plan.frameOfReference);
+    assertEquals(0, plan.bitWidth);
+    assertEquals(1, plan.numExceptions);
   }
 
   @Test
@@ -510,8 +517,9 @@ public class PforDeltaModeTest {
 
   @Test
   public void planPaysForTheStartValue() throws Exception {
-    // Eight values stepping by 100: differencing takes the width from 10 bits to 7,
-    // which saves 24 bits over the vector -- less than the 32 the start value costs.
+    // Eight values stepping by 100. Differencing packs them at width 0 with the leading
+    // difference patched, 48 bits in all, and the start value costs 32 more -- exactly
+    // what the values cost as they stand, so the tie keeps the values.
     int[] shortRun = {0, 100, 200, 300, 400, 500, 600, 700};
     PforEncoderDecoder.VectorPlan plan =
         PforEncoderDecoder.chooseVectorPlanForInt(shortRun, shortRun.length, new int[shortRun.length], true);
@@ -545,8 +553,9 @@ public class PforDeltaModeTest {
         PforEncoderDecoder.chooseVectorPlanForInt(values, values.length, new int[values.length], false);
     assertTrue("delta cost " + delta.costBits + " vs plain " + plain.costBits, delta.costBits < plain.costBits);
     // The reported cost carries the start value, so it is what the two modes were
-    // compared on rather than the width alone.
-    assertEquals(1024L * 3 + 32, delta.costBits);
+    // compared on rather than the width alone: nothing packed, one exception at 16 bits
+    // of position and 32 of value, and the 32-bit start value.
+    assertEquals((16 + 32) + 32L, delta.costBits);
   }
 
   // ---------------------------------------------------------------------------
