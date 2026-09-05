@@ -79,8 +79,8 @@ jobs:
       - name: Prepare Release Candidate
         env:
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
-          NEXUS_USERNAME: ${{ secrets.PARQUET_NEXUS_USER }}
-          NEXUS_PASSWORD: ${{ secrets.PARQUET_NEXUS_PASSWORD }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
           SVN_USERNAME: ${{ secrets.PARQUET_SVN_DEV_USERNAME }}
           SVN_PASSWORD: ${{ secrets.PARQUET_SVN_DEV_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
