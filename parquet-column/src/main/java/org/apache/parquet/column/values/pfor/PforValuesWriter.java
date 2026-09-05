@@ -36,9 +36,11 @@ import org.apache.parquet.column.values.bitpacking.Packer;
 /**
  * PFOR (Patched Frame of Reference) values writer for INT32 and INT64 columns.
  *
- * <p>PFOR compresses integer columns by subtracting the minimum value (FOR),
+ * <p>PFOR compresses integer columns by subtracting a frame of reference (FOR),
  * selecting an optimal bit width via a histogram-based cost model, bit-packing
- * the residuals, and storing outlier values (exceptions) separately.
+ * the residuals, and storing outlier values (exceptions) separately. The frame is
+ * searched for rather than taken to be the vector minimum, so a value below it is
+ * an exception just as a value above the packed window is.
  *
  * <p>Per vector, the writer costs the values as they stand and again as the
  * differences between successive values, and keeps the cheaper of the two -- the

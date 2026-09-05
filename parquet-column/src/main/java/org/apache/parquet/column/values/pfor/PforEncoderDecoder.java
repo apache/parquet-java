@@ -31,6 +31,11 @@ package org.apache.parquet.column.values.pfor;
  * <p>The same model decides the delta mode: a vector is costed as it stands and
  * again as the differences between its successive values, and the cheaper of the
  * two wins. See {@link #chooseVectorPlanForInt}.
+ *
+ * <p>It also decides the frame of reference, which is any lower bound on the vector
+ * rather than its minimum: a window placed where the values cluster can be narrower
+ * than one anchored at an outlier below them, and the values it leaves out are patched
+ * like any other exception. See {@link #searchForInt}.
  */
 public final class PforEncoderDecoder {
 
@@ -233,43 +238,283 @@ public final class PforEncoderDecoder {
   }
 
   /**
-   * Take the frame of an INT32 vector and cost the widths over it, without writing the
-   * residuals out: they are needed once here, for their widths, and again by the caller
-   * only once the plan is settled.
+   * Bucket count the frame search works at, as a shift and as a count. 256 buckets keep
+   * the window scan in {@link #scanFrameWindow} at about two passes' worth of work over a
+   * 1024-value vector.
+   */
+  private static final int FRAME_SEARCH_BITS = 8;
+
+  private static final int FRAME_SEARCH_BUCKETS = 1 << FRAME_SEARCH_BITS;
+
+  /** A run of frame search buckets: the offsets in {@code [start << shift, end << shift)}. */
+  private static final class FrameWindow {
+    final int start;
+    final int end;
+
+    FrameWindow(int start, int end) {
+      this.start = start;
+      this.end = end;
+    }
+  }
+
+  /**
+   * Choose a frame of reference for an INT32 vector and the width that suits it.
+   *
+   * <p>With the minimum as the frame every exception is an overshoot: one value far below
+   * the cluster drags the packed window down with it and nothing can patch it back. Any
+   * lower bound is a valid frame, so the window can sit where the values are and patch on
+   * both sides. A value below the frame wraps, in the modular subtraction the writer
+   * already does, to a huge offset that fails the same unsigned width test as a value
+   * above the window, so it becomes an exception and is patched back with its unreduced
+   * value. There is no sign or direction to track.
+   *
+   * <p>The wire format does not change: the frame field holds a full-width value and a
+   * reader only adds it, so any PFOR reader reads these pages.
+   *
+   * <p>The search is approximate. An exact answer needs the values sorted; instead the
+   * range is bucketed with a shift and for each candidate width a window is slid over
+   * the bucket counts. Only whole buckets count as covered, so the exception estimate is
+   * an upper bound, never optimistic. The minimum as a frame is always among the
+   * candidates and it alone is costed from a real histogram, so the search can never do
+   * worse than the width search alone would have.
    */
   private static VectorPlan searchForInt(int[] source, int numElements) {
-    int frame = source[0];
+    int min = source[0];
+    int max = source[0];
     for (int i = 1; i < numElements; i++) {
-      if (source[i] < frame) {
-        frame = source[i];
+      if (source[i] < min) {
+        min = source[i];
+      } else if (source[i] > max) {
+        max = source[i];
       }
     }
 
-    int[] bitsHist = new int[33];
-    for (int i = 0; i < numElements; i++) {
-      bitsHist[bitWidthForInt(source[i] - frame)]++;
+    // The range is an unsigned quantity even though its ends are signed: it spans the
+    // whole type when they sit at the extremes, and the subtraction wraps to say so.
+    int range = max - min;
+    if (range == 0) {
+      // A constant vector needs no search. The early exit also avoids the histogram
+      // pass, where a run of equal values sends every element to one bin and the
+      // read-modify-write serializes.
+      return new VectorPlan(false, min, 0, 0, 0, 0);
     }
 
+    int rangeBits = bitWidthForInt(range);
+    int shift = rangeBits > FRAME_SEARCH_BITS ? rangeBits - FRAME_SEARCH_BITS : 0;
+
+    // One walk serves both halves of the search: the width histogram costs the minimum
+    // as a frame, the bucket counts cost every other frame. They are gathered together
+    // because each needs the same offset.
+    int[] bitsHist = new int[33];
+    int[] counts = new int[FRAME_SEARCH_BUCKETS + 1];
+    for (int i = 0; i < numElements; i++) {
+      int offset = source[i] - min;
+      bitsHist[bitWidthForInt(offset)]++;
+      counts[offset >>> shift]++;
+    }
+
+    // Candidate 0 is the minimum, costed from an exact histogram, so the search never
+    // does worse than taking the minimum.
     BitWidthResult best = bestFromHistogram(bitsHist, 32, numElements, INT32_EXCEPTION_BITS);
-    return new VectorPlan(false, frame, 0, best.bitWidth, best.numExceptions, best.costBits);
+    VectorPlan minPlan = new VectorPlan(false, min, 0, best.bitWidth, best.numExceptions, best.costBits);
+
+    // Width 0 with a few patches cannot be improved by moving the frame. Having no
+    // exceptions is different: a frame above the minimum trades a narrower width for a
+    // few patches, so an exception-free choice is where the search starts.
+    if (best.bitWidth == 0) {
+      return minPlan;
+    }
+
+    int numBuckets = (range >>> shift) + 1;
+    FrameWindow window =
+        scanFrameWindow(counts, numBuckets, shift, 32, numElements, INT32_EXCEPTION_BITS, best.costBits);
+    if (window == null) {
+      return minPlan;
+    }
+
+    // Lower the frame from the boundary of the winning window onto the smallest value the
+    // window covers. Bucket boundaries stand 2^shift apart, which on a wide column is
+    // thousands, and a cluster sitting just above one would otherwise pay those bits for
+    // nothing.
+    //
+    // A walk of its own, rather than per-bucket minima kept by the pass above: tracking
+    // them there costs every vector a compare and a store per element, including the
+    // vectors where the scan finds nothing and the minima are thrown away. Here only a
+    // vector whose search has already won pays, and it pays one traversal.
+    int windowLo = window.start << shift;
+    // A window reaching the last bucket has no upper edge to test against: that edge
+    // would be numBuckets << shift, one past the range whenever the offsets span the
+    // whole type.
+    boolean boundedAbove = window.end < numBuckets;
+    int windowHi = boundedAbove ? window.end << shift : 0;
+
+    int frameOffset = 0;
+    boolean coversAnything = false;
+    for (int i = 0; i < numElements; i++) {
+      int offset = source[i] - min;
+      if (Integer.compareUnsigned(offset, windowLo) < 0
+          || (boundedAbove && Integer.compareUnsigned(offset, windowHi) >= 0)) {
+        continue;
+      }
+      if (!coversAnything || Integer.compareUnsigned(offset, frameOffset) < 0) {
+        frameOffset = offset;
+        coversAnything = true;
+      }
+    }
+    if (!coversAnything || frameOffset == 0) {
+      return minPlan;
+    }
+
+    // Cost the winning frame exactly; this pass decides the width and the exception
+    // count. The scan works at bucket granularity and so cannot see a window narrower
+    // than one bucket, which is often where the best answer is: a sawtooth spanning 12
+    // bits has buckets 16 wide, and no scan over them resolves the 0-bit window its few
+    // patches leave behind.
+    int scanFrame = min + frameOffset;
+    int[] exactHist = new int[33];
+    for (int i = 0; i < numElements; i++) {
+      exactHist[bitWidthForInt(source[i] - scanFrame)]++;
+    }
+    BitWidthResult exact = bestFromHistogram(exactHist, 32, numElements, INT32_EXCEPTION_BITS);
+    if (exact.costBits >= best.costBits) {
+      return minPlan;
+    }
+    return new VectorPlan(false, scanFrame, 0, exact.bitWidth, exact.numExceptions, exact.costBits);
   }
 
   /** See {@link #searchForInt}. */
   private static VectorPlan searchForLong(long[] source, int numElements) {
-    long frame = source[0];
+    long min = source[0];
+    long max = source[0];
     for (int i = 1; i < numElements; i++) {
-      if (source[i] < frame) {
-        frame = source[i];
+      if (source[i] < min) {
+        min = source[i];
+      } else if (source[i] > max) {
+        max = source[i];
       }
     }
 
+    long range = max - min;
+    if (range == 0) {
+      return new VectorPlan(false, min, 0, 0, 0, 0);
+    }
+
+    int rangeBits = bitWidthForLong(range);
+    int shift = rangeBits > FRAME_SEARCH_BITS ? rangeBits - FRAME_SEARCH_BITS : 0;
+
     int[] bitsHist = new int[65];
+    int[] counts = new int[FRAME_SEARCH_BUCKETS + 1];
     for (int i = 0; i < numElements; i++) {
-      bitsHist[bitWidthForLong(source[i] - frame)]++;
+      long offset = source[i] - min;
+      bitsHist[bitWidthForLong(offset)]++;
+      counts[(int) (offset >>> shift)]++;
     }
 
     BitWidthResult best = bestFromHistogram(bitsHist, 64, numElements, INT64_EXCEPTION_BITS);
-    return new VectorPlan(false, frame, 0, best.bitWidth, best.numExceptions, best.costBits);
+    VectorPlan minPlan = new VectorPlan(false, min, 0, best.bitWidth, best.numExceptions, best.costBits);
+    if (best.bitWidth == 0) {
+      return minPlan;
+    }
+
+    int numBuckets = (int) (range >>> shift) + 1;
+    FrameWindow window =
+        scanFrameWindow(counts, numBuckets, shift, 64, numElements, INT64_EXCEPTION_BITS, best.costBits);
+    if (window == null) {
+      return minPlan;
+    }
+
+    long windowLo = (long) window.start << shift;
+    boolean boundedAbove = window.end < numBuckets;
+    long windowHi = boundedAbove ? (long) window.end << shift : 0;
+
+    long frameOffset = 0;
+    boolean coversAnything = false;
+    for (int i = 0; i < numElements; i++) {
+      long offset = source[i] - min;
+      if (Long.compareUnsigned(offset, windowLo) < 0
+          || (boundedAbove && Long.compareUnsigned(offset, windowHi) >= 0)) {
+        continue;
+      }
+      if (!coversAnything || Long.compareUnsigned(offset, frameOffset) < 0) {
+        frameOffset = offset;
+        coversAnything = true;
+      }
+    }
+    if (!coversAnything || frameOffset == 0) {
+      return minPlan;
+    }
+
+    long scanFrame = min + frameOffset;
+    int[] exactHist = new int[65];
+    for (int i = 0; i < numElements; i++) {
+      exactHist[bitWidthForLong(source[i] - scanFrame)]++;
+    }
+    BitWidthResult exact = bestFromHistogram(exactHist, 64, numElements, INT64_EXCEPTION_BITS);
+    if (exact.costBits >= best.costBits) {
+      return minPlan;
+    }
+    return new VectorPlan(false, scanFrame, 0, exact.bitWidth, exact.numExceptions, exact.costBits);
+  }
+
+  /**
+   * Slide a window of {@code 2^w} offsets over the bucket counts, for each candidate
+   * width in turn, and return where it costs least.
+   *
+   * <p>Widths below the bucket size cannot be resolved at this granularity, and once one
+   * window spans every bucket there are no exceptions left to remove, so only the
+   * {@link #FRAME_SEARCH_BITS} or so widths in between are scanned: fixed work, and none
+   * of it touching the data again.
+   *
+   * <p>What comes out is a frame, not a width. Only whole buckets count as covered, so
+   * {@code w} here is an upper bound on the width the frame really needs and the
+   * exception count an upper bound too; the caller's exact pass is what turns the frame
+   * into a plan.
+   *
+   * @param incumbentCost the cost to beat, so a window only registers if it beats the
+   *     minimum as a frame. That skips the rest of the search entirely on a column the
+   *     frame cannot help, which is most of them, and it errs in the conservative
+   *     direction: the scan over-counts exceptions, so it can decline a frame whose exact
+   *     cost would have won, but it cannot accept one that loses.
+   * @return the winning window, or null if none beat {@code incumbentCost}
+   */
+  private static FrameWindow scanFrameWindow(
+      int[] counts,
+      int numBuckets,
+      int shift,
+      int maxBits,
+      int numElements,
+      long exceptionBitsPerValue,
+      long incumbentCost) {
+    int[] prefix = new int[numBuckets + 1];
+    for (int b = 0; b < numBuckets; b++) {
+      prefix[b + 1] = prefix[b] + counts[b];
+    }
+
+    int bestStart = -1;
+    int bestEnd = 0;
+    long bestCost = incumbentCost;
+    for (int w = shift; w <= maxBits; w++) {
+      // Buckets that fit under a width of w. The exponent stays small -- there are at
+      // most FRAME_SEARCH_BUCKETS buckets, so the loop leaves as soon as w - shift
+      // reaches FRAME_SEARCH_BITS -- but it is clamped rather than shifted, because a
+      // shift count of 64 or more is not a shift at all in Java.
+      int k = (w - shift) >= FRAME_SEARCH_BITS ? numBuckets : (int) Math.min(1L << (w - shift), numBuckets);
+      for (int s = 0; s < numBuckets; s++) {
+        int end = Math.min(s + k, numBuckets);
+        long exceptions = numElements - (prefix[end] - prefix[s]);
+        long cost = (long) numElements * w + exceptions * exceptionBitsPerValue;
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestStart = s;
+          bestEnd = end;
+        }
+      }
+      if (k >= numBuckets) {
+        break; // one window already spans the data
+      }
+    }
+
+    return bestStart < 0 ? null : new FrameWindow(bestStart, bestEnd);
   }
 
   /**
@@ -282,8 +527,8 @@ public final class PforEncoderDecoder {
    *
    * <p>The subtraction wraps, which is what makes the round trip exact for a column
    * that spans the type's range; the reader's prefix sum wraps the same way. A vector
-   * with negative differences needs nothing special: the frame is the minimum of the
-   * differences, so subtracting it makes every residual non-negative, the same
+   * with negative differences needs nothing special: the frame is a lower bound on the
+   * differences, so subtracting it leaves residuals the packed width can hold, the same
    * mechanism a plain vector uses for negative values.
    */
   public static void computeDeltasForInt(int[] values, int numElements, int[] deltas) {
