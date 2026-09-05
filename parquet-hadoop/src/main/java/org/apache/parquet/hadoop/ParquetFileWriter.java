@@ -519,36 +519,44 @@ public class ParquetFileWriter implements AutoCloseable {
       return;
     }
 
-    if (null == encryptionProperties) {
-      encryptionProperties = encryptor.getEncryptionProperties();
-    }
+    try {
+      if (null == encryptionProperties) {
+        encryptionProperties = encryptor.getEncryptionProperties();
+      }
 
-    // Verify that every encrypted column is in file schema
-    Map<ColumnPath, ColumnEncryptionProperties> columnEncryptionProperties =
-        encryptionProperties.getEncryptedColumns();
-    if (null != columnEncryptionProperties) { // if null, every column in file schema will be encrypted with footer
-      // key
-      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
-        String[] path = entry.getKey().toArray();
-        if (!schema.containsPath(path)) {
-          StringBuilder columnList = new StringBuilder();
-          columnList.append("[");
-          for (String[] columnPath : schema.getPaths()) {
-            columnList
-                .append(ColumnPath.get(columnPath).toDotString())
-                .append("], [");
+      // Verify that every encrypted column is in file schema
+      Map<ColumnPath, ColumnEncryptionProperties> columnEncryptionProperties =
+          encryptionProperties.getEncryptedColumns();
+      if (null != columnEncryptionProperties) { // if null, every column in file schema will be encrypted with
+        // footer
+        // key
+        for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
+          String[] path = entry.getKey().toArray();
+          if (!schema.containsPath(path)) {
+            StringBuilder columnList = new StringBuilder();
+            columnList.append("[");
+            for (String[] columnPath : schema.getPaths()) {
+              columnList
+                  .append(ColumnPath.get(columnPath).toDotString())
+                  .append("], [");
+            }
+            throw new ParquetCryptoRuntimeException("Encrypted column ["
+                + entry.getKey().toDotString() + "] not in file schema column list: "
+                + columnList.substring(0, columnList.length() - 3));
           }
-          throw new ParquetCryptoRuntimeException(
-              "Encrypted column [" + entry.getKey().toDotString() + "] not in file schema column list: "
-                  + columnList.substring(0, columnList.length() - 3));
         }
       }
-    }
 
-    if (null == encryptor) {
-      this.fileEncryptor = new InternalFileEncryptor(encryptionProperties);
-    } else {
-      this.fileEncryptor = encryptor;
+      if (null == encryptor) {
+        this.fileEncryptor = new InternalFileEncryptor(encryptionProperties);
+      } else {
+        this.fileEncryptor = encryptor;
+      }
+    } catch (Exception e) {
+      // If encryption setup throws in the constructor, the output stream opened above should be
+      // closed. Otherwise, there's no way to close it outside since the object is never returned.
+      out.close();
+      throw e;
     }
   }
 
