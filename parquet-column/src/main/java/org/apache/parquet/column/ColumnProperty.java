@@ -106,6 +106,16 @@ abstract class ColumnProperty<T> {
       return withValue(ColumnPath.get(columnDescriptor.getPath()), value);
     }
 
+    /** The default value set so far, so a caller can modify rather than replace it. */
+    public T getDefaultValue() {
+      return defaultValue;
+    }
+
+    /** The value set so far for {@code columnPath}, falling back to the default. */
+    public T getValue(ColumnPath columnPath) {
+      return values.getOrDefault(columnPath, defaultValue);
+    }
+
     public ColumnProperty<T> build() {
       if (values.isEmpty()) {
         return new DefaultColumnProperty<>(defaultValue);
