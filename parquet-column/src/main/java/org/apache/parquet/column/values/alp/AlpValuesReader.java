@@ -18,7 +18,12 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.apache.parquet.column.values.alp.AlpConstants.*;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_COMPRESSION_MODE;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_HEADER_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_INFO_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_INTEGER_ENCODING_FOR;
+import static org.apache.parquet.column.values.alp.AlpConstants.MAX_LOG_VECTOR_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.MIN_LOG_VECTOR_SIZE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,7 +39,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 7 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B × numVectors      │ (interleaved)│ (interleaved)│     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *

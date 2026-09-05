@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.apache.parquet.column.values.alp.AlpConstants.*;
+import static org.apache.parquet.column.values.alp.AlpConstants.FLOAT_FOR_INFO_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.FLOAT_MAX_EXPONENT;
+import static org.apache.parquet.column.values.alp.AlpConstants.PACK_GROUP_SIZE;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -100,7 +102,7 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
 
     for (int i = 0; i < vectorLen; i++) {
       int encoded = deltasBuffer[i] + frameOfReference;
-      decodedValues[i] = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
+      decodedValues[i] = AlpCodec.decodeFloat(encoded, exponent, factor);
     }
     return pos;
   }

@@ -31,19 +31,19 @@ import org.apache.parquet.Preconditions;
  *
  * @see <a href="https://dl.acm.org/doi/10.1145/3626717">ALP Paper</a>
  */
-public final class AlpConstants {
+final class AlpConstants {
 
   private AlpConstants() {
     // Utility class
   }
 
   // Page header fields
-  public static final int ALP_COMPRESSION_MODE = 0;
-  public static final int ALP_INTEGER_ENCODING_FOR = 0;
-  public static final int ALP_HEADER_SIZE = 7;
+  static final int ALP_COMPRESSION_MODE = 0;
+  static final int ALP_INTEGER_ENCODING_FOR = 0;
+  static final int ALP_HEADER_SIZE = 7;
 
-  public static final int DEFAULT_VECTOR_SIZE = 1024;
-  public static final int DEFAULT_VECTOR_SIZE_LOG = 10;
+  static final int DEFAULT_VECTOR_SIZE = 1024;
+  static final int DEFAULT_VECTOR_SIZE_LOG = 10;
 
   // BytePacker packs/unpacks 8 values at a time (pack8Values/unpack8Values).
   static final int PACK_GROUP_SIZE = 8;
@@ -56,48 +56,13 @@ public final class AlpConstants {
   static final int FLOAT_MAX_EXPONENT = 10;
   static final int DOUBLE_MAX_EXPONENT = 18;
 
-  // Sampler constants matching C++ AlpConstants.
-  // Sample SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP vectors evenly distributed across a rowgroup
-  // of SAMPLER_ROWGROUP_SIZE values, then lock in top MAX_PRESET_COMBINATIONS combos.
-  static final int SAMPLER_ROWGROUP_SIZE = 122_880;
-  static final int SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP = 8;
-  static final int MAX_PRESET_COMBINATIONS = 5;
-
-  // Magic numbers for the fast-rounding trick (see ALP paper, Section 3.2)
-  static final float MAGIC_FLOAT = 12_582_912.0f; // 2^22 + 2^23
-  static final double MAGIC_DOUBLE = 6_755_399_441_055_744.0; // 2^51 + 2^52
-
   // Per-vector metadata sizes in bytes
-  public static final int ALP_INFO_SIZE = 4; // exponent(1) + factor(1) + num_exceptions(2)
-  public static final int FLOAT_FOR_INFO_SIZE = 5; // frame_of_reference(4) + bit_width(1)
-  public static final int DOUBLE_FOR_INFO_SIZE = 9; // frame_of_reference(8) + bit_width(1)
-
-  // POWERS_OF_TEN: positive powers used for scaling up during encode/decode.
-  // Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f])
-  // Decode: encoded * POW10[f] * POW10_NEGATIVE[e]
-  static final float[] FLOAT_POW10 = {1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f};
-
-  static final double[] DOUBLE_POW10 = {
-    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18
-  };
-
-  // NEGATIVE_POWERS_OF_TEN: reciprocals used for scaling down (multiply-by-reciprocal).
-  // Multiplying by a precomputed reciprocal instead of dividing keeps the rounding bit-for-bit
-  // identical to the ALP reference implementation, so encoded values interop across implementations.
-  static final float[] FLOAT_POW10_NEGATIVE = {
-    1e0f, 1e-1f, 1e-2f, 1e-3f, 1e-4f, 1e-5f, 1e-6f, 1e-7f, 1e-8f, 1e-9f, 1e-10f
-  };
-
-  static final double[] DOUBLE_POW10_NEGATIVE = {
-    1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14, 1e-15, 1e-16,
-    1e-17, 1e-18
-  };
-
-  static final int FLOAT_NEGATIVE_ZERO_BITS = 0x80000000;
-  static final long DOUBLE_NEGATIVE_ZERO_BITS = 0x8000000000000000L;
+  static final int ALP_INFO_SIZE = 4; // exponent(1) + factor(1) + num_exceptions(2)
+  static final int FLOAT_FOR_INFO_SIZE = 5; // frame_of_reference(4) + bit_width(1)
+  static final int DOUBLE_FOR_INFO_SIZE = 9; // frame_of_reference(8) + bit_width(1)
 
   /** Validates vector size: must be a power of 2 in [2^MIN_LOG .. 2^MAX_LOG]. */
-  public static int validateVectorSize(int vectorSize) {
+  static int validateVectorSize(int vectorSize) {
     Preconditions.checkArgument(
         vectorSize > 0 && (vectorSize & (vectorSize - 1)) == 0,
         "Vector size must be a power of 2, got: %s",

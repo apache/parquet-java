@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.apache.parquet.column.values.alp.AlpConstants.*;
+import static org.apache.parquet.column.values.alp.AlpConstants.DOUBLE_MAX_EXPONENT;
+import static org.apache.parquet.column.values.alp.AlpConstants.FLOAT_MAX_EXPONENT;
 
 import org.apache.parquet.bytes.BytesUtils;
 
@@ -50,14 +51,42 @@ import org.apache.parquet.bytes.BytesUtils;
  *   <li>Round-trip failure (decode(encode(v)) != v)</li>
  * </ul>
  */
-final class AlpEncoderDecoder {
+final class AlpCodec {
+
+  // Magic numbers for the fast-rounding trick (see ALP paper, Section 3.2)
+  static final float MAGIC_FLOAT = 12_582_912.0f; // 2^22 + 2^23
+  static final double MAGIC_DOUBLE = 6_755_399_441_055_744.0; // 2^51 + 2^52
+
+  // POWERS_OF_TEN: positive powers used for scaling up during encode/decode.
+  // Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f])
+  // Decode: encoded * POW10[f] * POW10_NEGATIVE[e]
+  static final float[] FLOAT_POW10 = {1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f};
+
+  static final double[] DOUBLE_POW10 = {
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18
+  };
+
+  // NEGATIVE_POWERS_OF_TEN: reciprocals used for scaling down (multiply-by-reciprocal).
+  // Multiplying by a precomputed reciprocal instead of dividing keeps the rounding bit-for-bit
+  // identical to the ALP reference implementation, so encoded values interop across implementations.
+  static final float[] FLOAT_POW10_NEGATIVE = {
+    1e0f, 1e-1f, 1e-2f, 1e-3f, 1e-4f, 1e-5f, 1e-6f, 1e-7f, 1e-8f, 1e-9f, 1e-10f
+  };
+
+  static final double[] DOUBLE_POW10_NEGATIVE = {
+    1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14, 1e-15, 1e-16,
+    1e-17, 1e-18
+  };
+
+  static final int FLOAT_NEGATIVE_ZERO_BITS = 0x80000000;
+  static final long DOUBLE_NEGATIVE_ZERO_BITS = 0x8000000000000000L;
 
   private static final double ENCODING_UPPER_LIMIT = 9223372036854774784.0;
   private static final double ENCODING_LOWER_LIMIT = -9223372036854774784.0;
   private static final float FLOAT_ENCODING_UPPER_LIMIT = 2147483520.0f;
   private static final float FLOAT_ENCODING_LOWER_LIMIT = -2147483520.0f;
 
-  private AlpEncoderDecoder() {
+  private AlpCodec() {
     // Utility class
   }
 

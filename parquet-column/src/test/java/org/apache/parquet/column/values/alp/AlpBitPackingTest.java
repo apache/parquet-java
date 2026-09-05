@@ -149,9 +149,9 @@ public class AlpBitPackingTest {
     int exponent = 2;
     int factor = 0;
 
-    assertThat(AlpEncoderDecoder.isFloatException(value, exponent, factor)).isFalse();
-    int encoded = AlpEncoderDecoder.encodeFloat(value, exponent, factor);
-    float decoded = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
+    assertThat(AlpCodec.isFloatException(value, exponent, factor)).isFalse();
+    int encoded = AlpCodec.encodeFloat(value, exponent, factor);
+    float decoded = AlpCodec.decodeFloat(encoded, exponent, factor);
     assertThat(Float.floatToRawIntBits(decoded)).isEqualTo(Float.floatToRawIntBits(value));
   }
 

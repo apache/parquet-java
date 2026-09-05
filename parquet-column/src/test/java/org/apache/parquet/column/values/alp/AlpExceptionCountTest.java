@@ -115,7 +115,7 @@ public class AlpExceptionCountTest {
     int totalExceptions = 0;
     for (int offset = 0; offset < values.length; offset += VECTOR_SIZE) {
       int len = Math.min(VECTOR_SIZE, values.length - offset);
-      AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, offset, len);
+      AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, offset, len);
       totalExceptions += params.numExceptions;
     }
     return totalExceptions;

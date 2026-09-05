@@ -2211,7 +2211,7 @@ public class AlpValuesEndToEndTest {
     }
 
     // Verify the best params actually have f > 0 or f == 0 with low exceptions
-    AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, 0, values.length);
+    AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, 0, values.length);
     // Regardless of the chosen f, the roundtrip must be lossless
     roundTripDouble(values);
   }
@@ -2344,23 +2344,23 @@ public class AlpValuesEndToEndTest {
   @Test
   public void testEncoderProducesExpectedValues() {
     // 1.23f * 100 = 123
-    assertThat(AlpEncoderDecoder.encodeFloat(1.23f, 2, 0)).isEqualTo(123);
+    assertThat(AlpCodec.encodeFloat(1.23f, 2, 0)).isEqualTo(123);
     // 19.99f * 100 = 1999
-    assertThat(AlpEncoderDecoder.encodeFloat(19.99f, 2, 0)).isEqualTo(1999);
+    assertThat(AlpCodec.encodeFloat(19.99f, 2, 0)).isEqualTo(1999);
     // -5.0f * 10 = -50
-    assertThat(AlpEncoderDecoder.encodeFloat(-5.0f, 1, 0)).isEqualTo(-50);
+    assertThat(AlpCodec.encodeFloat(-5.0f, 1, 0)).isEqualTo(-50);
     // 0.0f * anything = 0
-    assertThat(AlpEncoderDecoder.encodeFloat(0.0f, 5, 0)).isEqualTo(0);
+    assertThat(AlpCodec.encodeFloat(0.0f, 5, 0)).isEqualTo(0);
     // 42.0f * 1 = 42
-    assertThat(AlpEncoderDecoder.encodeFloat(42.0f, 0, 0)).isEqualTo(42);
+    assertThat(AlpCodec.encodeFloat(42.0f, 0, 0)).isEqualTo(42);
     // 1.5f * 10 = 15
-    assertThat(AlpEncoderDecoder.encodeFloat(1.5f, 1, 0)).isEqualTo(15);
+    assertThat(AlpCodec.encodeFloat(1.5f, 1, 0)).isEqualTo(15);
 
     // Double path
-    assertThat(AlpEncoderDecoder.encodeDouble(1.23, 2, 0)).isEqualTo(123L);
-    assertThat(AlpEncoderDecoder.encodeDouble(19.99, 2, 0)).isEqualTo(1999L);
-    assertThat(AlpEncoderDecoder.encodeDouble(-5.0, 1, 0)).isEqualTo(-50L);
-    assertThat(AlpEncoderDecoder.encodeDouble(0.0, 5, 0)).isEqualTo(0L);
-    assertThat(AlpEncoderDecoder.encodeDouble(42.0, 0, 0)).isEqualTo(42L);
+    assertThat(AlpCodec.encodeDouble(1.23, 2, 0)).isEqualTo(123L);
+    assertThat(AlpCodec.encodeDouble(19.99, 2, 0)).isEqualTo(1999L);
+    assertThat(AlpCodec.encodeDouble(-5.0, 1, 0)).isEqualTo(-50L);
+    assertThat(AlpCodec.encodeDouble(0.0, 5, 0)).isEqualTo(0L);
+    assertThat(AlpCodec.encodeDouble(42.0, 0, 0)).isEqualTo(42L);
   }
 }

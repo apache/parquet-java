@@ -18,7 +18,14 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.apache.parquet.column.values.alp.AlpConstants.*;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_COMPRESSION_MODE;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_HEADER_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_INFO_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.ALP_INTEGER_ENCODING_FOR;
+import static org.apache.parquet.column.values.alp.AlpConstants.DEFAULT_VECTOR_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.DOUBLE_FOR_INFO_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.FLOAT_FOR_INFO_SIZE;
+import static org.apache.parquet.column.values.alp.AlpConstants.PACK_GROUP_SIZE;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -53,7 +60,7 @@ import org.apache.parquet.column.values.bitpacking.Packer;
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 7 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B × numVectors      │ (interleaved)│ (interleaved)│     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *
@@ -61,6 +68,13 @@ import org.apache.parquet.column.values.bitpacking.Packer;
  * AlpInfo(4B) + ForInfo(5B/9B) + PackedValues + ExceptionPositions + ExceptionValues
  */
 public abstract class AlpValuesWriter extends ValuesWriter {
+
+  // Sampler constants matching C++ AlpConstants.
+  // Sample SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP vectors evenly distributed across a rowgroup
+  // of SAMPLER_ROWGROUP_SIZE values, then lock in top MAX_PRESET_COMBINATIONS combos.
+  static final int SAMPLER_ROWGROUP_SIZE = 122_880;
+  static final int SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP = 8;
+  static final int MAX_PRESET_COMBINATIONS = 5;
 
   protected final int initialCapacity;
   protected final int pageSize;
@@ -146,9 +160,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     private void encodeAndFlushVector(int vectorLen) {
       // Sampling phase first (full search + collect evenly-spaced samples, then build the preset
       // cache once enough are gathered); after the cache is built, later vectors take the else branch.
-      AlpEncoderDecoder.EncodingParams params;
+      AlpCodec.EncodingParams params;
       if (cachedPresets == null) {
-        params = AlpEncoderDecoder.findBestFloatParams(vectorBuffer, 0, vectorLen);
+        params = AlpCodec.findBestFloatParams(vectorBuffer, 0, vectorLen);
         // Collect one sample every rowgroupSampleJump vectors so that samples are
         // evenly distributed across the rowgroup (matching C++ AlpSampler spacing).
         if (vectorsProcessed % rowgroupSampleJump == 0
@@ -159,7 +173,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
           buildPresetCache();
         }
       } else {
-        params = AlpEncoderDecoder.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
+        params = AlpCodec.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       }
       vectorsProcessed++;
 
@@ -173,21 +187,21 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       // from the exception payload, so the placeholder only affects FOR/bit width, not decoded values.
       int placeholder = 0;
       for (int i = 0; i < vectorLen; i++) {
-        if (!AlpEncoderDecoder.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
-          placeholder = AlpEncoderDecoder.encodeFloat(vectorBuffer[i], params.exponent, params.factor);
+        if (!AlpCodec.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
+          placeholder = AlpCodec.encodeFloat(vectorBuffer[i], params.exponent, params.factor);
           break;
         }
       }
 
       int minValue = Integer.MAX_VALUE;
       for (int i = 0; i < vectorLen; i++) {
-        if (AlpEncoderDecoder.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
+        if (AlpCodec.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
           excPosBuffer[excIdx] = (short) i;
           excValBuffer[excIdx] = vectorBuffer[i];
           excIdx++;
           encodedBuffer[i] = placeholder;
         } else {
-          encodedBuffer[i] = AlpEncoderDecoder.encodeFloat(vectorBuffer[i], params.exponent, params.factor);
+          encodedBuffer[i] = AlpCodec.encodeFloat(vectorBuffer[i], params.exponent, params.factor);
         }
         if (encodedBuffer[i] < minValue) {
           minValue = encodedBuffer[i];
@@ -438,9 +452,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     private void encodeAndFlushVector(int vectorLen) {
       // Sampling phase first (full search + collect evenly-spaced samples, then build the preset
       // cache once enough are gathered); after the cache is built, later vectors take the else branch.
-      AlpEncoderDecoder.EncodingParams params;
+      AlpCodec.EncodingParams params;
       if (cachedPresets == null) {
-        params = AlpEncoderDecoder.findBestDoubleParams(vectorBuffer, 0, vectorLen);
+        params = AlpCodec.findBestDoubleParams(vectorBuffer, 0, vectorLen);
         if (vectorsProcessed % rowgroupSampleJump == 0
             && sampledParams.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
           sampledParams.add(new int[] {params.exponent, params.factor});
@@ -449,7 +463,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
           buildPresetCache();
         }
       } else {
-        params = AlpEncoderDecoder.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
+        params = AlpCodec.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       }
       vectorsProcessed++;
 
@@ -463,21 +477,21 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       // from the exception payload, so the placeholder only affects FOR/bit width, not decoded values.
       long placeholder = 0;
       for (int i = 0; i < vectorLen; i++) {
-        if (!AlpEncoderDecoder.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
-          placeholder = AlpEncoderDecoder.encodeDouble(vectorBuffer[i], params.exponent, params.factor);
+        if (!AlpCodec.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
+          placeholder = AlpCodec.encodeDouble(vectorBuffer[i], params.exponent, params.factor);
           break;
         }
       }
 
       long minValue = Long.MAX_VALUE;
       for (int i = 0; i < vectorLen; i++) {
-        if (AlpEncoderDecoder.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
+        if (AlpCodec.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
           excPosBuffer[excIdx] = (short) i;
           excValBuffer[excIdx] = vectorBuffer[i];
           excIdx++;
           encodedBuffer[i] = placeholder;
         } else {
-          encodedBuffer[i] = AlpEncoderDecoder.encodeDouble(vectorBuffer[i], params.exponent, params.factor);
+          encodedBuffer[i] = AlpCodec.encodeDouble(vectorBuffer[i], params.exponent, params.factor);
         }
         if (encodedBuffer[i] < minValue) {
           minValue = encodedBuffer[i];
