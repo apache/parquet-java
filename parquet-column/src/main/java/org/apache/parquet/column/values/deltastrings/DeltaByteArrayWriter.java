@@ -38,7 +38,7 @@ import org.apache.parquet.io.api.Binary;
 public class DeltaByteArrayWriter extends ValuesWriter {
 
   private ValuesWriter prefixLengthWriter;
-  private ValuesWriter suffixWriter;
+  private DeltaLengthByteArrayValuesWriter suffixWriter;
   private byte[] previous;
 
   public DeltaByteArrayWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
@@ -89,7 +89,10 @@ public class DeltaByteArrayWriter extends ValuesWriter {
 
   @Override
   public void writeBytes(Binary v) {
-    byte[] vb = v.isBackingBytesReused() ? v.getBytes() : v.getBytesUnsafe();
+    // copy() is a no-op for constant (non-reused) Binaries, and getBytesUnsafe()
+    // returns the backing array directly for ByteArrayBackedBinary — avoiding
+    // the unconditional array copy that getBytes() always performs.
+    byte[] vb = v.copy().getBytesUnsafe();
     int length = Math.min(previous.length, vb.length);
     // Find the number of matching prefix bytes between this value and the previous one.
     // Arrays.mismatch is intrinsified by the JVM to use SIMD instructions.
@@ -98,7 +101,9 @@ public class DeltaByteArrayWriter extends ValuesWriter {
       i = length; // all bytes in the common range matched
     }
     prefixLengthWriter.writeInteger(i);
-    suffixWriter.writeBytes(v.slice(i, vb.length - i));
+    // Write suffix bytes directly from the byte array, avoiding Binary.slice() allocation
+    // and the virtual dispatch chain through Binary.writeTo()
+    suffixWriter.writeBytes(vb, i, vb.length - i);
     previous = vb;
   }
 }
