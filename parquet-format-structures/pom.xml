@@ -34,38 +34,8 @@
   <url>https://parquet.apache.org/</url>
   <description>Parquet-mr related java classes to use the parquet-format thrift structures.</description>
 
-  <properties>
-    <parquet.thrift.path>${project.build.directory}/parquet-format-thrift</parquet.thrift.path>
-  </properties>
-
   <build>
     <plugins>
-      <!-- Getting the parquet-format thrift file -->
-       <plugin>
-         <groupId>org.apache.maven.plugins</groupId>
-         <artifactId>maven-dependency-plugin</artifactId>
-         <executions>
-           <execution>
-             <id>unpack</id>
-             <phase>initialize</phase>
-             <goals>
-               <goal>unpack</goal>
-             </goals>
-             <configuration>
-               <artifactItems>
-                 <artifactItem>
-                   <groupId>org.apache.parquet</groupId>
-                   <artifactId>parquet-format</artifactId>
-                   <version>${parquet.format.version}</version>
-                   <type>jar</type>
-                 </artifactItem>
-               </artifactItems>
-               <includes>parquet.thrift</includes>
-               <outputDirectory>${parquet.thrift.path}</outputDirectory>
-             </configuration>
-           </execution>
-         </executions>
-       </plugin>
       <!--
         Patch the generated Encoding.java to add ALP(10) after BYTE_STREAM_SPLIT(9).
         ALP (Adaptive Lossless floating-Point) encoding uses value 10 (the next
@@ -100,7 +70,7 @@
         <groupId>org.apache.thrift</groupId>
         <artifactId>thrift-maven-plugin</artifactId>
         <configuration>
-          <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
+          <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
           <thriftExecutable>${format.thrift.executable}</thriftExecutable>
         </configuration>
         <executions>

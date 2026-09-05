@@ -44,31 +44,32 @@ function check_github_checks_passed() {
 
   local repo_info="${GITHUB_REPO}"
 
-  local num_incomplete
-  if ! num_incomplete=$(gh api "repos/${repo_info}/commits/${commit_sha}/check-runs" \
-    --jq '[.check_runs[] | select(.status != "completed")] | length'); then
-    print_error "Failed to fetch GitHub check runs for commit ${commit_sha}"
+  local runs_json
+  if ! runs_json=$(gh api "repos/${repo_info}/actions/runs?head_sha=${commit_sha}&per_page=100"); then
+    print_error "Failed to fetch GitHub workflow runs for commit ${commit_sha}"
     return 1
   fi
 
+  # Exclude release-*.yml workflows.
+  local ci_runs
+  ci_runs=$(echo "${runs_json}" \
+    | jq '[.workflow_runs[] | select((.path // "") | startswith(".github/workflows/release-") | not)]')
+
+  local num_incomplete
+  num_incomplete=$(echo "${ci_runs}" | jq '[.[] | select(.status != "completed")] | length')
+
   if [[ ${num_incomplete} -ne 0 ]]; then
     print_error "Found ${num_incomplete} still-running GitHub checks for commit ${commit_sha}"
-    gh api "repos/${repo_info}/commits/${commit_sha}/check-runs" \
-      --jq '.check_runs[] | select(.status != "completed") | "  - \(.name): \(.status)"' >&2
+    echo "${ci_runs}" | jq -r '.[] | select(.status != "completed") | "  - \(.name): \(.status)"' >&2
     return 1
   fi
 
   local num_failed
-  if ! num_failed=$(gh api "repos/${repo_info}/commits/${commit_sha}/check-runs" \
-    --jq '[.check_runs[] | select(.conclusion != "success" and .conclusion != "skipped")] | length'); then
-    print_error "Failed to fetch GitHub check runs for commit ${commit_sha}"
-    return 1
-  fi
+  num_failed=$(echo "${ci_runs}" | jq '[.[] | select(.conclusion != "success" and .conclusion != "skipped")] | length')
 
   if [[ ${num_failed} -ne 0 ]]; then
     print_error "Found ${num_failed} failed GitHub checks for commit ${commit_sha}"
-    gh api "repos/${repo_info}/commits/${commit_sha}/check-runs" \
-      --jq '.check_runs[] | select(.conclusion != "success" and .conclusion != "skipped") | "  - \(.name): \(.conclusion)"' >&2
+    echo "${ci_runs}" | jq -r '.[] | select(.conclusion != "success" and .conclusion != "skipped") | "  - \(.name): \(.conclusion)"' >&2
     return 1
   fi
 

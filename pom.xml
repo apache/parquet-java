@@ -75,21 +75,20 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.22.1</jackson.version>
+    <jackson.version>2.22.2</jackson.version>
     <jackson-databind.version>2.22.2</jackson-databind.version>
     <jackson-annotations.version>2.22</jackson-annotations.version>
-    <japicmp.version>0.26.1</japicmp.version>
+    <japicmp.version>0.26.2</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>3.8.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.3.0</hadoop.version>
-    <parquet.format.version>2.13.0</parquet.format.version>
     <previous.version>1.18.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.23.0</thrift.version>
+    <thrift.version>0.24.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.5.19</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
@@ -572,6 +571,7 @@
             <exclude>thrift-${thrift.version}.tar.gz</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>**/*.rej</exclude>
+            <exclude>**/src/main/thrift/parquet-format.version</exclude>
           </excludes>
         </configuration>
       </plugin>

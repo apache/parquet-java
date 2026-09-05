@@ -33,6 +33,8 @@ jobs:
   bats:
     name: Release Script Unit Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository

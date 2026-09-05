@@ -2351,4 +2351,35 @@ public class TestParquetMetadataConverter {
     assertThat(roundTrip).isNotNull();
     assertThat(roundTrip.getNanCounts()).containsExactly(1L, 0L, 0L);
   }
+
+  @Test
+  public void testV2StatsDoNotTriggerCorruptStatisticsCheck() {
+    // Regression test: when V2 stats (min_value/max_value) are present,
+    // shouldIgnoreStatistics should NOT be evaluated. This ensures the
+    // one-shot warning is not consumed for columns that use V2 stats.
+    org.apache.parquet.format.Statistics formatStats = new org.apache.parquet.format.Statistics();
+    formatStats.setMin_value(ByteBuffer.wrap(new byte[] {0}));
+    formatStats.setMax_value(ByteBuffer.wrap(new byte[] {1}));
+    formatStats.setNull_count(0);
+
+    PrimitiveType binaryType = Types.required(PrimitiveTypeName.BINARY).named("test_binary");
+
+    // Use a corrupt writer version (pre-1.8.0) — if shouldIgnoreStatistics were eagerly
+    // evaluated, it would log a warning and consume the one-shot flag
+    org.apache.parquet.VersionParser.ParsedVersion corruptVersion =
+        new org.apache.parquet.VersionParser.ParsedVersion("parquet-mr", "1.6.0", "abc");
+
+    org.apache.parquet.column.statistics.Statistics<?> result =
+        ParquetMetadataConverter.fromParquetStatisticsInternal(
+            corruptVersion,
+            "parquet-mr version 1.6.0 (build abc)",
+            formatStats,
+            binaryType,
+            ParquetMetadataConverter.SortOrder.SIGNED);
+
+    // V2 stats should be used regardless of corrupt version — min/max should be set
+    assertThat(result.hasNonNullValue()).isTrue();
+    assertThat(result.getMinBytes()).isEqualTo(new byte[] {0});
+    assertThat(result.getMaxBytes()).isEqualTo(new byte[] {1});
+  }
 }
