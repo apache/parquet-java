@@ -646,8 +646,10 @@ public class ParquetFileReader implements Closeable {
 
       // Regular file, or encrypted file with plaintext footer
       if (!encryptedFooterMode) {
-        return converter.readParquetMetadata(
+        ParquetMetadata parquetMetadata = converter.readParquetMetadata(
             footerBytesStream, options.getMetadataFilter(), fileDecryptor, false, fileMetadataLength);
+        parquetMetadata.setInputFile(file);
+        return parquetMetadata;
       }
 
       // Encrypted file with encrypted footer
@@ -658,8 +660,10 @@ public class ParquetFileReader implements Closeable {
       fileDecryptor.setFileCryptoMetaData(
           fileCryptoMetaData.getEncryption_algorithm(), true, fileCryptoMetaData.getKey_metadata());
       // footer length is required only for signed plaintext footers
-      return converter.readParquetMetadata(
+      ParquetMetadata parquetMetadata = converter.readParquetMetadata(
           footerBytesStream, options.getMetadataFilter(), fileDecryptor, true, 0);
+      parquetMetadata.setInputFile(file);
+      return parquetMetadata;
     } finally {
       options.getAllocator().release(footerBytesBuffer);
     }
