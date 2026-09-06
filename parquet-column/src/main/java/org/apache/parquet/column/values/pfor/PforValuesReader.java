@@ -1,0 +1,235 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.parquet.column.values.pfor;
+
+import static org.apache.parquet.column.values.pfor.PforConstants.*;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
+
+/**
+ * Abstract base class for PFOR values readers with lazy per-vector decoding.
+ *
+ * <p>Reads PFOR-encoded values from the interleaved page layout:
+ * <pre>
+ * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
+ * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
+ * │ 7 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
+ * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
+ * </pre>
+ *
+ * <p>Each vector is decoded lazily on first access. Skipping values does not
+ * trigger decoding of intermediate vectors.
+ */
+abstract class PforValuesReader extends ValuesReader {
+
+  protected int vectorSize;
+  protected int totalCount;
+  protected int numVectors;
+  protected int currentIndex;
+  protected int currentVectorIndex;
+  protected int valueByteWidth;
+  protected int vectorInfoSize;
+
+  protected int[] vectorOffsets;
+  protected ByteBuffer vectorsData;
+  protected int offsetArraySize;
+
+  PforValuesReader() {
+    this.currentIndex = 0;
+    this.totalCount = 0;
+    this.currentVectorIndex = -1;
+  }
+
+  @Override
+  public void initFromPage(int valuesCount, ByteBufferInputStream stream)
+      throws ParquetDecodingException, IOException {
+    ByteBuffer headerBuf = stream.slice(PFOR_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
+    int packingMode = headerBuf.get() & 0xFF;
+    int logVectorSize = headerBuf.get() & 0xFF;
+    int valueBW = headerBuf.get() & 0xFF;
+    int numElements = headerBuf.getInt();
+
+    if (packingMode != PFOR_PACKING_MODE_FOR) {
+      throw new ParquetDecodingException("Unsupported PFOR packing mode: " + packingMode);
+    }
+    if (logVectorSize < MIN_LOG_VECTOR_SIZE || logVectorSize > MAX_LOG_VECTOR_SIZE) {
+      throw new ParquetDecodingException("Invalid PFOR log vector size: " + logVectorSize + ", must be between "
+          + MIN_LOG_VECTOR_SIZE + " and " + MAX_LOG_VECTOR_SIZE);
+    }
+    if (valueBW != INT32_VALUE_BYTE_WIDTH && valueBW != INT64_VALUE_BYTE_WIDTH) {
+      throw new ParquetDecodingException("Invalid PFOR value byte width: " + valueBW + ", must be 4 or 8");
+    }
+    if (numElements < 0) {
+      throw new ParquetDecodingException("Invalid PFOR element count: " + numElements);
+    }
+    if (numElements > valuesCount) {
+      throw new ParquetDecodingException(
+          "PFOR header element count " + numElements + " exceeds page valuesCount " + valuesCount);
+    }
+
+    this.vectorSize = 1 << logVectorSize;
+    this.totalCount = numElements;
+    this.valueByteWidth = valueBW;
+    this.vectorInfoSize = valueBW == INT32_VALUE_BYTE_WIDTH ? INT32_VECTOR_INFO_SIZE : INT64_VECTOR_INFO_SIZE;
+    this.numVectors = (numElements + vectorSize - 1) / vectorSize;
+    this.currentIndex = 0;
+    this.currentVectorIndex = -1;
+
+    this.offsetArraySize = numVectors * Integer.BYTES;
+    ByteBuffer offsetBuf = stream.slice(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
+    this.vectorOffsets = new int[numVectors];
+    for (int v = 0; v < numVectors; v++) {
+      vectorOffsets[v] = offsetBuf.getInt();
+    }
+
+    // Slice remaining bytes into a 0-based view so decodeVector can use
+    // absolute get methods (vectorsData.get(pos)) directly.
+    int remainingBytes = (int) stream.available();
+    ByteBuffer rawSlice = stream.slice(remainingBytes);
+    this.vectorsData = rawSlice.slice().order(ByteOrder.LITTLE_ENDIAN);
+
+    allocateDecodedBuffer(vectorSize);
+  }
+
+  protected int getVectorLength(int vectorIdx) {
+    if (vectorIdx < numVectors - 1) {
+      return vectorSize;
+    }
+    // Last vector may be partial
+    int lastVectorLen = totalCount % vectorSize;
+    return lastVectorLen == 0 ? vectorSize : lastVectorLen;
+  }
+
+  // Offsets in the page are relative to the compression body (after header),
+  // but vectorsData starts after the offset array, so adjust. The offset came off
+  // the wire, so it has to leave room for the vector info it points at.
+  protected int getVectorDataPosition(int vectorIdx) {
+    int pos = vectorOffsets[vectorIdx] - offsetArraySize;
+    if (pos < 0 || pos + vectorInfoSize > vectorsData.limit()) {
+      throw new ParquetDecodingException("PFOR vector " + vectorIdx + " offset "
+          + vectorOffsets[vectorIdx] + " is outside a page body of " + vectorsData.limit()
+          + " bytes");
+    }
+    return pos;
+  }
+
+  /**
+   * Checks a vector's header fields against the vector they describe and the bytes
+   * that remain. All three come off the wire and size every read and write that
+   * follows, including the writes into the fixed-size decode buffers.
+   *
+   * @param pos position of the packed values, that is, just past the vector info and,
+   *     in a delta vector, just past the start value that follows it
+   */
+  protected void checkVectorInfo(int pos, int bitWidth, int numExceptions, int vectorLen) {
+    int maxBitWidth = valueByteWidth * Byte.SIZE;
+    if (bitWidth > maxBitWidth) {
+      throw new ParquetDecodingException("PFOR bit width " + bitWidth + " exceeds " + maxBitWidth);
+    }
+    if (numExceptions > vectorLen) {
+      throw new ParquetDecodingException(
+          "PFOR vector has " + numExceptions + " exceptions but only " + vectorLen + " elements");
+    }
+    long needed = ((long) vectorLen * bitWidth + 7) / 8 + (long) numExceptions * (Short.BYTES + valueByteWidth);
+    long remaining = vectorsData.limit() - (long) pos;
+    if (needed > remaining) {
+      throw new ParquetDecodingException(
+          "PFOR vector needs " + needed + " bytes but only " + remaining + " remain");
+    }
+  }
+
+  /**
+   * Checks that a delta vector's start value is inside the page.
+   *
+   * <p>These bytes need a bound of their own because the header bound was satisfied
+   * before the delta flag was known. Without it the start value is read from past the
+   * end of the page, and the residual bound is then checked from an offset that has
+   * already moved past the end.
+   *
+   * @param pos position of the start value, that is, just past the vector info
+   */
+  protected void checkStartValueRoom(int pos) {
+    if (pos + valueByteWidth > vectorsData.limit()) {
+      throw new ParquetDecodingException("PFOR delta vector needs " + valueByteWidth
+          + " bytes for its start value but only " + (vectorsData.limit() - pos) + " remain");
+    }
+  }
+
+  /** Exception positions index the decode buffer, so one past the end is a bad write. */
+  protected static void checkExceptionPosition(int position, int vectorLen) {
+    if (position >= vectorLen) {
+      throw new ParquetDecodingException(
+          "PFOR exception position " + position + " is outside a vector of " + vectorLen + " elements");
+    }
+  }
+
+  @Override
+  public void skip() {
+    skip(1);
+  }
+
+  @Override
+  public void skip(int n) {
+    if (n < 0 || currentIndex + n > totalCount) {
+      throw new ParquetDecodingException(String.format(
+          "Cannot skip this many elements. Current index: %d. Skip %d. Total count: %d",
+          currentIndex, n, totalCount));
+    }
+    currentIndex += n;
+  }
+
+  protected void ensureVectorDecoded() {
+    int vectorIdx = currentIndex / vectorSize;
+    if (vectorIdx != currentVectorIndex) {
+      decodeVector(vectorIdx);
+      currentVectorIndex = vectorIdx;
+    }
+  }
+
+  protected abstract void allocateDecodedBuffer(int capacity);
+
+  protected abstract void decodeVector(int vectorIdx);
+
+  protected static int getShortLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFF) | ((buf.get(pos + 1) & 0xFF) << 8);
+  }
+
+  protected static int getIntLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFF)
+        | ((buf.get(pos + 1) & 0xFF) << 8)
+        | ((buf.get(pos + 2) & 0xFF) << 16)
+        | ((buf.get(pos + 3) & 0xFF) << 24);
+  }
+
+  protected static long getLongLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFFL)
+        | ((buf.get(pos + 1) & 0xFFL) << 8)
+        | ((buf.get(pos + 2) & 0xFFL) << 16)
+        | ((buf.get(pos + 3) & 0xFFL) << 24)
+        | ((buf.get(pos + 4) & 0xFFL) << 32)
+        | ((buf.get(pos + 5) & 0xFFL) << 40)
+        | ((buf.get(pos + 6) & 0xFFL) << 48)
+        | ((buf.get(pos + 7) & 0xFFL) << 56);
+  }
+}
