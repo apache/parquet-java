@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -420,6 +421,27 @@ public class TestBinary {
     // ByteArraySliceBackedBinary: get2BytesLittleEndian
     Binary b3 = Binary.fromConstantByteArray(new byte[] {0x00, 0x01, 0x02, 0x03}, 1, 2);
     assertThat(b3.get2BytesLittleEndian()).isEqualTo((short) 0x0201);
+  }
+
+  @Test
+  public void testGet2BytesLittleEndianPreservesByteBufferOrder() {
+    assertGet2BytesLittleEndianPreservesOrder(ByteBuffer.wrap(new byte[] {0x01, 0x02}));
+
+    ByteBuffer direct = ByteBuffer.allocateDirect(2);
+    direct.put(new byte[] {0x01, 0x02});
+    direct.flip();
+    assertGet2BytesLittleEndianPreservesOrder(direct);
+
+    assertGet2BytesLittleEndianPreservesOrder(
+        ByteBuffer.wrap(new byte[] {0x01, 0x02}).asReadOnlyBuffer());
+  }
+
+  private static void assertGet2BytesLittleEndianPreservesOrder(ByteBuffer buffer) {
+    buffer.order(ByteOrder.BIG_ENDIAN);
+    Binary binary = Binary.fromConstantByteBuffer(buffer);
+
+    assertThat(binary.get2BytesLittleEndian()).isEqualTo((short) 0x0201);
+    assertThat(buffer.order()).isEqualTo(ByteOrder.BIG_ENDIAN);
   }
 
   @Test
