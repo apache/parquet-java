@@ -23,3 +23,4 @@ core.autocrlf=false
 # FSST test fixtures are byte streams, not text: line-ending normalization would corrupt them.
 parquet-column/src/test/resources/fsst/*.table binary
 parquet-column/src/test/resources/fsst/*.codes binary
+parquet-column/src/test/resources/fsst/interop/*.pages binary

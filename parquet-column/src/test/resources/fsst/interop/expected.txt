@@ -1,0 +1,74 @@
+# What the FSST-encoded columns of the Parquet interop file decode to.
+#
+# Source: data/fsst.parquet from apache/parquet-testing pull request 121, at commit
+# a3e866d12b5999d053d7184d914257128526a72e of CurtHagenlocher/parquet-testing, branch
+# fsst-test-data. The file was written by a C++ implementation, not by this one, so it is
+# what makes the page layout in this package a shared format rather than a private one.
+#
+# The file holds six BYTE_ARRAY columns over four row groups. Two are written with
+# DELTA_LENGTH_BYTE_ARRAY and hold the same values as the encoded ones, which is how the
+# expected values below were obtained: the reference columns were decoded, and the encoded
+# columns were required to agree with them value for value before anything was written here.
+# The 8-bit columns of row groups 0, 1 and 3 hold the same bytes as their binary
+# counterparts, so those row groups appear once; row group 2 appears twice because its two
+# flavours differ. The 16-bit columns are not extracted, since nothing reads them yet.
+#
+# One .pages file per case, holding the chunk's symbol table and the body of each of its
+# data pages, big-endian throughout:
+#
+#   [1B]  symbol table representation, 0 for the 8-bit one
+#   [4B]  symbol table body length, then the body
+#   [4B]  page count, then per page: [4B] body length, then the body
+#
+# A page body is what this package's page layout defines and what the reader is handed: the
+# offset encoding byte, the value count, the offset section length, the offsets, the codes.
+# Definition and repetition levels are not included; the row group with nulls contributes only
+# its non-null values, which is what the page itself carries.
+#
+# Below, a line without a dot is a whole chunk -- name, page count, value count, digest -- and
+# a line "case.n" is that chunk's nth page. The digest is SHA-256 over every value in order,
+# each preceded by its length as four big-endian bytes.
+#
+# Which case covers what:
+#
+#   urls               400 high-cardinality URLs over 14 pages sharing one table: the happy path
+#   nulls-and-empties  zero-length values, and pages whose value count is short of the row count
+#   escapes            values carrying bytes the table does not cover, so the escape code is used
+#   escapes-binary     the same row group's non-UTF-8 flavour, which trains a different table
+#   plain-offsets      few values per page, which is where the writer chooses a plain offset array
+#
+urls 14 400 46d500390735c3ed984981afc27d090cbf0d58ac914875cddcb3583503555cac
+urls.0 30 3c3ced3e8be83e9e0af1d957a6976ac3b3cdcf7b2b02e3e7dfc8bafeea20a683
+urls.1 30 797e8d348c6a654f7c6b4ae8ecc0eac17db955d02e41b4bbbe95806a63ecb28a
+urls.2 30 91317b7b611e235f06dbbc9226e2fc7fe5eb5a0d617ded65a793f9e134bcbc68
+urls.3 30 3fcf81288ccbe1cbafd0fcf02dcd4b8719fef6a3396017c1f2dc5a9bb81b06e1
+urls.4 30 830ecabc837dc20573ecb13d9027c5f0a9b27e7faaee507746257f466123dd75
+urls.5 30 be69bb6486a00be0d21f9d34dbdc3282a6e7a538e7e6acae773f46bd996951c4
+urls.6 30 52821bd775d18b33368577efd4ea3c0df2a480eb9ccfdfdec7498d73c8665810
+urls.7 30 235928cd75e654a6f860dc29bc08be799ed6a2b3ac51ea3dd45a9395c3149516
+urls.8 30 613392ad6b0d1230b3168a20685f822a9d972d292d6a249e53afe473ef39ab86
+urls.9 30 adeed260fa95409e6b2a65341a7242abe2cb39f310e8a074a9e14635470bc2ff
+urls.10 30 e844d10cdde55dae5f0c4dd81b952f2bbc6dc32cbf9c42c2a92e01194def3763
+urls.11 30 9a8548e3e48816a74f2f9f88b1d9e4c7f94183e47f8fff09e964d639b651f672
+urls.12 30 2f51699e677188d9619fc722d490b73a6f2945f8f77ac25ccebd229a774e0c4d
+urls.13 10 2d74a5aa1ae1c67af058de3b87a070c7074894b8714e0036f978f4c5900bb982
+nulls-and-empties 4 205 3b215b89472eaeba6617c2095747b387d281515d3595e54b9693d63fdad51384
+nulls-and-empties.0 56 594ddf869a94a45d10a69db7f7980c14f73f7f666ebff91dd57e6398d403080b
+nulls-and-empties.1 57 783da2c2700596d20de807e1f22ebffeb1987ef412adff05abca66d1795b49bd
+nulls-and-empties.2 56 6a643038567e2bf6c18fc612f8378af9881ccd7ca71c8bc89fdc0665597d8e52
+nulls-and-empties.3 36 592fede8404912a570ced7c9f89bbe1c54b5e8723ac7f2a28ce714c5dd6deee3
+escapes 4 200 774ca683fa2d5197f4520443b6e380e2fb1fe1a866b776d02cd1a1229431aaea
+escapes.0 52 627b643ca267777e9e1ed642e98aed9a3ab835cc95ecffac45e7f67fc27448e1
+escapes.1 52 1ea0e8039979774336f24990cd9226bcb75349b2677d42589d81825d1e01c3d8
+escapes.2 52 934c74b0018f91c75c8c670f9aaa8c5eb460848c9a7eeb0701cbfbd8e489fa37
+escapes.3 44 4b4224e6879f12d3537d7f5b50b6e52341451814e373c7d5433efd6ee3a087a7
+escapes-binary 4 200 584ff5cb26ccbea4ccb673914063feb2e1304ad0e8e7e0fc397b8bd3049b4fdc
+escapes-binary.0 64 1ee07765528b660f266c1f55133d7922b551529352a15e72b442baf7cb94c784
+escapes-binary.1 64 f6a6c74ffff9e33bb579517172acc9eed88dbb266f4b7384a43b2320709b453a
+escapes-binary.2 64 b272a8031ea6b589aed2fbc0f325ea5f80ef27bdf621ed515e3bb9807a16cfc7
+escapes-binary.3 8 7ed64f1e651cbd5c4ec6e57baf076ed09497c1167df46197d17b08e69fba17d7
+plain-offsets 4 16 0751792bf177aed99ed68e659f0ce52005f3fb5a7f8b572ceeb5bb82b0bc2aca
+plain-offsets.0 5 e61b2d20741eaa207f4493a63308543fa51d343df29938716975835c3204094f
+plain-offsets.1 5 2e6b4f68912a3a29d2286bd75dac3734a3e7f36d478ceed3925fdeaa05a37ded
+plain-offsets.2 5 1249bea2cd8c9649b35fa2d29c1c866c1952bdd849a6ef993dc97153284d6826
+plain-offsets.3 1 0654548570d1e478330069f559fdcb1833e85c07696fb35ac9293645f1575318
