@@ -35,6 +35,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
 import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
@@ -161,6 +165,75 @@ public class SymbolTableInteropTest {
             .isEqualTo(Binary.fromConstantByteArray(straight.get(i)));
       }
     }
+  }
+
+  /**
+   * The offset section, in the encode direction: {@link #bothOffsetSectionEncodingsAreCovered} only
+   * proves this implementation can read a packed section the C++ writer produced. It does not prove
+   * a packed section this implementation writes would be the bytes another reader expects, since a
+   * delta-binary-packed stream has framing choices (miniblock count, bit widths) a byte-compatible
+   * decoder does not have to make the same way. Decoding each fixture's packed offsets and
+   * re-encoding them through the same path {@link SymbolTablePayloadWriter} uses settles that: if the
+   * two differ, our writer picked a different framing for the same values, not the same one.
+   */
+  @Test
+  public void packedOffsetsReEncodeToTheFixturesOwnBytes() throws IOException {
+    boolean sawAPackedSection = false;
+    for (String name : CASES) {
+      Chunk chunk = readChunk(name);
+      for (int page = 0; page < chunk.pages.size(); page++) {
+        byte[] body = chunk.pages.get(page);
+        String label = name + "." + page;
+        int valueCount = readIntLittleEndian(body, 1);
+        int offsetSectionSize = readIntLittleEndian(body, 5);
+        if (body[0] != OffsetEncoding.DELTA_BINARY_PACKED.value() || offsetSectionSize == 0) {
+          continue;
+        }
+        sawAPackedSection = true;
+
+        byte[] rawOffsets = new byte[offsetSectionSize];
+        System.arraycopy(body, SymbolTablePayload.HEADER_SIZE, rawOffsets, 0, offsetSectionSize);
+
+        int[] endOffsets = decodeDeltaPackedOffsets(rawOffsets, valueCount);
+        byte[] reEncoded = encodeDeltaPackedOffsets(endOffsets);
+
+        assertThat(reEncoded).as(label + ": re-encoded offset bytes").isEqualTo(rawOffsets);
+      }
+    }
+    assertThat(sawAPackedSection)
+        .as("the fixtures actually exercise the packed offset path")
+        .isTrue();
+  }
+
+  private static int[] decodeDeltaPackedOffsets(byte[] rawOffsets, int valueCount) throws IOException {
+    DeltaBinaryPackingValuesReader reader = new DeltaBinaryPackingValuesReader();
+    reader.initFromPage(valueCount, stream(rawOffsets));
+    int[] endOffsets = new int[valueCount];
+    for (int i = 0; i < valueCount; i++) {
+      endOffsets[i] = reader.readInteger();
+    }
+    return endOffsets;
+  }
+
+  private static byte[] encodeDeltaPackedOffsets(int[] endOffsets) throws IOException {
+    try (DeltaBinaryPackingValuesWriterForInteger writer = new DeltaBinaryPackingValuesWriterForInteger(
+        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
+        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
+        64 * 1024,
+        64 * 1024,
+        HeapByteBufferAllocator.getInstance())) {
+      for (int endOffset : endOffsets) {
+        writer.writeInteger(endOffset);
+      }
+      return writer.getBytes().toByteArray();
+    }
+  }
+
+  private static int readIntLittleEndian(byte[] bytes, int pos) {
+    return (bytes[pos] & 0xFF)
+        | ((bytes[pos + 1] & 0xFF) << 8)
+        | ((bytes[pos + 2] & 0xFF) << 16)
+        | ((bytes[pos + 3] & 0xFF) << 24);
   }
 
   private static List<byte[]> decodePage(SymbolTableValuesReader reader, byte[] page, int count) throws IOException {
