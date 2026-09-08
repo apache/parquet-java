@@ -127,6 +127,7 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -543,9 +544,20 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testFsstCannotBeWrittenToAFooter() {
+    assertThatThrownBy(() -> new ParquetMetadataConverter().getEncoding(org.apache.parquet.column.Encoding.FSST))
+        .isInstanceOf(ParquetEncodingException.class)
+        .hasMessageContaining("#531");
+  }
+
+  @Test
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
+      if (encoding == org.apache.parquet.column.Encoding.FSST) {
+        // The format has no value to convert it to yet: see testFsstCannotBeWrittenToAFooter.
+        continue;
+      }
       assertThat(parquetMetadataConverter.getEncoding(parquetMetadataConverter.getEncoding(encoding)))
           .isEqualTo(encoding);
     }
@@ -832,6 +844,9 @@ public class TestParquetMetadataConverter {
 
     Set<org.apache.parquet.column.Encoding> columnEncodings =
         new HashSet<>(Arrays.asList(org.apache.parquet.column.Encoding.values()));
+    // The format has no FSST value, so it has no ordinal to order and cannot be converted at all:
+    // see testFsstCannotBeWrittenToAFooter.
+    columnEncodings.remove(org.apache.parquet.column.Encoding.FSST);
 
     // Assert that the encodings are returned in ascending ordinal order
     List<org.apache.parquet.format.Encoding> formatEncodings =

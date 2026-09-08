@@ -44,6 +44,7 @@ import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.Test;
@@ -315,6 +316,23 @@ public class SymbolTableValuesRoundTripTest {
         ParquetDecodingException.class,
         () -> reader.initFromPage(1, ByteBufferInputStream.wrap(ByteBuffer.wrap(new byte[9]))));
     assertTrue(thrown.getMessage().contains("#531"));
+  }
+
+  @Test
+  public void aWriterWithNowhereToPutItsTableSaysSoBeforeWritingAPage() throws IOException {
+    // What a writer built from the format's own settings gets, because the format has no place for a
+    // symbol table. Refusing at the first page beats writing pages nothing can decode.
+    try (SymbolTableValuesWriter writer = new SymbolTableValuesWriter(
+        SymbolTableType.FSST_8,
+        SymbolTables.rejectingSink(),
+        OffsetEncoding.DELTA_BINARY_PACKED,
+        SLAB_SIZE,
+        PAGE_SIZE,
+        HeapByteBufferAllocator.getInstance())) {
+      writer.writeBytes(Binary.fromString("http://example.com/a"));
+      ParquetEncodingException thrown = assertThrows(ParquetEncodingException.class, writer::getBytes);
+      assertTrue(thrown.getMessage().contains("#531"));
+    }
   }
 
   @Test

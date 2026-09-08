@@ -48,6 +48,7 @@ import org.apache.parquet.column.values.plain.BooleanPlainValuesWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.column.values.symboltable.SymbolTableValuesWriter;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -629,6 +630,70 @@ public class DefaultValuesWriterFactoryTest {
         properties,
         DictionaryValuesWriter.class,
         PlainValuesWriter.class);
+  }
+
+  @Test
+  public void testBinary_WithSymbolTable_AndDictionary() {
+    // The symbol table takes the columns the dictionary gives up on, and hands back the ones whose codes
+    // are no smaller than the values, so it sits between the two.
+    for (WriterVersion version : WriterVersion.values()) {
+      ValuesWriter writer = getDefaultFactory(ParquetProperties.builder()
+              .withWriterVersion(version)
+              .withFsstEncoding(true)
+              .build())
+          .newValuesWriter(createColumnDescriptor(BINARY));
+      validateWriterType(writer, FallbackValuesWriter.class);
+      FallbackValuesWriter<?, ?> outer = (FallbackValuesWriter<?, ?>) writer;
+      validateWriterType(outer.initialWriter, PlainBinaryDictionaryValuesWriter.class);
+      validateNestedSymbolTableWriter(outer.fallBackWriter, version);
+    }
+  }
+
+  @Test
+  public void testBinary_WithSymbolTable_WithoutDictionary() {
+    for (WriterVersion version : WriterVersion.values()) {
+      ValuesWriter writer = getDefaultFactory(ParquetProperties.builder()
+              .withWriterVersion(version)
+              .withDictionaryEncoding(false)
+              .withFsstEncoding(true)
+              .build())
+          .newValuesWriter(createColumnDescriptor(BINARY));
+      validateNestedSymbolTableWriter(writer, version);
+    }
+  }
+
+  @Test
+  public void testBinary_WithSymbolTable_PerColumn() {
+    ParquetProperties properties = ParquetProperties.builder()
+        .withDictionaryEncoding(false)
+        .withFsstEncoding("colA", true)
+        .build();
+    ValuesWriterFactory factory = getDefaultFactory(properties);
+    validateNestedSymbolTableWriter(
+        factory.newValuesWriter(createColumnDescriptor(BINARY, "colA")), WriterVersion.PARQUET_1_0);
+    doTestValueWriter(createColumnDescriptor(BINARY, "colB"), properties, PlainValuesWriter.class);
+  }
+
+  @Test
+  public void testSymbolTable_LeavesOtherTypesAlone() {
+    // The encoding is defined for byte arrays, so turning it on for every column must not reach a column
+    // it cannot encode.
+    ParquetProperties properties = ParquetProperties.builder()
+        .withDictionaryEncoding(false)
+        .withFsstEncoding(true)
+        .build();
+    doTestValueWriter(createColumnDescriptor(INT32), properties, PlainValuesWriter.class);
+    doTestValueWriter(createColumnDescriptor(FLOAT), properties, PlainValuesWriter.class);
+    doTestValueWriter(createColumnDescriptor(BOOLEAN), properties, BooleanPlainValuesWriter.class);
+  }
+
+  private void validateNestedSymbolTableWriter(ValuesWriter writer, WriterVersion version) {
+    validateWriterType(writer, FallbackValuesWriter.class);
+    FallbackValuesWriter<?, ?> fallback = (FallbackValuesWriter<?, ?>) writer;
+    validateWriterType(fallback.initialWriter, SymbolTableValuesWriter.class);
+    validateWriterType(
+        fallback.fallBackWriter,
+        version == WriterVersion.PARQUET_1_0 ? PlainValuesWriter.class : DeltaByteArrayWriter.class);
   }
 
   private void validateFactory(

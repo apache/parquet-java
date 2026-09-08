@@ -24,6 +24,8 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
+import org.apache.parquet.column.values.symboltable.SymbolTableType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,6 +122,62 @@ public class TestParquetProperties {
     assertThatThrownBy(() -> ParquetProperties.builder().withCompressionCodec("col_a", null))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("codec cannot be null");
+  }
+
+  @Test
+  public void fsst_isOffUnlessAskedFor() {
+    ParquetProperties props = ParquetProperties.builder().build();
+    assertThat(props.isFsstEnabled(colA)).isFalse();
+    assertThat(props.getSymbolTableType(colA)).isNull();
+  }
+
+  @Test
+  public void fsst_appliesToBinaryColumnsOnly() {
+    ParquetProperties props =
+        ParquetProperties.builder().withFsstEncoding(true).build();
+    assertThat(props.getSymbolTableType(colA)).isEqualTo(SymbolTableType.FSST_8);
+    assertThat(props.isFsstEnabled(colB)).isFalse();
+    assertThat(props.isFsstEnabled(colC)).isFalse();
+  }
+
+  @Test
+  public void fsst_canBeSetForOneColumn() {
+    ParquetProperties props =
+        ParquetProperties.builder().withFsstEncoding("col_a", true).build();
+    assertThat(props.isFsstEnabled(colA)).isTrue();
+    assertThat(ParquetProperties.builder()
+            .withFsstEncoding(true)
+            .withFsstEncoding("col_a", false)
+            .build()
+            .isFsstEnabled(colA))
+        .isFalse();
+  }
+
+  @Test
+  public void symbolTableOffsets_areDeltaPackedUnlessAskedOtherwise() {
+    assertThat(ParquetProperties.builder().build().getSymbolTableOffsetEncoding())
+        .isEqualTo(OffsetEncoding.DELTA_BINARY_PACKED);
+    assertThat(ParquetProperties.builder()
+            .withSymbolTableOffsetEncoding(OffsetEncoding.PLAIN)
+            .build()
+            .getSymbolTableOffsetEncoding())
+        .isEqualTo(OffsetEncoding.PLAIN);
+    assertThatThrownBy(() -> ParquetProperties.builder().withSymbolTableOffsetEncoding(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("offsetEncoding cannot be null");
+  }
+
+  @Test
+  public void copyBuilder_preservesSymbolTableSettings() {
+    ParquetProperties original = ParquetProperties.builder()
+        .withFsstEncoding("col_a", true)
+        .withSymbolTableOffsetEncoding(OffsetEncoding.PLAIN)
+        .build();
+
+    ParquetProperties copy = ParquetProperties.copy(original).build();
+
+    assertThat(copy.isFsstEnabled(colA)).isTrue();
+    assertThat(copy.getSymbolTableOffsetEncoding()).isEqualTo(OffsetEncoding.PLAIN);
   }
 
   @Test

@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.symboltable;
 import org.apache.parquet.column.values.symboltable.fsst.Fsst8SymbolTable;
 import org.apache.parquet.column.values.symboltable.fsst.FsstTrainer;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetEncodingException;
 
 /**
  * The one place that maps a symbol table representation to the code that implements it.
@@ -41,6 +42,26 @@ public final class SymbolTables {
       default:
         throw new IllegalArgumentException("No symbol table trainer for " + type);
     }
+  }
+
+  /**
+   * A sink that refuses the table instead of storing it.
+   *
+   * <p>What a writer gets when nothing has told it where the table should go, which is every writer
+   * built from the format's own metadata today: the format has no place for a symbol table, so a file
+   * written with the encoding could not be read back. Refusing at the first page fails while the
+   * failure still names the reason, rather than producing a file whose pages nothing can decode.
+   *
+   * <p>Supplying a sink that does store the table is what the encoding is waiting on. Until the format
+   * carries one, a caller that has somewhere to put it can build the writer itself and install it with
+   * {@code ParquetProperties.Builder.withValuesWriterFactory}.
+   */
+  public static SymbolTableSink rejectingSink() {
+    return (type, body) -> {
+      throw new ParquetEncodingException("Cannot write a symbol table encoded column: the format has nowhere "
+          + "to keep the chunk's symbol table, so the pages would not be readable. See parquet-format "
+          + "issue #531.");
+    };
   }
 
   /**
