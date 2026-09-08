@@ -464,7 +464,12 @@ public class CodecFactory implements CompressionCodecFactory {
 
   private String cacheKey(CompressionCodecName codecName, int level) {
     String codecClass = codecName.getHadoopCompressionCodecClassName();
-    return (codecClass == null ? codecName.name() : codecClass) + ":" + level;
+    // Use a distinct namespace ("#level=") for the leveled path so that this key can never
+    // collide with the no-level cacheKey(codecName), which appends the raw configuration value
+    // (e.g. "<codecClass>:5" when zlib.compress.level=5 is set directly). Both maps that use
+    // these keys (the per-factory compressors map and the shared static CODEC_BY_NAME) would
+    // otherwise return a codec built from the raw config instead of the level-configured one.
+    return (codecClass == null ? codecName.name() : codecClass) + "#level=" + level;
   }
 
   @Override
