@@ -572,6 +572,9 @@
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>**/*.rej</exclude>
             <exclude>**/src/main/thrift/parquet-format.version</exclude>
+            <!-- Binary FSST fixtures: byte streams produced by the reference implementation. -->
+            <exclude>**/src/test/resources/fsst/*.table</exclude>
+            <exclude>**/src/test/resources/fsst/*.codes</exclude>
           </excludes>
         </configuration>
       </plugin>
