@@ -86,6 +86,11 @@ public class ValueBuffer {
     return size;
   }
 
+  /** Bytes held by the two arrays, which is what this buffer costs a writer's memory budget. */
+  public long allocatedSize() {
+    return data.length + 4L * offsets.length;
+  }
+
   /**
    * The backing array. Valid from 0 to {@link #byteCount()}, followed by {@link #TAIL_PADDING} zero
    * bytes that a reader may load but must not interpret.

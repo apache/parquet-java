@@ -36,7 +36,10 @@ public interface SymbolTableSink {
   /**
    * Publishes the table a column chunk's pages are compressed against.
    *
-   * <p>Called once per chunk, before the first page that uses the table.
+   * <p>Called once per chunk, when the first page is compressed. A chunk that then abandons the
+   * encoding — because the codes did not come out smaller than the values — leaves a table behind
+   * that no page refers to, so whoever stores it should write it only if some page of the chunk was
+   * actually written with the encoding.
    *
    * @param type the representation, which a reader needs in order to interpret the body
    * @param body the serialized table
