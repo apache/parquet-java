@@ -1406,6 +1406,65 @@ public class TestArrayCompatibility extends DirectWriterTest {
   }
 
   @Test
+  public void testAutoDetectMixedSiblingListStructuresUsesOldBehavior() {
+    MessageType fileSchema = MessageTypeParser.parseMessageType("message MixedSiblingListStructures {"
+        + "  optional group three_level (LIST) {"
+        + "    repeated group list {"
+        + "      required int32 element;"
+        + "    }"
+        + "  }"
+        + "  optional group two_level (LIST) {"
+        + "    repeated int32 element;"
+        + "  }"
+        + "}");
+
+    assertListStructureIsNotAutoDetected(fileSchema);
+  }
+
+  @Test
+  public void testAutoDetectMixedNestedListStructuresUsesOldBehavior() {
+    MessageType fileSchema = MessageTypeParser.parseMessageType("message MixedNestedListStructures {"
+        + "  optional group outer_list (LIST) {"
+        + "    repeated group list {"
+        + "      required group element (LIST) {"
+        + "        repeated int32 element;"
+        + "      }"
+        + "    }"
+        + "  }"
+        + "}");
+
+    assertListStructureIsNotAutoDetected(fileSchema);
+  }
+
+  @Test
+  public void testAutoDetectMalformedThreeLevelListStructuresUsesOldBehavior() {
+    for (String schema : Arrays.asList(
+        "message RepeatedOuterList {"
+            + "  repeated group items (LIST) {"
+            + "    repeated group list {"
+            + "      required int32 element;"
+            + "    }"
+            + "  }"
+            + "}",
+        "message NonRepeatedMiddleList {"
+            + "  optional group items (LIST) {"
+            + "    optional group list {"
+            + "      required int32 element;"
+            + "    }"
+            + "  }"
+            + "}",
+        "message RepeatedListElement {"
+            + "  optional group items (LIST) {"
+            + "    repeated group list {"
+            + "      repeated int32 element;"
+            + "    }"
+            + "  }"
+            + "}")) {
+      assertListStructureIsNotAutoDetected(MessageTypeParser.parseMessageType(schema));
+    }
+  }
+
+  @Test
   public void testAutoDetectTwoLevelListWithArrayGroupName() throws Exception {
     // A 2-level list where the repeated group is named "array" (a standard
     // backward-compat name). The "array" name causes isElementType to always
@@ -1555,6 +1614,21 @@ public class TestArrayCompatibility extends DirectWriterTest {
     Configuration conf = new Configuration();
     conf.setBoolean(AvroReadSupport.AUTO_DETECT_LIST_STRUCTURE, true);
     return conf;
+  }
+
+  private static void assertListStructureIsNotAutoDetected(MessageType fileSchema) {
+    Schema projection = record("Projection", field("items", array(primitive(Schema.Type.INT))));
+    MessageType expectedProjection = new AvroSchemaConverter().convert(projection);
+    Configuration conf = newAutoDetectConf();
+    AvroReadSupport.setRequestedProjection(conf, projection);
+
+    assertThat(new AvroReadSupport<>()
+            .init(conf, new HashMap<>(), fileSchema)
+            .getRequestedSchema())
+        .as("Should not infer the new list structure for %s", fileSchema.getName())
+        .isEqualTo(expectedProjection);
+    assertThat(conf.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE)).isNull();
+    assertThat(conf.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS)).isNull();
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> autoDetectReader(Path path) throws IOException {
