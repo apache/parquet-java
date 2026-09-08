@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.net.URISyntaxException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -34,17 +33,16 @@ import org.junit.jupiter.api.Test;
 
 public class TestReadInvalidTypeCombination {
 
-  // Path to a Parquet file that contains an invalid logical/physical type combination.
-  private static final String FILE_PATH = "/invalid_type_combination.parquet";
+  // parquet-testing file with an invalid logical/physical type combination.
+  private static final String REFERENCE_FILE = "int32_with_uuid_logical_type.parquet";
+  private static final String REFERENCE_CHANGESET = "4b1ce4502afff8d20c9b4bb08d07e04e21cdeff3";
 
-  private static Path getFilePath() throws Exception {
-    return new Path(TestReadInvalidTypeCombination.class.getResource(FILE_PATH).toURI());
-  }
+  private final InterOpTester interop = new InterOpTester();
 
   @Test
   public void testReadInvalidTypeCombinationSucceeds() throws Exception {
     Configuration conf = new Configuration();
-    Path file = getFilePath();
+    Path file = interop.GetInterOpFile(REFERENCE_FILE, REFERENCE_CHANGESET);
 
     // The footer parse should succeed and drop the annotation and stats for the column.
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(file, conf))) {
