@@ -274,14 +274,22 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     }
     GroupType group = type.asGroupType();
     if (group.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
-      if (group.getFieldCount() != 1) {
+      if (group.isRepetition(Type.Repetition.REPEATED) || group.getFieldCount() != 1) {
         return false;
       }
       Type repeated = group.getType(0);
-      return !repeated.isPrimitive()
-          && repeated.getName().equals("list")
-          && repeated.asGroupType().getFieldCount() == 1
-          && repeated.asGroupType().getType(0).getName().equals("element");
+      if (repeated.isPrimitive()
+          || !repeated.isRepetition(Type.Repetition.REPEATED)
+          || !repeated.getName().equals("list")
+          || repeated.asGroupType().getFieldCount() != 1) {
+        return false;
+      }
+      Type element = repeated.asGroupType().getType(0);
+      if (element.isRepetition(Type.Repetition.REPEATED)
+          || !element.getName().equals("element")) {
+        return false;
+      }
+      return !Boolean.FALSE.equals(allListStructuresAreThreeLevel(element));
     }
     Boolean result = null;
     for (Type field : group.getFields()) {
