@@ -1446,8 +1446,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
     // "array"-named group is always treated as the element type
     Schema elementRecord = record("array", field("str", primitive(Schema.Type.INT)));
-    Schema expectedSchema =
-        record("TwoLevelListWithArrayGroup", optionalField("list", array(elementRecord)));
+    Schema expectedSchema = record("TwoLevelListWithArrayGroup", optionalField("list", array(elementRecord)));
     GenericRecord expectedRecord = instance(
         expectedSchema,
         "list",
@@ -1500,8 +1499,8 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
     // "array"-named group is always the element, even with child named "element"
     Schema elementRecord = record("array", field("element", primitive(Schema.Type.INT)));
-    Schema expectedSchema = record(
-        "TwoLevelListWithArrayGroupAndElementChild", optionalField("my_list", array(elementRecord)));
+    Schema expectedSchema =
+        record("TwoLevelListWithArrayGroupAndElementChild", optionalField("my_list", array(elementRecord)));
     GenericRecord expectedRecord = instance(
         expectedSchema,
         "my_list",
