@@ -27,7 +27,11 @@ message google.protobuf.Struct {
                         optional boolean bool_value = 4;
                         optional binary struct_value = 5;
                         optional group list_value = 6 {
-                          optional binary values = 1;
+                          optional group values (LIST) = 1 {
+                            repeated group list {
+                              required binary element;
+                            }
+                          }
                         }
                       }
                     }
@@ -42,10 +46,19 @@ message google.protobuf.Struct {
                         optional binary string_value (STRING) = 3;
                         optional boolean bool_value = 4;
                         optional group struct_value = 5 {
-                          optional binary fields = 1;
+                          optional group fields (MAP) = 1 {
+                            repeated group key_value {
+                              required binary key (STRING);
+                              optional binary value;
+                            }
+                          }
                         }
                         optional group list_value = 6 {
-                          optional binary values = 1;
+                          optional group values (LIST) = 1 {
+                            repeated group list {
+                              required binary element;
+                            }
+                          }
                         }
                       }
                     }
@@ -73,10 +86,19 @@ message google.protobuf.Struct {
                         optional binary string_value (STRING) = 3;
                         optional boolean bool_value = 4;
                         optional group struct_value = 5 {
-                          optional binary fields = 1;
+                          optional group fields (MAP) = 1 {
+                            repeated group key_value {
+                              required binary key (STRING);
+                              optional binary value;
+                            }
+                          }
                         }
                         optional group list_value = 6 {
-                          optional binary values = 1;
+                          optional group values (LIST) = 1 {
+                            repeated group list {
+                              required binary element;
+                            }
+                          }
                         }
                       }
                     }
@@ -91,10 +113,19 @@ message google.protobuf.Struct {
                         optional binary string_value (STRING) = 3;
                         optional boolean bool_value = 4;
                         optional group struct_value = 5 {
-                          optional binary fields = 1;
+                          optional group fields (MAP) = 1 {
+                            repeated group key_value {
+                              required binary key (STRING);
+                              optional binary value;
+                            }
+                          }
                         }
                         optional group list_value = 6 {
-                          optional binary values = 1;
+                          optional group values (LIST) = 1 {
+                            repeated group list {
+                              required binary element;
+                            }
+                          }
                         }
                       }
                     }

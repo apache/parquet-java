@@ -356,42 +356,45 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       }
 
       // This can happen now that recursive schemas get truncated to bytes.  Write the bytes.
-      if (type.isPrimitive()
-          && type.asPrimitiveType().getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.BINARY) {
+      // The truncated type keeps the field's shape, so it may sit behind a LIST wrapper
+      // (repeated field) or be the value inside a MAP's key_value group.
+      Type contentType = getContentType(type);
+      if (contentType.isPrimitive()
+          && contentType.asPrimitiveType().getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.BINARY) {
         return new BinaryWriter();
       }
 
-      return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type));
+      return new MessageWriter(fieldDescriptor.getMessageType(), contentType.asGroupType());
     }
 
-    private GroupType getGroupType(Type type) {
+    /** Unwraps the LIST/MAP wrapper groups to the type holding the message content itself. */
+    private Type getContentType(Type type) {
+      if (type.isPrimitive()) {
+        return type;
+      }
       LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
       if (logicalTypeAnnotation == null) {
-        return type.asGroupType();
+        return type;
       }
       return logicalTypeAnnotation
-          .accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<GroupType>() {
+          .accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Type>() {
             @Override
-            public Optional<GroupType> visit(
-                LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
+            public Optional<Type> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
               return ofNullable(type.asGroupType()
                   .getType("list")
                   .asGroupType()
-                  .getType("element")
-                  .asGroupType());
+                  .getType("element"));
             }
 
             @Override
-            public Optional<GroupType> visit(
-                LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
+            public Optional<Type> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
               return ofNullable(type.asGroupType()
                   .getType("key_value")
                   .asGroupType()
-                  .getType("value")
-                  .asGroupType());
+                  .getType("value"));
             }
           })
-          .orElse(type.asGroupType());
+          .orElse(type);
     }
 
     private MapWriter createMapWriter(FieldDescriptor fieldDescriptor, Type type) {

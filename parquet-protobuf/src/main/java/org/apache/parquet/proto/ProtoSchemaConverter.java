@@ -312,19 +312,28 @@ public class ProtoSchemaConverter {
       final GroupBuilder<T> builder,
       ImmutableSetMultimap<String, Integer> seen,
       int depth) {
-    // Prevent recursion by terminating with optional proto bytes.
+    // Terminate with proto bytes anything a static parquet schema cannot represent - recursion
+    // beyond maxRecursion and empty message types (parquet forbids empty groups) - preserving the
+    // field's repetition so the write path (Array/Repeated/MapWriter) still matches the schema.
     depth += 1;
     String typeName = getInnerTypeName(descriptor);
     LOG.trace("addMessageField: {} type: {} depth: {}", descriptor.getFullName(), typeName, depth);
-    if (typeName != null) {
-      if (seen.get(typeName).size() > maxRecursion) {
-        return builder.primitive(BINARY, Type.Repetition.OPTIONAL).as((LogicalTypeAnnotation) null);
-      }
-    }
 
     if (descriptor.isMapField() && parquetSpecsCompliant) {
-      // the old schema style did not include the MAP wrapper around map groups
+      // the old schema style did not include the MAP wrapper around map groups.
+      // The MAP structure is always preserved; a recursive or empty value type is truncated to
+      // proto bytes by the check below when addMapField recurses into the value field.
       return addMapField(descriptor, builder, seen, depth);
+    }
+
+    boolean emptyMessage = descriptor.getMessageType().getFields().isEmpty();
+    if (emptyMessage || (typeName != null && seen.get(typeName).size() > maxRecursion)) {
+      if (descriptor.isRepeated() && parquetSpecsCompliant) {
+        // LIST-wrap the truncated bytes the same way any repeated primitive is wrapped
+        return addRepeatedPrimitive(BINARY, null, builder);
+      }
+      // optional, required, or repeated in the old schema style
+      return builder.primitive(BINARY, getRepetition(descriptor)).as((LogicalTypeAnnotation) null);
     }
 
     seen = ImmutableSetMultimap.<String, Integer>builder()
