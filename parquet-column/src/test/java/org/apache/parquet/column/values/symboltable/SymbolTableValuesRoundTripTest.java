@@ -18,11 +18,8 @@
  */
 package org.apache.parquet.column.values.symboltable;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,7 +44,7 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * The writer and reader as a pair: values in, the same values out, over the seams that a symbol table
@@ -121,12 +118,12 @@ public class SymbolTableValuesRoundTripTest {
         for (Binary value : page) {
           writer.writeBytes(value);
         }
-        assertEquals(Encoding.FSST, writer.getEncoding());
+        assertThat(writer.getEncoding()).isEqualTo(Encoding.FSST);
         bodies.add(writer.getBytes().toByteArray());
         writer.reset();
       }
     }
-    assertEquals("one table for the whole chunk", 1, relay.publishCount);
+    assertThat(relay.publishCount).as("one table for the whole chunk").isEqualTo(1);
 
     SymbolTableValuesReader reader = new SymbolTableValuesReader(relay);
     List<List<Binary>> read = new ArrayList<>();
@@ -144,10 +141,9 @@ public class SymbolTableValuesRoundTripTest {
 
   private static void assertRoundTrips(List<Binary> values) throws IOException {
     for (OffsetEncoding offsetEncoding : OffsetEncoding.values()) {
-      assertEquals(
-          "offsets " + offsetEncoding,
-          Arrays.asList(values),
-          roundTrip(Arrays.asList(values), offsetEncoding));
+      assertThat(roundTrip(Arrays.asList(values), offsetEncoding))
+          .as("offsets " + offsetEncoding)
+          .isEqualTo(Arrays.asList(values));
     }
   }
 
@@ -235,7 +231,9 @@ public class SymbolTableValuesRoundTripTest {
       pages.add(values);
     }
     for (OffsetEncoding offsetEncoding : OffsetEncoding.values()) {
-      assertEquals("offsets " + offsetEncoding, pages, roundTrip(pages, offsetEncoding));
+      assertThat(roundTrip(pages, offsetEncoding))
+          .as("offsets " + offsetEncoding)
+          .isEqualTo(pages);
     }
   }
 
@@ -249,14 +247,14 @@ public class SymbolTableValuesRoundTripTest {
       }
       writer.getBytes();
       writer.reset();
-      assertEquals(1, relay.publishCount);
+      assertThat(relay.publishCount).isEqualTo(1);
 
       writer.resetDictionary();
       for (Binary value : binaries("zeta", "zenith", "zephyr")) {
         writer.writeBytes(value);
       }
       writer.getBytes();
-      assertEquals(2, relay.publishCount);
+      assertThat(relay.publishCount).isEqualTo(2);
     }
   }
 
@@ -277,7 +275,7 @@ public class SymbolTableValuesRoundTripTest {
       reader.initFromPage(values.size(), ByteBufferInputStream.wrap(ByteBuffer.wrap(body)));
       reader.skip(start);
       for (int i = start; i < values.size(); i++) {
-        assertEquals("from " + start + " at " + i, values.get(i), reader.readBytes());
+        assertThat(reader.readBytes()).as("from " + start + " at " + i).isEqualTo(values.get(i));
       }
     }
 
@@ -288,7 +286,7 @@ public class SymbolTableValuesRoundTripTest {
       if (i % 2 == 0) {
         reader.skip();
       } else {
-        assertEquals(values.get(i), reader.readBytes());
+        assertThat(reader.readBytes()).isEqualTo(values.get(i));
       }
     }
   }
@@ -304,18 +302,17 @@ public class SymbolTableValuesRoundTripTest {
     SymbolTableValuesReader reader = new SymbolTableValuesReader(relay);
     reader.initFromPage(1, ByteBufferInputStream.wrap(ByteBuffer.wrap(body)));
     reader.readBytes();
-    assertThrows(ParquetDecodingException.class, reader::readBytes);
-    assertThrows(ParquetDecodingException.class, reader::skip);
+    assertThatThrownBy(reader::readBytes).isInstanceOf(ParquetDecodingException.class);
+    assertThatThrownBy(reader::skip).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
   public void aReaderWithNoTableSaysSoRatherThanFailingLater() {
     SymbolTableValuesReader reader = new SymbolTableValuesReader();
-    assertNull(reader.symbolTableType());
-    ParquetDecodingException thrown = assertThrows(
-        ParquetDecodingException.class,
-        () -> reader.initFromPage(1, ByteBufferInputStream.wrap(ByteBuffer.wrap(new byte[9]))));
-    assertTrue(thrown.getMessage().contains("#531"));
+    assertThat(reader.symbolTableType()).isNull();
+    assertThatThrownBy(() -> reader.initFromPage(1, ByteBufferInputStream.wrap(ByteBuffer.wrap(new byte[9]))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("#531");
   }
 
   @Test
@@ -330,22 +327,21 @@ public class SymbolTableValuesRoundTripTest {
         PAGE_SIZE,
         HeapByteBufferAllocator.getInstance())) {
       writer.writeBytes(Binary.fromString("http://example.com/a"));
-      ParquetEncodingException thrown = assertThrows(ParquetEncodingException.class, writer::getBytes);
-      assertTrue(thrown.getMessage().contains("#531"));
+      assertThatThrownBy(writer::getBytes)
+          .isInstanceOf(ParquetEncodingException.class)
+          .hasMessageContaining("#531");
     }
   }
 
   @Test
   public void theEncodingHandsOutTheReaderForBinaryOnly() {
-    assertTrue(
-        Encoding.FSST.getValuesReader(descriptor(PrimitiveTypeName.BINARY), ValuesType.VALUES)
-            instanceof SymbolTableValuesReader);
+    assertThat(Encoding.FSST.getValuesReader(descriptor(PrimitiveTypeName.BINARY), ValuesType.VALUES))
+        .isInstanceOf(SymbolTableValuesReader.class);
     for (PrimitiveTypeName type : new PrimitiveTypeName[] {
       PrimitiveTypeName.INT32, PrimitiveTypeName.INT64, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
     }) {
-      assertThrows(
-          ParquetDecodingException.class,
-          () -> Encoding.FSST.getValuesReader(descriptor(type), ValuesType.VALUES));
+      assertThatThrownBy(() -> Encoding.FSST.getValuesReader(descriptor(type), ValuesType.VALUES))
+          .isInstanceOf(ParquetDecodingException.class);
     }
   }
 
@@ -364,8 +360,9 @@ public class SymbolTableValuesRoundTripTest {
       values.add(Binary.fromConstantByteArray(new byte[] {(byte) i}));
     }
 
-    assertEquals(Encoding.PLAIN, fallbackEncodingFor(values, OffsetEncoding.PLAIN));
-    assertEquals(Encoding.FSST, fallbackEncodingFor(values, OffsetEncoding.DELTA_BINARY_PACKED));
+    assertThat(fallbackEncodingFor(values, OffsetEncoding.PLAIN)).isEqualTo(Encoding.PLAIN);
+    assertThat(fallbackEncodingFor(values, OffsetEncoding.DELTA_BINARY_PACKED))
+        .isEqualTo(Encoding.FSST);
   }
 
   /** Runs a page through the fallback wrapper and reads it back with whatever encoding it chose. */
@@ -387,7 +384,7 @@ public class SymbolTableValuesRoundTripTest {
         encoding == Encoding.PLAIN ? new BinaryPlainValuesReader() : new SymbolTableValuesReader(relay);
     reader.initFromPage(values.size(), ByteBufferInputStream.wrap(ByteBuffer.wrap(body)));
     for (Binary value : values) {
-      assertEquals(value, reader.readBytes());
+      assertThat(reader.readBytes()).isEqualTo(value);
     }
     return encoding;
   }
@@ -405,8 +402,8 @@ public class SymbolTableValuesRoundTripTest {
       }
       writer.fallBackAllValuesTo(collector);
     }
-    assertEquals(values, replayed);
-    assertEquals(0, relay.publishCount);
+    assertThat(replayed).isEqualTo(values);
+    assertThat(relay.publishCount).isEqualTo(0);
   }
 
   @Test
@@ -418,30 +415,30 @@ public class SymbolTableValuesRoundTripTest {
       }
       writer.getBytes();
     }
-    assertEquals(SymbolTableType.FSST_8, relay.type);
+    assertThat(relay.type).isEqualTo(SymbolTableType.FSST_8);
     SymbolTable first = relay.getSymbolTable();
-    assertEquals(SymbolTableType.FSST_8, first.type());
-    assertTrue("a table was trained", first.symbolCount() > 0);
-    assertEquals(first.symbolCount(), relay.getSymbolTable().symbolCount());
+    assertThat(first.type()).isEqualTo(SymbolTableType.FSST_8);
+    assertThat(first.symbolCount()).as("a table was trained").isPositive();
+    assertThat(relay.getSymbolTable().symbolCount()).isEqualTo(first.symbolCount());
   }
 
   @Test
   public void theWriterReportsWhatItIsHoldingAndReleasesItOnReset() throws IOException {
     SymbolTableRelay relay = new SymbolTableRelay();
     try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
-      assertEquals(0, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(0);
       writer.writeBytes(Binary.fromString("alpha"));
-      assertEquals(5 + 4, writer.getBufferedSize());
+      assertThat(writer.getBufferedSize()).isEqualTo(5 + 4);
       writer.getBytes();
       writer.reset();
-      assertEquals(0, writer.getBufferedSize());
-      assertTrue(writer.getAllocatedSize() > 0);
-      assertTrue(writer.memUsageString("x").startsWith("x "));
-      assertEquals(SymbolTableType.FSST_8, writer.symbolTableType());
+      assertThat(writer.getBufferedSize()).isEqualTo(0);
+      assertThat(writer.getAllocatedSize()).isPositive();
+      assertThat(writer.memUsageString("x")).startsWith("x ");
+      assertThat(writer.symbolTableType()).isEqualTo(SymbolTableType.FSST_8);
       // The only fallback question is asked once, and never by the writer itself.
-      assertTrue(writer.isCompressionSatisfying(100, 99));
-      assertFalse(writer.isCompressionSatisfying(100, 100));
-      assertFalse(writer.shouldFallBack());
+      assertThat(writer.isCompressionSatisfying(100, 99)).isTrue();
+      assertThat(writer.isCompressionSatisfying(100, 100)).isFalse();
+      assertThat(writer.shouldFallBack()).isFalse();
     }
   }
 

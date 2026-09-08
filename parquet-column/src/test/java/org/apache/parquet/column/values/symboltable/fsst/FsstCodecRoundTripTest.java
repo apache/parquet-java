@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.column.values.symboltable.fsst;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +31,7 @@ import org.apache.parquet.column.values.symboltable.SymbolTable;
 import org.apache.parquet.column.values.symboltable.SymbolTableType;
 import org.apache.parquet.column.values.symboltable.TrainedSymbolTable;
 import org.apache.parquet.column.values.symboltable.ValueBuffer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Round trips the FSST codec over inputs chosen to reach the places the port could be wrong: the
@@ -56,9 +54,9 @@ public class FsstCodecRoundTripTest {
     // serialization and the renumbering are both under test.
     byte[] serialized = table.serialize().toByteArray();
     SymbolTable reread = Fsst8SymbolTable.deserialize(serialized, 0, serialized.length);
-    assertEquals(SymbolTableType.FSST_8, reread.type());
-    assertEquals(table.symbolCount(), reread.symbolCount());
-    assertArrayEquals(serialized, reread.serialize().toByteArray());
+    assertThat(reread.type()).isEqualTo(SymbolTableType.FSST_8);
+    assertThat(reread.symbolCount()).isEqualTo(table.symbolCount());
+    assertThat(reread.serialize().toByteArray()).isEqualTo(serialized);
     CodeStreamDecoder decoder = reread.decoder();
 
     int codeBytes = 0;
@@ -67,16 +65,17 @@ public class FsstCodecRoundTripTest {
       byte[] value = values.get(i);
       byte[] codes = new byte[encoder.maxCompressedLength(value.length)];
       int codeLength = encoder.compress(buffer.data(), buffer.offset(i), buffer.length(i), codes, 0);
-      assertTrue("compressed past the declared bound", codeLength <= codes.length);
+      assertThat(codeLength).as("compressed past the declared bound").isLessThanOrEqualTo(codes.length);
 
-      assertEquals(
-          "expandedLength disagrees with expand on value " + i,
-          value.length,
-          decoder.expandedLength(codes, 0, codeLength));
+      assertThat(decoder.expandedLength(codes, 0, codeLength))
+          .as("expandedLength disagrees with expand on value " + i)
+          .isEqualTo(value.length);
       byte[] expanded = new byte[value.length];
       int written = decoder.expand(codes, 0, codeLength, expanded, 0);
-      assertEquals("wrong expanded length for value " + i, value.length, written);
-      assertArrayEquals("value " + i + " did not survive the round trip", value, expanded);
+      assertThat(written).as("wrong expanded length for value " + i).isEqualTo(value.length);
+      assertThat(expanded)
+          .as("value " + i + " did not survive the round trip")
+          .isEqualTo(value);
 
       codeBytes += codeLength;
       rawBytes += value.length;
@@ -112,12 +111,14 @@ public class FsstCodecRoundTripTest {
           .getBytes(StandardCharsets.UTF_8));
     }
     Result result = roundTrip(values);
-    assertTrue("the table should hold symbols", result.table.symbolCount() > 0);
+    assertThat(result.table.symbolCount())
+        .as("the table should hold symbols")
+        .isPositive();
     // A corpus this repetitive is the case the encoding exists for; if it does not shrink here the
     // trainer is not finding the shared substrings.
-    assertTrue(
-        "expected well under half the bytes, got " + result.codeBytes + " of " + result.rawBytes,
-        result.codeBytes * 2 < result.rawBytes);
+    assertThat(result.codeBytes * 2)
+        .as("expected well under half the bytes, got " + result.codeBytes + " of " + result.rawBytes)
+        .isLessThan(result.rawBytes);
   }
 
   @Test
@@ -158,7 +159,9 @@ public class FsstCodecRoundTripTest {
       values.add(value);
     }
     Result result = roundTrip(values);
-    assertTrue("escaping should cost bytes, not save them", result.codeBytes >= result.rawBytes);
+    assertThat(result.codeBytes)
+        .as("escaping should cost bytes, not save them")
+        .isGreaterThanOrEqualTo(result.rawBytes);
   }
 
   @Test
@@ -195,9 +198,9 @@ public class FsstCodecRoundTripTest {
       values.add(builder.toString().getBytes(StandardCharsets.UTF_8));
     }
     Result result = roundTrip(values);
-    assertTrue(
-        "expected well under half the bytes, got " + result.codeBytes + " of " + result.rawBytes,
-        result.codeBytes * 2 < result.rawBytes);
+    assertThat(result.codeBytes * 2)
+        .as("expected well under half the bytes, got " + result.codeBytes + " of " + result.rawBytes)
+        .isLessThan(result.rawBytes);
   }
 
   @Test
@@ -212,19 +215,19 @@ public class FsstCodecRoundTripTest {
       values.add(value);
     }
     Result result = roundTrip(values);
-    assertTrue(result.table.symbolCount() <= FsstCodes.MAX_SYMBOLS);
+    assertThat(result.table.symbolCount()).isLessThanOrEqualTo(FsstCodes.MAX_SYMBOLS);
     for (int code = 0; code < result.table.symbolCount(); code++) {
       int length = result.table.symbolLength(code);
-      assertTrue("symbol " + code + " has length " + length, length >= 1 && length <= 8);
+      assertThat(length).as("symbol " + code).isBetween(1, 8);
     }
     // The serialized table must be in length order, which is what lets a reader rebuild it from the
     // length histogram alone.
     for (int code = 1; code < result.table.symbolCount(); code++) {
-      assertTrue(
-          "symbols are not in length order at code " + code,
-          result.table.symbolLength(code - 1) <= result.table.symbolLength(code));
+      assertThat(result.table.symbolLength(code - 1))
+          .as("symbols are not in length order at code " + code)
+          .isLessThanOrEqualTo(result.table.symbolLength(code));
     }
     int size = (int) result.table.serialize().size();
-    assertTrue("serialized table is " + size + " bytes", size >= 9 && size <= 2049);
+    assertThat(size).as("serialized table size").isBetween(9, 2049);
   }
 }

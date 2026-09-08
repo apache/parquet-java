@@ -18,10 +18,8 @@
  */
 package org.apache.parquet.column.values.symboltable;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,7 +31,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * The data page body's framing: what a writer produces byte for byte, and what a reader refuses.
@@ -56,7 +54,7 @@ public class SymbolTablePayloadTest {
       for (byte[] value : values) {
         writer.addValue(value, 0, value.length);
       }
-      assertEquals(values.length, writer.valueCount());
+      assertThat(writer.valueCount()).isEqualTo(values.length);
       return writer.getBytes().toByteArray();
     }
   }
@@ -88,7 +86,7 @@ public class SymbolTablePayloadTest {
     expected.putInt(4);
     expected.putInt(6);
     expected.put(bytes(1, 2, 3, 4, 5, 6));
-    assertArrayEquals(expected.array(), body);
+    assertThat(body).isEqualTo(expected.array());
   }
 
   @Test
@@ -96,11 +94,12 @@ public class SymbolTablePayloadTest {
     byte[] body = write(OffsetEncoding.DELTA_BINARY_PACKED, bytes(1, 2, 3), bytes(4), bytes(5, 6));
 
     ByteBuffer header = ByteBuffer.wrap(body, 0, 9).order(ByteOrder.LITTLE_ENDIAN);
-    assertEquals(1, header.get() & 0xFF);
-    assertEquals(3, header.getInt());
+    assertThat(header.get() & 0xFF).isEqualTo(1);
+    assertThat(header.getInt()).isEqualTo(3);
     int offsetSectionSize = header.getInt();
-    assertEquals(body.length - 9 - 6, offsetSectionSize);
-    assertArrayEquals(bytes(1, 2, 3, 4, 5, 6), java.util.Arrays.copyOfRange(body, body.length - 6, body.length));
+    assertThat(offsetSectionSize).isEqualTo(body.length - 9 - 6);
+    assertThat(java.util.Arrays.copyOfRange(body, body.length - 6, body.length))
+        .isEqualTo(bytes(1, 2, 3, 4, 5, 6));
   }
 
   @Test
@@ -109,11 +108,11 @@ public class SymbolTablePayloadTest {
       byte[] body = write(offsetEncoding, bytes(1, 2, 3), bytes(4), bytes(5, 6));
       SymbolTablePayload payload = parse(body, 3);
 
-      assertEquals(3, payload.valueCount());
+      assertThat(payload.valueCount()).isEqualTo(3);
       List<byte[]> values = valuesOf(payload);
-      assertArrayEquals(bytes(1, 2, 3), values.get(0));
-      assertArrayEquals(bytes(4), values.get(1));
-      assertArrayEquals(bytes(5, 6), values.get(2));
+      assertThat(values.get(0)).isEqualTo(bytes(1, 2, 3));
+      assertThat(values.get(1)).isEqualTo(bytes(4));
+      assertThat(values.get(2)).isEqualTo(bytes(5, 6));
     }
   }
 
@@ -126,12 +125,12 @@ public class SymbolTablePayloadTest {
       byte[] body = write(offsetEncoding, bytes(), bytes(7), bytes(), bytes());
       SymbolTablePayload payload = parse(body, 4);
 
-      assertEquals(4, payload.valueCount());
+      assertThat(payload.valueCount()).isEqualTo(4);
       List<byte[]> values = valuesOf(payload);
-      assertEquals(0, values.get(0).length);
-      assertArrayEquals(bytes(7), values.get(1));
-      assertEquals(0, values.get(2).length);
-      assertEquals(0, values.get(3).length);
+      assertThat(values.get(0)).isEmpty();
+      assertThat(values.get(1)).isEqualTo(bytes(7));
+      assertThat(values.get(2)).isEmpty();
+      assertThat(values.get(3)).isEmpty();
     }
   }
 
@@ -139,8 +138,8 @@ public class SymbolTablePayloadTest {
   public void aPageWithNoValuesIsJustAHeader() throws IOException {
     for (OffsetEncoding offsetEncoding : OffsetEncoding.values()) {
       byte[] body = write(offsetEncoding);
-      assertEquals(SymbolTablePayload.HEADER_SIZE, body.length);
-      assertEquals(0, parse(body, 0).valueCount());
+      assertThat(body.length).isEqualTo(SymbolTablePayload.HEADER_SIZE);
+      assertThat(parse(body, 0).valueCount()).isEqualTo(0);
     }
   }
 
@@ -158,37 +157,38 @@ public class SymbolTablePayloadTest {
     int delta = write(OffsetEncoding.DELTA_BINARY_PACKED, values).length;
 
     int codeBytes = values.length * 4;
-    assertEquals(9 + values.length * 4 + codeBytes, plain);
-    assertTrue(
-        "delta offsets should cost a small fraction of plain ones, but the payloads were " + delta + " and "
-            + plain,
-        delta - codeBytes < (plain - codeBytes) / 8);
+    assertThat(plain).isEqualTo(9 + values.length * 4 + codeBytes);
+    assertThat(delta - codeBytes)
+        .as("delta offsets should cost a small fraction of plain ones, but the payloads were " + delta + " and "
+            + plain)
+        .isLessThan((plain - codeBytes) / 8);
   }
 
   @Test
   public void rejectsABodyShorterThanTheHeader() {
-    ParquetDecodingException thrown = assertThrows(ParquetDecodingException.class, () -> parse(new byte[8], 1));
-    assertTrue(thrown.getMessage().contains("shorter than its 9-byte header"));
+    assertThatThrownBy(() -> parse(new byte[8], 1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("shorter than its 9-byte header");
   }
 
   @Test
   public void rejectsAnUnknownOffsetEncoding() throws IOException {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1));
     body[0] = 2;
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 1));
+    assertThatThrownBy(() -> parse(body, 1)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
   public void rejectsMoreValuesThanThePageHeaderDeclares() throws IOException {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1), bytes(2));
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 1));
+    assertThatThrownBy(() -> parse(body, 1)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
   public void rejectsAnOffsetSectionLongerThanTheBody() throws IOException {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1));
     putInt(body, 5, 1000);
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 1));
+    assertThatThrownBy(() -> parse(body, 1)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
@@ -196,7 +196,7 @@ public class SymbolTablePayloadTest {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1, 2), bytes(3));
     // Claim one value's worth of offsets while the section holds two.
     putInt(body, 1, 1);
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 2));
+    assertThatThrownBy(() -> parse(body, 2)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
@@ -204,21 +204,21 @@ public class SymbolTablePayloadTest {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1, 2), bytes(3));
     putInt(body, 9, 3); // the first value ends past where the second one does
     putInt(body, 13, 1);
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 2));
+    assertThatThrownBy(() -> parse(body, 2)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
   public void rejectsOffsetsThatLeaveCodeBytesUnreachable() throws IOException {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1, 2), bytes(3));
     putInt(body, 13, 2); // the last value's codes are dropped
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 2));
+    assertThatThrownBy(() -> parse(body, 2)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
   public void rejectsOffsetsThatRunPastTheCodeSection() throws IOException {
     byte[] body = write(OffsetEncoding.PLAIN, bytes(1, 2), bytes(3));
     putInt(body, 13, 4);
-    assertThrows(ParquetDecodingException.class, () -> parse(body, 2));
+    assertThatThrownBy(() -> parse(body, 2)).isInstanceOf(ParquetDecodingException.class);
   }
 
   @Test
@@ -230,7 +230,7 @@ public class SymbolTablePayloadTest {
     putInt(header, 5, 4);
     body.write(header);
     body.write(new byte[4]);
-    assertThrows(ParquetDecodingException.class, () -> parse(body.toByteArray(), 0));
+    assertThatThrownBy(() -> parse(body.toByteArray(), 0)).isInstanceOf(ParquetDecodingException.class);
   }
 
   private static void putInt(byte[] destination, int position, int value) {

@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.column.values.symboltable.fsst;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,7 +31,7 @@ import java.util.List;
 import org.apache.parquet.column.values.symboltable.CodeStreamEncoder;
 import org.apache.parquet.column.values.symboltable.TrainedSymbolTable;
 import org.apache.parquet.column.values.symboltable.ValueBuffer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Requires this implementation to produce the same symbol table and the same code bytes as the
@@ -197,16 +196,14 @@ public class FsstReferenceComparisonTest {
     for (byte[] value : values) {
       buffer.add(value, 0, value.length);
     }
-    assertEquals(
-        corpus + ": the generated corpus does not match the one the fixtures were made from",
-        expectedDigest,
-        sha256(buffer.data(), buffer.byteCount()));
+    assertThat(sha256(buffer.data(), buffer.byteCount()))
+        .as(corpus + ": the generated corpus does not match the one the fixtures were made from")
+        .isEqualTo(expectedDigest);
 
     TrainedSymbolTable trained = new FsstTrainer().train(buffer);
-    assertArrayEquals(
-        corpus + ": symbol table differs from the reference implementation",
-        resource(corpus + ".table"),
-        trained.table().serialize().toByteArray());
+    assertThat(trained.table().serialize().toByteArray())
+        .as(corpus + ": symbol table differs from the reference implementation")
+        .isEqualTo(resource(corpus + ".table"));
 
     CodeStreamEncoder encoder = trained.encoder();
     ByteArrayOutputStream codes = new ByteArrayOutputStream();
@@ -215,10 +212,9 @@ public class FsstReferenceComparisonTest {
       int length = encoder.compress(buffer.data(), buffer.offset(i), buffer.length(i), output, 0);
       codes.write(output, 0, length);
     }
-    assertArrayEquals(
-        corpus + ": code bytes differ from the reference implementation",
-        resource(corpus + ".codes"),
-        codes.toByteArray());
+    assertThat(codes.toByteArray())
+        .as(corpus + ": code bytes differ from the reference implementation")
+        .isEqualTo(resource(corpus + ".codes"));
   }
 
   private static byte[] resource(String name) throws IOException {
