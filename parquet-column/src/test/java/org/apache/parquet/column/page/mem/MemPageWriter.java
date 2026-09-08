@@ -30,6 +30,7 @@ import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
@@ -42,6 +43,7 @@ public class MemPageWriter implements PageWriter {
 
   private final List<DataPage> pages = new ArrayList<>();
   private DictionaryPage dictionaryPage;
+  private SymbolTablePage symbolTablePage;
   private long memSize = 0;
   private long totalValueCount = 0;
 
@@ -157,6 +159,10 @@ public class MemPageWriter implements PageWriter {
     return dictionaryPage;
   }
 
+  public SymbolTablePage getSymbolTablePage() {
+    return symbolTablePage;
+  }
+
   public long getTotalValueCount() {
     return totalValueCount;
   }
@@ -178,6 +184,15 @@ public class MemPageWriter implements PageWriter {
         "dictionary page written for {} bytes and {} records",
         dictionaryPage.getBytes().size(),
         dictionaryPage.getDictionarySize());
+  }
+
+  @Override
+  public void writeSymbolTablePage(SymbolTablePage symbolTablePage) throws IOException {
+    if (this.symbolTablePage != null) {
+      throw new ParquetEncodingException("Only one symbol table page per block");
+    }
+    this.memSize += symbolTablePage.getBytes().size();
+    this.symbolTablePage = symbolTablePage.copy();
   }
 
   @Override

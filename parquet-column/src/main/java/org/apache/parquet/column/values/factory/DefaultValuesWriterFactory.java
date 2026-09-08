@@ -27,7 +27,6 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.symboltable.SymbolTableType;
 import org.apache.parquet.column.values.symboltable.SymbolTableValuesWriter;
-import org.apache.parquet.column.values.symboltable.SymbolTables;
 
 /**
  * Handles ValuesWriter creation statically based on the types of the columns and the writer version.
@@ -122,7 +121,6 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
     return FallbackValuesWriter.of(
         new SymbolTableValuesWriter(
             type,
-            SymbolTables.rejectingSink(),
             properties.getSymbolTableOffsetEncoding(),
             properties.getInitialSlabSize(),
             properties.getPageSizeThreshold(),

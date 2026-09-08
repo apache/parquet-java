@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.symboltable;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.column.values.RequiresFallback;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
@@ -37,11 +38,13 @@ import org.apache.parquet.io.api.Binary;
  * <h2>What happens when</h2>
  *
  * <p>Values are buffered raw as they arrive. The table is trained at the first {@link #getBytes()},
- * on that page's values, and then published through the {@link SymbolTableSink} and kept for the
- * rest of the chunk: a table belongs to a column chunk, so a later page must not train its own.
- * Training on the first page rather than on the whole chunk is deliberate — a page is already far
- * more text than a trainer samples, and buffering the chunk to feed it would cost a second copy of
- * the column.
+ * on that page's values, and kept for the rest of the chunk: a table belongs to a column chunk, so
+ * a later page must not train its own. It is handed off through {@link #toSymbolTablePageAndClose()},
+ * called once per chunk after every page has been written, which is also what keeps a chunk that
+ * falls back to another encoding from leaving a table behind that no page refers to. Training on
+ * the first page rather than on the whole chunk is deliberate — a page is already far more text
+ * than a trainer samples, and buffering the chunk to feed it would cost a second copy of the
+ * column.
  *
  * <p>Buffering is the reason values are held at all: a trainer reads them in an order of its own
  * choosing and more than once, and a fallback to another encoding has to replay them. The cost is
@@ -59,7 +62,6 @@ import org.apache.parquet.io.api.Binary;
 public class SymbolTableValuesWriter extends ValuesWriter implements RequiresFallback {
 
   private final SymbolTableType type;
-  private final SymbolTableSink sink;
   private final ValueBuffer values;
   private final SymbolTablePayloadWriter payload;
 
@@ -80,13 +82,11 @@ public class SymbolTableValuesWriter extends ValuesWriter implements RequiresFal
 
   public SymbolTableValuesWriter(
       SymbolTableType type,
-      SymbolTableSink sink,
       OffsetEncoding offsetEncoding,
       int initialSlabSize,
       int pageSize,
       ByteBufferAllocator allocator) {
     this.type = type;
-    this.sink = sink;
     this.values = new ValueBuffer();
     this.payload = new SymbolTablePayloadWriter(offsetEncoding, initialSlabSize, pageSize, allocator);
   }
@@ -118,10 +118,14 @@ public class SymbolTableValuesWriter extends ValuesWriter implements RequiresFal
   public BytesInput getBytes() {
     if (trained == null) {
       trained = SymbolTables.trainer(type).train(values);
-      sink.putSymbolTable(type, trained.table().serialize());
     }
     compressBufferedValues();
     return payload.getBytes();
+  }
+
+  @Override
+  public SymbolTablePage toSymbolTablePageAndClose() {
+    return trained == null ? null : new SymbolTablePage(trained.table().serialize(), type);
   }
 
   @Override

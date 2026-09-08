@@ -34,6 +34,7 @@ import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ValuesType;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
@@ -41,7 +42,6 @@ import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.jupiter.api.Test;
@@ -61,27 +61,19 @@ public class SymbolTableValuesRoundTripTest {
   private static final int PAGE_SIZE = 1 << 20;
 
   /**
-   * Stands in for wherever the serialized table ends up.
+   * Stands in for wherever the deserialized {@link SymbolTablePage} ends up.
    *
-   * <p>Both halves of the seam, so a test can hand the writer's own table straight back to the
-   * reader. Deserializing on every call is deliberate: it means the reader is decoding against a table
-   * rebuilt from bytes rather than against the trainer's own object.
+   * <p>Deserializing on every {@link #getSymbolTable()} call is deliberate: it means the reader is
+   * decoding against a table rebuilt from bytes rather than against the trainer's own object.
    */
-  private static final class SymbolTableRelay implements SymbolTableSink, SymbolTableSource {
+  private static final class SymbolTableRelay implements SymbolTableSource {
 
     private SymbolTableType type;
     private byte[] body;
-    private int publishCount;
 
-    @Override
-    public void putSymbolTable(SymbolTableType type, BytesInput body) {
-      this.type = type;
-      try {
-        this.body = body.toByteArray();
-      } catch (IOException e) {
-        throw new AssertionError(e);
-      }
-      this.publishCount++;
+    void receive(SymbolTablePage page) throws IOException {
+      this.type = page.getType();
+      this.body = page.getBytes().toByteArray();
     }
 
     @Override
@@ -90,14 +82,9 @@ public class SymbolTableValuesRoundTripTest {
     }
   }
 
-  private static SymbolTableValuesWriter writer(SymbolTableSink sink, OffsetEncoding offsetEncoding) {
+  private static SymbolTableValuesWriter writer(OffsetEncoding offsetEncoding) {
     return new SymbolTableValuesWriter(
-        SymbolTableType.FSST_8,
-        sink,
-        offsetEncoding,
-        SLAB_SIZE,
-        PAGE_SIZE,
-        HeapByteBufferAllocator.getInstance());
+        SymbolTableType.FSST_8, offsetEncoding, SLAB_SIZE, PAGE_SIZE, HeapByteBufferAllocator.getInstance());
   }
 
   private static List<Binary> binaries(String... values) {
@@ -113,7 +100,7 @@ public class SymbolTableValuesRoundTripTest {
       throws IOException {
     SymbolTableRelay relay = new SymbolTableRelay();
     List<byte[]> bodies = new ArrayList<>();
-    try (SymbolTableValuesWriter writer = writer(relay, offsetEncoding)) {
+    try (SymbolTableValuesWriter writer = writer(offsetEncoding)) {
       for (List<Binary> page : pages) {
         for (Binary value : page) {
           writer.writeBytes(value);
@@ -122,8 +109,10 @@ public class SymbolTableValuesRoundTripTest {
         bodies.add(writer.getBytes().toByteArray());
         writer.reset();
       }
+      SymbolTablePage tablePage = writer.toSymbolTablePageAndClose();
+      assertThat(tablePage).as("one table for the whole chunk").isNotNull();
+      relay.receive(tablePage);
     }
-    assertThat(relay.publishCount).as("one table for the whole chunk").isEqualTo(1);
 
     SymbolTableValuesReader reader = new SymbolTableValuesReader(relay);
     List<List<Binary>> read = new ArrayList<>();
@@ -240,21 +229,29 @@ public class SymbolTableValuesRoundTripTest {
   /** A new chunk trains a new table, which is what a row group boundary needs. */
   @Test
   public void resetDictionaryTrainsAgain() throws IOException {
-    SymbolTableRelay relay = new SymbolTableRelay();
-    try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
+    try (SymbolTableValuesWriter writer = writer(OffsetEncoding.DELTA_BINARY_PACKED)) {
       for (Binary value : binaries("alpha", "alphabet", "alpine")) {
         writer.writeBytes(value);
       }
       writer.getBytes();
       writer.reset();
-      assertThat(relay.publishCount).isEqualTo(1);
+      SymbolTablePage first = writer.toSymbolTablePageAndClose();
+      assertThat(first).as("the first chunk trained a table").isNotNull();
 
       writer.resetDictionary();
+      assertThat(writer.toSymbolTablePageAndClose())
+          .as("nothing has been trained yet for the new chunk")
+          .isNull();
+
       for (Binary value : binaries("zeta", "zenith", "zephyr")) {
         writer.writeBytes(value);
       }
       writer.getBytes();
-      assertThat(relay.publishCount).isEqualTo(2);
+      SymbolTablePage second = writer.toSymbolTablePageAndClose();
+      assertThat(second).as("the second chunk trained its own table").isNotNull();
+      assertThat(second.getBytes().toByteArray())
+          .as("a table trained on different values")
+          .isNotEqualTo(first.getBytes().toByteArray());
     }
   }
 
@@ -263,11 +260,12 @@ public class SymbolTableValuesRoundTripTest {
     List<Binary> values = binaries("alpha", "", "alphabet", "beta", "betamax", "gamma", "gamma-ray", "delta");
     SymbolTableRelay relay = new SymbolTableRelay();
     byte[] body;
-    try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
+    try (SymbolTableValuesWriter writer = writer(OffsetEncoding.DELTA_BINARY_PACKED)) {
       for (Binary value : values) {
         writer.writeBytes(value);
       }
       body = writer.getBytes().toByteArray();
+      relay.receive(writer.toSymbolTablePageAndClose());
     }
 
     for (int start = 0; start < values.size(); start++) {
@@ -295,9 +293,10 @@ public class SymbolTableValuesRoundTripTest {
   public void readingPastTheEndOfAPageIsRejected() throws IOException {
     SymbolTableRelay relay = new SymbolTableRelay();
     byte[] body;
-    try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
+    try (SymbolTableValuesWriter writer = writer(OffsetEncoding.DELTA_BINARY_PACKED)) {
       writer.writeBytes(Binary.fromString("one"));
       body = writer.getBytes().toByteArray();
+      relay.receive(writer.toSymbolTablePageAndClose());
     }
     SymbolTableValuesReader reader = new SymbolTableValuesReader(relay);
     reader.initFromPage(1, ByteBufferInputStream.wrap(ByteBuffer.wrap(body)));
@@ -313,24 +312,6 @@ public class SymbolTableValuesRoundTripTest {
     assertThatThrownBy(() -> reader.initFromPage(1, ByteBufferInputStream.wrap(ByteBuffer.wrap(new byte[9]))))
         .isInstanceOf(ParquetDecodingException.class)
         .hasMessageContaining("#531");
-  }
-
-  @Test
-  public void aWriterWithNowhereToPutItsTableSaysSoBeforeWritingAPage() throws IOException {
-    // What a writer built from the format's own settings gets, because the format has no place for a
-    // symbol table. Refusing at the first page beats writing pages nothing can decode.
-    try (SymbolTableValuesWriter writer = new SymbolTableValuesWriter(
-        SymbolTableType.FSST_8,
-        SymbolTables.rejectingSink(),
-        OffsetEncoding.DELTA_BINARY_PACKED,
-        SLAB_SIZE,
-        PAGE_SIZE,
-        HeapByteBufferAllocator.getInstance())) {
-      writer.writeBytes(Binary.fromString("http://example.com/a"));
-      assertThatThrownBy(writer::getBytes)
-          .isInstanceOf(ParquetEncodingException.class)
-          .hasMessageContaining("#531");
-    }
   }
 
   @Test
@@ -352,6 +333,9 @@ public class SymbolTableValuesRoundTripTest {
    * what a plain page's lengths cost, so the nine-byte header alone decides it. That is the
    * configuration to fall back from, and it is also the argument against writing offsets plain — the
    * same page with packed offsets is smaller than plain and keeps the encoding.
+   *
+   * <p>Also the regression test for a fixed publish-timing defect: a chunk that falls back must not
+   * leave a symbol table page behind that no page refers to.
    */
   @Test
   public void aPageTheEncodingWouldGrowIsWrittenPlain() throws IOException {
@@ -365,19 +349,35 @@ public class SymbolTableValuesRoundTripTest {
         .isEqualTo(Encoding.FSST);
   }
 
-  /** Runs a page through the fallback wrapper and reads it back with whatever encoding it chose. */
+  /**
+   * Runs a page through the fallback wrapper, reads it back with whatever encoding it chose, and
+   * checks that a symbol table page was published if and only if the encoding kept FSST.
+   */
   private static Encoding fallbackEncodingFor(List<Binary> values, OffsetEncoding offsetEncoding) throws IOException {
     SymbolTableRelay relay = new SymbolTableRelay();
     Encoding encoding;
     byte[] body;
+    SymbolTablePage tablePage;
     try (FallbackValuesWriter<SymbolTableValuesWriter, PlainValuesWriter> writer = FallbackValuesWriter.of(
-        writer(relay, offsetEncoding),
+        writer(offsetEncoding),
         new PlainValuesWriter(SLAB_SIZE, PAGE_SIZE, HeapByteBufferAllocator.getInstance()))) {
       for (Binary value : values) {
         writer.writeBytes(value);
       }
       body = writer.getBytes().toByteArray();
       encoding = writer.getEncoding();
+      tablePage = writer.toSymbolTablePageAndClose();
+    }
+
+    if (encoding == Encoding.PLAIN) {
+      assertThat(tablePage)
+          .as("a chunk that fell back publishes no table")
+          .isNull();
+    } else {
+      assertThat(tablePage)
+          .as("a chunk that kept the encoding publishes its table")
+          .isNotNull();
+      relay.receive(tablePage);
     }
 
     ValuesReader reader =
@@ -393,29 +393,30 @@ public class SymbolTableValuesRoundTripTest {
   @Test
   public void fallingBackReplaysEveryValue() throws IOException {
     List<Binary> values = binaries("alpha", "", "beta", "gamma");
-    SymbolTableRelay relay = new SymbolTableRelay();
     List<Binary> replayed = new ArrayList<>();
     ValuesWriter collector = new CollectingValuesWriter(replayed);
-    try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
+    try (SymbolTableValuesWriter writer = writer(OffsetEncoding.DELTA_BINARY_PACKED)) {
       for (Binary value : values) {
         writer.writeBytes(value);
       }
       writer.fallBackAllValuesTo(collector);
     }
     assertThat(replayed).isEqualTo(values);
-    assertThat(relay.publishCount).isEqualTo(0);
   }
 
   @Test
   public void aTableIsPublishedOnceAndRebuiltFromItsBytes() throws IOException {
     SymbolTableRelay relay = new SymbolTableRelay();
-    try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
+    SymbolTablePage tablePage;
+    try (SymbolTableValuesWriter writer = writer(OffsetEncoding.DELTA_BINARY_PACKED)) {
       for (int i = 0; i < 200; i++) {
         writer.writeBytes(Binary.fromString("measurement-" + i));
       }
       writer.getBytes();
+      tablePage = writer.toSymbolTablePageAndClose();
     }
-    assertThat(relay.type).isEqualTo(SymbolTableType.FSST_8);
+    assertThat(tablePage.getType()).isEqualTo(SymbolTableType.FSST_8);
+    relay.receive(tablePage);
     SymbolTable first = relay.getSymbolTable();
     assertThat(first.type()).isEqualTo(SymbolTableType.FSST_8);
     assertThat(first.symbolCount()).as("a table was trained").isPositive();
@@ -424,8 +425,7 @@ public class SymbolTableValuesRoundTripTest {
 
   @Test
   public void theWriterReportsWhatItIsHoldingAndReleasesItOnReset() throws IOException {
-    SymbolTableRelay relay = new SymbolTableRelay();
-    try (SymbolTableValuesWriter writer = writer(relay, OffsetEncoding.DELTA_BINARY_PACKED)) {
+    try (SymbolTableValuesWriter writer = writer(OffsetEncoding.DELTA_BINARY_PACKED)) {
       assertThat(writer.getBufferedSize()).isEqualTo(0);
       writer.writeBytes(Binary.fromString("alpha"));
       assertThat(writer.getBufferedSize()).isEqualTo(5 + 4);

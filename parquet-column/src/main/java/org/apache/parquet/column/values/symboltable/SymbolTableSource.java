@@ -21,9 +21,11 @@ package org.apache.parquet.column.values.symboltable;
 /**
  * Where a reader gets the symbol table a column chunk's pages were compressed against.
  *
- * <p>The counterpart of {@link SymbolTableSink}. The table arrives already deserialized, because
- * which implementation to build from the bytes depends on the representation and that decision
- * belongs in one place: {@link SymbolTables}.
+ * <p>The write side's counterpart is
+ * {@link org.apache.parquet.column.values.ValuesWriter#toSymbolTablePageAndClose()}, which hands the
+ * table to the column's {@link org.apache.parquet.column.page.PageWriter} once per chunk. The table
+ * here arrives already deserialized, because which implementation to build from the bytes depends
+ * on the representation and that decision belongs in one place: {@link SymbolTables}.
  */
 public interface SymbolTableSource {
 

@@ -62,7 +62,11 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     }
     List<DataPage> pages = new ArrayList<>(pageWriter.getPages());
     LOG.debug("initialize page reader with {} values and {} pages", pageWriter.getTotalValueCount(), pages.size());
-    return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
+    return new MemPageReader(
+        pageWriter.getTotalValueCount(),
+        pages.iterator(),
+        pageWriter.getDictionaryPage(),
+        pageWriter.getSymbolTablePage());
   }
 
   @Override
