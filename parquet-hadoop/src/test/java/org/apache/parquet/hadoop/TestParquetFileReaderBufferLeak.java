@@ -170,6 +170,29 @@ public class TestParquetFileReaderBufferLeak {
   }
 
   /**
+   * Verify that closing a reader after a vectored read releases all buffers allocated by the file system.
+   */
+  @Test
+  public void testClosingVectoredReaderReleasesAllBuffers() throws Exception {
+    Path path = writeMultiRowGroupFile(500);
+
+    try (TrackingByteBufferAllocator readAllocator =
+        TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
+      ParquetReadOptions options = ParquetReadOptions.builder()
+          .withAllocator(readAllocator)
+          .withUseHadoopVectoredIo(true)
+          .build();
+      InputFile inputFile = HadoopInputFile.fromPath(path, CONF);
+
+      try (ParquetFileReader reader = new ParquetFileReader(inputFile, options)) {
+        PageReadStore pages = reader.readNextRowGroup();
+        assertNotNull(pages);
+        assertTrue(pages.getRowCount() > 0);
+      }
+    }
+  }
+
+  /**
    * Verify that readNextFilteredRowGroup() releases buffers of the previous row group
    * when the filter does not trigger column-index filtering (falls back to readNextRowGroup).
    */
