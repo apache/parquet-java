@@ -136,22 +136,11 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     MessageType projection = fileSchema;
     Map<String, String> metadata = new LinkedHashMap<String, String>();
 
-    boolean autoDetectListStructure =
-        configuration.getBoolean(AUTO_DETECT_LIST_STRUCTURE, AUTO_DETECT_LIST_STRUCTURE_DEFAULT);
-
-    if (autoDetectListStructure
-        && configuration.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE) == null
-        && configuration.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) == null) {
-      if (writesNewListStructure(fileSchema)) {
-        configuration.setBoolean(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, false);
-        configuration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
-      }
-    }
-
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      projection = new AvroSchemaConverter(configuration).convert(avroRequestedProjection);
+      projection = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
+          .convert(avroRequestedProjection);
     }
 
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
@@ -196,7 +185,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY));
     } else {
       // default to converting the Parquet schema into an Avro schema
-      avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
+      avroSchema = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
+          .convert(parquetSchema);
     }
 
     GenericData model = getDataModel(configuration, avroSchema);
@@ -249,6 +239,26 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         conf.getClass(AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf))
         .get();
+  }
+
+  // Creates a copy of the user's Configuration with derived list encoding properties
+  private static ParquetConfiguration getDerivedListEncodingConf(
+      ParquetConfiguration configuration, MessageType fileSchema) {
+    Configuration copiedConfiguration =
+        new Configuration(ConfigurationUtil.createHadoopConfiguration(configuration));
+
+    boolean autoDetectListStructure =
+        configuration.getBoolean(AUTO_DETECT_LIST_STRUCTURE, AUTO_DETECT_LIST_STRUCTURE_DEFAULT);
+
+    if (autoDetectListStructure
+        && configuration.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE) == null
+        && configuration.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) == null
+        && writesNewListStructure(fileSchema)) {
+      copiedConfiguration.setBoolean(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, false);
+      copiedConfiguration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+    }
+
+    return new HadoopParquetConfiguration(copiedConfiguration);
   }
 
   private static boolean writesNewListStructure(MessageType schema) {
