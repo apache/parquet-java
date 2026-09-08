@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.util;
 
 import static org.apache.hadoop.fs.FileSystemTestBinder.addFileSystemForTesting;
-import static org.apache.hadoop.fs.Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doNothing;
@@ -59,6 +58,8 @@ import org.mockito.Mockito;
  * it is already used outside the hadoop codebase (e.g. google gcs).
  */
 public class TestHadoopOpenFile {
+
+  private static final String OPENFILE_LENGTH_KEY = "fs.option.openfile.length";
 
   private static final int FIRST = MockHadoopInputStream.TEST_ARRAY[0];
 
@@ -130,7 +131,7 @@ public class TestHadoopOpenFile {
 
     Mockito.verify(mockFS, never()).getFileStatus(path);
     assertThat(opener.getFileStatus()).as("file status").isNull();
-    assertThat(opener.getOptions().get(FS_OPTION_OPENFILE_LENGTH))
+    assertThat(opener.getOptions().get(OPENFILE_LENGTH_KEY))
         .as("openFile length")
         .isEqualTo(Long.toString(status.getLen()));
   }

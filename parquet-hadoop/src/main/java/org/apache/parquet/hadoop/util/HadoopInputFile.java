@@ -19,7 +19,6 @@
 
 package org.apache.parquet.hadoop.util;
 
-import static org.apache.hadoop.fs.Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH;
 import static org.apache.parquet.hadoop.util.wrapped.io.FutureIO.awaitFuture;
 
 import java.io.IOException;
@@ -40,6 +39,14 @@ public class HadoopInputFile implements InputFile {
    * openFile() option name for setting the read policy: {@value}.
    */
   private static final String OPENFILE_READ_POLICY_KEY = "fs.option.openfile.read.policy";
+
+  /**
+   * openFile() option name for passing a known file length: {@value}.
+   *
+   * <p>This is an optional filesystem hint, so retain the string form to support Hadoop versions before the
+   * constant was introduced.
+   */
+  private static final String OPENFILE_LENGTH_KEY = "fs.option.openfile.length";
 
   /**
    * Read policy when opening parquet files: {@value}.
@@ -155,7 +162,7 @@ public class HadoopInputFile implements InputFile {
       if (stat != null) {
         builder.withFileStatus(stat);
       } else {
-        builder.opt(FS_OPTION_OPENFILE_LENGTH, Long.toString(length));
+        builder.opt(OPENFILE_LENGTH_KEY, Long.toString(length));
       }
       final CompletableFuture<FSDataInputStream> future = builder.build();
       stream = awaitFuture(future);
