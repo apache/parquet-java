@@ -54,7 +54,6 @@ public class ParquetProperties {
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
   public static final boolean DEFAULT_IS_ALP_ENABLED = false;
-  public static final int DEFAULT_ALP_VECTOR_SIZE = AlpConfig.DEFAULT_VECTOR_SIZE;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -505,7 +504,7 @@ public class ParquetProperties {
                   ? ByteStreamSplitMode.FLOATING_POINT
                   : ByteStreamSplitMode.NONE);
       alp = ColumnProperty.<AlpConfig>builder()
-          .withDefaultValue(new AlpConfig(DEFAULT_IS_ALP_ENABLED, DEFAULT_ALP_VECTOR_SIZE));
+          .withDefaultValue(new AlpConfig(DEFAULT_IS_ALP_ENABLED, AlpConfig.DEFAULT_VECTOR_SIZE));
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
