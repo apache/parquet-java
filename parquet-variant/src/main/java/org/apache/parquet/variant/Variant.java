@@ -273,41 +273,65 @@ public final class Variant {
         }
       }
     } else {
-      // Encode the lookup key once, outside the loop, rather than on every comparison.
-      byte[] keyBytes = VariantUtil.encodeKey(key);
-      // UTF-8 and UTF-16 orders can only differ for keys containing a code unit at or above
-      // U+D800; for all other keys a single search covers both orders.
-      int numAttempts = 1;
+      // UTF-8 and UTF-16 order can only disagree at a code unit at or above U+D800. A lookup key
+      // without one compares identically under either order, so a single `String.compareTo`
+      // search navigates both spec-ordered and legacy UTF-16-ordered objects. Keys containing one
+      // are rare and take an out-of-line path, keeping this search identical to a plain one.
       for (int i = 0; i < key.length(); ++i) {
         if (key.charAt(i) >= Character.MIN_SURROGATE) {
-          numAttempts = 2;
-          break;
+          return getFieldByKeyAcrossOrders(key, info, idStart, offsetStart, dataStart);
         }
       }
-      // Search in the spec's unsigned UTF-8 byte order first, then retry in the UTF-16 order
-      // written by older versions, so objects written before the ordering fix remain readable.
-      for (int attempt = 0; attempt < numAttempts; ++attempt) {
-        int low = 0;
-        int high = info.numElements - 1;
-        while (low <= high) {
-          // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
-          // performance optimization, because it can properly handle the case where `low + high`
-          // overflows int.
-          int mid = (low + high) >>> 1;
-          int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
-          String midKey = getMetadataKeyCached(midId);
-          int cmp = attempt == 0
-              ? VariantUtil.compareKeys(VariantUtil.encodeKey(midKey), keyBytes)
-              : midKey.compareTo(key);
-          if (cmp < 0) {
-            low = mid + 1;
-          } else if (cmp > 0) {
-            high = mid - 1;
-          } else {
-            int offset = VariantUtil.readUnsignedLittleEndian(
-                value, offsetStart + info.offsetSize * mid, info.offsetSize);
-            return childVariant(VariantUtil.slice(value, dataStart + offset));
-          }
+      int low = 0;
+      int high = info.numElements - 1;
+      while (low <= high) {
+        // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
+        // performance optimization, because it can properly handle the case where `low + high`
+        // overflows int.
+        int mid = (low + high) >>> 1;
+        int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
+        int cmp = getMetadataKeyCached(midId).compareTo(key);
+        if (cmp < 0) {
+          low = mid + 1;
+        } else if (cmp > 0) {
+          high = mid - 1;
+        } else {
+          int offset = VariantUtil.readUnsignedLittleEndian(
+              value, offsetStart + info.offsetSize * mid, info.offsetSize);
+          return childVariant(VariantUtil.slice(value, dataStart + offset));
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Binary-searches an object for a `key` that contains a code unit at or above U+D800, the only
+   * keys whose UTF-8 and UTF-16 orderings can disagree. Searches in the spec's unsigned UTF-8
+   * byte order first, then retries in the UTF-16 order written by versions that sorted object
+   * fields with {@link String#compareTo}, so those objects remain readable.
+   *
+   * @return the field value whose key is equal to `key`, or null if key is not found
+   */
+  private Variant getFieldByKeyAcrossOrders(
+      String key, VariantUtil.ObjectInfo info, int idStart, int offsetStart, int dataStart) {
+    for (int attempt = 0; attempt < 2; ++attempt) {
+      boolean utf8Order = attempt == 0;
+      int low = 0;
+      int high = info.numElements - 1;
+      while (low <= high) {
+        int mid = (low + high) >>> 1;
+        int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
+        String midKey = getMetadataKeyCached(midId);
+        int cmp = utf8Order ? VariantUtil.compareKeys(midKey, key) : midKey.compareTo(key);
+        if (cmp < 0) {
+          low = mid + 1;
+        } else if (cmp > 0) {
+          high = mid - 1;
+        } else {
+          int offset = VariantUtil.readUnsignedLittleEndian(
+              value, offsetStart + info.offsetSize * mid, info.offsetSize);
+          return childVariant(VariantUtil.slice(value, dataStart + offset));
         }
       }
     }

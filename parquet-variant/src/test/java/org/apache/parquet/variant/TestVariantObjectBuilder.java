@@ -23,6 +23,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -198,6 +203,67 @@ public class TestVariantObjectBuilder {
     // Absent keys stay absent after both attempts.
     assertThat(legacy.getFieldByKey("missing")).isNull();
     assertThat(legacy.getFieldByKey(new String(Character.toChars(0x10001)))).isNull();
+  }
+
+  /**
+   * {@link VariantUtil#compareKeys} orders field names as their UTF-8 encodings compare as
+   * unsigned bytes, but reaches that order from the UTF-16 code units without encoding either
+   * name. Check it against encoding both and comparing the bytes, over names that cover every
+   * UTF-8 length, both sides of the surrogate range, and prefixes.
+   */
+  @Test
+  public void testCompareKeysMatchesUtf8ByteOrder() {
+    List<String> keys = new ArrayList<>(Arrays.asList(
+        "",
+        "a",
+        "ab",
+        "b",
+        "A",
+        "~",
+        "\u007f", // last 1-byte UTF-8
+        "\u0080", // first 2-byte UTF-8
+        "\u00e9",
+        "\u07ff", // last 2-byte UTF-8
+        "\u0800", // first 3-byte UTF-8
+        "\ud7ff", // last code unit below the surrogate range
+        "\ue000", // first code unit above the surrogate range
+        "\uffff", // EF BF BF
+        new String(Character.toChars(0x10000)), // F0 90 80 80, first 4-byte UTF-8
+        new String(Character.toChars(0x10ffff)), // F4 8F BF BF, last code point
+        "a\uffff",
+        "a" + new String(Character.toChars(0x10000)),
+        new String(Character.toChars(0x10000)) + "a"));
+    // Random names, to cover pairs the hand-picked ones miss.
+    Random random = new Random(2891);
+    for (int i = 0; i < 200; i++) {
+      StringBuilder key = new StringBuilder();
+      for (int c = 0; c < 1 + random.nextInt(3); c++) {
+        // Draw from ASCII, the BMP around the surrogate range, and the supplementary planes.
+        switch (random.nextInt(3)) {
+          case 0:
+            key.append((char) ('a' + random.nextInt(3)));
+            break;
+          case 1:
+            // Valid code units either side of the surrogate range, which has no UTF-8 encoding.
+            int offset = random.nextInt(6);
+            key.append((char) (offset < 3 ? 0xd7fd + offset : 0xe000 + offset - 3));
+            break;
+          default:
+            key.appendCodePoint(0x10000 + random.nextInt(4));
+        }
+      }
+      keys.add(key.toString());
+    }
+
+    for (String left : keys) {
+      for (String right : keys) {
+        int expected = Arrays.compareUnsigned(
+            left.getBytes(StandardCharsets.UTF_8), right.getBytes(StandardCharsets.UTF_8));
+        assertThat(Integer.signum(VariantUtil.compareKeys(left, right)))
+            .as("comparing %s against %s", left, right)
+            .isEqualTo(Integer.signum(expected));
+      }
+    }
   }
 
   private static void swapLastTwoEntries(byte[] bytes, int start, int width, int numElements) {
