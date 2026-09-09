@@ -24,6 +24,8 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.parquet.column.page.mem.MemPageStore;
+import org.apache.parquet.column.values.alp.AlpConfig;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeEach;
@@ -137,5 +139,93 @@ public class TestParquetProperties {
     assertThat(copy.getColumnCodec(colB)).isEqualTo(SNAPPY);
     assertThat(copy.getColumnCompressionLevel(colB)).isNull();
     assertThat(copy.getColumnCodec(colC)).isNull();
+  }
+
+  private static void createWriteStore(ParquetProperties props) {
+    props.newColumnWriteStore(SCHEMA, new MemPageStore(0));
+  }
+
+  @Test
+  public void alp_notSet_isDisabledAndHasNoConfig() {
+    ParquetProperties props = ParquetProperties.builder().build();
+    assertThat(props.isAlpEnabled(colC)).isFalse();
+    assertThat(props.getAlpConfig(colC)).isNull();
+  }
+
+  @Test
+  public void alp_enabledByDefault_appliesOnlyToFloatAndDoubleColumns() {
+    ParquetProperties props = ParquetProperties.builder().withAlp().build();
+
+    assertThat(props.isAlpEnabled(colC)).isTrue();
+    assertThat(props.getAlpConfig(colC).getVectorSize()).isEqualTo(AlpConfig.DEFAULT_VECTOR_SIZE);
+    assertThat(props.isAlpEnabled(colA)).isFalse();
+    assertThat(props.isAlpEnabled(colB)).isFalse();
+
+    createWriteStore(props);
+  }
+
+  @Test
+  public void alp_enabledPerColumn_usesGivenConfig() {
+    ParquetProperties props = ParquetProperties.builder()
+        .withAlp("col_c", new AlpConfig(4096))
+        .build();
+
+    assertThat(props.getAlpConfig(colC).getVectorSize()).isEqualTo(4096);
+    createWriteStore(props);
+  }
+
+  @Test
+  public void withoutAlp_clearsTheDefault() {
+    ParquetProperties props =
+        ParquetProperties.builder().withAlp().withoutAlp().build();
+
+    assertThat(props.isAlpEnabled(colC)).isFalse();
+  }
+
+  @Test
+  public void alp_onNonFloatOrDoubleColumn_fails() {
+    ParquetProperties props = ParquetProperties.builder().withAlp("col_b").build();
+
+    assertThatThrownBy(() -> createWriteStore(props))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("col_b")
+        .hasMessageContaining("only supports FLOAT and DOUBLE");
+  }
+
+  @Test
+  public void alp_withByteStreamSplitOnTheSameColumn_fails() {
+    ParquetProperties props = ParquetProperties.builder()
+        .withAlp()
+        .withByteStreamSplitEncoding(true)
+        .build();
+
+    assertThatThrownBy(() -> createWriteStore(props))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("col_c")
+        .hasMessageContaining("BYTE_STREAM_SPLIT");
+  }
+
+  @Test
+  public void alp_withByteStreamSplitOnDifferentColumns_isAllowed() {
+    ParquetProperties props = ParquetProperties.builder()
+        .withAlp("col_c")
+        .withByteStreamSplitEncoding("col_b", true)
+        .build();
+
+    assertThat(props.isAlpEnabled(colC)).isTrue();
+    assertThat(props.isByteStreamSplitEnabled(colB)).isTrue();
+
+    createWriteStore(props);
+  }
+
+  @Test
+  public void copyBuilder_preservesAlp() {
+    ParquetProperties original = ParquetProperties.builder()
+        .withAlp("col_c", new AlpConfig(2048))
+        .build();
+
+    ParquetProperties copy = ParquetProperties.copy(original).build();
+
+    assertThat(copy.getAlpConfig(colC).getVectorSize()).isEqualTo(2048);
   }
 }

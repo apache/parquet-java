@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
+import java.util.Set;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -43,6 +44,7 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWrite
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * This class represents all the configurable Parquet properties.
@@ -299,7 +301,39 @@ public class ParquetProperties {
     return allocator;
   }
 
+  /**
+   * Checks the ALP configuration against the schema it will be used with. ALP only applies to FLOAT
+   * and DOUBLE columns, and a column cannot be both ALP and BYTE_STREAM_SPLIT encoded, so rather
+   * than silently picking one, both cases are rejected before anything is written.
+   *
+   * @param schema the schema being written
+   * @throws IllegalArgumentException if a column is misconfigured
+   */
+  private void validateAlp(MessageType schema) {
+    Set<ColumnPath> alpColumns = alp.getColumnPaths();
+    if (alp.getDefaultValue() == null && alpColumns.isEmpty()) {
+      return;
+    }
+
+    for (ColumnDescriptor column : schema.getColumns()) {
+      ColumnPath path = ColumnPath.get(column.getPath());
+      PrimitiveTypeName type = column.getPrimitiveType().getPrimitiveTypeName();
+
+      if (alpColumns.contains(path) && type != PrimitiveTypeName.FLOAT && type != PrimitiveTypeName.DOUBLE) {
+        throw new IllegalArgumentException("ALP encoding is enabled for column " + path.toDotString()
+            + " of type " + type + ", but ALP only supports FLOAT and DOUBLE columns");
+      }
+
+      if (isAlpEnabled(column) && isByteStreamSplitEnabled(column)) {
+        throw new IllegalArgumentException(
+            "Column " + path.toDotString()
+                + " has both ALP and BYTE_STREAM_SPLIT encoding enabled, but a column can only use one of them");
+      }
+    }
+  }
+
   public ColumnWriteStore newColumnWriteStore(MessageType schema, PageWriteStore pageStore) {
+    validateAlp(schema);
     switch (writerVersion) {
       case PARQUET_1_0:
         return new ColumnWriteStoreV1(schema, pageStore, this);
@@ -312,6 +346,7 @@ public class ParquetProperties {
 
   public ColumnWriteStore newColumnWriteStore(
       MessageType schema, PageWriteStore pageStore, BloomFilterWriteStore bloomFilterWriteStore) {
+    validateAlp(schema);
     switch (writerVersion) {
       case PARQUET_1_0:
         return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this);
