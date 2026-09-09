@@ -576,9 +576,9 @@ public class Types {
     }
 
     /**
-     * When set, an unsupported combination results in the logical type annotation being dropped
-     * rather than throwing. The associated statistics are also forcefully ignored by setting the
-     * column order to {@link ColumnOrderName#UNDEFINED}.
+     * When set, an unsupported logical type annotation or logical/physical type combination
+     * results in the annotation being dropped rather than throwing. The associated statistics are
+     * also forcefully ignored by setting the column order to {@link ColumnOrderName#UNDEFINED}.
      *
      * @return this builder for method chaining
      */
@@ -599,15 +599,17 @@ public class Types {
       DecimalMetadata meta = decimalMetadata();
 
       if (logicalTypeAnnotation != null) {
+        String annotation = newLogicalTypeSet
+            ? logicalTypeAnnotation.toString()
+            : getOriginalType().toString();
         AllowedPhysicalTypes allowed =
             logicalTypeAnnotation.accept(ALLOWED_PHYSICAL_TYPES).orElse(AllowedPhysicalTypes.NONE);
         if (!allowed.accepts(primitiveType, length)) {
           if (!ignoreUnsupportedLogicalAnnotations) {
             throw new IllegalStateException(
                 allowed.isEmpty()
-                    ? logicalTypeAnnotation + " can not be applied to a primitive type"
-                    : String.format(
-                        "%s can only annotate types %s", logicalTypeAnnotation, allowed));
+                    ? annotation + " can not be applied to a primitive type"
+                    : String.format("%s can only annotate [%s]", annotation, allowed));
           }
           LOGGER.warn(
               "Dropping unsupported logical type annotation {} on physical type {}",
