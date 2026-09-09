@@ -53,7 +53,6 @@ public class ParquetProperties {
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
-  public static final boolean DEFAULT_IS_ALP_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -270,31 +269,30 @@ public class ParquetProperties {
   }
 
   /**
+   * Get the ALP configuration for the given column. ALP encoding is only supported for FLOAT and
+   * DOUBLE types, so any other type is never ALP encoded.
+   *
+   * @param column the column descriptor
+   * @return the ALP configuration for this column, or null if the column is not ALP encoded
+   */
+  public AlpConfig getAlpConfig(ColumnDescriptor column) {
+    switch (column.getPrimitiveType().getPrimitiveTypeName()) {
+      case FLOAT:
+      case DOUBLE:
+        return alp.getValue(column);
+      default:
+        return null;
+    }
+  }
+
+  /**
    * Check if ALP encoding is enabled for the given column.
-   * ALP encoding is only supported for FLOAT and DOUBLE types.
    *
    * @param column the column descriptor
    * @return true if ALP encoding is enabled for this column
    */
   public boolean isAlpEnabled(ColumnDescriptor column) {
-    switch (column.getPrimitiveType().getPrimitiveTypeName()) {
-      case FLOAT:
-      case DOUBLE:
-        return alp.getValue(column).isEnabled();
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Get the ALP vector size (number of values per encoded vector) for the given column.
-   * Must be a power of 2 between 8 and 32768.
-   *
-   * @param column the column descriptor
-   * @return the ALP vector size for this column
-   */
-  public int getAlpVectorSize(ColumnDescriptor column) {
-    return alp.getValue(column).getVectorSize();
+    return getAlpConfig(column) != null;
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -503,8 +501,7 @@ public class ParquetProperties {
               DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED
                   ? ByteStreamSplitMode.FLOATING_POINT
                   : ByteStreamSplitMode.NONE);
-      alp = ColumnProperty.<AlpConfig>builder()
-          .withDefaultValue(new AlpConfig(DEFAULT_IS_ALP_ENABLED, AlpConfig.DEFAULT_VECTOR_SIZE));
+      alp = ColumnProperty.<AlpConfig>builder().withDefaultValue(null);
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
@@ -624,7 +621,16 @@ public class ParquetProperties {
     }
 
     /**
-     * Set the full ALP configuration for FLOAT and DOUBLE columns.
+     * Enable ALP encoding for FLOAT and DOUBLE columns, using the default configuration.
+     *
+     * @return this builder for method chaining.
+     */
+    public Builder withAlp() {
+      return withAlp(AlpConfig.DEFAULT);
+    }
+
+    /**
+     * Enable ALP encoding for FLOAT and DOUBLE columns with the given configuration.
      *
      * @param config the ALP configuration
      * @return this builder for method chaining.
@@ -635,7 +641,17 @@ public class ParquetProperties {
     }
 
     /**
-     * Set the full ALP configuration for the specified column.
+     * Enable ALP encoding for the specified column, using the default configuration.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @return this builder for method chaining.
+     */
+    public Builder withAlp(String columnPath) {
+      return withAlp(columnPath, AlpConfig.DEFAULT);
+    }
+
+    /**
+     * Enable ALP encoding for the specified column with the given configuration.
      *
      * @param columnPath the path of the column (dot-string)
      * @param config     the ALP configuration
@@ -647,51 +663,14 @@ public class ParquetProperties {
     }
 
     /**
-     * Enable or disable ALP encoding for FLOAT and DOUBLE columns, keeping the current vector size.
+     * Disable ALP encoding. Columns that were enabled individually by
+     * {@link #withAlp(String)} keep it.
      *
-     * @param enable whether ALP encoding should be enabled
      * @return this builder for method chaining.
      */
-    public Builder withAlpEncoding(boolean enable) {
-      return withAlp(alp.getDefaultValue().withEnabled(enable));
-    }
-
-    /**
-     * Enable or disable ALP encoding for the specified column, keeping its current vector size.
-     *
-     * @param columnPath the path of the column (dot-string)
-     * @param enable     whether ALP encoding should be enabled
-     * @return this builder for method chaining.
-     */
-    public Builder withAlpEncoding(String columnPath, boolean enable) {
-      return withAlp(columnPath, alpConfigFor(columnPath).withEnabled(enable));
-    }
-
-    /**
-     * Set the ALP vector size (number of values per encoded vector) for FLOAT and DOUBLE columns.
-     * Must be a power of 2 in the range supported by {@link AlpConfig}.
-     *
-     * @param vectorSize the vector size
-     * @return this builder for method chaining.
-     */
-    public Builder withAlpVectorSize(int vectorSize) {
-      return withAlp(alp.getDefaultValue().withVectorSize(vectorSize));
-    }
-
-    /**
-     * Set the ALP vector size for the specified column.
-     *
-     * @param columnPath the path of the column (dot-string)
-     * @param vectorSize the vector size
-     * @return this builder for method chaining.
-     */
-    public Builder withAlpVectorSize(String columnPath, int vectorSize) {
-      return withAlp(columnPath, alpConfigFor(columnPath).withVectorSize(vectorSize));
-    }
-
-    /** The config a column would resolve to today, so a setter can modify one field of it. */
-    private AlpConfig alpConfigFor(String columnPath) {
-      return alp.getValue(ColumnPath.fromDotString(columnPath));
+    public Builder withoutAlp() {
+      this.alp.withDefaultValue(null);
+      return this;
     }
 
     /**

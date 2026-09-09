@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.alp.AlpConfig;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -737,23 +738,28 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
-    public SELF withAlpEncoding(boolean enableAlp) {
-      encodingPropsBuilder.withAlpEncoding(enableAlp);
+    public SELF withAlp() {
+      encodingPropsBuilder.withAlp();
       return self();
     }
 
-    public SELF withAlpEncoding(String columnPath, boolean enableAlp) {
-      encodingPropsBuilder.withAlpEncoding(columnPath, enableAlp);
+    public SELF withAlp(AlpConfig config) {
+      encodingPropsBuilder.withAlp(config);
       return self();
     }
 
-    public SELF withAlpVectorSize(int vectorSize) {
-      encodingPropsBuilder.withAlpVectorSize(vectorSize);
+    public SELF withAlp(String columnPath) {
+      encodingPropsBuilder.withAlp(columnPath);
       return self();
     }
 
-    public SELF withAlpVectorSize(String columnPath, int vectorSize) {
-      encodingPropsBuilder.withAlpVectorSize(columnPath, vectorSize);
+    public SELF withAlp(String columnPath, AlpConfig config) {
+      encodingPropsBuilder.withAlp(columnPath, config);
+      return self();
+    }
+
+    public SELF withoutAlp() {
+      encodingPropsBuilder.withoutAlp();
       return self();
     }
 

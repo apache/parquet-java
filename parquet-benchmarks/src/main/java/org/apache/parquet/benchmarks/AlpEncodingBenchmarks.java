@@ -153,13 +153,14 @@ public class AlpEncodingBenchmarks {
   // ---------------------------------------------------------------------------
 
   private static void writeParquetFile(Path path, boolean alp) throws IOException {
-    try (org.apache.parquet.hadoop.ParquetWriter<Group> writer = ExampleParquetWriter.builder(
-            new LocalOutputFile(path))
+    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new LocalOutputFile(path))
         .withType(SCHEMA)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
-        .withAlpEncoding(alp)
-        .withDictionaryEncoding(false)
-        .build()) {
+        .withDictionaryEncoding(false);
+    if (alp) {
+      builder.withAlp();
+    }
+    try (org.apache.parquet.hadoop.ParquetWriter<Group> writer = builder.build()) {
       for (int i = 0; i < N_ROWS; i++) {
         SimpleGroup row = new SimpleGroup(SCHEMA);
         row.add("double_col", DOUBLES[i]);

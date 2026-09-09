@@ -676,7 +676,7 @@ public class DefaultValuesWriterFactoryTest {
         ParquetProperties.builder()
             .withWriterVersion(writerVersion)
             .withDictionaryEncoding(false)
-            .withAlpEncoding(true)
+            .withAlp()
             .build(),
         alpWriterClass);
     // Cross-column ALP with a dictionary: the ALP writer is the dictionary's fallback.
@@ -684,7 +684,7 @@ public class DefaultValuesWriterFactoryTest {
         createColumnDescriptor(typeName),
         ParquetProperties.builder()
             .withWriterVersion(writerVersion)
-            .withAlpEncoding(true)
+            .withAlp()
             .build(),
         DictionaryValuesWriter.class,
         alpWriterClass);
@@ -692,7 +692,7 @@ public class DefaultValuesWriterFactoryTest {
     ParquetProperties properties = ParquetProperties.builder()
         .withWriterVersion(writerVersion)
         .withDictionaryEncoding(false)
-        .withAlpEncoding("colA", true)
+        .withAlp("colA")
         .build();
     doTestValueWriter(createColumnDescriptor(typeName, "colA"), properties, alpWriterClass);
     doTestValueWriter(createColumnDescriptor(typeName, "colB"), properties, PlainValuesWriter.class);
@@ -706,7 +706,7 @@ public class DefaultValuesWriterFactoryTest {
         ParquetProperties.builder()
             .withWriterVersion(writerVersion)
             .withDictionaryEncoding(false)
-            .withAlpEncoding(true)
+            .withAlp()
             .withByteStreamSplitEncoding(true)
             .build(),
         alpWriterClass);

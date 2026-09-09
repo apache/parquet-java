@@ -165,7 +165,7 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
           parquetProperties.getAllocator(),
-          parquetProperties.getAlpVectorSize(path));
+          parquetProperties.getAlpConfig(path).getVectorSize());
     } else if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
@@ -188,7 +188,7 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
           parquetProperties.getAllocator(),
-          parquetProperties.getAlpVectorSize(path));
+          parquetProperties.getAlpConfig(path).getVectorSize());
     } else if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),

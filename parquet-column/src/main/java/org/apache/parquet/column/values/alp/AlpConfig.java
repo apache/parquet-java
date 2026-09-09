@@ -18,47 +18,29 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import java.util.Objects;
-
 /**
- * Immutable per-column ALP encoding configuration: whether ALP is enabled and the vector size
- * (number of values per encoded vector) to use. Bundled together so a column carries a single
- * cohesive ALP setting rather than several independent properties.
+ * Immutable per-column ALP encoding configuration.
+ * <p>
+ * Whether a column is ALP encoded at all is not part of this configuration: a column is ALP
+ * encoded when it has an {@code AlpConfig} and is not when it has none.
  */
 public final class AlpConfig {
 
   /** Default values per encoded vector. */
   public static final int DEFAULT_VECTOR_SIZE = AlpConstants.DEFAULT_VECTOR_SIZE;
 
-  /** ALP disabled, with the default vector size. */
-  public static final AlpConfig DISABLED = new AlpConfig(false, DEFAULT_VECTOR_SIZE);
+  /** Configuration using the default vector size. */
+  public static final AlpConfig DEFAULT = new AlpConfig(DEFAULT_VECTOR_SIZE);
 
-  private final boolean enabled;
   private final int vectorSize;
 
   /**
-   * @param enabled    whether ALP encoding is enabled
    * @param vectorSize values per encoded vector; must be a power of 2 in the supported range
    * @throws IllegalArgumentException if {@code vectorSize} is not a supported vector size
    */
-  public AlpConfig(boolean enabled, int vectorSize) {
+  public AlpConfig(int vectorSize) {
     AlpConstants.validateVectorSize(vectorSize);
-    this.enabled = enabled;
     this.vectorSize = vectorSize;
-  }
-
-  /** @return a copy of this config with {@code enabled} replaced. */
-  public AlpConfig withEnabled(boolean enabled) {
-    return new AlpConfig(enabled, vectorSize);
-  }
-
-  /** @return a copy of this config with {@code vectorSize} replaced. */
-  public AlpConfig withVectorSize(int vectorSize) {
-    return new AlpConfig(enabled, vectorSize);
-  }
-
-  public boolean isEnabled() {
-    return enabled;
   }
 
   public int getVectorSize() {
@@ -73,17 +55,16 @@ public final class AlpConfig {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    AlpConfig that = (AlpConfig) o;
-    return enabled == that.enabled && vectorSize == that.vectorSize;
+    return vectorSize == ((AlpConfig) o).vectorSize;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(enabled, vectorSize);
+    return Integer.hashCode(vectorSize);
   }
 
   @Override
   public String toString() {
-    return "AlpConfig{enabled=" + enabled + ", vectorSize=" + vectorSize + '}';
+    return "AlpConfig{vectorSize=" + vectorSize + '}';
   }
 }

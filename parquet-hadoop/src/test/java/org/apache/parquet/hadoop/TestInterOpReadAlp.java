@@ -32,6 +32,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.values.alp.AlpConfig;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
@@ -254,7 +255,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(version)
-        .withAlpEncoding(true)
+        .withAlp()
         .withDictionaryEncoding(false)
         .withConf(new Configuration())
         .build()) {
@@ -316,8 +317,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
-        .withAlpVectorSize(4096)
+        .withAlp(new AlpConfig(4096))
         .withDictionaryEncoding(false)
         .withConf(new Configuration())
         .build()) {
@@ -376,7 +376,7 @@ public class TestInterOpReadAlp {
           .withType(schema)
           .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
           .withWriterVersion(version)
-          .withAlpEncoding(true)
+          .withAlp()
           .withDictionaryEncoding(false)
           .withConf(new Configuration())
           .build()) {
@@ -548,8 +548,7 @@ public class TestInterOpReadAlp {
               .withType(schema)
               .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
               .withWriterVersion(pageVersion)
-              .withAlpEncoding(true)
-              .withAlpVectorSize(vectorSize)
+              .withAlp(new AlpConfig(vectorSize))
               .withDictionaryEncoding(false)
               .withConf(new Configuration())
               .build()) {
@@ -964,8 +963,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
-        .withAlpVectorSize(CORNER_ROWS_PER_VECTOR)
+        .withAlp(new AlpConfig(CORNER_ROWS_PER_VECTOR))
         .withDictionaryEncoding(false)
         .withConf(new Configuration())
         .build()) {
@@ -1073,7 +1071,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
+        .withAlp()
         .withDictionaryEncoding(false)
         .withConf(new Configuration())
         .build()) {
@@ -1174,7 +1172,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
+        .withAlp()
         .withDictionaryEncoding(true)
         .withDictionaryPageSize(4096)
         .withConf(new Configuration())
@@ -1219,7 +1217,7 @@ public class TestInterOpReadAlp {
           .withType(schema)
           .withCompressionCodec(codec)
           .withWriterVersion(WriterVersion.PARQUET_2_0)
-          .withAlpEncoding(true)
+          .withAlp()
           .withDictionaryEncoding(false)
           .withConf(new Configuration())
           .build()) {
@@ -1258,7 +1256,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
+        .withAlp()
         .withDictionaryEncoding(false)
         .withConf(new Configuration())
         .build()) {
@@ -1312,7 +1310,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.SNAPPY)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
+        .withAlp()
         .withDictionaryEncoding(false)
         .withRowGroupSize(1L << 19) // 512KB, so 500k rows span many row groups
         .withConf(new Configuration())
@@ -1376,7 +1374,7 @@ public class TestInterOpReadAlp {
         .withType(schema)
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
-        .withAlpEncoding(true)
+        .withAlp()
         .withDictionaryEncoding(false)
         .withConf(new Configuration())
         .build()) {
