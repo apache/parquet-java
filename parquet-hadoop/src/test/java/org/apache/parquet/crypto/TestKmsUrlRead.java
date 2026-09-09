@@ -194,14 +194,18 @@ public class TestKmsUrlRead {
     ConstructorInjectedKmsClient kmsClient = new ConstructorInjectedKmsClient("dependency");
     KeyToolkit.setKmsClientFactory(readConf, () -> kmsClient);
 
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), filePath)
-        .withConf(readConf)
-        .build()) {
-      assertThat(reader.read()).isNotNull();
-    }
+    try {
+      try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), filePath)
+          .withConf(readConf)
+          .build()) {
+        assertThat(reader.read()).isNotNull();
+      }
 
-    assertThat(kmsClient.dependency).isEqualTo("dependency");
-    assertThat(UnitestUrlReadKMS.getStaticKmsURL()).isEqualTo(KmsClient.KMS_INSTANCE_ID_DEFAULT);
+      assertThat(kmsClient.dependency).isEqualTo("dependency");
+      assertThat(UnitestUrlReadKMS.getStaticKmsURL()).isEqualTo(KmsClient.KMS_INSTANCE_ID_DEFAULT);
+    } finally {
+      KeyToolkit.removeKmsClientFactory(readConf);
+    }
   }
 
   @AfterAll
