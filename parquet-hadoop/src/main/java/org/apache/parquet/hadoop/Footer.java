@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 
@@ -30,10 +31,30 @@ public class Footer {
 
   private final ParquetMetadata parquetMetadata;
 
+  private final FileStatus fileStatus;
+
+  /**
+   * Constructor for backwards compatibility
+   *
+   * @param file the file path
+   * @param parquetMetadata the parquet metadata
+   */
   public Footer(Path file, ParquetMetadata parquetMetadata) {
+    this(file, parquetMetadata, null);
+  }
+
+  /**
+   * Constructor with FileStatus to avoid redundant getFileStatus RPC calls
+   *
+   * @param file the file path
+   * @param parquetMetadata the parquet metadata
+   * @param fileStatus the file status (may be null for backwards compatibility)
+   */
+  public Footer(Path file, ParquetMetadata parquetMetadata, FileStatus fileStatus) {
     super();
     this.file = file;
     this.parquetMetadata = parquetMetadata;
+    this.fileStatus = fileStatus;
   }
 
   public Path getFile() {
@@ -42,6 +63,16 @@ public class Footer {
 
   public ParquetMetadata getParquetMetadata() {
     return parquetMetadata;
+  }
+
+  /**
+   * Get the FileStatus associated with this footer.
+   * This is used to avoid redundant getFileStatus RPC calls to the NameNode.
+   *
+   * @return the FileStatus, or null if not available
+   */
+  public FileStatus getFileStatus() {
+    return fileStatus;
   }
 
   @Override
