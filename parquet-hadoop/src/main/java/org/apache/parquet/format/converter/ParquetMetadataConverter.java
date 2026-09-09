@@ -2113,7 +2113,7 @@ public class ParquetMetadataConverter {
           primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
         }
         // Gracefully handle unsupported logical type combinations on the read path.
-        primitiveBuilder.dropUnsupportedLogicalTypeCombinations();
+        primitiveBuilder.ignoreUnsupportedLogicalAnnotations();
         childBuilder = primitiveBuilder;
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
