@@ -21,7 +21,11 @@ package org.apache.parquet.crypto.keytools;
 
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -109,6 +113,10 @@ public class KeyToolkit {
   // KMS client two level cache: token -> KMSInstanceId -> KmsClient
   static final TwoLevelCacheWithExpiration<KmsClient> KMS_CLIENT_CACHE_PER_TOKEN = KmsClientCache.INSTANCE.getCache();
 
+  // A weak association keeps programmatically supplied factories scoped to their Configuration.
+  private static final Map<Configuration, KmsClientFactoryRegistration> KMS_CLIENT_FACTORY_REGISTRATIONS =
+      Collections.synchronizedMap(new WeakHashMap<>());
+
   // KEK two level cache for wrapping: token -> MEK_ID -> KeyEncryptionKey
   static final TwoLevelCacheWithExpiration<KeyEncryptionKey> KEK_WRITE_CACHE_PER_TOKEN =
       KEKWriteCache.INSTANCE.getCache();
@@ -140,6 +148,15 @@ public class KeyToolkit {
 
     private TwoLevelCacheWithExpiration<byte[]> getCache() {
       return cache;
+    }
+  }
+
+  private static final class KmsClientFactoryRegistration {
+    private final KmsClientFactory factory;
+    private final TwoLevelCacheWithExpiration<KmsClient> cache = new TwoLevelCacheWithExpiration<>();
+
+    private KmsClientFactoryRegistration(KmsClientFactory factory) {
+      this.factory = factory;
     }
   }
 
@@ -282,14 +299,42 @@ public class KeyToolkit {
    */
   public static void removeCacheEntriesForToken(String accessToken) {
     KMS_CLIENT_CACHE_PER_TOKEN.removeCacheEntriesForToken(accessToken);
+    synchronized (KMS_CLIENT_FACTORY_REGISTRATIONS) {
+      for (KmsClientFactoryRegistration registration : KMS_CLIENT_FACTORY_REGISTRATIONS.values()) {
+        registration.cache.removeCacheEntriesForToken(accessToken);
+      }
+    }
     KEK_WRITE_CACHE_PER_TOKEN.removeCacheEntriesForToken(accessToken);
     KEK_READ_CACHE_PER_TOKEN.removeCacheEntriesForToken(accessToken);
   }
 
   public static void removeCacheEntriesForAllTokens() {
     KMS_CLIENT_CACHE_PER_TOKEN.clear();
+    synchronized (KMS_CLIENT_FACTORY_REGISTRATIONS) {
+      for (KmsClientFactoryRegistration registration : KMS_CLIENT_FACTORY_REGISTRATIONS.values()) {
+        registration.cache.clear();
+      }
+    }
     KEK_WRITE_CACHE_PER_TOKEN.clear();
     KEK_READ_CACHE_PER_TOKEN.clear();
+  }
+
+  /**
+   * Sets the factory used to create KMS clients for the supplied configuration.
+   *
+   * <p>The factory is local to this JVM and must be set before constructing a reader or writer.
+   * Reflection through {@link #KMS_CLIENT_CLASS_PROPERTY_NAME} remains the default for other
+   * configurations. Clients returned by the factory are initialized and cached by {@link
+   * KeyToolkit} in the same way as reflectively constructed clients.
+   * The association is not serialized; configuration copies must register their own factory.
+   *
+   * @param configuration Hadoop configuration associated with the factory
+   * @param kmsClientFactory factory used to create KMS clients
+   */
+  public static void setKmsClientFactory(Configuration configuration, KmsClientFactory kmsClientFactory) {
+    Objects.requireNonNull(configuration, "configuration");
+    Objects.requireNonNull(kmsClientFactory, "kmsClientFactory");
+    KMS_CLIENT_FACTORY_REGISTRATIONS.put(configuration, new KmsClientFactoryRegistration(kmsClientFactory));
   }
 
   /**
@@ -335,32 +380,52 @@ public class KeyToolkit {
       String accessToken,
       long cacheEntryLifetime) {
 
+    KmsClientFactoryRegistration registration = KMS_CLIENT_FACTORY_REGISTRATIONS.get(configuration);
+    TwoLevelCacheWithExpiration<KmsClient> cache =
+        registration == null ? KMS_CLIENT_CACHE_PER_TOKEN : registration.cache;
+    if (registration != null) {
+      // The callers already expire the default cache. Factory registrations have independent
+      // caches, so expire the selected registration here.
+      cache.checkCacheForExpiredTokens(cacheEntryLifetime);
+    }
+
     ConcurrentMap<String, KmsClient> kmsClientPerKmsInstanceCache =
-        KMS_CLIENT_CACHE_PER_TOKEN.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+        cache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
 
     KmsClient kmsClient = kmsClientPerKmsInstanceCache.computeIfAbsent(
         kmsInstanceID,
-        (k) -> createAndInitKmsClient(configuration, kmsInstanceID, kmsInstanceURL, accessToken));
+        (k) -> createAndInitKmsClient(configuration, kmsInstanceID, kmsInstanceURL, accessToken, registration));
 
     return kmsClient;
   }
 
   private static KmsClient createAndInitKmsClient(
-      Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
+      Configuration configuration,
+      String kmsInstanceID,
+      String kmsInstanceURL,
+      String accessToken,
+      KmsClientFactoryRegistration registration) {
 
     Class<?> kmsClientClass = null;
     KmsClient kmsClient = null;
 
-    try {
-      kmsClientClass = ConfigurationUtil.getClassFromConfig(
-          configuration, KMS_CLIENT_CLASS_PROPERTY_NAME, KmsClient.class);
-
-      if (null == kmsClientClass) {
-        throw new ParquetCryptoRuntimeException("Unspecified " + KMS_CLIENT_CLASS_PROPERTY_NAME);
+    if (registration != null) {
+      kmsClient = registration.factory.createKmsClient();
+      if (kmsClient == null) {
+        throw new ParquetCryptoRuntimeException("KmsClientFactory returned null");
       }
-      kmsClient = (KmsClient) kmsClientClass.newInstance();
-    } catch (InstantiationException | IllegalAccessException | BadConfigurationException e) {
-      throw new ParquetCryptoRuntimeException("Could not instantiate KmsClient class: " + kmsClientClass, e);
+    } else {
+      try {
+        kmsClientClass = ConfigurationUtil.getClassFromConfig(
+            configuration, KMS_CLIENT_CLASS_PROPERTY_NAME, KmsClient.class);
+
+        if (null == kmsClientClass) {
+          throw new ParquetCryptoRuntimeException("Unspecified " + KMS_CLIENT_CLASS_PROPERTY_NAME);
+        }
+        kmsClient = (KmsClient) kmsClientClass.newInstance();
+      } catch (InstantiationException | IllegalAccessException | BadConfigurationException e) {
+        throw new ParquetCryptoRuntimeException("Could not instantiate KmsClient class: " + kmsClientClass, e);
+      }
     }
 
     kmsClient.initialize(configuration, kmsInstanceID, kmsInstanceURL, accessToken);

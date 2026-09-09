@@ -73,6 +73,14 @@ public class TestKmsUrlRead {
     }
   }
 
+  private static class ConstructorInjectedKmsClient extends UnitestUrlReadKMS {
+    private final String dependency;
+
+    private ConstructorInjectedKmsClient(String dependency) {
+      this.dependency = dependency;
+    }
+  }
+
   @BeforeAll
   public static void writeEncryptedFile() throws IOException {
     Configuration writeConf = new Configuration();
@@ -177,6 +185,23 @@ public class TestKmsUrlRead {
 
     // Verify the set value
     assertThat(readerSetURL.equals(UnitestUrlReadKMS.getStaticKmsURL()));
+  }
+
+  @Test
+  public void testProgrammaticKmsClientFactory() throws IOException {
+    Configuration readConf = basicDecryptionConfig();
+    readConf.set(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, "factory-token");
+    ConstructorInjectedKmsClient kmsClient = new ConstructorInjectedKmsClient("dependency");
+    KeyToolkit.setKmsClientFactory(readConf, () -> kmsClient);
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), filePath)
+        .withConf(readConf)
+        .build()) {
+      assertThat(reader.read()).isNotNull();
+    }
+
+    assertThat(kmsClient.dependency).isEqualTo("dependency");
+    assertThat(UnitestUrlReadKMS.getStaticKmsURL()).isEqualTo(KmsClient.KMS_INSTANCE_ID_DEFAULT);
   }
 
   @AfterAll
