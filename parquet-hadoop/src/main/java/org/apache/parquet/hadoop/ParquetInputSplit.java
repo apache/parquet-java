@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
@@ -36,6 +37,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
@@ -54,6 +56,13 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   private long end;
   private long[] rowGroupOffsets;
+
+  /**
+   * Footer of the file, if the split was built by a caller which had already read it.
+   * Not written by {@link #write(DataOutput)}, so it is only visible within the JVM which set it.
+   */
+  @JsonIgnore
+  private volatile ParquetMetadata footer;
 
   /**
    * Writables must have a parameterless constructor
@@ -220,6 +229,24 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    */
   public long[] getRowGroupOffsets() {
     return rowGroupOffsets;
+  }
+
+  /**
+   * @return the footer of the file, if it was passed in by whoever built the split, else null.
+   */
+  public ParquetMetadata getFooter() {
+    return footer;
+  }
+
+  /**
+   * Pass in a footer already read from the file, so that a reader created from this split does not have to read it
+   * again. As the footer is not serialized with the split, this only has an effect on readers created in the same
+   * JVM.
+   *
+   * @param footer footer of the file this split refers to
+   */
+  public void setFooter(ParquetMetadata footer) {
+    this.footer = footer;
   }
 
   @Override
