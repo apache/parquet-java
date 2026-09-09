@@ -66,7 +66,7 @@ public class ShowFooterCommand extends BaseCommand {
 
   private String readFooter(InputFile inputFile) throws JsonProcessingException, IOException {
     String json;
-    try (ParquetFileReader reader = ParquetFileReader.open(inputFile)) {
+    try (ParquetFileReader reader = createParquetFileReader(target)) {
       ParquetMetadata footer = reader.getFooter();
       ObjectMapper mapper = RawUtils.createObjectMapper();
       mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);

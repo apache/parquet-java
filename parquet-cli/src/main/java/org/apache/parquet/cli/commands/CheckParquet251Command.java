@@ -46,7 +46,6 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -86,7 +85,10 @@ public class CheckParquet251Command extends BaseCommand {
 
   private String check(String file) throws IOException {
     Path path = qualifiedPath(file);
-    ParquetMetadata footer = ParquetFileReader.readFooter(getConf(), path, ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata footer;
+    try (ParquetFileReader reader = createParquetFileReader(file)) {
+      footer = reader.getFooter();
+    }
 
     FileMetaData meta = footer.getFileMetaData();
     String createdBy = meta.getCreatedBy();
