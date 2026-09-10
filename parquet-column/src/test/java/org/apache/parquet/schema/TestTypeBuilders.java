@@ -1616,5 +1616,11 @@ public class TestTypeBuilders {
       assertThat(pt.getLogicalTypeAnnotation()).isNull();
       assertThat(pt.columnOrder().getColumnOrderName()).isEqualTo(ColumnOrder.ColumnOrderName.UNDEFINED);
     }
+    assertThatThrownBy(() -> Types.required(INT32)
+            .ignoreUnsupportedLogicalAnnotations()
+            .as(LogicalTypeAnnotation.decimalType(2, 10))
+            .named("invalidDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INT32 cannot store 10 digits (max 9)");
   }
 }

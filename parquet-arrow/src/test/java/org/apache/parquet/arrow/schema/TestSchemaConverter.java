@@ -570,7 +570,7 @@ public class TestSchemaConverter {
                 .named("a"))
             .named("root")))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("TIME(MILLIS,false) can only annotate INT32");
+        .hasMessage("TIME(MILLIS,false) can only annotate [INT32]");
   }
 
   @Test
@@ -581,7 +581,7 @@ public class TestSchemaConverter {
                 .named("a"))
             .named("root")))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("TIME(MICROS,false) can only annotate INT64");
+        .hasMessage("TIME(MICROS,false) can only annotate [INT64]");
   }
 
   @Test
@@ -649,7 +649,7 @@ public class TestSchemaConverter {
                 .named("a"))
             .named("root")))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("TIMESTAMP(MILLIS,false) can only annotate INT64");
+        .hasMessage("TIMESTAMP(MILLIS,false) can only annotate [INT64]");
   }
 
   @Test
@@ -660,6 +660,6 @@ public class TestSchemaConverter {
                 .named("a"))
             .named("root")))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("TIMESTAMP(MICROS,false) can only annotate INT64");
+        .hasMessage("TIMESTAMP(MICROS,false) can only annotate [INT64]");
   }
 }
