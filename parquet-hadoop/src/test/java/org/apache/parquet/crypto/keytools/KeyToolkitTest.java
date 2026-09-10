@@ -58,7 +58,7 @@ public class KeyToolkitTest {
     configuration.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, ReflectiveKmsClient.class.getName());
     ConstructorInjectedKmsClient client = new ConstructorInjectedKmsClient("dependency");
     AtomicInteger factoryCalls = new AtomicInteger();
-    setKmsClientFactory(configuration, () -> {
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> {
       factoryCalls.incrementAndGet();
       return client;
     });
@@ -77,13 +77,68 @@ public class KeyToolkitTest {
   }
 
   @Test
+  public void factoryRegistrationSurvivesConfigurationMutationAndReceivesCurrentContext() {
+    Configuration configuration = new Configuration(false);
+    ConstructorInjectedKmsClient client = new ConstructorInjectedKmsClient("dependency");
+    List<Configuration> factoryConfigurations = new ArrayList<>();
+    List<String> factoryValues = new ArrayList<>();
+    List<String> factoryKmsInstanceIDs = new ArrayList<>();
+    List<String> factoryKmsInstanceURLs = new ArrayList<>();
+    List<String> factoryAccessTokens = new ArrayList<>();
+    setKmsClientFactory(configuration, (currentConfiguration, kmsInstanceID, kmsInstanceURL, accessToken) -> {
+      factoryConfigurations.add(currentConfiguration);
+      factoryValues.add(currentConfiguration.get("custom.factory.parameter"));
+      factoryKmsInstanceIDs.add(kmsInstanceID);
+      factoryKmsInstanceURLs.add(kmsInstanceURL);
+      factoryAccessTokens.add(accessToken);
+      return client;
+    });
+
+    configuration.set("custom.factory.parameter", "updated");
+
+    KmsClient actual = KeyToolkit.getKmsClient("instance", "url", configuration, "token", CACHE_LIFETIME_MILLIS);
+
+    assertThat(actual).isSameAs(client);
+    assertThat(factoryConfigurations).containsExactly(configuration);
+    assertThat(factoryValues).containsExactly("updated");
+    assertThat(factoryKmsInstanceIDs).containsExactly("instance");
+    assertThat(factoryKmsInstanceURLs).containsExactly("url");
+    assertThat(factoryAccessTokens).containsExactly("token");
+  }
+
+  @Test
+  public void createsDistinctKmsClientsForDifferentAccessTokens() {
+    Configuration configuration = new Configuration(false);
+    List<ConstructorInjectedKmsClient> clients = new ArrayList<>();
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> {
+      ConstructorInjectedKmsClient client = new ConstructorInjectedKmsClient("client-" + clients.size());
+      clients.add(client);
+      return client;
+    });
+
+    KmsClient first =
+        KeyToolkit.getKmsClient("instance", "url", configuration, "first-token", CACHE_LIFETIME_MILLIS);
+    KmsClient second =
+        KeyToolkit.getKmsClient("instance", "url", configuration, "second-token", CACHE_LIFETIME_MILLIS);
+
+    assertThat(clients).hasSize(2);
+    assertThat(first).isSameAs(clients.get(0));
+    assertThat(second).isSameAs(clients.get(1));
+    assertThat(first).isNotSameAs(second);
+    assertThat(clients.get(0).accessToken).isEqualTo("first-token");
+    assertThat(clients.get(1).accessToken).isEqualTo("second-token");
+    assertThat(clients.get(0).initializeCalls).isEqualTo(1);
+    assertThat(clients.get(1).initializeCalls).isEqualTo(1);
+  }
+
+  @Test
   public void scopesKmsClientFactoryAndCacheToConfiguration() {
     Configuration firstConfiguration = new Configuration(false);
     Configuration secondConfiguration = new Configuration(false);
     ConstructorInjectedKmsClient firstClient = new ConstructorInjectedKmsClient("first");
     ConstructorInjectedKmsClient secondClient = new ConstructorInjectedKmsClient("second");
-    setKmsClientFactory(firstConfiguration, () -> firstClient);
-    setKmsClientFactory(secondConfiguration, () -> secondClient);
+    setKmsClientFactory(firstConfiguration, (conf, kmsId, kmsUrl, token) -> firstClient);
+    setKmsClientFactory(secondConfiguration, (conf, kmsId, kmsUrl, token) -> secondClient);
 
     KmsClient first =
         KeyToolkit.getKmsClient("DEFAULT", "DEFAULT", firstConfiguration, "DEFAULT", CACHE_LIFETIME_MILLIS);
@@ -103,7 +158,7 @@ public class KeyToolkitTest {
 
     Configuration factoryConfiguration = new Configuration(false);
     ConstructorInjectedKmsClient factoryClient = new ConstructorInjectedKmsClient("dependency");
-    setKmsClientFactory(factoryConfiguration, () -> factoryClient);
+    setKmsClientFactory(factoryConfiguration, (conf, kmsId, kmsUrl, token) -> factoryClient);
     KmsClient actual =
         KeyToolkit.getKmsClient("instance", "url", factoryConfiguration, "token", CACHE_LIFETIME_MILLIS);
 
@@ -116,10 +171,10 @@ public class KeyToolkitTest {
     Configuration configuration = new Configuration(false);
     ConstructorInjectedKmsClient firstClient = new ConstructorInjectedKmsClient("first");
     ConstructorInjectedKmsClient replacementClient = new ConstructorInjectedKmsClient("replacement");
-    setKmsClientFactory(configuration, () -> firstClient);
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> firstClient);
     KmsClient first = KeyToolkit.getKmsClient("instance", "url", configuration, "token", CACHE_LIFETIME_MILLIS);
 
-    setKmsClientFactory(configuration, () -> replacementClient);
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> replacementClient);
     KmsClient replacement =
         KeyToolkit.getKmsClient("instance", "url", configuration, "token", CACHE_LIFETIME_MILLIS);
 
@@ -133,7 +188,8 @@ public class KeyToolkitTest {
     AtomicInteger factoryCalls = new AtomicInteger();
     setKmsClientFactory(
         configuration,
-        () -> new ConstructorInjectedKmsClient(Integer.toString(factoryCalls.incrementAndGet())));
+        (conf, kmsId, kmsUrl, token) ->
+            new ConstructorInjectedKmsClient(Integer.toString(factoryCalls.incrementAndGet())));
     KmsClient firstTokenClient =
         KeyToolkit.getKmsClient("instance", "url", configuration, "first-token", CACHE_LIFETIME_MILLIS);
     KmsClient otherTokenClient =
@@ -156,7 +212,8 @@ public class KeyToolkitTest {
     AtomicInteger factoryCalls = new AtomicInteger();
     setKmsClientFactory(
         configuration,
-        () -> new ConstructorInjectedKmsClient(Integer.toString(factoryCalls.incrementAndGet())));
+        (conf, kmsId, kmsUrl, token) ->
+            new ConstructorInjectedKmsClient(Integer.toString(factoryCalls.incrementAndGet())));
     KmsClient firstTokenClient =
         KeyToolkit.getKmsClient("instance", "url", configuration, "first-token", CACHE_LIFETIME_MILLIS);
     KmsClient secondTokenClient =
@@ -176,7 +233,7 @@ public class KeyToolkitTest {
   @Test
   public void rejectsNullKmsClientFromFactory() {
     Configuration configuration = new Configuration(false);
-    setKmsClientFactory(configuration, () -> null);
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> null);
 
     assertThatThrownBy(
             () -> KeyToolkit.getKmsClient("instance", "url", configuration, "token", CACHE_LIFETIME_MILLIS))
@@ -189,7 +246,7 @@ public class KeyToolkitTest {
     Configuration configuration = new Configuration(false);
     configuration.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, ReflectiveKmsClient.class.getName());
     ConstructorInjectedKmsClient factoryClient = new ConstructorInjectedKmsClient("dependency");
-    setKmsClientFactory(configuration, () -> factoryClient);
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> factoryClient);
     KmsClient registered =
         KeyToolkit.getKmsClient("instance", "url", configuration, "token", CACHE_LIFETIME_MILLIS);
     KeyToolkit.KmsClientCacheContext cacheContext = KeyToolkit.getKmsClientCacheContext(configuration);
@@ -266,7 +323,7 @@ public class KeyToolkitTest {
   private Configuration newFactoryConfiguration(KmsClient kmsClient) {
     Configuration configuration = new Configuration(false);
     configuration.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, true);
-    setKmsClientFactory(configuration, () -> kmsClient);
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> kmsClient);
     return configuration;
   }
 

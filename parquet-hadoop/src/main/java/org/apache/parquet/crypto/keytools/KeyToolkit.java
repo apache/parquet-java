@@ -369,6 +369,10 @@ public class KeyToolkit {
    * KeyToolkit} in the same way as reflectively constructed clients. The KMS client and key
    * encryption key caches are isolated from registrations for other configurations.
    *
+   * <p>The registration is associated with the exact {@code Configuration} object, so changing
+   * that object's properties does not affect the registration. The factory receives the current
+   * configuration and resolved KMS details when it creates a client.
+   *
    * <p>The association is not serialized, and configuration copies must register their own
    * factory. The caller must invoke {@link #removeKmsClientFactory(Configuration)} after all
    * readers and writers using the configuration have closed. Replacing a factory clears the
@@ -499,7 +503,7 @@ public class KeyToolkit {
     KmsClient kmsClient = null;
 
     if (factory != null) {
-      kmsClient = factory.createKmsClient();
+      kmsClient = factory.createKmsClient(configuration, kmsInstanceID, kmsInstanceURL, accessToken);
       if (kmsClient == null) {
         throw new ParquetCryptoRuntimeException("KmsClientFactory returned null");
       }

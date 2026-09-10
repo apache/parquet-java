@@ -19,14 +19,24 @@
 
 package org.apache.parquet.crypto.keytools;
 
+import org.apache.hadoop.conf.Configuration;
+
 /** Factory for creating {@link KmsClient} instances with programmatically supplied dependencies. */
 @FunctionalInterface
 public interface KmsClientFactory {
 
   /**
-   * Creates a KMS client. {@link KeyToolkit} initializes the returned client before using it.
+   * Creates a new KMS client. {@link KeyToolkit} invokes this method for each uncached combination
+   * of access token and KMS instance ID, then initializes the returned client before using it.
    *
-   * @return a new or pre-built KMS client
+   * <p>Each invocation must return a distinct, uninitialized client.
+   *
+   * @param configuration current Hadoop configuration
+   * @param kmsInstanceID ID of the KMS instance
+   * @param kmsInstanceURL URL of the KMS instance
+   * @param accessToken KMS access token
+   * @return a new KMS client
    */
-  KmsClient createKmsClient();
+  KmsClient createKmsClient(
+      Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken);
 }
