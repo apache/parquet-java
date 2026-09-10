@@ -344,8 +344,6 @@ public class TestInterOpReadAlp {
 
   /**
    * Java writes ALP-encoded floats/doubles using V2 (PARQUET_2_0) data pages and reads them back.
-   * V2 page headers include the encoding value directly; ALP = 10 is supported via the build-time
-   * patch to the generated Encoding enum in parquet-format-structures.
    */
   @Test
   public void testJavaWriteAlpV2Pages() throws IOException {
