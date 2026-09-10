@@ -228,4 +228,37 @@ public class TestParquetProperties {
 
     assertThat(copy.getAlpConfig(colC).getVectorSize()).isEqualTo(2048);
   }
+
+  @Test
+  public void toString_showsAlpOffWhenNotConfigured() {
+    assertThat(ParquetProperties.builder().build().toString()).contains("ALP: off");
+  }
+
+  @Test
+  public void toString_showsAlpConfigWhenEnabled() {
+    String text =
+        ParquetProperties.builder().withAlp(new AlpConfig(2048)).build().toString();
+    assertThat(text).contains("ALP: ").contains("2048").doesNotContain("ALP: off");
+  }
+
+  @Test
+  public void toString_showsAlpOffWithTheColumnWhenOnlySetPerColumn() {
+    String text = ParquetProperties.builder().withAlp("col_c").build().toString();
+    assertThat(text).contains("ALP: off {col_c=AlpConfig{vectorSize=1024}}");
+  }
+
+  @Test
+  public void toString_neverRendersAlpAsNull() {
+    assertThat(ParquetProperties.builder().build().toString()).doesNotContain("ALP: null");
+    assertThat(ParquetProperties.builder().withAlp().build().toString()).doesNotContain("ALP: null");
+    assertThat(ParquetProperties.builder().withAlp("col_c").build().toString())
+        .doesNotContain("ALP: null");
+    assertThat(ParquetProperties.builder()
+            .withAlp()
+            .withoutAlp()
+            .withAlp("col_c")
+            .build()
+            .toString())
+        .doesNotContain("ALP: null");
+  }
 }

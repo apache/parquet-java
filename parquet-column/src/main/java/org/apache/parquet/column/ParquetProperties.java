@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.StringJoiner;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -332,6 +333,23 @@ public class ParquetProperties {
     }
   }
 
+  /** Renders the ALP property, showing "off" rather than "null" wherever ALP is not configured. */
+  private String alpToString() {
+    AlpConfig defaultConfig = alp.getDefaultValue();
+    String rendered = defaultConfig == null ? "off" : defaultConfig.toString();
+
+    Set<ColumnPath> columns = alp.getColumnPaths();
+    if (columns.isEmpty()) {
+      return rendered;
+    }
+
+    StringJoiner perColumn = new StringJoiner(", ", " {", "}");
+    for (ColumnPath column : columns) {
+      perColumn.add(column.toDotString() + "=" + alp.getValue(column));
+    }
+    return rendered + perColumn;
+  }
+
   public ColumnWriteStore newColumnWriteStore(MessageType schema, PageWriteStore pageStore) {
     validateAlp(schema);
     switch (writerVersion) {
@@ -482,7 +500,7 @@ public class ParquetProperties {
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
         + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
-        + "ALP: " + alp;
+        + "ALP: " + alpToString();
     String perColumn = "";
     if (!columnCodecs.toString().equals(Objects.toString(columnCodecs.getDefaultValue()))) {
       perColumn = "Per-column codecs: " + columnCodecs;
