@@ -31,7 +31,10 @@ import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +65,11 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   // Support reading Parquet INT96 as a 12-byte array.
   public static final String READ_INT96_AS_FIXED = "parquet.avro.readInt96AsFixed";
   public static final boolean READ_INT96_AS_FIXED_DEFAULT = false;
+
+  // Automatically detect whether a Parquet file uses 2-level or 3-level encoding;
+  // Ignored if AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE is also set
+  public static final String AUTO_DETECT_LIST_STRUCTURE = "parquet.avro.read.autoDetectListStructure";
+  static final boolean AUTO_DETECT_LIST_STRUCTURE_DEFAULT = true;
 
   /**
    * List of the fully qualified class names separated by ',' that may be referenced from the Avro schema by
@@ -131,7 +139,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      projection = new AvroSchemaConverter(configuration).convert(avroRequestedProjection);
+      projection = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
+          .convert(avroRequestedProjection);
     }
 
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
@@ -176,7 +185,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY));
     } else {
       // default to converting the Parquet schema into an Avro schema
-      avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
+      avroSchema = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
+          .convert(parquetSchema);
     }
 
     GenericData model = getDataModel(configuration, avroSchema);
@@ -229,5 +239,68 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         conf.getClass(AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf))
         .get();
+  }
+
+  // Creates a copy of the user's Configuration with derived list encoding properties
+  private static ParquetConfiguration getDerivedListEncodingConf(
+      ParquetConfiguration configuration, MessageType fileSchema) {
+    Configuration copiedConfiguration =
+        new Configuration(ConfigurationUtil.createHadoopConfiguration(configuration));
+
+    boolean autoDetectListStructure =
+        configuration.getBoolean(AUTO_DETECT_LIST_STRUCTURE, AUTO_DETECT_LIST_STRUCTURE_DEFAULT);
+
+    if (autoDetectListStructure
+        && configuration.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE) == null
+        && configuration.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) == null
+        && writesNewListStructure(fileSchema)) {
+      copiedConfiguration.setBoolean(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, false);
+      copiedConfiguration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+    }
+
+    return new HadoopParquetConfiguration(copiedConfiguration);
+  }
+
+  private static boolean writesNewListStructure(MessageType schema) {
+    return Boolean.TRUE.equals(allListStructuresAreThreeLevel(schema));
+  }
+
+  // Given a Parquet schema, return true only if the schema:
+  // - contains one or more List fields
+  // - encodes every List field using 3-level list structure
+  private static Boolean allListStructuresAreThreeLevel(Type type) {
+    if (type.isPrimitive()) {
+      return null;
+    }
+    GroupType group = type.asGroupType();
+    if (group.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
+      if (group.isRepetition(Type.Repetition.REPEATED) || group.getFieldCount() != 1) {
+        return false;
+      }
+      Type repeated = group.getType(0);
+      if (repeated.isPrimitive()
+          || !repeated.isRepetition(Type.Repetition.REPEATED)
+          || !repeated.getName().equals("list")
+          || repeated.asGroupType().getFieldCount() != 1) {
+        return false;
+      }
+      Type element = repeated.asGroupType().getType(0);
+      if (element.isRepetition(Type.Repetition.REPEATED)
+          || !element.getName().equals("element")) {
+        return false;
+      }
+      return !Boolean.FALSE.equals(allListStructuresAreThreeLevel(element));
+    }
+    Boolean result = null;
+    for (Type field : group.getFields()) {
+      Boolean fieldListStructuresAreThreeLevel = allListStructuresAreThreeLevel(field);
+      if (Boolean.FALSE.equals(fieldListStructuresAreThreeLevel)) {
+        return false;
+      }
+      if (Boolean.TRUE.equals(fieldListStructuresAreThreeLevel)) {
+        result = true;
+      }
+    }
+    return result;
   }
 }
