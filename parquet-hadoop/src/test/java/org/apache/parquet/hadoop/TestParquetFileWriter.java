@@ -22,10 +22,10 @@ import static org.apache.parquet.CorruptStatistics.shouldIgnoreStatistics;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
+import static org.apache.parquet.conf.ParquetInputProperties.READ_SUPPORT_CLASS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_STATS_SIZE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.CREATE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.apache.parquet.hadoop.ParquetInputFormat.READ_SUPPORT_CLASS;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
@@ -76,6 +76,7 @@ import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.Statistics;
@@ -160,7 +161,7 @@ public class TestParquetFileWriter {
   private Configuration getTestConfiguration(boolean vectoredRead) {
     Configuration conf = new Configuration();
     // set the vector IO option
-    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, vectoredRead);
+    conf.setBoolean(ParquetInputProperties.HADOOP_VECTORED_IO_ENABLED, vectoredRead);
     return conf;
   }
 
