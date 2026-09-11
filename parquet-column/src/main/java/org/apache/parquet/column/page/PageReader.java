@@ -29,6 +29,13 @@ public interface PageReader {
   DictionaryPage readDictionaryPage();
 
   /**
+   * @return the symbol table page in that chunk or null if none
+   */
+  default SymbolTablePage readSymbolTablePage() {
+    return null;
+  }
+
+  /**
    * @return the total number of values in the column chunk
    */
   long getTotalValueCount();

@@ -227,6 +227,16 @@ public interface PageWriter extends AutoCloseable {
   void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
 
   /**
+   * writes a symbol table page
+   *
+   * @param symbolTablePage the symbol table page containing the table data
+   * @throws IOException if there was an exception while writing
+   */
+  default void writeSymbolTablePage(SymbolTablePage symbolTablePage) throws IOException {
+    throw new UnsupportedOperationException("writeSymbolTablePage is not implemented");
+  }
+
+  /**
    * @param prefix a prefix header to add at every line
    * @return a string presenting a summary of how memory is used
    */

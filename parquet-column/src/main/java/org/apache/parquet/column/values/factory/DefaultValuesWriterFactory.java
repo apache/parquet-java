@@ -25,6 +25,8 @@ import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
+import org.apache.parquet.column.values.symboltable.SymbolTableType;
+import org.apache.parquet.column.values.symboltable.SymbolTableValuesWriter;
 
 /**
  * Handles ValuesWriter creation statically based on the types of the columns and the writer version.
@@ -101,6 +103,29 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
     }
+  }
+
+  /**
+   * Wraps a writer so that a symbol table encoding gets the first attempt at the column, falling back
+   * to the given writer for a chunk whose codes do not come out smaller than the values.
+   *
+   * <p>Returns the writer unchanged when the column is not configured for a symbol table, which is the
+   * default for every column.
+   */
+  static ValuesWriter symbolTableWriterWithFallBack(
+      ColumnDescriptor path, ParquetProperties properties, ValuesWriter writerToFallBackTo) {
+    SymbolTableType type = properties.getSymbolTableType(path);
+    if (type == null) {
+      return writerToFallBackTo;
+    }
+    return FallbackValuesWriter.of(
+        new SymbolTableValuesWriter(
+            type,
+            properties.getSymbolTableOffsetEncoding(),
+            properties.getInitialSlabSize(),
+            properties.getPageSizeThreshold(),
+            properties.getAllocator()),
+        writerToFallBackTo);
   }
 
   static ValuesWriter dictWriterWithFallBack(

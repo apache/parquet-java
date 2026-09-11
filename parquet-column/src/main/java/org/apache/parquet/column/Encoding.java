@@ -54,6 +54,8 @@ import org.apache.parquet.column.values.plain.PlainValuesReader.IntegerPlainValu
 import org.apache.parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import org.apache.parquet.column.values.rle.ZeroIntegerValuesReader;
+import org.apache.parquet.column.values.symboltable.SymbolTable;
+import org.apache.parquet.column.values.symboltable.SymbolTableValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 
 /**
@@ -253,6 +255,40 @@ public enum Encoding {
     public boolean usesDictionary() {
       return true;
     }
+  },
+
+  /**
+   * Values are replaced by codes over a table of the byte sequences that recur in the column, with
+   * one table per column chunk. The table's own representation decides the width of a code and how a
+   * byte that no symbol covers is escaped, so this one encoding covers every such representation and
+   * a reader has to read the table before it can commit to decoding the column.
+   * <p>
+   * Not ratified: parquet-format issue #531. A writer will not produce this encoding unless it is
+   * turned on explicitly, and no file written by this library carries it yet, because the format has
+   * nowhere to put the table.
+   */
+  FSST {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      if (descriptor.getType() != BINARY) {
+        throw new ParquetDecodingException("Encoding FSST is only supported for type BINARY");
+      }
+      return new SymbolTableValuesReader();
+    }
+
+    @Override
+    public boolean usesSymbolTable() {
+      return true;
+    }
+
+    @Override
+    public ValuesReader getSymbolTableBasedValuesReader(
+        ColumnDescriptor descriptor, ValuesType valuesType, SymbolTable symbolTable) {
+      if (descriptor.getType() != BINARY) {
+        throw new ParquetDecodingException("Encoding FSST is only supported for type BINARY");
+      }
+      return new SymbolTableValuesReader(() -> symbolTable);
+    }
   };
 
   int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {
@@ -320,5 +356,26 @@ public enum Encoding {
   public ValuesReader getDictionaryBasedValuesReader(
       ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
     throw new UnsupportedOperationException(this.name() + " is not dictionary based");
+  }
+
+  /**
+   * @return whether this encoding requires a symbol table
+   */
+  public boolean usesSymbolTable() {
+    return false;
+  }
+
+  /**
+   * To read decoded values that require a symbol table
+   *
+   * @param descriptor  the column to read
+   * @param valuesType  the type of values
+   * @param symbolTable the symbol table for the chunk being read
+   * @return the proper values reader for the given column
+   * @throws UnsupportedOperationException if the encoding is not symbol table based
+   */
+  public ValuesReader getSymbolTableBasedValuesReader(
+      ColumnDescriptor descriptor, ValuesType valuesType, SymbolTable symbolTable) {
+    throw new UnsupportedOperationException(this.name() + " is not symbol table based");
   }
 }

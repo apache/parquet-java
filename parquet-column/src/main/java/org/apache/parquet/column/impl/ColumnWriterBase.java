@@ -25,6 +25,7 @@ import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
@@ -290,6 +291,17 @@ abstract class ColumnWriterBase implements ColumnWriter {
           pageWriter.writeDictionaryPage(dictionaryPage);
         } catch (IOException e) {
           throw new ParquetEncodingException("could not write dictionary page for " + path, e);
+        }
+        dataColumn.resetDictionary();
+      }
+
+      final SymbolTablePage symbolTablePage = dataColumn.toSymbolTablePageAndClose();
+      if (symbolTablePage != null) {
+        if (DEBUG) LOG.debug("write symbol table");
+        try {
+          pageWriter.writeSymbolTablePage(symbolTablePage);
+        } catch (IOException e) {
+          throw new ParquetEncodingException("could not write symbol table page for " + path, e);
         }
         dataColumn.resetDictionary();
       }

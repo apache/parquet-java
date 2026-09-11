@@ -39,6 +39,8 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
+import org.apache.parquet.column.values.symboltable.SymbolTableType;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
@@ -51,6 +53,8 @@ public class ParquetProperties {
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
+  public static final boolean DEFAULT_IS_FSST_ENABLED = false;
+  public static final OffsetEncoding DEFAULT_SYMBOL_TABLE_OFFSET_ENCODING = OffsetEncoding.DELTA_BINARY_PACKED;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -133,6 +137,8 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
+  private final ColumnProperty<Boolean> fsstEnabled;
+  private final OffsetEncoding symbolTableOffsetEncoding;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
@@ -167,6 +173,8 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
+    this.fsstEnabled = builder.fsstEnabled.build();
+    this.symbolTableOffsetEncoding = builder.symbolTableOffsetEncoding;
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
@@ -262,6 +270,37 @@ public class ParquetProperties {
       default:
         return false;
     }
+  }
+
+  /**
+   * Whether a symbol table encoding may be used for this column, which is only ever true for BINARY.
+   *
+   * <p>Off by default, and it has to stay off by default until the format carries a symbol table:
+   * see parquet-format issue #531.
+   */
+  public boolean isFsstEnabled(ColumnDescriptor column) {
+    return getSymbolTableType(column) != null;
+  }
+
+  /**
+   * The symbol table representation to write this column with, or null to not use one.
+   *
+   * <p>One encoding covers every representation, so this is what decides the width of a code and how a
+   * byte that no symbol covers is escaped, and it is where a choice between representations attaches
+   * once there is more than one to choose from. Only single-byte codes are implemented.
+   */
+  public SymbolTableType getSymbolTableType(ColumnDescriptor column) {
+    switch (column.getPrimitiveType().getPrimitiveTypeName()) {
+      case BINARY:
+        return fsstEnabled.getValue(column) ? SymbolTableType.FSST_8 : null;
+      default:
+        return null;
+    }
+  }
+
+  /** How the per-value offsets into a symbol table page's code stream are written. */
+  public OffsetEncoding getSymbolTableOffsetEncoding() {
+    return symbolTableOffsetEncoding;
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -455,6 +494,8 @@ public class ParquetProperties {
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
+    private final ColumnProperty.Builder<Boolean> fsstEnabled;
+    private OffsetEncoding symbolTableOffsetEncoding = DEFAULT_SYMBOL_TABLE_OFFSET_ENCODING;
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
@@ -468,6 +509,7 @@ public class ParquetProperties {
               DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED
                   ? ByteStreamSplitMode.FLOATING_POINT
                   : ByteStreamSplitMode.NONE);
+      fsstEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_FSST_ENABLED);
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
@@ -504,6 +546,8 @@ public class ParquetProperties {
       this.numBloomFilterCandidates = ColumnProperty.builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
+      this.fsstEnabled = ColumnProperty.builder(toCopy.fsstEnabled);
+      this.symbolTableOffsetEncoding = toCopy.symbolTableOffsetEncoding;
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.statisticsEnabled = toCopy.statisticsEnabled;
@@ -570,6 +614,51 @@ public class ParquetProperties {
     public Builder withByteStreamSplitEncoding(String columnPath, boolean enable) {
       this.byteStreamSplitEnabled.withValue(
           columnPath, enable ? ByteStreamSplitMode.EXTENDED : ByteStreamSplitMode.NONE);
+      return this;
+    }
+
+    /**
+     * Enable or disable the symbol table encoding for BINARY columns.
+     *
+     * <p>The encoding is not ratified and no file written with it is portable yet, because the format
+     * has nowhere to put the symbol table a column chunk's pages are compressed against: see
+     * parquet-format issue #531. Turning it on without supplying a values writer factory that knows
+     * where to keep the table fails when the first page is written rather than writing a file that
+     * cannot be read.
+     *
+     * @param enable whether the symbol table encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withFsstEncoding(boolean enable) {
+      this.fsstEnabled.withDefaultValue(enable);
+      return this;
+    }
+
+    /**
+     * Enable or disable the symbol table encoding for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enable     whether the symbol table encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withFsstEncoding(String columnPath, boolean enable) {
+      this.fsstEnabled.withValue(columnPath, enable);
+      return this;
+    }
+
+    /**
+     * Set how the per-value offsets into a symbol table page's code stream are written.
+     *
+     * <p>Delta packing by default. Writing them plain costs four bytes a value, which on text that
+     * the encoding halves is around a fifth of the page, so it gives away much of the ratio the
+     * encoding is there for; it is worth having only for a reader that wants the offsets addressable
+     * without decoding them.
+     *
+     * @param offsetEncoding how to write the offset section
+     * @return this builder for method chaining.
+     */
+    public Builder withSymbolTableOffsetEncoding(OffsetEncoding offsetEncoding) {
+      this.symbolTableOffsetEncoding = Objects.requireNonNull(offsetEncoding, "offsetEncoding cannot be null");
       return this;
     }
 

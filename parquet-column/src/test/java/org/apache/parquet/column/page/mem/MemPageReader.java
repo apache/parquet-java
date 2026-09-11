@@ -23,6 +23,7 @@ import java.util.Objects;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,12 +34,22 @@ public class MemPageReader implements PageReader {
   private final long totalValueCount;
   private final Iterator<DataPage> pages;
   private final DictionaryPage dictionaryPage;
+  private final SymbolTablePage symbolTablePage;
 
   public MemPageReader(long totalValueCount, Iterator<DataPage> pages, DictionaryPage dictionaryPage) {
+    this(totalValueCount, pages, dictionaryPage, null);
+  }
+
+  public MemPageReader(
+      long totalValueCount,
+      Iterator<DataPage> pages,
+      DictionaryPage dictionaryPage,
+      SymbolTablePage symbolTablePage) {
     super();
     this.pages = Objects.requireNonNull(pages, "pages cannot be null");
     this.totalValueCount = totalValueCount;
     this.dictionaryPage = dictionaryPage;
+    this.symbolTablePage = symbolTablePage;
   }
 
   @Override
@@ -60,5 +71,10 @@ public class MemPageReader implements PageReader {
   @Override
   public DictionaryPage readDictionaryPage() {
     return dictionaryPage;
+  }
+
+  @Override
+  public SymbolTablePage readSymbolTablePage() {
+    return symbolTablePage;
   }
 }

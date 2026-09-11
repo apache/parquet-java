@@ -36,6 +36,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.symboltable.SymbolTablePayload.OffsetEncoding;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -82,6 +83,13 @@ import org.slf4j.LoggerFactory;
  *
  * # To enable/disable BYTE_STREAM_SPLIT encoding
  * parquet.enable.bytestreamsplit=false # true to enable BYTE_STREAM_SPLIT encoding
+ *
+ * # To enable/disable the FSST symbol table encoding for BINARY columns. Not ratified: no file
+ * # written with it is readable, see parquet-format issue #531
+ * parquet.enable.fsst=false # true to enable the symbol table encoding
+ *
+ * # How a symbol table page's per-value offsets are written: PLAIN or DELTA_BINARY_PACKED
+ * parquet.fsst.offset.encoding=DELTA_BINARY_PACKED
  *
  * # To enable/disable summary metadata aggregation at the end of a MR job
  * # The default is true (enabled)
@@ -141,6 +149,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
   public static final String ENABLE_DICTIONARY = "parquet.enable.dictionary";
   public static final String ENABLE_BYTE_STREAM_SPLIT = "parquet.enable.bytestreamsplit";
+  public static final String ENABLE_FSST = "parquet.enable.fsst";
+  public static final String FSST_OFFSET_ENCODING = "parquet.fsst.offset.encoding";
   public static final String VALIDATION = "parquet.validation";
   public static final String WRITER_VERSION = "parquet.writer.version";
   public static final String MEMORY_POOL_RATIO = "parquet.memory.pool.ratio";
@@ -286,6 +296,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static boolean getByteStreamSplitEnabled(Configuration configuration) {
     return configuration.getBoolean(
         ENABLE_BYTE_STREAM_SPLIT, ParquetProperties.DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED);
+  }
+
+  public static boolean getFsstEnabled(Configuration configuration) {
+    return configuration.getBoolean(ENABLE_FSST, ParquetProperties.DEFAULT_IS_FSST_ENABLED);
+  }
+
+  public static OffsetEncoding getFsstOffsetEncoding(Configuration configuration) {
+    return OffsetEncoding.valueOf(
+        configuration.get(FSST_OFFSET_ENCODING, ParquetProperties.DEFAULT_SYMBOL_TABLE_OFFSET_ENCODING.name()));
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
@@ -522,6 +541,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
         .withByteStreamSplitEncoding(getByteStreamSplitEnabled(conf))
+        .withFsstEncoding(getFsstEnabled(conf))
+        .withSymbolTableOffsetEncoding(getFsstOffsetEncoding(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))

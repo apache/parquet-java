@@ -572,6 +572,12 @@
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>**/*.rej</exclude>
             <exclude>**/src/main/thrift/parquet-format.version</exclude>
+            <!-- Binary FSST fixtures: byte streams produced by the reference implementation. -->
+            <exclude>**/src/test/resources/fsst/*.table</exclude>
+            <exclude>**/src/test/resources/fsst/*.codes</exclude>
+            <!-- Symbol table pages lifted out of a Parquet file another implementation wrote. -->
+            <exclude>**/src/test/resources/fsst/interop/*.pages</exclude>
+            <exclude>**/src/test/resources/fsst/interop/expected.txt</exclude>
           </excludes>
         </configuration>
       </plugin>

@@ -93,10 +93,13 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
   }
 
   private ValuesWriter getBinaryValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(
-        parquetProperties.getInitialSlabSize(),
-        parquetProperties.getPageSizeThreshold(),
-        parquetProperties.getAllocator());
+    ValuesWriter fallbackWriter = DefaultValuesWriterFactory.symbolTableWriterWithFallBack(
+        path,
+        parquetProperties,
+        new PlainValuesWriter(
+            parquetProperties.getInitialSlabSize(),
+            parquetProperties.getPageSizeThreshold(),
+            parquetProperties.getAllocator()));
     return DefaultValuesWriterFactory.dictWriterWithFallBack(
         path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }

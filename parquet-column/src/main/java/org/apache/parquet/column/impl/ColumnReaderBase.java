@@ -39,9 +39,11 @@ import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
+import org.apache.parquet.column.values.symboltable.SymbolTable;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
@@ -138,6 +140,7 @@ abstract class ColumnReaderBase implements ColumnReader {
   private final long totalValueCount;
   private final PageReader pageReader;
   private final Dictionary dictionary;
+  private final SymbolTable symbolTable;
 
   private IntIterator repetitionLevelColumn;
   private IntIterator definitionLevelColumn;
@@ -457,6 +460,8 @@ abstract class ColumnReaderBase implements ColumnReader {
     if (dictionary != null && converter.hasDictionarySupport()) {
       converter.setDictionary(dictionary);
     }
+    SymbolTablePage symbolTablePage = pageReader.readSymbolTablePage();
+    this.symbolTable = symbolTablePage == null ? null : symbolTablePage.decode();
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount <= 0) {
       throw new ParquetDecodingException("totalValueCount '" + totalValueCount + "' <= 0");
@@ -703,6 +708,12 @@ abstract class ColumnReaderBase implements ColumnReader {
             + " as the dictionary was missing for encoding " + dataEncoding);
       }
       this.dataColumn = dataEncoding.getDictionaryBasedValuesReader(path, VALUES, dictionary);
+    } else if (dataEncoding.usesSymbolTable()) {
+      if (symbolTable == null) {
+        throw new ParquetDecodingException("could not read page in col " + path
+            + " as the symbol table was missing for encoding " + dataEncoding);
+      }
+      this.dataColumn = dataEncoding.getSymbolTableBasedValuesReader(path, VALUES, symbolTable);
     } else {
       this.dataColumn = dataEncoding.getValuesReader(path, VALUES);
     }

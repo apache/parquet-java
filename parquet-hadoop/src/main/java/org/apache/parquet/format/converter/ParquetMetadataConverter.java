@@ -127,6 +127,7 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.InvalidFileOffsetException;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
@@ -767,6 +768,13 @@ public class ParquetMetadataConverter {
   }
 
   public Encoding getEncoding(org.apache.parquet.column.Encoding encoding) {
+    if (encoding == org.apache.parquet.column.Encoding.FSST) {
+      // The format has no FSST value and no place for the symbol table a chunk's pages are compressed
+      // against, so a footer cannot describe such a column: see parquet-format issue #531.
+      throw new ParquetEncodingException(
+          "Encoding FSST cannot be written to a Parquet footer: the format does not define it yet. "
+              + "See parquet-format issue #531.");
+    }
     return Encoding.valueOf(encoding.name());
   }
 

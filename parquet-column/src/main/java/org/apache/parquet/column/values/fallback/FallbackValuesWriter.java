@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.fallback;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.SymbolTablePage;
 import org.apache.parquet.column.values.RequiresFallback;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.api.Binary;
@@ -50,6 +51,8 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   private ValuesWriter currentWriter;
 
   private boolean initialUsedAndHadDictionary = false;
+
+  private boolean initialUsedSymbolTable = false;
 
   /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
    * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
@@ -97,6 +100,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     if (!fellBackAlready && !initialUsedAndHadDictionary) {
       initialUsedAndHadDictionary = encoding.usesDictionary();
     }
+    if (!fellBackAlready && !initialUsedSymbolTable) {
+      initialUsedSymbolTable = encoding.usesSymbolTable();
+    }
     return encoding;
   }
 
@@ -128,6 +134,15 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   }
 
   @Override
+  public SymbolTablePage toSymbolTablePageAndClose() {
+    if (initialUsedSymbolTable) {
+      return initialWriter.toSymbolTablePageAndClose();
+    } else {
+      return currentWriter.toSymbolTablePageAndClose();
+    }
+  }
+
+  @Override
   public void resetDictionary() {
     currentWriter.resetDictionary();
     // After a fallback, currentWriter is the fallback writer, so the initial dictionary writer's
@@ -139,6 +154,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     currentWriter = initialWriter;
     fellBackAlready = false;
     initialUsedAndHadDictionary = false;
+    initialUsedSymbolTable = false;
     firstPage = true;
   }
 
