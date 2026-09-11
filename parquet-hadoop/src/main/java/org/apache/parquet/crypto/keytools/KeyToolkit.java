@@ -22,10 +22,11 @@ package org.apache.parquet.crypto.keytools;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -48,6 +49,9 @@ public class KeyToolkit {
    * KMS stands for “key management service”.
    */
   public static final String KMS_CLIENT_CLASS_PROPERTY_NAME = "parquet.encryption.kms.client.class";
+
+  private static final String KMS_CLIENT_FACTORY_REGISTRATION_ID_PROPERTY_NAME =
+      "parquet.encryption.kms.client.factory.registration.id";
   /**
    * ID of the KMS instance that will be used for encryption (if multiple KMS instances are available).
    */
@@ -123,10 +127,10 @@ public class KeyToolkit {
   private static final KmsClientCacheContext DEFAULT_KMS_CLIENT_CACHE_CONTEXT = new KmsClientCacheContext(
       null, KMS_CLIENT_CACHE_PER_TOKEN, KEK_WRITE_CACHE_PER_TOKEN, KEK_READ_CACHE_PER_TOKEN);
 
-  // Programmatically supplied factories and their caches, scoped to the exact Configuration object.
-  // Callers must remove registrations when the Configuration is no longer in use.
-  private static final Map<Configuration, KmsClientCacheContext> KMS_CLIENT_FACTORY_REGISTRATIONS =
-      Collections.synchronizedMap(new IdentityHashMap<>());
+  // Programmatically supplied factories and their caches, scoped by an ID copied with Configuration.
+  // Callers must remove registrations when the Configuration and its copies are no longer in use.
+  private static final Map<String, KmsClientCacheContext> KMS_CLIENT_FACTORY_REGISTRATIONS =
+      Collections.synchronizedMap(new HashMap<>());
 
   private enum KmsClientCache {
     INSTANCE;
@@ -369,14 +373,15 @@ public class KeyToolkit {
    * KeyToolkit} in the same way as reflectively constructed clients. The KMS client and key
    * encryption key caches are isolated from registrations for other configurations.
    *
-   * <p>The registration is associated with the exact {@code Configuration} object, so changing
-   * that object's properties does not affect the registration. The factory receives the current
-   * configuration and resolved KMS details when it creates a client.
+   * <p>The registration ID is stored in the {@code Configuration}, so copies made in the same JVM
+   * share the factory and caches. The factory receives the current configuration and resolved KMS
+   * details when it creates a client.
    *
-   * <p>The association is not serialized, and configuration copies must register their own
-   * factory. The caller must invoke {@link #removeKmsClientFactory(Configuration)} after all
-   * readers and writers using the configuration have closed. Replacing a factory clears the
-   * previous registration and its caches.
+   * <p>The factory itself is local to this JVM. A configuration deserialized in another JVM must
+   * register its factory before use. The caller must invoke {@link
+   * #removeKmsClientFactory(Configuration)} after all readers and writers using the configuration
+   * or its copies have closed. Replacing a factory clears the previous registration and its
+   * caches.
    *
    * @param configuration Hadoop configuration associated with the factory
    * @param kmsClientFactory factory used to create KMS clients
@@ -384,8 +389,13 @@ public class KeyToolkit {
   public static void setKmsClientFactory(Configuration configuration, KmsClientFactory kmsClientFactory) {
     Objects.requireNonNull(configuration, "configuration");
     Objects.requireNonNull(kmsClientFactory, "kmsClientFactory");
+    String registrationId = configuration.getTrimmed(KMS_CLIENT_FACTORY_REGISTRATION_ID_PROPERTY_NAME);
+    if (stringIsEmpty(registrationId)) {
+      registrationId = UUID.randomUUID().toString();
+      configuration.set(KMS_CLIENT_FACTORY_REGISTRATION_ID_PROPERTY_NAME, registrationId);
+    }
     KmsClientCacheContext previous =
-        KMS_CLIENT_FACTORY_REGISTRATIONS.put(configuration, new KmsClientCacheContext(kmsClientFactory));
+        KMS_CLIENT_FACTORY_REGISTRATIONS.put(registrationId, new KmsClientCacheContext(kmsClientFactory));
     if (previous != null) {
       previous.clear();
     }
@@ -401,7 +411,12 @@ public class KeyToolkit {
    */
   public static void removeKmsClientFactory(Configuration configuration) {
     Objects.requireNonNull(configuration, "configuration");
-    KmsClientCacheContext registration = KMS_CLIENT_FACTORY_REGISTRATIONS.remove(configuration);
+    String registrationId = configuration.getTrimmed(KMS_CLIENT_FACTORY_REGISTRATION_ID_PROPERTY_NAME);
+    if (stringIsEmpty(registrationId)) {
+      return;
+    }
+    configuration.unset(KMS_CLIENT_FACTORY_REGISTRATION_ID_PROPERTY_NAME);
+    KmsClientCacheContext registration = KMS_CLIENT_FACTORY_REGISTRATIONS.remove(registrationId);
     if (registration != null) {
       registration.clear();
     }
@@ -479,8 +494,15 @@ public class KeyToolkit {
   }
 
   static KmsClientCacheContext getKmsClientCacheContext(Configuration configuration) {
-    KmsClientCacheContext cacheContext = KMS_CLIENT_FACTORY_REGISTRATIONS.get(configuration);
-    return cacheContext == null ? DEFAULT_KMS_CLIENT_CACHE_CONTEXT : cacheContext;
+    String registrationId = configuration.getTrimmed(KMS_CLIENT_FACTORY_REGISTRATION_ID_PROPERTY_NAME);
+    if (stringIsEmpty(registrationId)) {
+      return DEFAULT_KMS_CLIENT_CACHE_CONTEXT;
+    }
+    KmsClientCacheContext cacheContext = KMS_CLIENT_FACTORY_REGISTRATIONS.get(registrationId);
+    if (cacheContext == null) {
+      throw new ParquetCryptoRuntimeException("No KmsClientFactory is registered for this configuration");
+    }
+    return cacheContext;
   }
 
   private static void clearKekWriteCaches() {

@@ -107,6 +107,34 @@ public class KeyToolkitTest {
   }
 
   @Test
+  public void configurationCopyUsesRegisteredKmsClientFactory() {
+    Configuration configuration = new Configuration(false);
+    ConstructorInjectedKmsClient client = new ConstructorInjectedKmsClient("dependency");
+    setKmsClientFactory(configuration, (conf, kmsId, kmsUrl, token) -> client);
+    Configuration copy = new Configuration(configuration);
+
+    KmsClient actual = KeyToolkit.getKmsClient("instance", "url", copy, "token", CACHE_LIFETIME_MILLIS);
+
+    assertThat(actual).isSameAs(client);
+    assertThat(client.configuration).isSameAs(copy);
+  }
+
+  @Test
+  public void missingFactoryForConfigurationCopyFailsEncryptionPropertiesCreation() {
+    Configuration configuration = new Configuration(false);
+    configuration.set(PropertiesDrivenCryptoFactory.UNIFORM_KEY_PROPERTY_NAME, MASTER_KEY_ID);
+    setKmsClientFactory(
+        configuration, (conf, kmsId, kmsUrl, token) -> new ConstructorInjectedKmsClient("dependency"));
+    Configuration copy = new Configuration(configuration);
+    KeyToolkit.removeKmsClientFactory(configuration);
+
+    assertThatThrownBy(() -> new PropertiesDrivenCryptoFactory()
+            .getFileEncryptionProperties(copy, new Path("encrypted.parquet"), null))
+        .isInstanceOf(ParquetCryptoRuntimeException.class)
+        .hasMessage("No KmsClientFactory is registered for this configuration");
+  }
+
+  @Test
   public void createsDistinctKmsClientsForDifferentAccessTokens() {
     Configuration configuration = new Configuration(false);
     List<ConstructorInjectedKmsClient> clients = new ArrayList<>();
