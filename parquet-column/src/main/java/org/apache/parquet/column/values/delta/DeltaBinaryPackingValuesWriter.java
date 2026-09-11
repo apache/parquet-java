@@ -76,11 +76,6 @@ public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    */
   protected byte[] miniBlockByteBuffer;
 
-  // TODO: remove this.
-  public DeltaBinaryPackingValuesWriter(int slabSize, int pageSize, ByteBufferAllocator allocator) {
-    this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize, allocator);
-  }
-
   public DeltaBinaryPackingValuesWriter(
       int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize, ByteBufferAllocator allocator) {
     this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);

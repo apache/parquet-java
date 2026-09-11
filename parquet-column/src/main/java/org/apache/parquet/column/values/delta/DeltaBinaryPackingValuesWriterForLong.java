@@ -60,6 +60,12 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
    */
   private long minDeltaInCurrentBlock = Long.MAX_VALUE;
 
+  /**
+   * Cache of BytePackerForLong instances indexed by bit width [0, 64].
+   * Avoids a factory dispatch + array load per miniblock flush.
+   */
+  private final BytePackerForLong[] packerCache = new BytePackerForLong[MAX_BITWIDTH + 1];
+
   public DeltaBinaryPackingValuesWriterForLong(int slabSize, int pageSize, ByteBufferAllocator allocator) {
     this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize, allocator);
   }
@@ -116,20 +122,16 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
     for (int i = 0; i < miniBlocksToFlush; i++) {
       // writing i th miniblock
       int currentBitWidth = bitWidths[i];
-      int blockOffset = 0;
-      // TODO: should this cache the packer?
-      BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(currentBitWidth);
-      int miniBlockStart = i * config.miniBlockSizeInValues;
-      // pack values into the miniblock buffer, 8 at a time to get exactly currentBitWidth bytes
-      for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) {
-        // mini block is atomic in terms of flushing
-        // This may write more values when reach to the end of data writing to last mini block,
-        // since it may not be aligned to miniblock,
-        // but doesn't matter. The reader uses total count to see if reached the end.
-        packer.pack8Values(deltaBlockBuffer, j, miniBlockByteBuffer, blockOffset);
-        blockOffset += currentBitWidth;
+      BytePackerForLong packer = packerCache[currentBitWidth];
+      if (packer == null) {
+        packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(currentBitWidth);
+        packerCache[currentBitWidth] = packer;
       }
-      baos.write(miniBlockByteBuffer, 0, blockOffset);
+      int miniBlockStart = i * config.miniBlockSizeInValues;
+      // Mini blocks are always flushed as full 32-value groups in the current format.
+      // Use the packer's 32-value entry point to avoid four pack8Values calls per miniblock.
+      packer.pack32Values(deltaBlockBuffer, miniBlockStart, miniBlockByteBuffer, 0);
+      baos.write(miniBlockByteBuffer, 0, currentBitWidth * 4);
     }
 
     minDeltaInCurrentBlock = Long.MAX_VALUE;
