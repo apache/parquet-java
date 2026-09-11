@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -281,6 +282,7 @@ public class KeyToolkitTest {
     cacheContext
         .getKekWriteCache()
         .getOrCreateInternalCache("token", CACHE_LIFETIME_MILLIS)
+        .computeIfAbsent("instance", ignored -> new ConcurrentHashMap<>())
         .put("master-key", new KeyToolkit.KeyEncryptionKey(new byte[16], new byte[16], "wrapped"));
     cacheContext
         .getKekReadCache()
@@ -314,6 +316,46 @@ public class KeyToolkitTest {
 
     assertThat(firstClient.wrapCalls).hasValue(1);
     assertThat(secondClient.wrapCalls).hasValue(1);
+  }
+
+  @Test
+  public void isolatesDoubleWrappingWriteCacheByKmsInstanceForConfigurationCopies() {
+    String firstKmsInstanceID = "first-instance";
+    String secondKmsInstanceID = "second-instance";
+    TrackingKmsClient firstClient = new TrackingKmsClient("0123456789012346", false);
+    TrackingKmsClient secondClient = new TrackingKmsClient("6543210987654321", false);
+    Configuration firstConfiguration = new Configuration(false);
+    firstConfiguration.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, true);
+    firstConfiguration.set(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, "shared-token");
+    firstConfiguration.set(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME, firstKmsInstanceID);
+    setKmsClientFactory(
+        firstConfiguration,
+        (conf, kmsId, kmsUrl, token) -> kmsId.equals(firstKmsInstanceID) ? firstClient : secondClient);
+    Configuration secondConfiguration = new Configuration(firstConfiguration);
+    secondConfiguration.set(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME, secondKmsInstanceID);
+    byte[] dataKey = new byte[16];
+
+    byte[] firstMetadata =
+        new FileKeyWrapper(firstConfiguration, null).getEncryptionKeyMetadata(dataKey, MASTER_KEY_ID, true);
+    byte[] secondMetadata =
+        new FileKeyWrapper(secondConfiguration, null).getEncryptionKeyMetadata(dataKey, MASTER_KEY_ID, true);
+
+    assertThat(firstClient.wrapCalls).hasValue(1);
+    assertThat(secondClient.wrapCalls).hasValue(1);
+    assertThat(KeyMaterial.parse(new String(firstMetadata, StandardCharsets.UTF_8))
+            .getKmsInstanceID())
+        .isEqualTo(firstKmsInstanceID);
+    assertThat(KeyMaterial.parse(new String(secondMetadata, StandardCharsets.UTF_8))
+            .getKmsInstanceID())
+        .isEqualTo(secondKmsInstanceID);
+
+    assertThat(new FileKeyUnwrapper(firstConfiguration, new Path("first.parquet")).getKey(firstMetadata))
+        .isEqualTo(dataKey);
+    KeyToolkit.getKmsClientCacheContext(firstConfiguration)
+        .getKekReadCache()
+        .clear();
+    assertThat(new FileKeyUnwrapper(secondConfiguration, new Path("second.parquet")).getKey(secondMetadata))
+        .isEqualTo(dataKey);
   }
 
   @Test

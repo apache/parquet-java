@@ -22,6 +22,7 @@ package org.apache.parquet.crypto.keytools;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
@@ -89,9 +90,13 @@ public class FileKeyWrapper {
     }
 
     if (doubleWrapping) {
-      TwoLevelCacheWithExpiration<KeyEncryptionKey> kekWriteCache = cacheContext.getKekWriteCache();
+      TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> kekWriteCache =
+          cacheContext.getKekWriteCache();
       kekWriteCache.checkCacheForExpiredTokens(cacheEntryLifetime);
-      KEKPerMasterKeyID = kekWriteCache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      ConcurrentMap<String, ConcurrentMap<String, KeyEncryptionKey>> kekPerKmsInstanceID =
+          kekWriteCache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      KEKPerMasterKeyID =
+          kekPerKmsInstanceID.computeIfAbsent(kmsInstanceID, ignored -> new ConcurrentHashMap<>());
       int kekLengthBits =
           configuration.getInt(KeyToolkit.KEK_LENGTH_PROPERTY_NAME, KeyToolkit.KEK_LENGTH_DEFAULT);
       if (Arrays.binarySearch(ACCEPTABLE_KEK_LENGTHS, kekLengthBits) < 0) {

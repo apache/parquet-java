@@ -117,8 +117,8 @@ public class KeyToolkit {
   // KMS client two level cache: token -> KMSInstanceId -> KmsClient
   static final TwoLevelCacheWithExpiration<KmsClient> KMS_CLIENT_CACHE_PER_TOKEN = KmsClientCache.INSTANCE.getCache();
 
-  // KEK two level cache for wrapping: token -> MEK_ID -> KeyEncryptionKey
-  static final TwoLevelCacheWithExpiration<KeyEncryptionKey> KEK_WRITE_CACHE_PER_TOKEN =
+  // KEK cache for wrapping: token -> KMS instance ID -> master key ID -> KeyEncryptionKey
+  static final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> KEK_WRITE_CACHE_PER_TOKEN =
       KEKWriteCache.INSTANCE.getCache();
 
   // KEK two level cache for unwrapping: token -> KEK_ID -> KEK bytes
@@ -143,9 +143,10 @@ public class KeyToolkit {
 
   private enum KEKWriteCache {
     INSTANCE;
-    private final TwoLevelCacheWithExpiration<KeyEncryptionKey> cache = new TwoLevelCacheWithExpiration<>();
+    private final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> cache =
+        new TwoLevelCacheWithExpiration<>();
 
-    private TwoLevelCacheWithExpiration<KeyEncryptionKey> getCache() {
+    private TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> getCache() {
       return cache;
     }
   }
@@ -162,7 +163,7 @@ public class KeyToolkit {
   static final class KmsClientCacheContext {
     private final KmsClientFactory factory;
     private final TwoLevelCacheWithExpiration<KmsClient> kmsClientCache;
-    private final TwoLevelCacheWithExpiration<KeyEncryptionKey> kekWriteCache;
+    private final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> kekWriteCache;
     private final TwoLevelCacheWithExpiration<byte[]> kekReadCache;
 
     private KmsClientCacheContext(KmsClientFactory factory) {
@@ -176,7 +177,7 @@ public class KeyToolkit {
     private KmsClientCacheContext(
         KmsClientFactory factory,
         TwoLevelCacheWithExpiration<KmsClient> kmsClientCache,
-        TwoLevelCacheWithExpiration<KeyEncryptionKey> kekWriteCache,
+        TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> kekWriteCache,
         TwoLevelCacheWithExpiration<byte[]> kekReadCache) {
       this.factory = factory;
       this.kmsClientCache = kmsClientCache;
@@ -188,7 +189,7 @@ public class KeyToolkit {
       return kmsClientCache;
     }
 
-    TwoLevelCacheWithExpiration<KeyEncryptionKey> getKekWriteCache() {
+    TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> getKekWriteCache() {
       return kekWriteCache;
     }
 
