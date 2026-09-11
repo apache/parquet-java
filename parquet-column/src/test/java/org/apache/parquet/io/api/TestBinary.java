@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Random;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
 import org.junit.jupiter.api.Test;
@@ -489,5 +490,169 @@ public class TestBinary {
     assertThatThrownBy(() -> Binary.fromCharSequence(value))
         .isInstanceOf(ParquetEncodingException.class)
         .hasMessage("Failed to encode CharSequence as UTF-8.");
+  }
+
+  /*
+   * hashCode / equals / compareTo: guard the intrinsic-backed impls against
+   * accidental drift. Assertions pin each result to an independent scalar
+   * oracle or a pre-computed literal — any refactor that changes the bit-for-
+   * bit output on any shape (byte[], slice, heap ByteBuffer, direct ByteBuffer)
+   * fails these tests immediately.
+   */
+
+  @Test
+  public void testHashCodeMatchesScalarOracleAcrossShapesAndLengths() {
+    // Covers unrolled and remainder paths of Arrays.hashCode / the byte-loop fallback.
+    Random rnd = new Random(0xC0FFEEL);
+    int[] lengths = {0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 511, 512, 1023, 1024};
+    for (int len : lengths) {
+      byte[] bytes = new byte[len];
+      rnd.nextBytes(bytes);
+      int expected = scalarHashCode(bytes, 0, len);
+
+      // Shape 1: constant byte[] (full).
+      assertThat(Binary.fromConstantByteArray(bytes).hashCode())
+          .as("byte[] len=%d", len)
+          .isEqualTo(expected);
+
+      // Shape 2: sliced byte[] with non-zero offset (exercises the slice branch).
+      byte[] padded = new byte[len + 17];
+      System.arraycopy(bytes, 0, padded, 5, len);
+      assertThat(Binary.fromConstantByteArray(padded, 5, len).hashCode())
+          .as("slice len=%d", len)
+          .isEqualTo(expected);
+
+      // Shape 3: heap ByteBuffer (unwraps to byte[] via array()).
+      assertThat(Binary.fromConstantByteBuffer(ByteBuffer.wrap(bytes)).hashCode())
+          .as("heapBB len=%d", len)
+          .isEqualTo(expected);
+
+      // Shape 4: direct ByteBuffer (exercises the buf.get(i) fallback path).
+      ByteBuffer direct = ByteBuffer.allocateDirect(Math.max(len, 1));
+      direct.limit(len);
+      direct.put(bytes).flip();
+      assertThat(Binary.fromConstantByteBuffer(direct).hashCode())
+          .as("directBB len=%d", len)
+          .isEqualTo(expected);
+    }
+  }
+
+  @Test
+  public void testHashCodeGoldenValues() {
+    // Independent 31*h+b calculation with initial h=1 — pins the polynomial itself
+    // (initial value, sign extension, order of ops), catching drifts a scalar
+    // oracle would silently reproduce.
+    assertThat(Binary.fromConstantByteArray(new byte[0]).hashCode()).isEqualTo(1);
+    assertThat(Binary.fromConstantByteArray(new byte[] {0}).hashCode()).isEqualTo(31);
+    assertThat(Binary.fromConstantByteArray(new byte[] {1}).hashCode()).isEqualTo(32);
+    // Sign extension: (byte) -1 must contribute -1 (not 255) to the polynomial.
+    assertThat(Binary.fromConstantByteArray(new byte[] {-1}).hashCode()).isEqualTo(30);
+    assertThat(Binary.fromConstantByteArray(new byte[] {127}).hashCode()).isEqualTo(158);
+    assertThat(Binary.fromConstantByteArray(new byte[] {-128}).hashCode()).isEqualTo(-97);
+    // Multi-byte: h_0=1, h_1=32, h_2=994, h_3=30817.
+    assertThat(Binary.fromConstantByteArray(new byte[] {1, 2, 3}).hashCode())
+        .isEqualTo(30817);
+    // "hello" UTF-8 = {104,101,108,108,111}; h_0=1 -> 135 -> 4286 -> 132974 -> 4122302 -> 127791473.
+    assertThat(Binary.fromString("hello").hashCode()).isEqualTo(127791473);
+  }
+
+  @Test
+  public void testHashCodeConsistentAcrossShapes() {
+    // Contract: a.equals(b) => a.hashCode() == b.hashCode(), regardless of backing shape.
+    byte[] data = "the-quick-brown-fox-jumps-over-the-lazy-dog".getBytes(StandardCharsets.UTF_8);
+    byte[] padded = padded(data);
+    ByteBuffer direct = ByteBuffer.allocateDirect(data.length);
+    direct.put(data).flip();
+
+    int h = Binary.fromConstantByteArray(data).hashCode();
+    assertThat(Binary.fromConstantByteArray(padded, 5, data.length).hashCode())
+        .isEqualTo(h);
+    assertThat(Binary.fromConstantByteBuffer(ByteBuffer.wrap(data)).hashCode())
+        .isEqualTo(h);
+    assertThat(Binary.fromConstantByteBuffer(direct).hashCode()).isEqualTo(h);
+    assertThat(Binary.fromString(new String(data, StandardCharsets.UTF_8)).hashCode())
+        .isEqualTo(h);
+  }
+
+  @Test
+  public void testEqualsAndCompareToMatchScalarOracleAcrossShapesAndLengths() {
+    Random rnd = new Random(0xBEEFCAFEL);
+    int[] lengths = {0, 1, 8, 15, 16, 17, 63, 64, 65, 511, 512, 1023};
+    for (int len : lengths) {
+      byte[] a = new byte[len];
+      byte[] b = new byte[len];
+      rnd.nextBytes(a);
+      rnd.nextBytes(b);
+
+      Binary aBytes = Binary.fromConstantByteArray(a);
+      Binary aBuf = Binary.fromConstantByteBuffer(ByteBuffer.wrap(a.clone()));
+      Binary bBytes = Binary.fromConstantByteArray(b);
+      Binary bBuf = Binary.fromConstantByteBuffer(ByteBuffer.wrap(b.clone()));
+
+      // equals: byte-identical inputs must be equal across every shape combination.
+      assertThat(aBytes.equals(aBuf))
+          .as("equals byte[]/heapBB len=%d", len)
+          .isTrue();
+      assertThat(aBuf.equals(aBytes))
+          .as("equals heapBB/byte[] len=%d", len)
+          .isTrue();
+
+      // compareTo: sign must match the independent unsigned oracle.
+      int expected = scalarCompareUnsigned(a, 0, len, b, 0, len);
+      assertThat(Integer.signum(aBytes.compareTo(bBytes)))
+          .as("compareTo byte[]/byte[] len=%d", len)
+          .isEqualTo(Integer.signum(expected));
+      assertThat(Integer.signum(aBytes.compareTo(bBuf)))
+          .as("compareTo byte[]/heapBB len=%d", len)
+          .isEqualTo(Integer.signum(expected));
+      assertThat(Integer.signum(aBuf.compareTo(bBuf)))
+          .as("compareTo heapBB/heapBB len=%d", len)
+          .isEqualTo(Integer.signum(expected));
+
+      if (len > 0) {
+        // Flip the middle byte: equals must go false, compareTo must be non-zero.
+        byte[] aMid = a.clone();
+        aMid[len / 2] = (byte) (aMid[len / 2] ^ 0xff);
+        Binary aMidBin = Binary.fromConstantByteArray(aMid);
+        assertThat(aBytes.equals(aMidBin))
+            .as("mid-mismatch len=%d", len)
+            .isFalse();
+        assertThat(aBytes.compareTo(aMidBin))
+            .as("mid-mismatch cmp len=%d", len)
+            .isNotZero();
+      }
+    }
+  }
+
+  @Test
+  public void testCompareToShorterRunsFirstOnPrefixMatch() {
+    // Arrays.compareUnsigned contract: on prefix match, the shorter run compares less.
+    Binary shortP = Binary.fromConstantByteArray(new byte[] {1, 2, 3});
+    Binary longP = Binary.fromConstantByteArray(new byte[] {1, 2, 3, 4});
+    assertThat(shortP.compareTo(longP)).isLessThan(0);
+    assertThat(longP.compareTo(shortP)).isGreaterThan(0);
+    assertThat(shortP.compareTo(shortP)).isZero();
+    // Unsigned semantics: byte 0xFF (== -1 signed) must compare greater than 0x01.
+    Binary hi = Binary.fromConstantByteArray(new byte[] {(byte) 0xff});
+    Binary lo = Binary.fromConstantByteArray(new byte[] {(byte) 0x01});
+    assertThat(hi.compareTo(lo)).isGreaterThan(0);
+    assertThat(lo.compareTo(hi)).isLessThan(0);
+  }
+
+  private static int scalarHashCode(byte[] a, int off, int len) {
+    int h = 1;
+    for (int i = off; i < off + len; i++) {
+      h = 31 * h + a[i];
+    }
+    return h;
+  }
+
+  private static int scalarCompareUnsigned(byte[] a, int aOff, int aLen, byte[] b, int bOff, int bLen) {
+    int min = Math.min(aLen, bLen);
+    for (int i = 0; i < min; i++) {
+      int diff = (a[aOff + i] & 0xff) - (b[bOff + i] & 0xff);
+      if (diff != 0) return diff;
+    }
+    return aLen - bLen;
   }
 }
