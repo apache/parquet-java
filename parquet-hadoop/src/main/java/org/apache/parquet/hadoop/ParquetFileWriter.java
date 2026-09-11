@@ -344,7 +344,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private <T> T withAbortOnFailure(IOCallable<T> action) throws IOException {
     try {
       return action.call();
-    } catch (IOException e) {
+    } catch (Throwable e) {
       aborted = true;
       throw e;
     }
@@ -358,7 +358,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private void withAbortOnFailure(IORunnable action) throws IOException {
     try {
       action.run();
-    } catch (IOException e) {
+    } catch (Throwable e) {
       aborted = true;
       throw e;
     }
@@ -1872,8 +1872,10 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
-    withAbortOnFailure(() -> {
-      try {
+    // withAbortOnFailure marks the writer aborted on any throwable before the outer finally runs
+    // close(), so an incomplete file is never flushed if finalizing the file fails.
+    try {
+      withAbortOnFailure(() -> {
         state = state.end();
         serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
         serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
@@ -1882,10 +1884,10 @@ public class ParquetFileWriter implements AutoCloseable {
         this.footer =
             new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
         serializeFooter(footer, out, fileEncryptor, metadataConverter);
-      } finally {
-        close();
-      }
-    });
+      });
+    } finally {
+      close();
+    }
   }
 
   /* Mark the writer as aborted to avoid flushing incomplete data. */
