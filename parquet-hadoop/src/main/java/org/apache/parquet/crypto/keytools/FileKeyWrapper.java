@@ -19,12 +19,10 @@
 
 package org.apache.parquet.crypto.keytools;
 
-import static org.apache.parquet.crypto.keytools.KeyToolkit.KEK_WRITE_CACHE_PER_TOKEN;
-import static org.apache.parquet.crypto.keytools.KeyToolkit.KMS_CLIENT_CACHE_PER_TOKEN;
-
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
@@ -73,8 +71,10 @@ public class FileKeyWrapper {
     accessToken = hadoopConfiguration.getTrimmed(
         KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, KmsClient.KEY_ACCESS_TOKEN_DEFAULT);
 
+    KeyToolkit.KmsClientCacheContext cacheContext = KeyToolkit.getKmsClientCacheContext(configuration);
+
     // Check caches upon each file writing (clean once in cacheEntryLifetime)
-    KMS_CLIENT_CACHE_PER_TOKEN.checkCacheForExpiredTokens(cacheEntryLifetime);
+    cacheContext.getKmsClientCache().checkCacheForExpiredTokens(cacheEntryLifetime);
 
     if (null == kmsClientAndDetails) {
       kmsInstanceID = hadoopConfiguration.getTrimmed(
@@ -82,7 +82,7 @@ public class FileKeyWrapper {
       kmsInstanceURL = hadoopConfiguration.getTrimmed(
           KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME, KmsClient.KMS_INSTANCE_URL_DEFAULT);
       kmsClient = KeyToolkit.getKmsClient(
-          kmsInstanceID, kmsInstanceURL, configuration, accessToken, cacheEntryLifetime);
+          kmsInstanceID, kmsInstanceURL, configuration, accessToken, cacheEntryLifetime, cacheContext);
     } else {
       kmsInstanceID = kmsClientAndDetails.getKmsInstanceID();
       kmsInstanceURL = kmsClientAndDetails.getKmsInstanceURL();
@@ -90,8 +90,13 @@ public class FileKeyWrapper {
     }
 
     if (doubleWrapping) {
-      KEK_WRITE_CACHE_PER_TOKEN.checkCacheForExpiredTokens(cacheEntryLifetime);
-      KEKPerMasterKeyID = KEK_WRITE_CACHE_PER_TOKEN.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> kekWriteCache =
+          cacheContext.getKekWriteCache();
+      kekWriteCache.checkCacheForExpiredTokens(cacheEntryLifetime);
+      ConcurrentMap<String, ConcurrentMap<String, KeyEncryptionKey>> kekPerKmsInstanceID =
+          kekWriteCache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      KEKPerMasterKeyID =
+          kekPerKmsInstanceID.computeIfAbsent(kmsInstanceID, ignored -> new ConcurrentHashMap<>());
       int kekLengthBits =
           configuration.getInt(KeyToolkit.KEK_LENGTH_PROPERTY_NAME, KeyToolkit.KEK_LENGTH_DEFAULT);
       if (Arrays.binarySearch(ACCEPTABLE_KEK_LENGTHS, kekLengthBits) < 0) {

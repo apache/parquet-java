@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -70,6 +71,22 @@ public class TestKmsUrlRead {
 
     static String getStaticKmsURL() {
       return staticKmsURL;
+    }
+  }
+
+  private static class ConstructorInjectedKmsClient extends UnitestUrlReadKMS {
+    private final String dependency;
+    private int initializeCalls;
+
+    private ConstructorInjectedKmsClient(String dependency) {
+      this.dependency = dependency;
+    }
+
+    @Override
+    public synchronized void initialize(
+        Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
+      initializeCalls++;
+      super.initialize(configuration, kmsInstanceID, kmsInstanceURL, accessToken);
     }
   }
 
@@ -177,6 +194,34 @@ public class TestKmsUrlRead {
 
     // Verify the set value
     assertThat(readerSetURL.equals(UnitestUrlReadKMS.getStaticKmsURL()));
+  }
+
+  @Test
+  public void testProgrammaticKmsClientFactory() throws IOException {
+    Configuration readConf = basicDecryptionConfig();
+    readConf.set(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, "factory-token");
+    List<ConstructorInjectedKmsClient> kmsClients = new ArrayList<>();
+    KeyToolkit.setKmsClientFactory(
+        readConf, (ignoredConfiguration, ignoredKmsInstanceID, ignoredKmsInstanceURL, ignoredAccessToken) -> {
+          ConstructorInjectedKmsClient kmsClient = new ConstructorInjectedKmsClient("dependency");
+          kmsClients.add(kmsClient);
+          return kmsClient;
+        });
+
+    try {
+      try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), filePath)
+          .withConf(readConf)
+          .build()) {
+        assertThat(reader.read()).isNotNull();
+      }
+
+      assertThat(kmsClients).hasSize(1);
+      assertThat(kmsClients.get(0).dependency).isEqualTo("dependency");
+      assertThat(kmsClients.get(0).initializeCalls).isEqualTo(1);
+      assertThat(UnitestUrlReadKMS.getStaticKmsURL()).isEqualTo(KmsClient.KMS_INSTANCE_URL_DEFAULT);
+    } finally {
+      KeyToolkit.removeKmsClientFactory(readConf);
+    }
   }
 
   @AfterAll
