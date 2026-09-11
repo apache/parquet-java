@@ -218,7 +218,7 @@ public class TestKmsUrlRead {
       assertThat(kmsClients).hasSize(1);
       assertThat(kmsClients.get(0).dependency).isEqualTo("dependency");
       assertThat(kmsClients.get(0).initializeCalls).isEqualTo(1);
-      assertThat(UnitestUrlReadKMS.getStaticKmsURL()).isEqualTo(KmsClient.KMS_INSTANCE_ID_DEFAULT);
+      assertThat(UnitestUrlReadKMS.getStaticKmsURL()).isEqualTo(KmsClient.KMS_INSTANCE_URL_DEFAULT);
     } finally {
       KeyToolkit.removeKmsClientFactory(readConf);
     }
