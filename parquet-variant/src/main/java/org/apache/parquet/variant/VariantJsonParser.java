@@ -16,6 +16,8 @@
  */
 package org.apache.parquet.variant;
 
+import static org.apache.parquet.variant.VariantUtil.MAX_VARIANT_DEPTH;
+
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
@@ -37,7 +39,7 @@ public final class VariantJsonParser {
 
   private static final JsonFactory JSON_FACTORY = JsonFactory.builder()
       .streamReadConstraints(StreamReadConstraints.builder()
-          .maxNestingDepth(500)
+          .maxNestingDepth(MAX_VARIANT_DEPTH)
           .maxStringLength(10_000_000)
           .maxDocumentLength(50_000_000L)
           .build())
