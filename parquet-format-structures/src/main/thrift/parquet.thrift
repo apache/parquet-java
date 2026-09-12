@@ -636,6 +636,21 @@ enum Encoding {
       Support for INT32, INT64 and FIXED_LEN_BYTE_ARRAY added in 2.11.
    */
   BYTE_STREAM_SPLIT = 9;
+
+  /** LOCAL ADDITION, NOT YET IN UPSTREAM parquet-format.
+      dev/update-parquet-thrift.sh overwrites this file from upstream and will drop this
+      entry; re-apply it until the ALP encoding is accepted into parquet-format, then
+      remove this notice.
+
+      Encoding for FLOAT and DOUBLE data (ALP: Adaptive Lossless floating-Point).
+      Floating-point values are scaled by a per-vector (exponent, factor) pair into
+      integers, which are then frame-of-reference encoded and bit-packed. Values that
+      cannot be represented exactly are stored verbatim as exceptions, so the encoding
+      is lossless and bit-exact.
+
+      See https://dl.acm.org/doi/10.1145/3626717 for the algorithm.
+   */
+  ALP = 10;
 }
 
 /**
