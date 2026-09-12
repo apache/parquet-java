@@ -41,11 +41,17 @@ public class ColumnOrder {
      * The column order is defined by the IEEE 754 standard.
      */
     IEEE_754_TOTAL_ORDER,
+    /**
+     * Chronological order for INT96 timestamps.
+     */
+    INT96_TIMESTAMP_ORDER
   }
 
   private static final ColumnOrder UNDEFINED_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.UNDEFINED);
   private static final ColumnOrder TYPE_DEFINED_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.TYPE_DEFINED_ORDER);
   private static final ColumnOrder IEEE_754_TOTAL_ORDER = new ColumnOrder(ColumnOrderName.IEEE_754_TOTAL_ORDER);
+  private static final ColumnOrder INT96_TIMESTAMP_COLUMN_ORDER =
+      new ColumnOrder(ColumnOrderName.INT96_TIMESTAMP_ORDER);
 
   /**
    * @return a {@link ColumnOrder} instance representing an undefined order
@@ -69,6 +75,14 @@ public class ColumnOrder {
    */
   public static ColumnOrder ieee754TotalOrder() {
     return IEEE_754_TOTAL_ORDER;
+  }
+
+  /**
+   * @return a {@link ColumnOrder} instance representing the chronological order of INT96 timestamps
+   * @see ColumnOrderName#INT96_TIMESTAMP_ORDER
+   */
+  public static ColumnOrder int96TimestampOrder() {
+    return INT96_TIMESTAMP_COLUMN_ORDER;
   }
 
   private final ColumnOrderName columnOrderName;
