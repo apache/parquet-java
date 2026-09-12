@@ -320,7 +320,8 @@ public class ParquetProperties {
       ColumnPath path = ColumnPath.get(column.getPath());
       PrimitiveTypeName type = column.getPrimitiveType().getPrimitiveTypeName();
 
-      if (alpColumns.contains(path) && type != PrimitiveTypeName.FLOAT && type != PrimitiveTypeName.DOUBLE) {
+      boolean enabledExplicitly = alpColumns.contains(path) && alp.getValue(path) != null;
+      if (enabledExplicitly && type != PrimitiveTypeName.FLOAT && type != PrimitiveTypeName.DOUBLE) {
         throw new IllegalArgumentException("ALP encoding is enabled for column " + path.toDotString()
             + " of type " + type + ", but ALP only supports FLOAT and DOUBLE columns");
       }
@@ -345,7 +346,8 @@ public class ParquetProperties {
 
     StringJoiner perColumn = new StringJoiner(", ", " {", "}");
     for (ColumnPath column : columns) {
-      perColumn.add(column.toDotString() + "=" + alp.getValue(column));
+      AlpConfig columnConfig = alp.getValue(column);
+      perColumn.add(column.toDotString() + "=" + (columnConfig == null ? "off" : columnConfig));
     }
     return rendered + perColumn;
   }
@@ -716,7 +718,19 @@ public class ParquetProperties {
     }
 
     /**
-     * Disable ALP encoding. Columns that were enabled individually by
+     * Disable ALP encoding for the specified column, overriding any default set by
+     * {@link #withAlp()}.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @return this builder for method chaining.
+     */
+    public Builder withoutAlp(String columnPath) {
+      this.alp.withValue(columnPath, null);
+      return this;
+    }
+
+    /**
+     * Disable ALP encoding by default. Columns enabled individually by
      * {@link #withAlp(String)} keep it.
      *
      * @return this builder for method chaining.

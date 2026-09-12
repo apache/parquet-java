@@ -64,9 +64,10 @@ abstract class ColumnProperty<T> {
 
     @Override
     public T getValue(ColumnPath columnPath) {
-      T value = values.get(columnPath);
-      if (value != null) {
-        return value;
+      // containsKey rather than a null check, so a column can be given an explicit null value
+      // that overrides the default rather than falling back to it.
+      if (values.containsKey(columnPath)) {
+        return values.get(columnPath);
       }
       return getDefaultValue();
     }

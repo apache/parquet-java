@@ -261,4 +261,80 @@ public class TestParquetProperties {
             .toString())
         .doesNotContain("ALP: null");
   }
+
+  @Test
+  public void withoutAlpForColumn_overridesTheEnabledDefault() {
+    ParquetProperties props =
+        ParquetProperties.builder().withAlp().withoutAlp("col_c").build();
+
+    assertThat(props.isAlpEnabled(colC)).isFalse();
+    assertThat(props.getAlpConfig(colC)).isNull();
+    createWriteStore(props);
+  }
+
+  @Test
+  public void withoutAlpForColumn_onNonFloatColumnIsAccepted() {
+    ParquetProperties props =
+        ParquetProperties.builder().withAlp().withoutAlp("col_b").build();
+
+    assertThat(props.isAlpEnabled(colB)).isFalse();
+    createWriteStore(props);
+  }
+
+  @Test
+  public void withoutAlpForColumn_leavesOtherColumnsEnabled() {
+    MessageType twoDoubles =
+        MessageTypeParser.parseMessageType("message t { required double d1; required double d2; }");
+    ParquetProperties props =
+        ParquetProperties.builder().withAlp().withoutAlp("d1").build();
+
+    assertThat(props.isAlpEnabled(twoDoubles.getColumns().get(0))).isFalse();
+    assertThat(props.isAlpEnabled(twoDoubles.getColumns().get(1))).isTrue();
+  }
+
+  @Test
+  public void withAlpForColumn_afterWithoutAlpForColumn_reEnablesIt() {
+    ParquetProperties props = ParquetProperties.builder()
+        .withAlp()
+        .withoutAlp("col_c")
+        .withAlp("col_c", new AlpConfig(2048))
+        .build();
+
+    assertThat(props.getAlpConfig(colC).getVectorSize()).isEqualTo(2048);
+  }
+
+  @Test
+  public void toString_showsDisabledColumnAsOffNotNull() {
+    String text = ParquetProperties.builder()
+        .withAlp()
+        .withoutAlp("col_c")
+        .build()
+        .toString();
+
+    assertThat(text).contains("col_c=off").doesNotContain("col_c=null");
+  }
+
+  @Test
+  public void copyBuilder_preservesAColumnDisabledByName() {
+    ParquetProperties original =
+        ParquetProperties.builder().withAlp().withoutAlp("col_c").build();
+
+    assertThat(ParquetProperties.copy(original).build().isAlpEnabled(colC)).isFalse();
+  }
+
+  /**
+   * Compression level is the only per-column property that can hold a null, so it pins the
+   * ColumnProperty change that lets an explicit null override a default.
+   */
+  @Test
+  public void columnCompressionLevel_explicitNullStillResolvesToNull() {
+    ParquetProperties props = ParquetProperties.builder()
+        .withCompressionLevel("col_a", null)
+        .withCompressionLevel("col_b", 7)
+        .build();
+
+    assertThat(props.getColumnCompressionLevel(colA)).isNull();
+    assertThat(props.getColumnCompressionLevel(colB)).isEqualTo(7);
+    assertThat(props.getColumnCompressionLevel(colC)).isNull();
+  }
 }
