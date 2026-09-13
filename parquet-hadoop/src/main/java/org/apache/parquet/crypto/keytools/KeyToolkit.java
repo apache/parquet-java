@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -117,15 +118,15 @@ public class KeyToolkit {
   // KMS client two level cache: token -> KMSInstanceId -> KmsClient
   static final TwoLevelCacheWithExpiration<KmsClient> KMS_CLIENT_CACHE_PER_TOKEN = KmsClientCache.INSTANCE.getCache();
 
-  // KEK cache for wrapping: token -> KMS instance ID -> master key ID -> KeyEncryptionKey
-  static final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> KEK_WRITE_CACHE_PER_TOKEN =
+  // KEK two level cache for wrapping: token -> MEK_ID -> KeyEncryptionKey
+  static final TwoLevelCacheWithExpiration<KeyEncryptionKey> KEK_WRITE_CACHE_PER_TOKEN =
       KEKWriteCache.INSTANCE.getCache();
 
   // KEK two level cache for unwrapping: token -> KEK_ID -> KEK bytes
   static final TwoLevelCacheWithExpiration<byte[]> KEK_READ_CACHE_PER_TOKEN = KEKReadCache.INSTANCE.getCache();
 
   private static final KmsClientCacheContext DEFAULT_KMS_CLIENT_CACHE_CONTEXT = new KmsClientCacheContext(
-      null, KMS_CLIENT_CACHE_PER_TOKEN, KEK_WRITE_CACHE_PER_TOKEN, KEK_READ_CACHE_PER_TOKEN);
+      null, KMS_CLIENT_CACHE_PER_TOKEN, KEK_WRITE_CACHE_PER_TOKEN, null, KEK_READ_CACHE_PER_TOKEN);
 
   // Programmatically supplied factories and their caches, scoped by an ID copied with Configuration.
   // Callers must remove registrations when the Configuration and its copies are no longer in use.
@@ -143,10 +144,9 @@ public class KeyToolkit {
 
   private enum KEKWriteCache {
     INSTANCE;
-    private final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> cache =
-        new TwoLevelCacheWithExpiration<>();
+    private final TwoLevelCacheWithExpiration<KeyEncryptionKey> cache = new TwoLevelCacheWithExpiration<>();
 
-    private TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> getCache() {
+    private TwoLevelCacheWithExpiration<KeyEncryptionKey> getCache() {
       return cache;
     }
   }
@@ -163,13 +163,15 @@ public class KeyToolkit {
   static final class KmsClientCacheContext {
     private final KmsClientFactory factory;
     private final TwoLevelCacheWithExpiration<KmsClient> kmsClientCache;
-    private final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> kekWriteCache;
+    private final TwoLevelCacheWithExpiration<KeyEncryptionKey> defaultKekWriteCache;
+    private final TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> factoryKekWriteCache;
     private final TwoLevelCacheWithExpiration<byte[]> kekReadCache;
 
     private KmsClientCacheContext(KmsClientFactory factory) {
       this(
           factory,
           new TwoLevelCacheWithExpiration<>(),
+          null,
           new TwoLevelCacheWithExpiration<>(),
           new TwoLevelCacheWithExpiration<>());
     }
@@ -177,11 +179,13 @@ public class KeyToolkit {
     private KmsClientCacheContext(
         KmsClientFactory factory,
         TwoLevelCacheWithExpiration<KmsClient> kmsClientCache,
-        TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> kekWriteCache,
+        TwoLevelCacheWithExpiration<KeyEncryptionKey> defaultKekWriteCache,
+        TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> factoryKekWriteCache,
         TwoLevelCacheWithExpiration<byte[]> kekReadCache) {
       this.factory = factory;
       this.kmsClientCache = kmsClientCache;
-      this.kekWriteCache = kekWriteCache;
+      this.defaultKekWriteCache = defaultKekWriteCache;
+      this.factoryKekWriteCache = factoryKekWriteCache;
       this.kekReadCache = kekReadCache;
     }
 
@@ -189,8 +193,16 @@ public class KeyToolkit {
       return kmsClientCache;
     }
 
-    TwoLevelCacheWithExpiration<ConcurrentMap<String, KeyEncryptionKey>> getKekWriteCache() {
-      return kekWriteCache;
+    ConcurrentMap<String, KeyEncryptionKey> getOrCreateKekWriteCache(
+        String accessToken, String kmsInstanceID, long cacheEntryLifetime) {
+      if (defaultKekWriteCache != null) {
+        defaultKekWriteCache.checkCacheForExpiredTokens(cacheEntryLifetime);
+        return defaultKekWriteCache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      }
+      factoryKekWriteCache.checkCacheForExpiredTokens(cacheEntryLifetime);
+      ConcurrentMap<String, ConcurrentMap<String, KeyEncryptionKey>> kekPerKmsInstanceID =
+          factoryKekWriteCache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      return kekPerKmsInstanceID.computeIfAbsent(kmsInstanceID, ignored -> new ConcurrentHashMap<>());
     }
 
     TwoLevelCacheWithExpiration<byte[]> getKekReadCache() {
@@ -199,14 +211,26 @@ public class KeyToolkit {
 
     void removeCacheEntriesForToken(String accessToken) {
       kmsClientCache.removeCacheEntriesForToken(accessToken);
-      kekWriteCache.removeCacheEntriesForToken(accessToken);
+      if (defaultKekWriteCache != null) {
+        defaultKekWriteCache.removeCacheEntriesForToken(accessToken);
+      } else {
+        factoryKekWriteCache.removeCacheEntriesForToken(accessToken);
+      }
       kekReadCache.removeCacheEntriesForToken(accessToken);
     }
 
     void clear() {
       kmsClientCache.clear();
-      kekWriteCache.clear();
+      clearKekWriteCache();
       kekReadCache.clear();
+    }
+
+    void clearKekWriteCache() {
+      if (defaultKekWriteCache != null) {
+        defaultKekWriteCache.clear();
+      } else {
+        factoryKekWriteCache.clear();
+      }
     }
   }
 
@@ -507,10 +531,10 @@ public class KeyToolkit {
   }
 
   private static void clearKekWriteCaches() {
-    KEK_WRITE_CACHE_PER_TOKEN.clear();
+    DEFAULT_KMS_CLIENT_CACHE_CONTEXT.clearKekWriteCache();
     synchronized (KMS_CLIENT_FACTORY_REGISTRATIONS) {
       for (KmsClientCacheContext cacheContext : KMS_CLIENT_FACTORY_REGISTRATIONS.values()) {
-        cacheContext.getKekWriteCache().clear();
+        cacheContext.clearKekWriteCache();
       }
     }
   }

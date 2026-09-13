@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -133,6 +132,17 @@ public class KeyToolkitTest {
             .getFileEncryptionProperties(copy, new Path("encrypted.parquet"), null))
         .isInstanceOf(ParquetCryptoRuntimeException.class)
         .hasMessage("No KmsClientFactory is registered for this configuration");
+  }
+
+  @Test
+  public void missingFactoryAndKmsClientClassFailsEncryptionPropertiesCreation() {
+    Configuration configuration = new Configuration(false);
+    configuration.set(PropertiesDrivenCryptoFactory.UNIFORM_KEY_PROPERTY_NAME, MASTER_KEY_ID);
+
+    assertThatThrownBy(() -> new PropertiesDrivenCryptoFactory()
+            .getFileEncryptionProperties(configuration, new Path("encrypted.parquet"), null))
+        .isInstanceOf(ParquetCryptoRuntimeException.class)
+        .hasMessage("Unspecified " + KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME);
   }
 
   @Test
@@ -280,9 +290,7 @@ public class KeyToolkitTest {
         KeyToolkit.getKmsClient("instance", "url", configuration, "token", CACHE_LIFETIME_MILLIS);
     KeyToolkit.KmsClientCacheContext cacheContext = KeyToolkit.getKmsClientCacheContext(configuration);
     cacheContext
-        .getKekWriteCache()
-        .getOrCreateInternalCache("token", CACHE_LIFETIME_MILLIS)
-        .computeIfAbsent("instance", ignored -> new ConcurrentHashMap<>())
+        .getOrCreateKekWriteCache("token", "instance", CACHE_LIFETIME_MILLIS)
         .put("master-key", new KeyToolkit.KeyEncryptionKey(new byte[16], new byte[16], "wrapped"));
     cacheContext
         .getKekReadCache()
@@ -297,7 +305,7 @@ public class KeyToolkitTest {
     assertThat(fallback).isInstanceOf(ReflectiveKmsClient.class);
     assertThat(cacheContext.getKmsClientCache().getOrCreateInternalCache("token", CACHE_LIFETIME_MILLIS))
         .isEmpty();
-    assertThat(cacheContext.getKekWriteCache().getOrCreateInternalCache("token", CACHE_LIFETIME_MILLIS))
+    assertThat(cacheContext.getOrCreateKekWriteCache("token", "instance", CACHE_LIFETIME_MILLIS))
         .isEmpty();
     assertThat(cacheContext.getKekReadCache().getOrCreateInternalCache("token", CACHE_LIFETIME_MILLIS))
         .isEmpty();
@@ -339,6 +347,7 @@ public class KeyToolkitTest {
         new FileKeyWrapper(firstConfiguration, null).getEncryptionKeyMetadata(dataKey, MASTER_KEY_ID, true);
     byte[] secondMetadata =
         new FileKeyWrapper(secondConfiguration, null).getEncryptionKeyMetadata(dataKey, MASTER_KEY_ID, true);
+    new FileKeyWrapper(secondConfiguration, null).getEncryptionKeyMetadata(dataKey, MASTER_KEY_ID, true);
 
     assertThat(firstClient.wrapCalls).hasValue(1);
     assertThat(secondClient.wrapCalls).hasValue(1);
