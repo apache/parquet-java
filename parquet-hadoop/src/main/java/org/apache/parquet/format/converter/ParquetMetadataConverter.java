@@ -1409,6 +1409,10 @@ public class ParquetMetadataConverter {
       case VARIANT:
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
+      case FILE:
+        // Present in the format but not mapped to a LogicalTypeAnnotation yet. Ignore it to
+        // preserve the physical type, as an unrecognised logical type would be.
+        return null;
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
