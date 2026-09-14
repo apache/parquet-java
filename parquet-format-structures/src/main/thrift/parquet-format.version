@@ -1,2 +1,2 @@
 # Provenance of the inlined parquet.thrift. Maintained by dev/update-parquet-thrift.sh.
-parquet-format.commit=c47e2a66e88943fc46fde1b028a9432f14fdf5c0
+parquet-format.commit=04d56f291ff963e98bc37ab8100e2fc133ff583c
