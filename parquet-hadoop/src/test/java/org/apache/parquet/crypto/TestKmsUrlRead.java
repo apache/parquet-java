@@ -77,6 +77,7 @@ public class TestKmsUrlRead {
   private static class ConstructorInjectedKmsClient extends UnitestUrlReadKMS {
     private final String dependency;
     private int initializeCalls;
+    private int wrapCalls;
 
     private ConstructorInjectedKmsClient(String dependency) {
       this.dependency = dependency;
@@ -87,6 +88,12 @@ public class TestKmsUrlRead {
         Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
       initializeCalls++;
       super.initialize(configuration, kmsInstanceID, kmsInstanceURL, accessToken);
+    }
+
+    @Override
+    public synchronized String wrapKey(byte[] keyBytes, String masterKeyIdentifier) {
+      wrapCalls++;
+      return super.wrapKey(keyBytes, masterKeyIdentifier);
     }
   }
 
@@ -105,29 +112,7 @@ public class TestKmsUrlRead {
     filePath = new Path(Files.createTempFile("test-kms-url_", ".parquet")
         .toAbsolutePath()
         .toString());
-
-    MessageType schema = SingleRow.getSchema();
-    SimpleGroupFactory f = new SimpleGroupFactory(schema);
-
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(filePath)
-        .withConf(writeConf)
-        .withWriteMode(OVERWRITE)
-        .withType(schema)
-        .build()) {
-
-      for (SingleRow singleRow : DATA) {
-        writer.write(f.newGroup()
-            .append(SingleRow.BOOLEAN_FIELD_NAME, singleRow.boolean_field)
-            .append(SingleRow.INT32_FIELD_NAME, singleRow.int32_field)
-            .append(SingleRow.FLOAT_FIELD_NAME, singleRow.float_field)
-            .append(SingleRow.DOUBLE_FIELD_NAME, singleRow.double_field)
-            .append(SingleRow.BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.ba_field))
-            .append(
-                SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME,
-                Binary.fromConstantByteArray(singleRow.flba_field))
-            .append(SingleRow.PLAINTEXT_INT32_FIELD_NAME, singleRow.plaintext_int32_field));
-      }
-    }
+    writeEncryptedFile(writeConf, filePath, DATA);
   }
 
   @Test
@@ -224,6 +209,46 @@ public class TestKmsUrlRead {
     }
   }
 
+  @Test
+  public void testProgrammaticKmsClientFactoryForWrite() throws IOException {
+    Configuration writeConf = new Configuration();
+    writeConf.set(
+        EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
+        PropertiesDrivenCryptoFactory.class.getName());
+    writeConf.set(PropertiesDrivenCryptoFactory.UNIFORM_KEY_PROPERTY_NAME, UNIFORM_MASTER_KEY_ID);
+    writeConf.set(InMemoryKMS.KEY_LIST_PROPERTY_NAME, KEY_LIST);
+    writeConf.set(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, "factory-writer-token");
+    Path factoryFilePath = new Path(Files.createTempFile("test-kms-factory_", ".parquet")
+        .toAbsolutePath()
+        .toString());
+    List<ConstructorInjectedKmsClient> kmsClients = new ArrayList<>();
+    KeyToolkit.setKmsClientFactory(
+        writeConf, (ignoredConfiguration, ignoredKmsInstanceID, ignoredKmsInstanceURL, ignoredAccessToken) -> {
+          ConstructorInjectedKmsClient kmsClient = new ConstructorInjectedKmsClient("dependency");
+          kmsClients.add(kmsClient);
+          return kmsClient;
+        });
+
+    try {
+      writeEncryptedFile(writeConf, factoryFilePath, Collections.singletonList(DATA.get(0)));
+
+      assertThat(kmsClients).hasSize(1);
+      assertThat(kmsClients.get(0).dependency).isEqualTo("dependency");
+      assertThat(kmsClients.get(0).initializeCalls).isEqualTo(1);
+      assertThat(kmsClients.get(0).wrapCalls).isEqualTo(1);
+      try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), factoryFilePath)
+          .withConf(new Configuration())
+          .build()) {
+        assertThatThrownBy(reader::read)
+            .isInstanceOf(ParquetCryptoRuntimeException.class)
+            .hasMessageContaining("Trying to read file with encrypted footer. No keys available");
+      }
+    } finally {
+      KeyToolkit.removeKmsClientFactory(writeConf);
+      factoryFilePath.getFileSystem(new Configuration()).delete(factoryFilePath, false);
+    }
+  }
+
   @AfterAll
   public static void deleteFile() throws IOException {
     filePath.getFileSystem(new Configuration()).delete(filePath, false);
@@ -238,5 +263,31 @@ public class TestKmsUrlRead {
     readConf.set(InMemoryKMS.KEY_LIST_PROPERTY_NAME, KEY_LIST);
 
     return readConf;
+  }
+
+  private static void writeEncryptedFile(Configuration writeConf, Path outputPath, List<SingleRow> rows)
+      throws IOException {
+    MessageType schema = SingleRow.getSchema();
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
+        .withConf(writeConf)
+        .withWriteMode(OVERWRITE)
+        .withType(schema)
+        .build()) {
+      for (SingleRow singleRow : rows) {
+        writer.write(groupFactory
+            .newGroup()
+            .append(SingleRow.BOOLEAN_FIELD_NAME, singleRow.boolean_field)
+            .append(SingleRow.INT32_FIELD_NAME, singleRow.int32_field)
+            .append(SingleRow.FLOAT_FIELD_NAME, singleRow.float_field)
+            .append(SingleRow.DOUBLE_FIELD_NAME, singleRow.double_field)
+            .append(SingleRow.BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.ba_field))
+            .append(
+                SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME,
+                Binary.fromConstantByteArray(singleRow.flba_field))
+            .append(SingleRow.PLAINTEXT_INT32_FIELD_NAME, singleRow.plaintext_int32_field));
+      }
+    }
   }
 }

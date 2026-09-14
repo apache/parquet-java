@@ -31,6 +31,9 @@ public interface KmsClientFactory {
    *
    * <p>Each invocation must return a distinct, uninitialized client.
    *
+   * <p>This method may be invoked concurrently for different access-token and KMS-instance
+   * combinations. Implementations must be thread-safe.
+   *
    * @param configuration current Hadoop configuration
    * @param kmsInstanceID ID of the KMS instance
    * @param kmsInstanceURL URL of the KMS instance
