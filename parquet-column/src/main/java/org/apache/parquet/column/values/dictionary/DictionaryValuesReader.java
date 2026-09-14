@@ -125,4 +125,15 @@ public class DictionaryValuesReader extends ValuesReader {
       throw new ParquetDecodingException(e);
     }
   }
+
+  @Override
+  public void skip(int n) {
+    // Bulk-skip dictionary keys without decoding them or looking them up in the dictionary.
+    // See RunLengthBitPackingHybridDecoder#skipInts for the fast-path details.
+    try {
+      decoder.skipInts(n);
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
 }
