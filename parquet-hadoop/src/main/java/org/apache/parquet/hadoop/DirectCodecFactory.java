@@ -108,7 +108,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new Lz4RawCompressor();
       case BROTLI:
         if (Brotli4j.AVAILABLE) {
-          return new BrotliDirectCompressor();
+          return new BrotliDirectCompressor(conf.getInt("compression.brotli.quality", 1));
         }
         return super.createCompressor(codecName);
       case LZO:
@@ -189,18 +189,16 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
-      int origInputLimit = input.limit();
-      input.limit(input.position() + compressedSize);
-      int origOutputLimit = output.limit();
-      output.limit(output.position() + decompressedSize);
-      int size = decompress(input.slice(), output.slice());
+      ByteBuffer inputSlice = input.slice();
+      inputSlice.limit(compressedSize);
+      ByteBuffer outputSlice = output.slice();
+      outputSlice.limit(decompressedSize);
+      int size = decompress(inputSlice, outputSlice);
       if (size != decompressedSize) {
         throw new IOException("Unexpected decompressed size: " + size + " != " + decompressedSize);
       }
-      input.position(input.limit());
-      input.limit(origInputLimit);
-      output.position(output.limit());
-      output.limit(origOutputLimit);
+      input.position(input.position() + compressedSize);
+      output.position(output.position() + decompressedSize);
     }
 
     @Override
@@ -424,7 +422,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     int decompress(ByteBuffer input, ByteBuffer output) throws IOException {
       byte[] compressedBytes = new byte[input.remaining()];
       input.get(compressedBytes);
-      byte[] decompressed = Brotli4j.decompress(compressedBytes);
+      byte[] decompressed = Brotli4j.decompress(compressedBytes, output.remaining());
       output.put(decompressed);
       return decompressed.length;
     }
@@ -437,14 +435,15 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
   /**
    * Direct-memory Brotli compressor using brotli4j via reflection.
-   * Uses quality=1 by default (fast compression, matching the old jbrotli default).
+   * Uses the configured quality (default 1, matching the old jbrotli default).
    * brotli4j only exposes a byte-array API, so input/output are copied through heap arrays.
    */
   private class BrotliDirectCompressor extends BaseCompressor {
     private final Object params;
 
-    BrotliDirectCompressor() {
-      this.params = Brotli4j.newParams(1);
+    BrotliDirectCompressor(int quality) {
+      validateBrotliLevel(quality);
+      this.params = Brotli4j.newParams(quality);
     }
 
     @Override
@@ -455,7 +454,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     @Override
     int maxCompressedSize(int size) {
       // Brotli worst case: input size + (input size >> 2) + 1K overhead for small inputs
-      return size + (size >> 2) + 1024;
+      return Math.toIntExact((long) size + (size >> 2) + 1024);
     }
 
     @Override

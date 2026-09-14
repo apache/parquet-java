@@ -46,8 +46,6 @@ import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.hadoop.codec.Lz4RawCodec;
-import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -580,20 +578,12 @@ public class TestCompressionInterop {
 
       @Override
       public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
-        final BytesInput decompressed;
         if (decompressor != null) {
           decompressor.reset();
         }
-        InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
-
-        // Eagerly materialize for codecs that require all input in a single buffer (see #3478).
-        if (codec instanceof ZstandardCodec || codec instanceof Lz4RawCodec) {
-          decompressed = BytesInput.copy(BytesInput.from(is, decompressedSize));
-          is.close();
-        } else {
-          decompressed = BytesInput.from(is, decompressedSize);
+        try (InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor)) {
+          return BytesInput.copy(BytesInput.from(is, decompressedSize));
         }
-        return decompressed;
       }
 
       @Override
@@ -642,9 +632,9 @@ public class TestCompressionInterop {
     public BytesInput compress(BytesInput bytes) throws IOException {
       try {
         ByteArrayOutputStream baos = new ByteArrayOutputStream((int) bytes.size());
-        OutputStream bos = (OutputStream) BROTLI_OS_CTOR.newInstance(baos);
-        bytes.writeAllTo(bos);
-        bos.close();
+        try (OutputStream bos = (OutputStream) BROTLI_OS_CTOR.newInstance(baos)) {
+          bytes.writeAllTo(bos);
+        }
         return BytesInput.from(baos.toByteArray());
       } catch (ReflectiveOperationException e) {
         throw new IOException("Brotli stream compression failed", e);
@@ -681,19 +671,19 @@ public class TestCompressionInterop {
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       try {
-        InputStream bis = (InputStream) BROTLI_IS_CTOR.newInstance(bytes.toInputStream());
-        byte[] output = new byte[decompressedSize];
-        int offset = 0;
-        while (offset < decompressedSize) {
-          int read = bis.read(output, offset, decompressedSize - offset);
-          if (read < 0) {
-            throw new IOException(
-                "Unexpected end of Brotli stream at offset " + offset + " of " + decompressedSize);
+        try (InputStream bis = (InputStream) BROTLI_IS_CTOR.newInstance(bytes.toInputStream())) {
+          byte[] output = new byte[decompressedSize];
+          int offset = 0;
+          while (offset < decompressedSize) {
+            int read = bis.read(output, offset, decompressedSize - offset);
+            if (read < 0) {
+              throw new IOException(
+                  "Unexpected end of Brotli stream at offset " + offset + " of " + decompressedSize);
+            }
+            offset += read;
           }
-          offset += read;
+          return BytesInput.from(output);
         }
-        bis.close();
-        return BytesInput.from(output);
       } catch (ReflectiveOperationException e) {
         throw new IOException("Brotli stream decompression failed", e);
       }

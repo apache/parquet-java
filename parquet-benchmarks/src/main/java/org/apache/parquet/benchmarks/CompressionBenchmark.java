@@ -57,8 +57,9 @@ import org.openjdk.jmh.annotations.Warmup;
  *
  * <p>Measures the performance of {@link CompressionCodecFactory.BytesInputCompressor}
  * and {@link CompressionCodecFactory.BytesInputDecompressor} for each supported codec,
- * comparing the heap-based {@link CodecFactory} path (what all production users take)
- * against the direct-memory {@code DirectCodecFactory} path (off-heap ByteBuffers).
+ * comparing the heap-based {@link CodecFactory} path against the direct-memory
+ * {@code DirectCodecFactory}. Both receive heap-backed input, matching Parquet's current page
+ * pipeline; the direct factory includes its heap-to-direct staging cost.
  *
  * <p>This benchmark isolates the codec hot path from file I/O and other Parquet overhead,
  * while still feeding the compressor <em>exactly the bytes production does</em>: each
@@ -209,8 +210,7 @@ public class CompressionBenchmark {
 
   @Benchmark
   public byte[] decompress() throws IOException {
-    // Force materialization of the decompressed data. toByteArray() is essentially
-    // free for our optimized implementations (returns the existing byte[]).
+    // Force materialization of the decompressed data, including the public API's copy cost.
     return decompressor
         .decompress(BytesInput.from(compressedData), decompressedSize)
         .toByteArray();

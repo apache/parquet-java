@@ -26,6 +26,8 @@ import io.airlift.compress.lz4.Lz4Decompressor;
 import io.airlift.compress.lz4.Lz4HadoopStreams;
 import io.airlift.compress.lzo.LzoHadoopStreams;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -34,11 +36,16 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -88,7 +95,7 @@ public class CodecFactory implements CompressionCodecFactory {
    * brotli4j is not on the classpath.
    *
    * <p>Uses {@code Encoder.compress(byte[], Encoder.Parameters)} for compression and
-   * {@code Decoder.decompress(byte[], int, int)} for decompression — the latter returns
+   * {@code Decoder.decompress(byte[], int, int, int)} for decompression — the latter returns
    * {@code byte[]} directly and avoids loading {@code DirectDecompress} which references
    * {@code io.netty.buffer.ByteBuf} (optional Netty dependency not on our classpath).
    */
@@ -96,7 +103,7 @@ public class CodecFactory implements CompressionCodecFactory {
     static final boolean AVAILABLE;
     // Encoder.compress(byte[], Object/*Encoder.Parameters*/) -> byte[]
     private static final Method COMPRESS;
-    // Decoder.decompress(byte[], int/*offset*/, int/*length*/) -> byte[]
+    // Decoder.decompress(byte[], int/*offset*/, int/*length*/, int/*maxOutputLength*/) -> byte[]
     private static final Method DECOMPRESS;
     // Encoder.Parameters class
     private static final Class<?> PARAMS_CLASS;
@@ -117,10 +124,10 @@ public class CodecFactory implements CompressionCodecFactory {
         Class<?> encoder = Class.forName("com.aayushatharva.brotli4j.encoder.Encoder");
         compress = encoder.getMethod("compress", byte[].class, paramsClass);
 
-        // Decoder.decompress(byte[], int, int) -> byte[]
+        // Decoder.decompress(byte[], int, int, int) -> byte[]
         // This avoids loading DirectDecompress which references io.netty.buffer.ByteBuf
         Class<?> decoder = Class.forName("com.aayushatharva.brotli4j.decoder.Decoder");
-        decompress = decoder.getMethod("decompress", byte[].class, int.class, int.class);
+        decompress = decoder.getMethod("decompress", byte[].class, int.class, int.class, int.class);
 
         // Encoder.Parameters.setQuality(int) -> Encoder.Parameters
         setQuality = paramsClass.getMethod("setQuality", int.class);
@@ -158,10 +165,19 @@ public class CodecFactory implements CompressionCodecFactory {
       }
     }
 
-    /** Decompress using {@code Decoder.decompress(byte[], offset, length)}. */
-    static byte[] decompress(byte[] input) throws IOException {
+    /** Decompress using {@code Decoder.decompress(byte[], offset, length, maxOutputLength)}. */
+    static byte[] decompress(byte[] input, int decompressedSize) throws IOException {
+      if (decompressedSize < 0) {
+        throw new IOException("Invalid decompressed size: " + decompressedSize);
+      }
       try {
-        return (byte[]) DECOMPRESS.invoke(null, input, 0, input.length);
+        // Brotli4j treats non-positive limits as unlimited, so use one byte for an expected empty result.
+        int maxOutputLength = decompressedSize == 0 ? 1 : decompressedSize;
+        byte[] output = (byte[]) DECOMPRESS.invoke(null, input, 0, input.length, maxOutputLength);
+        if (output.length != decompressedSize) {
+          throw new IOException("Unexpected decompressed size: " + output.length + " != " + decompressedSize);
+        }
+        return output;
       } catch (ReflectiveOperationException e) {
         throw new IOException("Brotli decompression failed", e);
       }
@@ -184,6 +200,9 @@ public class CodecFactory implements CompressionCodecFactory {
 
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) {
+      Preconditions.checkArgument(
+          bytes.size() == decompressedSize,
+          "Non-compressed data did not have matching compressed and decompressed sizes.");
       return bytes;
     }
 
@@ -313,17 +332,17 @@ public class CodecFactory implements CompressionCodecFactory {
       case LZ4:
         return new Lz4BytesCompressor(pageSize);
       case GZIP:
-        int gzipLevel = conf.getInt("zlib.compress.level", Deflater.DEFAULT_COMPRESSION);
+        int gzipLevel = gzipLevel(conf.get("zlib.compress.level"));
         return new GzipBytesCompressor(gzipLevel, pageSize);
       case LZO:
         return new LzoBytesCompressor(pageSize);
       case BROTLI:
         if (Brotli4j.AVAILABLE) {
           int brotliQuality = conf.getInt("compression.brotli.quality", 1);
+          validateBrotliLevel(brotliQuality);
           return new BrotliBytesCompressor(brotliQuality);
         }
-        throw new UnsupportedOperationException(
-            "BROTLI codec requires brotli4j on the classpath (com.aayushatharva.brotli4j)");
+        return new HadoopBytesCompressor(codecName, getCodec(codecName), pageSize);
       default:
         throw new UnsupportedOperationException("Codec not supported: " + codecName);
     }
@@ -364,7 +383,7 @@ public class CodecFactory implements CompressionCodecFactory {
     }
   }
 
-  private static void validateBrotliLevel(int level) {
+  static void validateBrotliLevel(int level) {
     if (level < 0 || level > 11) {
       throw new BadConfigurationException("Unsupported Brotli compression level: " + level
           + ". Valid range is 0 (fastest) to 11 (best compression).");
@@ -375,6 +394,45 @@ public class CodecFactory implements CompressionCodecFactory {
     if (level != Deflater.DEFAULT_COMPRESSION && (level < 0 || level > 9)) {
       throw new BadConfigurationException("Unsupported GZIP compression level: " + level
           + ". Valid range is 0 (no compression) to 9 (best compression), or -1 for default.");
+    }
+  }
+
+  private static int gzipLevel(String configuredLevel) {
+    if (configuredLevel == null) {
+      return Deflater.DEFAULT_COMPRESSION;
+    }
+    configuredLevel = configuredLevel.trim();
+    try {
+      int level = Integer.decode(configuredLevel);
+      validateGzipLevel(level);
+      return level;
+    } catch (NumberFormatException ignored) {
+      switch (configuredLevel) {
+        case "NO_COMPRESSION":
+          return Deflater.NO_COMPRESSION;
+        case "BEST_SPEED":
+          return Deflater.BEST_SPEED;
+        case "TWO":
+          return 2;
+        case "THREE":
+          return 3;
+        case "FOUR":
+          return 4;
+        case "FIVE":
+          return 5;
+        case "SIX":
+          return 6;
+        case "SEVEN":
+          return 7;
+        case "EIGHT":
+          return 8;
+        case "BEST_COMPRESSION":
+          return Deflater.BEST_COMPRESSION;
+        case "DEFAULT_COMPRESSION":
+          return Deflater.DEFAULT_COMPRESSION;
+        default:
+          throw new BadConfigurationException("Unsupported GZIP compression level: " + configuredLevel);
+      }
     }
   }
 
@@ -398,8 +456,7 @@ public class CodecFactory implements CompressionCodecFactory {
         if (Brotli4j.AVAILABLE) {
           return new BrotliBytesDecompressor();
         }
-        throw new UnsupportedOperationException(
-            "BROTLI codec requires brotli4j on the classpath (com.aayushatharva.brotli4j)");
+        return new HadoopBytesDecompressor(getCodec(codecName));
       default:
         throw new UnsupportedOperationException("Codec not supported: " + codecName);
     }
@@ -508,6 +565,92 @@ public class CodecFactory implements CompressionCodecFactory {
     public abstract void release();
   }
 
+  private static class HadoopBytesCompressor extends BytesCompressor {
+    private final CompressionCodecName codecName;
+    private final CompressionCodec codec;
+    private final Compressor compressor;
+    private final ByteArrayOutputStream output;
+
+    HadoopBytesCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {
+      this.codecName = codecName;
+      this.codec = Objects.requireNonNull(codec);
+      this.compressor = CodecPool.getCompressor(codec);
+      this.output = new ByteArrayOutputStream(pageSize);
+    }
+
+    @Override
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      output.reset();
+      if (compressor != null) {
+        compressor.reset();
+      }
+      try (CompressionOutputStream stream = codec.createOutputStream(output, compressor)) {
+        bytes.writeAllTo(stream);
+        stream.finish();
+      }
+      return BytesInput.from(output);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return codecName;
+    }
+
+    @Override
+    public void release() {
+      if (compressor != null) {
+        CodecPool.returnCompressor(compressor);
+      }
+    }
+  }
+
+  private static class HadoopBytesDecompressor extends BytesDecompressor {
+    private final CompressionCodec codec;
+    private final Decompressor decompressor;
+
+    HadoopBytesDecompressor(CompressionCodec codec) {
+      this.codec = Objects.requireNonNull(codec);
+      this.decompressor = CodecPool.getDecompressor(codec);
+    }
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
+      if (decompressor != null) {
+        decompressor.reset();
+      }
+      try (InputStream stream = codec.createInputStream(bytes.toInputStream(), decompressor)) {
+        byte[] output = new byte[decompressedSize];
+        int offset = 0;
+        while (offset < decompressedSize) {
+          int read = stream.read(output, offset, decompressedSize - offset);
+          if (read < 0) {
+            throw new IOException(
+                "Unexpected end of compressed stream at " + offset + " of " + decompressedSize);
+          }
+          offset += read;
+        }
+        ensureEndOfStream(stream, decompressedSize, codec.getClass().getSimpleName());
+        return BytesInput.from(output);
+      }
+    }
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
+      ByteBuffer inputSlice = input.slice();
+      inputSlice.limit(compressedSize);
+      output.put(decompress(BytesInput.from(inputSlice), decompressedSize).toByteBuffer());
+      input.position(input.position() + compressedSize);
+    }
+
+    @Override
+    public void release() {
+      if (decompressor != null) {
+        CodecPool.returnDecompressor(decompressor);
+      }
+    }
+  }
+
   // ---- Optimized Snappy compressor/decompressor using direct JNI calls ----
 
   /**
@@ -551,23 +694,26 @@ public class CodecFactory implements CompressionCodecFactory {
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       byte[] input = bytes.toByteArray();
       byte[] output = new byte[decompressedSize];
-      Snappy.uncompress(input, 0, input.length, output, 0);
+      int decompressed = Snappy.uncompress(input, 0, input.length, output, 0);
+      if (decompressed != decompressedSize) {
+        throw new IOException("Unexpected decompressed size: " + decompressed + " != " + decompressedSize);
+      }
       return BytesInput.from(output);
     }
 
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
-      int origInputLimit = input.limit();
-      input.limit(input.position() + compressedSize);
-      int origOutputLimit = output.limit();
-      output.limit(output.position() + decompressedSize);
-      // Use slices so native API works on independent buffers; advance positions manually.
-      Snappy.uncompress(input.slice(), output.slice());
-      input.position(input.limit());
-      input.limit(origInputLimit);
-      output.position(output.limit());
-      output.limit(origOutputLimit);
+      ByteBuffer inputSlice = input.slice();
+      inputSlice.limit(compressedSize);
+      ByteBuffer outputSlice = output.slice();
+      outputSlice.limit(decompressedSize);
+      int decompressed = Snappy.uncompress(inputSlice, outputSlice);
+      if (decompressed != decompressedSize) {
+        throw new IOException("Unexpected decompressed size: " + decompressed + " != " + decompressedSize);
+      }
+      input.position(input.position() + compressedSize);
+      output.position(output.position() + decompressedSize);
     }
 
     @Override
@@ -606,7 +752,7 @@ public class CodecFactory implements CompressionCodecFactory {
     @Override
     public BytesInput compress(BytesInput bytes) throws IOException {
       byte[] input = bytes.toByteArray();
-      int maxLen = (int) Zstd.compressBound(input.length);
+      int maxLen = Math.toIntExact(Zstd.compressBound(input.length));
       if (outputBuffer == null || outputBuffer.length < maxLen) {
         outputBuffer = new byte[maxLen];
       }
@@ -655,17 +801,17 @@ public class CodecFactory implements CompressionCodecFactory {
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
-      int origInputLimit = input.limit();
-      input.limit(input.position() + compressedSize);
-      int origOutputLimit = output.limit();
-      output.limit(output.position() + decompressedSize);
+      ByteBuffer inputSlice = input.slice();
+      inputSlice.limit(compressedSize);
+      ByteBuffer outputSlice = output.slice();
+      outputSlice.limit(decompressedSize);
       // Zstd.decompress uses (dst, src) parameter order, matching the native zstd convention.
-      // Use slices so native API works on independent buffers; advance positions manually.
-      Zstd.decompress(output.slice(), input.slice());
-      input.position(input.limit());
-      input.limit(origInputLimit);
-      output.position(output.limit());
-      output.limit(origOutputLimit);
+      int decompressed = Zstd.decompress(outputSlice, inputSlice);
+      if (decompressed != decompressedSize) {
+        throw new IOException("Unexpected decompressed size: " + decompressed + " != " + decompressedSize);
+      }
+      input.position(input.position() + compressedSize);
+      output.position(output.position() + decompressedSize);
     }
 
     @Override
@@ -754,7 +900,6 @@ public class CodecFactory implements CompressionCodecFactory {
         directInputBuf = ByteBuffer.allocateDirect(inputSize);
       }
       directInputBuf.clear().limit(inputSize);
-      // toByteArray() is zero-copy for ByteArrayBytesInput (returns backing array directly)
       directInputBuf.put(bytes.toByteArray(), 0, inputSize);
       directInputBuf.flip();
 
@@ -764,7 +909,12 @@ public class CodecFactory implements CompressionCodecFactory {
       }
       directOutputBuf.clear().limit(decompressedSize);
 
-      decompressor.decompress(directInputBuf.slice(), directOutputBuf.slice());
+      ByteBuffer outputSlice = directOutputBuf.slice();
+      decompressor.decompress(directInputBuf.slice(), outputSlice);
+      int decompressed = outputSlice.position();
+      if (decompressed != decompressedSize) {
+        throw new IOException("Unexpected decompressed size: " + decompressed + " != " + decompressedSize);
+      }
 
       // Copy result to heap — returning a ByteArrayBytesInput allows callers to
       // get the byte[] via toByteArray() without an additional copy.
@@ -777,16 +927,17 @@ public class CodecFactory implements CompressionCodecFactory {
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
-      int origInputLimit = input.limit();
-      input.limit(input.position() + compressedSize);
-      int origOutputLimit = output.limit();
-      output.limit(output.position() + decompressedSize);
-      // Use slices so native API works on independent buffers; advance positions manually.
-      decompressor.decompress(input.slice(), output.slice());
-      input.position(input.limit());
-      input.limit(origInputLimit);
-      output.position(output.limit());
-      output.limit(origOutputLimit);
+      ByteBuffer inputSlice = input.slice();
+      inputSlice.limit(compressedSize);
+      ByteBuffer outputSlice = output.slice();
+      outputSlice.limit(decompressedSize);
+      decompressor.decompress(inputSlice, outputSlice);
+      int decompressed = outputSlice.position();
+      if (decompressed != decompressedSize) {
+        throw new IOException("Unexpected decompressed size: " + decompressed + " != " + decompressedSize);
+      }
+      input.position(input.position() + compressedSize);
+      output.position(output.position() + decompressedSize);
     }
 
     @Override
@@ -870,6 +1021,7 @@ public class CodecFactory implements CompressionCodecFactory {
           }
           offset += read;
         }
+        ensureEndOfStream(gis, decompressedSize, "GZIP");
         return BytesInput.from(output);
       }
     }
@@ -892,6 +1044,7 @@ public class CodecFactory implements CompressionCodecFactory {
           }
           offset += read;
         }
+        ensureEndOfStream(gis, decompressedSize, "GZIP");
         output.put(outputBytes);
       }
       input.position(input.position() + compressedSize);
@@ -947,7 +1100,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
-      try (InputStream lis = LZO_STREAMS.createInputStream(bytes.toInputStream())) {
+      try (InputStream lis = LZO_STREAMS.createInputStream(eofCompatibleStream(bytes.toInputStream()))) {
         byte[] output = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -958,6 +1111,7 @@ public class CodecFactory implements CompressionCodecFactory {
           }
           offset += read;
         }
+        ensureHadoopStreamEnded(lis, decompressedSize, "LZO");
         return BytesInput.from(output);
       }
     }
@@ -967,7 +1121,8 @@ public class CodecFactory implements CompressionCodecFactory {
         throws IOException {
       ByteBuffer inputSlice = input.slice();
       inputSlice.limit(compressedSize);
-      try (InputStream lis = LZO_STREAMS.createInputStream(ByteBufferInputStream.wrap(inputSlice))) {
+      try (InputStream lis =
+          LZO_STREAMS.createInputStream(eofCompatibleStream(ByteBufferInputStream.wrap(inputSlice)))) {
         byte[] outputBytes = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -978,6 +1133,7 @@ public class CodecFactory implements CompressionCodecFactory {
           }
           offset += read;
         }
+        ensureHadoopStreamEnded(lis, decompressedSize, "LZO");
         output.put(outputBytes);
       }
       input.position(input.position() + compressedSize);
@@ -1032,7 +1188,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
-      try (InputStream lis = LZ4_STREAMS.createInputStream(bytes.toInputStream())) {
+      try (InputStream lis = LZ4_STREAMS.createInputStream(eofCompatibleStream(bytes.toInputStream()))) {
         byte[] output = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -1043,6 +1199,7 @@ public class CodecFactory implements CompressionCodecFactory {
           }
           offset += read;
         }
+        ensureHadoopStreamEnded(lis, decompressedSize, "LZ4");
         return BytesInput.from(output);
       }
     }
@@ -1052,7 +1209,8 @@ public class CodecFactory implements CompressionCodecFactory {
         throws IOException {
       ByteBuffer inputSlice = input.slice();
       inputSlice.limit(compressedSize);
-      try (InputStream lis = LZ4_STREAMS.createInputStream(ByteBufferInputStream.wrap(inputSlice))) {
+      try (InputStream lis =
+          LZ4_STREAMS.createInputStream(eofCompatibleStream(ByteBufferInputStream.wrap(inputSlice)))) {
         byte[] outputBytes = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -1063,6 +1221,7 @@ public class CodecFactory implements CompressionCodecFactory {
           }
           offset += read;
         }
+        ensureHadoopStreamEnded(lis, decompressedSize, "LZ4");
         output.put(outputBytes);
       }
       input.position(input.position() + compressedSize);
@@ -1111,7 +1270,7 @@ public class CodecFactory implements CompressionCodecFactory {
     @Override
     public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
       byte[] compressed = bytes.toByteArray();
-      byte[] decompressed = Brotli4j.decompress(compressed);
+      byte[] decompressed = Brotli4j.decompress(compressed, uncompressedSize);
       return BytesInput.from(decompressed);
     }
 
@@ -1123,12 +1282,46 @@ public class CodecFactory implements CompressionCodecFactory {
       byte[] compressedBytes = new byte[compressedSize];
       inputSlice.get(compressedBytes);
 
-      byte[] decompressed = Brotli4j.decompress(compressedBytes);
+      byte[] decompressed = Brotli4j.decompress(compressedBytes, decompressedSize);
       output.put(decompressed);
       input.position(input.position() + compressedSize);
     }
 
     @Override
     public void release() {}
+  }
+
+  private static void ensureEndOfStream(InputStream input, int decompressedSize, String codec) throws IOException {
+    if (input.read() != -1) {
+      throw new IOException(
+          "Unexpected decompressed size for " + codec + ": more than " + decompressedSize + " bytes");
+    }
+  }
+
+  private static void ensureHadoopStreamEnded(InputStream input, int decompressedSize, String codec)
+      throws IOException {
+    ensureEndOfStream(input, decompressedSize, codec);
+  }
+
+  private static InputStream eofCompatibleStream(InputStream input) {
+    return new FilterInputStream(input) {
+      @Override
+      public int read() throws IOException {
+        try {
+          return super.read();
+        } catch (EOFException e) {
+          return -1;
+        }
+      }
+
+      @Override
+      public int read(byte[] buffer, int offset, int length) throws IOException {
+        try {
+          return super.read(buffer, offset, length);
+        } catch (EOFException e) {
+          return -1;
+        }
+      }
+    };
   }
 }

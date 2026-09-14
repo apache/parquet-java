@@ -85,6 +85,9 @@ public class ReadBenchmarks {
         .build()) {
       for (int i = 0; i < ONE_MILLION; i++) {
         Group group = reader.read();
+        if (group == null) {
+          throw new IOException("Benchmark corpus ended after " + i + " rows: " + file);
+        }
         blackhole.consume(group.getBinary("binary_field", 0));
         blackhole.consume(group.getInteger("int32_field", 0));
         blackhole.consume(group.getLong("int64_field", 0));
@@ -93,6 +96,9 @@ public class ReadBenchmarks {
         blackhole.consume(group.getDouble("double_field", 0));
         blackhole.consume(group.getBinary("flba_field", 0));
         blackhole.consume(group.getInt96("int96_field", 0));
+      }
+      if (reader.read() != null) {
+        throw new IOException("Benchmark corpus contains more than " + ONE_MILLION + " rows: " + file);
       }
     }
   }

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.benchmarks;
 
-import static java.util.UUID.randomUUID;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.BLOCK_SIZE_DEFAULT;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.DICT_PAGE_SIZE;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.FIXED_LEN_BYTEARRAY_SIZE;
@@ -34,6 +33,8 @@ import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -53,7 +54,7 @@ public class DataGenerator {
    * built up front can be reused by the read benchmark instead of being regenerated on demand.
    */
   static Path benchmarkFile(CompressionCodecName codec) {
-    return new Path(TARGET_DIR + "/PARQUET-1M-" + codec.name());
+    return new Path(TARGET_DIR + "/PARQUET-1M-V2-B128M-P1M-" + codec.name());
   }
 
   public void generateData(
@@ -86,7 +87,12 @@ public class DataGenerator {
 
     GroupWriteSupport.setSchema(schema, configuration);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
-    ParquetWriter<Group> writer = new ParquetWriter<Group>(
+    // generate some data for the fixed len byte array field
+    char[] chars = new char[fixedLenByteArraySize];
+    Arrays.fill(chars, '*');
+    Random random = new Random(42);
+
+    try (ParquetWriter<Group> writer = new ParquetWriter<Group>(
         outFile,
         new GroupWriteSupport(),
         codec,
@@ -96,24 +102,22 @@ public class DataGenerator {
         true,
         false,
         version,
-        configuration);
-
-    // generate some data for the fixed len byte array field
-    char[] chars = new char[fixedLenByteArraySize];
-    Arrays.fill(chars, '*');
-
-    for (int i = 0; i < nRows; i++) {
-      writer.write(f.newGroup()
-          .append("binary_field", randomUUID().toString())
-          .append("int32_field", i)
-          .append("int64_field", 64l)
-          .append("boolean_field", true)
-          .append("float_field", 1.0f)
-          .append("double_field", 2.0d)
-          .append("flba_field", new String(chars))
-          .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
+        configuration)) {
+      for (int i = 0; i < nRows; i++) {
+        writer.write(f.newGroup()
+            .append("binary_field", new UUID(random.nextLong(), random.nextLong()).toString())
+            .append("int32_field", i)
+            .append("int64_field", 64L)
+            .append("boolean_field", true)
+            .append("float_field", 1.0f)
+            .append("double_field", 2.0d)
+            .append("flba_field", new String(chars))
+            .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
+      }
+    } catch (IOException | RuntimeException e) {
+      deleteIfExists(configuration, outFile);
+      throw e;
     }
-    writer.close();
   }
 
   public void cleanup() {

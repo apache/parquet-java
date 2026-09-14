@@ -253,6 +253,38 @@ public class TestDirectCodecFactory {
   }
 
   @Test
+  public void compressionLevelGzipSupportsHadoopNames() throws IOException {
+    for (String level : new String[] {
+      "NO_COMPRESSION",
+      "BEST_SPEED",
+      "TWO",
+      "THREE",
+      "FOUR",
+      "FIVE",
+      "SIX",
+      "SEVEN",
+      "EIGHT",
+      "BEST_COMPRESSION",
+      "DEFAULT_COMPRESSION"
+    }) {
+      Configuration conf = new Configuration();
+      conf.set("zlib.compress.level", level);
+      CodecFactory factory = new CodecFactory(conf, pageSize);
+      try {
+        BytesInputCompressor compressor = factory.getCompressor(GZIP);
+        BytesInput compressed = compressor.compress(BytesInput.from(new byte[] {1, 2, 3}));
+        assertThat(factory.getDecompressor(GZIP)
+                .decompress(compressed, 3)
+                .toByteArray())
+            .as("GZIP round-trip failed for Hadoop level " + level)
+            .isEqualTo(new byte[] {1, 2, 3});
+      } finally {
+        factory.release();
+      }
+    }
+  }
+
+  @Test
   public void compressionLevelZstd() throws IOException {
     Configuration config_zstd_1 = new Configuration();
     config_zstd_1.set("parquet.compression.codec.zstd.level", "1");
@@ -642,6 +674,69 @@ public class TestDirectCodecFactory {
 
       compressor.release();
       decompressor.release();
+      factory.release();
+    }
+  }
+
+  @Test
+  public void decompressorsRejectIncorrectDecompressedSize() throws IOException {
+    byte[] data = new byte[4096];
+    new Random(42).nextBytes(data);
+
+    for (CompressionCodecName codec : new CompressionCodecName[] {SNAPPY, ZSTD, LZ4_RAW, LZ4, GZIP, LZO, BROTLI}) {
+      verifyIncorrectDecompressedSizeRejected(new CodecFactory(new Configuration(), pageSize), codec, data);
+      verifyIncorrectDecompressedSizeRejected(
+          CodecFactory.createDirectCodecFactory(
+              new Configuration(), new DirectByteBufferAllocator(), pageSize),
+          codec,
+          data);
+    }
+  }
+
+  @Test
+  public void brotliRejectsNonEmptyOutputForZeroDeclaredSize() throws IOException {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    try {
+      BytesInput compressed = factory.getCompressor(BROTLI).compress(BytesInput.from(new byte[] {1}));
+      assertThatThrownBy(() -> factory.getDecompressor(BROTLI).decompress(compressed, 0))
+          .isInstanceOf(IOException.class);
+    } finally {
+      factory.release();
+    }
+  }
+
+  @Test
+  public void uncompressedRejectsIncorrectDecompressedSize() {
+    assertThatThrownBy(() -> CodecFactory.NO_OP_DECOMPRESSOR.decompress(BytesInput.from(new byte[] {1}), 2))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void directFactoryRejectsInvalidBrotliQuality() {
+    Configuration conf = new Configuration();
+    conf.setInt("compression.brotli.quality", 12);
+    CodecFactory factory = CodecFactory.createDirectCodecFactory(conf, new DirectByteBufferAllocator(), pageSize);
+    try {
+      assertThatThrownBy(() -> factory.getCompressor(BROTLI))
+          .isInstanceOf(BadConfigurationException.class)
+          .hasMessageContaining("12");
+    } finally {
+      factory.release();
+    }
+  }
+
+  private void verifyIncorrectDecompressedSizeRejected(CodecFactory factory, CompressionCodecName codec, byte[] data)
+      throws IOException {
+    try {
+      BytesInput compressed = factory.getCompressor(codec).compress(BytesInput.from(data));
+      byte[] compressedBytes = compressed.toByteArray();
+      for (int expectedSize : new int[] {data.length - 1, data.length + 1}) {
+        BytesInput copied = BytesInput.from(compressedBytes);
+        assertThatThrownBy(() -> factory.getDecompressor(codec).decompress(copied, expectedSize))
+            .as("Expected %s to reject decompressed size %s", codec, expectedSize)
+            .isInstanceOfAny(IOException.class, RuntimeException.class);
+      }
+    } finally {
       factory.release();
     }
   }
