@@ -36,7 +36,8 @@ public class VariantTestUtil {
   /** Random number generator for generating random strings */
   private static SecureRandom random = new SecureRandom(new byte[] {1, 2, 3, 4, 5});
 
-  static final ByteBuffer EMPTY_METADATA = ByteBuffer.wrap(new byte[] {0b1});
+  // version=1, offsetSize=1, dictSize=0, single end-offset=0 — minimum well-formed empty metadata
+  static final ByteBuffer EMPTY_METADATA = ByteBuffer.wrap(new byte[] {0b1, 0x00, 0x00});
 
   static void checkType(Variant v, int expectedBasicType, Variant.Type expectedType) {
     assertThat(v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK)
