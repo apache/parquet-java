@@ -101,6 +101,7 @@ import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.FileType;
 import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.GeospatialStatistics;
@@ -543,6 +544,15 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testFileLogicalTypeIsIgnoredRatherThanFailing() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    // FILE has no LogicalTypeAnnotation yet, so it must degrade to the physical type the way an
+    // unrecognised logical type does, rather than throwing.
+    assertThat(converter.getLogicalTypeAnnotation(LogicalType.FILE(new FileType())))
+        .isNull();
+  }
+
+  @Test
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
@@ -550,6 +560,11 @@ public class TestParquetMetadataConverter {
           .isEqualTo(encoding);
     }
     for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
+      // ALP is in the format spec but is not implemented on the Java side yet, so it has no
+      // org.apache.parquet.column.Encoding to round trip through. Remove this once it does.
+      if (encoding == org.apache.parquet.format.Encoding.ALP) {
+        continue;
+      }
       assertThat(parquetMetadataConverter.getEncoding(parquetMetadataConverter.getEncoding(encoding)))
           .isEqualTo(encoding);
     }

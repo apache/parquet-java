@@ -76,6 +76,10 @@ jobs:
       - name: Install Subversion
         run: sudo apt-get update -q && sudo apt-get install -q -y subversion
 
+      - name: Install Thrift
+        # parquet-format-structures needs the thrift compiler.
+        run: bash dev/ci-before_install.sh
+
       - name: Prepare Release Candidate
         env:
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}

@@ -237,17 +237,16 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 5: Create RC tag and push
+# Step 5: Create RC tag locally (pushed in step 9)
 # ---------------------------------------------------------------------------
 step_summary ""
-step_summary "### Tag and Push"
+step_summary "### Tag Creation"
 
 exec_process git tag -a "${rc_tag}" -m "Apache Parquet ${version} RC${rc_number}"
 exec_process git push origin "${release_branch}"
-exec_process git push origin "${rc_tag}"
 
 tag_commit=$(git rev-parse HEAD)
-step_summary "Created tag \`${rc_tag}\` at \`${tag_commit}\`"
+step_summary "Created tag \`${rc_tag}\` at \`${tag_commit}\` (pushed in step 9)"
 
 # ---------------------------------------------------------------------------
 # Step 6: Deploy to Nexus
@@ -316,8 +315,16 @@ svn_stage_rc "${version}" "${rc_number}" \
 step_summary "Staged source tarball to \`${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}/${rc_tag}\`"
 
 # ---------------------------------------------------------------------------
-# Step 9: Create GitHub pre-release
+# Step 9: Push RC tag and create GitHub pre-release
 # ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### Tag Push"
+
+# Pushed here rather than with the tag creation in step 5: a failure in steps
+# 6-8 would otherwise leave a published tag and consume the RC number.
+exec_process git push origin "${rc_tag}"
+step_summary "Pushed tag \`${rc_tag}\`"
+
 step_summary ""
 step_summary "### GitHub Pre-Release"
 
