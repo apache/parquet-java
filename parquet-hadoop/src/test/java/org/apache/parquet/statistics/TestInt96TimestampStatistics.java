@@ -19,10 +19,7 @@
 package org.apache.parquet.statistics;
 
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Consumer;
 import org.apache.parquet.ParquetReadOptions;
@@ -58,9 +56,8 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for INT96 timestamp statistics support (INT96_TIMESTAMP_ORDER).
@@ -83,12 +80,11 @@ public class TestInt96TimestampStatistics {
   private static final Binary EXPECTED_MIN = EARLY;
   private static final Binary EXPECTED_MAX = NEXT_DAY;
 
-  @Rule
-  public TemporaryFolder tmp = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   private File writeFile() throws IOException {
-    File file = tmp.newFile("int96.parquet");
-    file.delete();
+    File file = tempDir.resolve("int96.parquet").toFile();
     SimpleGroupFactory factory = new SimpleGroupFactory(SCHEMA);
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(file.toPath()))
         .withType(SCHEMA)
@@ -129,7 +125,7 @@ public class TestInt96TimestampStatistics {
         .order(ByteOrder.LITTLE_ENDIAN)
         .getInt();
     int footerStart = bytes.length - 8 - footerLen;
-    File dst = new File(tmp.getRoot(), name);
+    File dst = tempDir.resolve(name).toFile();
     try (FileOutputStream out = new FileOutputStream(dst)) {
       out.write(bytes, 0, footerStart);
       ByteArrayOutputStream serialized = new ByteArrayOutputStream();
@@ -153,13 +149,16 @@ public class TestInt96TimestampStatistics {
   }
 
   private static void assertStatsIgnored(ColumnChunkMetaData column) {
-    assertTrue(column.getStatistics() == null || !column.getStatistics().hasNonNullValue());
+    var stats = column.getStatistics();
+    if (stats != null) assertThat(stats.hasNonNullValue()).isFalse();
   }
 
   private static void assertStatsUsable(ColumnChunkMetaData column) {
-    assertTrue(column.getStatistics() != null && column.getStatistics().hasNonNullValue());
-    assertArrayEquals(EXPECTED_MIN.getBytes(), column.getStatistics().getMinBytes());
-    assertArrayEquals(EXPECTED_MAX.getBytes(), column.getStatistics().getMaxBytes());
+    var stats = column.getStatistics();
+    assertThat(stats).isNotNull();
+    assertThat(stats.hasNonNullValue()).isTrue();
+    assertThat(stats.getMinBytes()).containsExactly(EXPECTED_MIN.getBytes());
+    assertThat(stats.getMaxBytes()).containsExactly(EXPECTED_MAX.getBytes());
   }
 
   @Test
@@ -169,25 +168,24 @@ public class TestInt96TimestampStatistics {
     File file = writeFile();
     FileMetaData rawFooter = readRawFooter(file);
     // schema[0] is the message root; column_orders are indexed by leaf order: ts=0, id=1
-    assertTrue(rawFooter.getColumn_orders().get(0).isSetINT96_TIMESTAMP_ORDER());
+    assertThat(rawFooter.getColumn_orders().get(0).isSetINT96_TIMESTAMP_ORDER())
+        .isTrue();
 
     // Statistics should be present for the INT96 column.
     ColumnChunk tsChunk = rawFooter.getRow_groups().get(0).getColumns().get(0);
-    assertEquals(Type.INT96, tsChunk.getMeta_data().getType());
+    assertThat(tsChunk.getMeta_data().getType()).isEqualTo(Type.INT96);
     Statistics stats = tsChunk.getMeta_data().getStatistics();
-    assertTrue(stats != null);
-    assertArrayEquals(EXPECTED_MIN.getBytes(), stats.getMin_value());
-    assertArrayEquals(EXPECTED_MAX.getBytes(), stats.getMax_value());
+    assertThat(stats).isNotNull();
+    assertThat(stats.getMin_value()).containsExactly(EXPECTED_MIN.getBytes());
+    assertThat(stats.getMax_value()).containsExactly(EXPECTED_MAX.getBytes());
 
     // Column index should be present for the INT96 column.
     try (ParquetFileReader reader = ParquetFileReader.open(
         new LocalInputFile(file.toPath()), ParquetReadOptions.builder().build())) {
       ColumnIndex columnIndex = reader.readColumnIndex(getColumn(reader.getFooter(), "ts"));
-      assertNotNull(columnIndex);
-      assertArrayEquals(
-          EXPECTED_MIN.getBytes(), toArray(columnIndex.getMinValues().get(0)));
-      assertArrayEquals(
-          EXPECTED_MAX.getBytes(), toArray(columnIndex.getMaxValues().get(0)));
+      assertThat(columnIndex).isNotNull();
+      assertThat(toArray(columnIndex.getMinValues().get(0))).containsExactly(EXPECTED_MIN.getBytes());
+      assertThat(toArray(columnIndex.getMaxValues().get(0))).containsExactly(EXPECTED_MAX.getBytes());
     }
   }
 
@@ -197,8 +195,8 @@ public class TestInt96TimestampStatistics {
     ParquetMetadata footer = readFooter(file);
 
     PrimitiveType ts = footer.getFileMetaData().getSchema().getType("ts").asPrimitiveType();
-    assertEquals(ColumnOrder.int96TimestampOrder(), ts.columnOrder());
-    assertEquals("BINARY_AS_INT96_TIMESTAMP_COMPARATOR", ts.comparator().toString());
+    assertThat(ts.columnOrder()).isEqualTo(ColumnOrder.int96TimestampOrder());
+    assertThat(ts.comparator()).asString().isEqualTo("BINARY_AS_INT96_TIMESTAMP_COMPARATOR");
 
     assertStatsUsable(getColumn(footer, "ts"));
   }
@@ -210,16 +208,15 @@ public class TestInt96TimestampStatistics {
     File legacy = copyWithNewFooter(file, rawFooter, name + "-orders.parquet");
 
     ParquetMetadata footer = readFooter(legacy);
-    assertEquals(
-        ColumnOrder.undefined(),
-        footer.getFileMetaData()
+    assertThat(footer.getFileMetaData()
             .getSchema()
             .getType("ts")
             .asPrimitiveType()
-            .columnOrder());
+            .columnOrder())
+        .isEqualTo(ColumnOrder.undefined());
     assertStatsIgnored(getColumn(footer, "ts"));
     // The non-INT96 sibling column is unaffected.
-    assertTrue(getColumn(footer, "id").getStatistics().hasNonNullValue());
+    assertThat(getColumn(footer, "id").getStatistics().hasNonNullValue()).isTrue();
   }
 
   @Test
