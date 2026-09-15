@@ -51,8 +51,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.conf.ParquetInputFilters;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.filter.UnboundRecordFilter;
-import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -82,10 +83,10 @@ import org.slf4j.LoggerFactory;
  * It must be a subset of the original schema. Only the columns needed to reconstruct the records with the requestedSchema will be scanned.
  *
  * @param <T> the type of the materialized records
- * @see #READ_SUPPORT_CLASS
- * @see #UNBOUND_RECORD_FILTER
- * @see #STRICT_TYPE_CHECKING
- * @see #FILTER_PREDICATE
+ * @see ParquetInputProperties#READ_SUPPORT_CLASS
+ * @see ParquetInputProperties#UNBOUND_RECORD_FILTER
+ * @see ParquetInputProperties#STRICT_TYPE_CHECKING
+ * @see ParquetInputProperties#FILTER_PREDICATE
  * @see #TASK_SIDE_METADATA
  */
 public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
@@ -94,58 +95,80 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   /**
    * key to configure the ReadSupport implementation
+   * @deprecated use {@link ParquetInputProperties#READ_SUPPORT_CLASS}
    */
-  public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
+  @Deprecated
+  public static final String READ_SUPPORT_CLASS = ParquetInputProperties.READ_SUPPORT_CLASS;
 
   /**
    * key to configure the filter
+   * @deprecated use {@link ParquetInputProperties#UNBOUND_RECORD_FILTER}
    */
-  public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
+  @Deprecated
+  public static final String UNBOUND_RECORD_FILTER = ParquetInputProperties.UNBOUND_RECORD_FILTER;
 
   /**
    * key to configure type checking for conflicting schemas (default: true)
+   * @deprecated use {@link ParquetInputProperties#STRICT_TYPE_CHECKING}
    */
-  public static final String STRICT_TYPE_CHECKING = "parquet.strict.typing";
+  @Deprecated
+  public static final String STRICT_TYPE_CHECKING = ParquetInputProperties.STRICT_TYPE_CHECKING;
 
   /**
    * key to configure the filter predicate
+   * @deprecated use {@link ParquetInputProperties#FILTER_PREDICATE}
    */
-  public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
+  @Deprecated
+  public static final String FILTER_PREDICATE = ParquetInputProperties.FILTER_PREDICATE;
 
   /**
    * key to configure whether record-level filtering is enabled
+   * @deprecated use {@link ParquetInputProperties#RECORD_FILTERING_ENABLED}
    */
-  public static final String RECORD_FILTERING_ENABLED = "parquet.filter.record-level.enabled";
+  @Deprecated
+  public static final String RECORD_FILTERING_ENABLED = ParquetInputProperties.RECORD_FILTERING_ENABLED;
 
   /**
    * key to configure whether row group stats filtering is enabled
+   * @deprecated use {@link ParquetInputProperties#STATS_FILTERING_ENABLED}
    */
-  public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
+  @Deprecated
+  public static final String STATS_FILTERING_ENABLED = ParquetInputProperties.STATS_FILTERING_ENABLED;
 
   /**
    * key to configure whether row group dictionary filtering is enabled
+   * @deprecated use {@link ParquetInputProperties#DICTIONARY_FILTERING_ENABLED}
    */
-  public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";
+  @Deprecated
+  public static final String DICTIONARY_FILTERING_ENABLED = ParquetInputProperties.DICTIONARY_FILTERING_ENABLED;
 
   /**
    * key to configure whether column index filtering of pages is enabled
+   * @deprecated use {@link ParquetInputProperties#COLUMN_INDEX_FILTERING_ENABLED}
    */
-  public static final String COLUMN_INDEX_FILTERING_ENABLED = "parquet.filter.columnindex.enabled";
+  @Deprecated
+  public static final String COLUMN_INDEX_FILTERING_ENABLED = ParquetInputProperties.COLUMN_INDEX_FILTERING_ENABLED;
 
   /**
    * key to configure whether page level checksum verification is enabled
+   * @deprecated use {@link ParquetInputProperties#PAGE_VERIFY_CHECKSUM_ENABLED}
    */
-  public static final String PAGE_VERIFY_CHECKSUM_ENABLED = "parquet.page.verify-checksum.enabled";
+  @Deprecated
+  public static final String PAGE_VERIFY_CHECKSUM_ENABLED = ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED;
 
   /**
    * key to configure whether row group bloom filtering is enabled
+   * @deprecated use {@link ParquetInputProperties#BLOOM_FILTERING_ENABLED}
    */
-  public static final String BLOOM_FILTERING_ENABLED = "parquet.filter.bloom.enabled";
+  @Deprecated
+  public static final String BLOOM_FILTERING_ENABLED = ParquetInputProperties.BLOOM_FILTERING_ENABLED;
 
   /**
    * Key to configure if off-heap buffer should be used for decryption
+   * @deprecated use {@link ParquetInputProperties#OFF_HEAP_DECRYPT_BUFFER_ENABLED}
    */
-  public static final String OFF_HEAP_DECRYPT_BUFFER_ENABLED = "parquet.decrypt.off-heap.buffer.enabled";
+  @Deprecated
+  public static final String OFF_HEAP_DECRYPT_BUFFER_ENABLED = ParquetInputProperties.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 
   /**
    * key to turn on or off task side metadata loading (default true)
@@ -164,13 +187,17 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * Key to enable/disable vectored io while reading parquet files:
    * {@value}.
+   * @deprecated use {@link ParquetInputProperties#HADOOP_VECTORED_IO_ENABLED}
    */
-  public static final String HADOOP_VECTORED_IO_ENABLED = "parquet.hadoop.vectored.io.enabled";
+  @Deprecated
+  public static final String HADOOP_VECTORED_IO_ENABLED = ParquetInputProperties.HADOOP_VECTORED_IO_ENABLED;
 
   /**
    * Default value of parquet.hadoop.vectored.io.enabled is {@value}.
+   * @deprecated use {@link ParquetInputProperties#HADOOP_VECTORED_IO_DEFAULT}
    */
-  public static final boolean HADOOP_VECTORED_IO_DEFAULT = true;
+  @Deprecated
+  public static final boolean HADOOP_VECTORED_IO_DEFAULT = ParquetInputProperties.HADOOP_VECTORED_IO_DEFAULT;
 
   public static void setTaskSideMetaData(Job job, boolean taskSideMetadata) {
     ContextUtil.getConfiguration(job).setBoolean(TASK_SIDE_METADATA, taskSideMetadata);
@@ -200,20 +227,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   @Deprecated
   public static Class<?> getUnboundRecordFilter(Configuration configuration) {
-    return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
-  }
-
-  private static UnboundRecordFilter getUnboundRecordFilterInstance(ParquetConfiguration configuration) {
-    Class<?> clazz =
-        ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
-    if (clazz == null) {
-      return null;
-    }
-    try {
-      return (UnboundRecordFilter) clazz.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
-      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-    }
+    return ParquetInputFilters.getUnboundRecordFilter(new HadoopParquetConfiguration(configuration));
   }
 
   public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
@@ -238,15 +252,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   private static FilterPredicate getFilterPredicate(Configuration configuration) {
-    return getFilterPredicate(new HadoopParquetConfiguration(configuration));
-  }
-
-  private static FilterPredicate getFilterPredicate(ParquetConfiguration configuration) {
-    try {
-      return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return ParquetInputFilters.getFilterPredicate(new HadoopParquetConfiguration(configuration));
   }
 
   /**
@@ -260,8 +266,17 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return getFilter(new HadoopParquetConfiguration(conf));
   }
 
+  /**
+   * Returns a non-null Filter, which is a wrapper around either a
+   * FilterPredicate, an UnboundRecordFilter, or a no-op filter.
+   *
+   * @param conf a configuration
+   * @return a filter for the unbound record filter specified in conf
+   * @deprecated use {@link ParquetInputFilters#getFilter(ParquetConfiguration)}
+   */
+  @Deprecated
   public static Filter getFilter(ParquetConfiguration conf) {
-    return FilterCompat.get(getFilterPredicate(conf), getUnboundRecordFilterInstance(conf));
+    return ParquetInputFilters.getFilter(conf);
   }
 
   private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
