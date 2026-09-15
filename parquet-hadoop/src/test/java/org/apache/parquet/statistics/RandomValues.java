@@ -26,7 +26,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
-import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 
