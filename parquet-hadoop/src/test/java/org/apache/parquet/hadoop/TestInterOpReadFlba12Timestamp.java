@@ -40,8 +40,7 @@ import org.junit.jupiter.api.Test;
 
 public class TestInterOpReadFlba12Timestamp {
   private static final String FILE = "flba12_timestamp.parquet";
-  // TODO: update after parquet-testing PR merges
-  private static final String CHANGESET = "PLACEHOLDER";
+  private static final String CHANGESET = "56653c437c8092f704a092d0d1d4e600124cd49f";
 
   // The six timestamps stored in the file, in row order.
   private static final String[] EXPECTED_TIMESTAMPS = {
