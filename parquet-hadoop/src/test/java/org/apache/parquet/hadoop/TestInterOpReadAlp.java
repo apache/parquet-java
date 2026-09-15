@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
  * ALP_TEST_DATA_DIR property pointing to the alp-test-data/ directory.
  *
  * @see <a href="https://github.com/apache/arrow/pull/48345">Arrow C++ ALP PR</a>
- * @see <a href="https://github.com/apache/parquet-testing/pull/100">parquet-testing ALP PR</a>
  */
 public class TestInterOpReadAlp {
   private static final Logger LOG = LoggerFactory.getLogger(TestInterOpReadAlp.class);
