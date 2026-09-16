@@ -359,14 +359,14 @@ public class TestTypeBuildersWithLogicalTypes {
       for (PrimitiveTypeName type : invalidTypes) {
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage(logicalType + " can only annotate INT64 or FIXED_LEN_BYTE_ARRAY(12)");
+            .hasMessage(logicalType + " can only annotate [INT64, FIXED_LEN_BYTE_ARRAY(12)]");
       }
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(logicalType + " can only annotate INT64 or FIXED_LEN_BYTE_ARRAY(12)");
+          .hasMessage(logicalType + " can only annotate [INT64, FIXED_LEN_BYTE_ARRAY(12)]");
     }
   }
 
