@@ -1870,6 +1870,21 @@ public class ParquetMetadataConverter {
         fromParquetStatistics(metaData.geospatial_statistics, type));
   }
 
+  private static void collectPhysicalLeaves(
+      GroupType group, List<String> parent, List<PrimitiveType> leaves, List<List<String>> paths) {
+    // Row-group columns follow schema leaf order; names need not identify a unique leaf.
+    for (org.apache.parquet.schema.Type field : group.getFields()) {
+      List<String> path = new ArrayList<>(parent);
+      path.add(field.getName());
+      if (field.isPrimitive()) {
+        leaves.add(field.asPrimitiveType());
+        paths.add(path);
+      } else {
+        collectPhysicalLeaves(field.asGroupType(), path, leaves, paths);
+      }
+    }
+  }
+
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     return fromParquetMetadata(parquetMetadata, null, false);
   }
@@ -1887,6 +1902,9 @@ public class ParquetMetadataConverter {
       Map<RowGroup, Long> rowGroupToRowIndexOffsetMap)
       throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
+    List<PrimitiveType> physicalLeaves = new ArrayList<>();
+    List<List<String>> physicalPaths = new ArrayList<>();
+    collectPhysicalLeaves(messageType, Collections.emptyList(), physicalLeaves, physicalPaths);
     org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
         buildFileMetaData(parquetMetadata, messageType, encryptedFooter, fileDecryptor);
     String createdBy = fileMetaData.getCreatedBy();
@@ -1912,7 +1930,10 @@ public class ParquetMetadataConverter {
           blockMetaData.setOrdinal(rowGroup.getOrdinal());
         }
         List<ColumnChunk> columns = rowGroup.getColumns();
-        String filePath = columns.get(0).getFile_path();
+        if (columns == null || columns.size() != physicalLeaves.size()) {
+          throw new ParquetDecodingException("Row-group column count does not match schema leaves");
+        }
+        String filePath = columns.isEmpty() ? null : columns.get(0).getFile_path();
         int columnOrdinal = -1;
         for (ColumnChunk columnChunk : columns) {
           columnOrdinal++;
@@ -1923,6 +1944,13 @@ public class ParquetMetadataConverter {
           }
           ColumnMetaData metaData = columnChunk.meta_data;
           ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_metadata();
+          if (metaData != null || cryptoMetaData == null) {
+            validatePhysicalLeaf(
+                metaData,
+                physicalPaths.get(columnOrdinal),
+                physicalLeaves.get(columnOrdinal),
+                columnOrdinal);
+          }
           ColumnChunkMetaData column = null;
           ColumnPath columnPath = null;
           boolean lazyMetadataDecryption = false;
@@ -1964,6 +1992,11 @@ public class ParquetMetadataConverter {
                       columnPath + ". Failed to decrypt column metadata", e);
                 }
               }
+              validatePhysicalLeaf(
+                  metaData,
+                  physicalPaths.get(columnOrdinal),
+                  physicalLeaves.get(columnOrdinal),
+                  columnOrdinal);
               fileDecryptor.setColumnCryptoMetadata(columnPath, true, true, (byte[]) null, columnOrdinal);
             } else { // Column encrypted with column key
               // setColumnCryptoMetadata triggers KMS interaction, hence delayed until this column is
@@ -1973,8 +2006,7 @@ public class ParquetMetadataConverter {
           }
 
           if (!lazyMetadataDecryption) { // full column metadata (with stats) is available
-            PrimitiveType primitiveType =
-                messageType.getType(columnPath.toArray()).asPrimitiveType();
+            PrimitiveType primitiveType = physicalLeaves.get(columnOrdinal);
             column =
                 buildColumnChunkMetaData(metaData, columnPath, primitiveType, writerVersion, createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
@@ -1988,13 +2020,17 @@ public class ParquetMetadataConverter {
             // Metadata will be decrypted later, if this column is accessed
             EncryptionWithColumnKey columnKeyStruct = cryptoMetaData.getENCRYPTION_WITH_COLUMN_KEY();
             List<String> pathList = columnKeyStruct.getPath_in_schema();
+            if (!physicalPaths.get(columnOrdinal).equals(pathList)) {
+              throw new ParquetDecodingException(
+                  "Encrypted column path does not match schema leaf ordinal " + columnOrdinal);
+            }
             byte[] columnKeyMetadata = columnKeyStruct.getKey_metadata();
             columnPath = ColumnPath.get(pathList.toArray(new String[pathList.size()]));
             byte[] encryptedMetadataBuffer = columnChunk.getEncrypted_column_metadata();
             column = ColumnChunkMetaData.getWithEncryptedMetadata(
                 this,
                 columnPath,
-                messageType.getType(columnPath.toArray()).asPrimitiveType(),
+                physicalLeaves.get(columnOrdinal),
                 encryptedMetadataBuffer,
                 columnKeyMetadata,
                 fileDecryptor,
@@ -2041,6 +2077,14 @@ public class ParquetMetadataConverter {
     }
     return new org.apache.parquet.hadoop.metadata.FileMetaData(
         messageType, keyValueMetaData, createdBy, encryptionType, fileDecryptor);
+  }
+
+  private void validatePhysicalLeaf(ColumnMetaData metadata, List<String> path, PrimitiveType type, int ordinal) {
+    if (metadata == null
+        || !path.equals(metadata.getPath_in_schema())
+        || getType(type.getPrimitiveTypeName()) != metadata.getType()) {
+      throw new ParquetDecodingException("Column metadata does not match schema leaf ordinal " + ordinal);
+    }
   }
 
   private static IndexReference toColumnIndexReference(ColumnChunk columnChunk) {
