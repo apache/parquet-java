@@ -297,7 +297,9 @@ public class ParquetFileReader implements Closeable {
       footers.add(() -> {
         try {
           return new Footer(
-              currentFile.getPath(), readFooter(configuration, currentFile, filter(skipRowGroups)));
+              currentFile.getPath(),
+              readFooter(configuration, currentFile, filter(skipRowGroups)),
+              currentFile);
         } catch (IOException e) {
           throw new IOException("Could not read footer for file " + currentFile, e);
         }
