@@ -18,9 +18,12 @@
  */
 package org.apache.parquet.column.impl;
 
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
@@ -29,7 +32,9 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
+import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.mem.MemPageReader;
@@ -181,5 +186,110 @@ public class TestColumnReaderImpl {
         });
 
     validateExpectedValuesAndCount(col, pageReader);
+  }
+
+  @Test
+  public void testSynchronizingLastRowV1() throws Exception {
+    testSynchronizingReader(PARQUET_1_0, false);
+  }
+
+  @Test
+  public void testSynchronizingLastRowV2() throws Exception {
+    testSynchronizingReader(PARQUET_2_0, false);
+  }
+
+  @Test
+  public void testSynchronizingLastRepeatedRowV1() throws Exception {
+    testSynchronizingReader(PARQUET_1_0, true);
+  }
+
+  @Test
+  public void testSynchronizingLastRepeatedRowV2() throws Exception {
+    testSynchronizingReader(PARQUET_2_0, true);
+  }
+
+  private void testSynchronizingReader(WriterVersion writerVersion, boolean repeated) throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message test { " + (repeated ? "repeated" : "optional") + " int32 foo; }");
+    ColumnDescriptor col = schema.getColumns().get(0);
+    MemPageWriter pageWriter = new MemPageWriter();
+    ParquetProperties properties = ParquetProperties.builder()
+        .withWriterVersion(writerVersion)
+        .withDictionaryEncoding(false)
+        .build();
+    ColumnWriterBase columnWriter = writerVersion == PARQUET_1_0
+        ? new ColumnWriterV1(col, pageWriter, properties)
+        : new ColumnWriterV2(col, pageWriter, properties);
+    int valuesPerRow = repeated ? 3 : 1;
+    for (int row = 0; row < 8; ++row) {
+      if (row == 6) {
+        columnWriter.writeNull(0, 0);
+      } else {
+        for (int value = 0; value < valuesPerRow; ++value) {
+          columnWriter.write(row * 10 + value, value == 0 ? 0 : 1, 1);
+        }
+      }
+      if (row % 2 == 1) {
+        columnWriter.writePage();
+      }
+    }
+    columnWriter.finalizeColumnChunk();
+    columnWriter.close();
+
+    // Exercise a final target in a later page, at a page boundary, and before the end of a page.
+    for (long[] rowIndexes : new long[][] {{4}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0}, {0, 1, 2, 3, 4, 5, 6, 7}}) {
+      List<DataPage> pages = new ArrayList<>();
+      for (int i = 0; i < pageWriter.getPages().size(); ++i) {
+        long firstRowIndex = i * 2;
+        if (Arrays.stream(rowIndexes).noneMatch(row -> firstRowIndex <= row && row < firstRowIndex + 2)) {
+          continue;
+        }
+        DataPage page = pageWriter.getPages().get(i);
+        if (page instanceof DataPageV1) {
+          DataPageV1 pageV1 = (DataPageV1) page;
+          pages.add(new DataPageV1(
+              pageV1.getBytes(),
+              pageV1.getValueCount(),
+              pageV1.getUncompressedSize(),
+              firstRowIndex,
+              2,
+              pageV1.getStatistics(),
+              pageV1.getRlEncoding(),
+              pageV1.getDlEncoding(),
+              pageV1.getValueEncoding()));
+        } else {
+          DataPageV2 pageV2 = (DataPageV2) page;
+          pages.add(DataPageV2.uncompressed(
+              pageV2.getRowCount(),
+              pageV2.getNullCount(),
+              pageV2.getValueCount(),
+              firstRowIndex,
+              pageV2.getRepetitionLevels(),
+              pageV2.getDefinitionLevels(),
+              pageV2.getDataEncoding(),
+              pageV2.getData(),
+              pageV2.getStatistics()));
+        }
+      }
+      MemPageReader pageReader = new MemPageReader(
+          pages.stream().mapToLong(DataPage::getValueCount).sum(), pages.iterator(), null);
+      ColumnReader reader = new SynchronizingColumnReader(
+          col,
+          pageReader,
+          new PrimitiveConverter() {},
+          VersionParser.parse(Version.FULL_VERSION),
+          Arrays.stream(rowIndexes).iterator());
+      for (long row : rowIndexes) {
+        for (int value = 0; value < (row == 6 ? 1 : valuesPerRow); ++value) {
+          assertThat(reader.getCurrentRepetitionLevel()).isEqualTo(value == 0 ? 0 : 1);
+          assertThat(reader.getCurrentDefinitionLevel()).isEqualTo(row == 6 ? 0 : 1);
+          if (row != 6) {
+            assertThat(reader.getInteger()).isEqualTo((int) row * 10 + value);
+          }
+          reader.consume();
+        }
+      }
+      assertThat(reader.getCurrentRepetitionLevel()).isEqualTo(0);
+    }
   }
 }
