@@ -87,6 +87,7 @@ import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -336,7 +337,16 @@ public class ParquetRewriter implements Closeable {
             inputFile, ParquetReadOptions.builder(conf).build());
         inputFileReaders.add(reader);
       } catch (IOException e) {
-        throw new IllegalArgumentException("Failed to open input file: " + inputFile, e);
+        IllegalArgumentException failure =
+            new IllegalArgumentException("Failed to open input file: " + inputFile, e);
+        // Close the readers already opened so their input streams do not leak, aggregating any
+        // close failures as suppressed exceptions on the original failure.
+        try {
+          AutoCloseables.close(inputFileReaders);
+        } catch (Throwable t) {
+          failure.addSuppressed(t);
+        }
+        throw failure;
       }
     }
     return inputFileReaders;
