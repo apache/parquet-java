@@ -29,7 +29,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import org.apache.avro.Schema;
-import org.apache.avro.SchemaParseException;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Expressions;
 import org.apache.parquet.example.data.Group;
@@ -65,9 +64,9 @@ public class CatCommand extends BaseCommand {
     for (String source : sourceFiles) {
       try {
         runWithAvroSchema(source);
-      } catch (SchemaParseException e) {
+      } catch (RuntimeException e) {
         console.debug(
-            "Avro schema conversion failed for {}, falling back to Group reader: {}",
+            "Avro read failed for {}, falling back to Group reader: {}",
             source,
             e.getMessage());
         runWithGroupReader(source);
