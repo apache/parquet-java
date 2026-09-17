@@ -273,24 +273,41 @@ public final class Variant {
         }
       }
     } else {
-      int low = 0;
-      int high = info.numElements - 1;
-      while (low <= high) {
-        // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
-        // performance optimization, because it can properly handle the case where `low + high`
-        // overflows int.
-        int mid = (low + high) >>> 1;
-        int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
-        String midKey = getMetadataKeyCached(midId);
-        int cmp = midKey.compareTo(key);
-        if (cmp < 0) {
-          low = mid + 1;
-        } else if (cmp > 0) {
-          high = mid - 1;
-        } else {
-          int offset = VariantUtil.readUnsignedLittleEndian(
-              value, offsetStart + info.offsetSize * mid, info.offsetSize);
-          return childVariant(VariantUtil.slice(value, dataStart + offset));
+      // UTF-8 and UTF-16 order can only disagree at a code unit at or above U+D800. A lookup key
+      // without one compares identically under either order, so a single `String.compareTo`
+      // search navigates both spec-ordered and legacy UTF-16-ordered objects. A key that has one
+      // searches in the spec's UTF-8 byte order first, then retries in the UTF-16 order written
+      // by versions that sorted object fields with `String.compareTo`, so those objects remain
+      // readable.
+      boolean needsUtf8 = false;
+      for (int i = 0; i < key.length(); ++i) {
+        if (key.charAt(i) >= Character.MIN_SURROGATE) {
+          needsUtf8 = true;
+          break;
+        }
+      }
+      int maxAttempts = needsUtf8 ? 2 : 1;
+      for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+        int low = 0;
+        int high = info.numElements - 1;
+        while (low <= high) {
+          // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
+          // performance optimization, because it can properly handle the case where `low + high`
+          // overflows int.
+          int mid = (low + high) >>> 1;
+          int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
+          String midKey = getMetadataKeyCached(midId);
+          int cmp =
+              (needsUtf8 && attempt == 0) ? VariantUtil.compareKeys(midKey, key) : midKey.compareTo(key);
+          if (cmp < 0) {
+            low = mid + 1;
+          } else if (cmp > 0) {
+            high = mid - 1;
+          } else {
+            int offset = VariantUtil.readUnsignedLittleEndian(
+                value, offsetStart + info.offsetSize * mid, info.offsetSize);
+            return childVariant(VariantUtil.slice(value, dataStart + offset));
+          }
         }
       }
     }
