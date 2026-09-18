@@ -455,6 +455,28 @@ If `false`, write files in encrypted footer mode, that fully encrypts the footer
 **Description:** Class implementing the KmsClient interface. "KMS" stands for “key management service”. The Client will interact with a KMS Server to wrap/unrwap encryption keys.  
 **Default value:** None
 
+KMS clients can also be supplied programmatically when they require constructor-injected dependencies:
+
+```java
+KeyToolkit.setKmsClientFactory(
+    configuration,
+    (conf, kmsInstanceID, kmsInstanceURL, accessToken) -> new CustomKmsClient(dependency));
+try {
+  // Construct and close readers and writers using configuration or its copies.
+} finally {
+  KeyToolkit.removeKmsClientFactory(configuration);
+}
+```
+
+A registered factory takes precedence over `parquet.encryption.kms.client.class`. Each invocation must return a
+distinct, uninitialized `KmsClient`; `KeyToolkit` initializes and caches it. The factory can be invoked concurrently
+for different access-token and KMS-instance combinations, so it must be thread-safe.
+
+Copies of the `Configuration` in the same JVM share the registration and its caches. A configuration deserialized in
+another JVM must register the factory there before use. Call `removeKmsClientFactory` only after all readers and writers
+using the configuration and its copies have closed. Registering another factory for the configuration or one of its
+copies replaces the previous factory and clears the registration's caches.
+
 ---
 
 **Property:** `parquet.encryption.kms.instance.id`  
