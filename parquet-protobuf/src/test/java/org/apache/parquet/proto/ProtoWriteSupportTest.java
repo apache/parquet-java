@@ -37,6 +37,7 @@ import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
@@ -1049,6 +1050,38 @@ public class ProtoWriteSupportTest {
     TestProto3.OneOfTestMessage gotBackThird = gotBack.get(2);
     assertThat(gotBackThird.getFirst()).isEqualTo(42);
     assertThat(gotBackThird.getTheOneofCase()).isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
+  }
+
+  @Test
+  public void testMessageOneOfUnwrappedRoundTrip(@TempDir java.nio.file.Path tempDir) throws IOException {
+    TestProto3.OneOfTestMessage secondSet =
+        TestProto3.OneOfTestMessage.newBuilder().setSecond(99).build();
+    TestProto3.OneOfTestMessage nothingSet =
+        TestProto3.OneOfTestMessage.newBuilder().build();
+    TestProto3.OneOfTestMessage firstSet =
+        TestProto3.OneOfTestMessage.newBuilder().setFirst(42).build();
+
+    Path tmpFilePath = new Path(tempDir.resolve("oneof-unwrap.parquet").toUri());
+    try (ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.OneOfTestMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .withValidation(true)
+        .build()) {
+      writer.write(secondSet);
+      writer.write(nothingSet);
+      writer.write(firstSet);
+    }
+
+    List<TestProto3.OneOfTestMessage> gotBack =
+        TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
+
+    assertThat(gotBack).hasSize(3);
+    assertThat(gotBack.get(0).getSecond()).isEqualTo(99);
+    assertThat(gotBack.get(0).getTheOneofCase()).isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.SECOND);
+    assertThat(gotBack.get(1).getTheOneofCase())
+        .isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET);
+    assertThat(gotBack.get(2).getFirst()).isEqualTo(42);
+    assertThat(gotBack.get(2).getTheOneofCase()).isEqualTo(TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
   }
 
   @Test
