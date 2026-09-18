@@ -177,9 +177,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
               }
               long start = System.nanoTime();
-              decompressed = decompressor
-                  .decompress(bytes, dataPageV1.getUncompressedSize())
-                  .copy(releaser);
+              decompressed =
+                  BytesInput.copy(decompressor.decompress(bytes, dataPageV1.getUncompressedSize()));
               setDecompressMetrics(bytes, start);
             }
 
@@ -259,9 +258,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                     - dataPageV2.getDefinitionLevels().size()
                     - dataPageV2.getRepetitionLevels().size());
                 long start = System.nanoTime();
-                pageBytes = decompressor
-                    .decompress(pageBytes, uncompressedSize)
-                    .copy(releaser);
+                pageBytes = BytesInput.copy(decompressor.decompress(pageBytes, uncompressedSize));
                 setDecompressMetrics(pageBytes, start);
               }
             }
