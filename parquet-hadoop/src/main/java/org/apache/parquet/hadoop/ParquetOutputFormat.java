@@ -161,6 +161,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
+  public static final String PAGE_COMPRESS_THRESHOLD = "parquet.page.compress.threshold";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
   public static final String COLUMN_COMPRESSION_LEVEL_PREFIX = "parquet.compression.level";
@@ -421,6 +422,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(PAGE_WRITE_CHECKSUM_ENABLED, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
+  public static void setPageCompressThreshold(JobContext jobContext, double threshold) {
+    setPageCompressThreshold(getConfiguration(jobContext), threshold);
+  }
+
+  public static void setPageCompressThreshold(Configuration conf, double threshold) {
+    conf.setDouble(PAGE_COMPRESS_THRESHOLD, threshold);
+  }
+
+  public static double getPageCompressThreshold(Configuration conf) {
+    return conf.getDouble(PAGE_COMPRESS_THRESHOLD, ParquetProperties.DEFAULT_PAGE_COMPRESS_THRESHOLD);
+  }
+
   public static void setStatisticsEnabled(JobContext jobContext, boolean enabled) {
     getConfiguration(jobContext).setBoolean(STATISTICS_ENABLED, enabled);
   }
@@ -535,6 +548,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
+        .withPageCompressThreshold(getPageCompressThreshold(conf))
         .withStatisticsEnabled(getStatisticsEnabled(conf));
     new ColumnConfigParser()
         .withColumnConfig(
