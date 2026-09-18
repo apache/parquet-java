@@ -294,9 +294,6 @@ public class TestTypeBuildersWithLogicalTypes {
     LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
       timeType(true, MICROS), timeType(false, MICROS),
       timeType(true, NANOS), timeType(false, NANOS),
-      timestampType(true, MILLIS), timestampType(false, MILLIS),
-      timestampType(true, MICROS), timestampType(false, MICROS),
-      timestampType(true, NANOS), timestampType(false, NANOS),
       intType(64, true), intType(64, false)
     };
     for (LogicalTypeAnnotation logicalType : types) {
@@ -311,9 +308,6 @@ public class TestTypeBuildersWithLogicalTypes {
     LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
       timeType(true, MICROS), timeType(false, MICROS),
       timeType(true, NANOS), timeType(false, NANOS),
-      timestampType(true, MILLIS), timestampType(false, MILLIS),
-      timestampType(true, MICROS), timestampType(false, MICROS),
-      timestampType(true, NANOS), timestampType(false, NANOS),
       intType(64, true), intType(64, false)
     };
     for (final LogicalTypeAnnotation logicalType : types) {
@@ -329,6 +323,50 @@ public class TestTypeBuildersWithLogicalTypes {
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
           .hasMessage(logicalType + " can only annotate INT64");
+    }
+  }
+
+  @Test
+  public void testTimestampAnnotations() {
+    LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
+      timestampType(true, MILLIS), timestampType(false, MILLIS),
+      timestampType(true, MICROS), timestampType(false, MICROS),
+      timestampType(true, NANOS), timestampType(false, NANOS)
+    };
+    for (LogicalTypeAnnotation logicalType : types) {
+      PrimitiveType expectedInt64 = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
+      assertThat(Types.required(INT64).as(logicalType).named("col")).isEqualTo(expectedInt64);
+
+      PrimitiveType expectedFlba12 =
+          new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 12, "col", logicalType, null);
+      assertThat(Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(12)
+              .as(logicalType)
+              .named("col"))
+          .isEqualTo(expectedFlba12);
+    }
+  }
+
+  @Test
+  public void testTimestampAnnotationsRejectInvalidTypes() {
+    LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
+      timestampType(true, MILLIS), timestampType(false, MILLIS),
+      timestampType(true, MICROS), timestampType(false, MICROS),
+      timestampType(true, NANOS), timestampType(false, NANOS)
+    };
+    for (LogicalTypeAnnotation logicalType : types) {
+      PrimitiveTypeName[] invalidTypes = new PrimitiveTypeName[] {BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY};
+      for (PrimitiveTypeName type : invalidTypes) {
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(logicalType + " can only annotate INT64 or FIXED_LEN_BYTE_ARRAY(12)");
+      }
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(1)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(logicalType + " can only annotate INT64 or FIXED_LEN_BYTE_ARRAY(12)");
     }
   }
 
