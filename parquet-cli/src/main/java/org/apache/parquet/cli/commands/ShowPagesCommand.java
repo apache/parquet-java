@@ -206,9 +206,7 @@ public class ShowPagesCommand extends BaseCommand {
             reader.getFileMetaData().getSchema().getColumns().indexOf(currentColumn);
         ColumnChunkMetaData columnChunk = rowGroup.getColumns().get(columnIndex);
 
-        long startOffset = columnChunk.hasDictionaryPage()
-            ? columnChunk.getDictionaryPageOffset()
-            : columnChunk.getFirstDataPageOffset();
+        long startOffset = columnChunk.getStartingPos();
         input.seek(startOffset);
         long endPos = startOffset + columnChunk.getTotalSize();
         int currentPageIndex = 0;

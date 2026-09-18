@@ -19,29 +19,41 @@
 package org.apache.parquet.cli.commands;
 
 import static org.apache.parquet.cli.Util.humanReadable;
+import static org.apache.parquet.column.Encoding.PLAIN;
+import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetFileWriter;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -56,6 +68,73 @@ public class ShowPagesCommandTest extends ParquetFileTest {
     command.targets = Arrays.asList(file.getAbsolutePath());
     command.setConf(new Configuration());
     assertThat(command.run()).isZero();
+  }
+
+  @Test
+  public void testUnusedDictionaryPageSizes() throws IOException {
+    Path path = new Path(randomParquetFile().toURI());
+    Configuration conf = new Configuration();
+    PrimitiveType type = Types.required(INT32).named("value");
+    MessageType schema = new MessageType("record", type);
+    try (ParquetFileWriter writer = new ParquetFileWriter(
+        HadoopOutputFile.fromPath(path, conf),
+        schema,
+        ParquetFileWriter.Mode.CREATE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT)) {
+      writer.start();
+      writer.startBlock(2);
+      writer.startColumn(
+          schema.getColumnDescription(new String[] {"value"}), 2, CompressionCodecName.UNCOMPRESSED);
+      writer.writeDictionaryPage(new DictionaryPage(
+          BytesInput.concat(BytesInput.fromInt(10), BytesInput.fromInt(20), BytesInput.fromInt(30)),
+          3,
+          PLAIN));
+      writer.writeDataPage(
+          2,
+          2 * Integer.BYTES,
+          BytesInput.concat(BytesInput.fromInt(41), BytesInput.fromInt(42)),
+          Statistics.createStats(type),
+          RLE,
+          RLE,
+          PLAIN);
+      writer.endColumn();
+      writer.endBlock();
+      writer.end(Map.of());
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      ColumnChunkMetaData column =
+          reader.getRowGroups().get(0).getColumns().get(0);
+      assertThat(column.getEncodingStats().hasDictionaryPages()).isTrue();
+      assertThat(column.hasDictionaryPage()).isFalse();
+      assertThat(column.getDictionaryPageOffset()).isPositive().isLessThan(column.getFirstDataPageOffset());
+    }
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path)
+        .withConf(conf)
+        .build()) {
+      assertThat(reader.read().getInteger("value", 0)).isEqualTo(41);
+      assertThat(reader.read().getInteger("value", 0)).isEqualTo(42);
+      assertThat(reader.read()).isNull();
+    }
+
+    withLogger((console, events) -> {
+      ShowPagesCommand command = new ShowPagesCommand(console);
+      command.targets = List.of(path.toString());
+      command.setConf(conf);
+      assertThat(command.run()).isZero();
+      List<String> pageLines = events.stream()
+          .map(LoggingEvent::getMessage)
+          .filter(line -> line.trim().startsWith("0-"))
+          .toList();
+      assertThat(pageLines).hasSize(2);
+      assertThat(pageLines.get(0))
+          .contains("dict")
+          .contains(String.format("%-7d %-10s %-10s", 3, humanReadable(4.0f), humanReadable(12L)));
+      assertThat(pageLines.get(1))
+          .contains("data")
+          .contains(String.format("%-7d %-10s %-10s", 2, humanReadable(4.0f), humanReadable(8L)));
+    });
   }
 
   @ParameterizedTest
