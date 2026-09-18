@@ -229,9 +229,7 @@ public class ShowPagesCommand extends BaseCommand {
     }
 
     private String printDictionaryPage(DictionaryPage dict) {
-      // TODO: the compressed size of a dictionary page is lost in Parquet
-      dict.getUncompressedSize();
-      long totalSize = dict.getCompressedSize();
+      long totalSize = getPageCompressedSize();
       int count = dict.getDictionarySize();
       float perValue = ((float) totalSize) / count;
       String enc = encodingAsString(dict.getEncoding(), true);
