@@ -74,11 +74,9 @@ public class PforBitPackingTest {
     writer.close();
   }
 
-  // ========== INT32 Bit Width Coverage ==========
-
   @Test
   public void testIntBitWidth0() throws Exception {
-    // All same value → bitWidth=0, no packed bytes
+    // All same value -> bitWidth=0, no packed bytes
     int[] values = new int[100];
     java.util.Arrays.fill(values, 777);
     verifyIntRoundTrip(values);
@@ -143,8 +141,6 @@ public class PforBitPackingTest {
     verifyIntRoundTrip(values);
   }
 
-  // ========== INT64 Bit Width Coverage ==========
-
   @Test
   public void testLongBitWidth0() throws Exception {
     long[] values = new long[100];
@@ -184,8 +180,6 @@ public class PforBitPackingTest {
     }
     verifyLongRoundTrip(values);
   }
-
-  // ========== Page Header Verification ==========
 
   @Test
   public void testIntPageHeaderFormat() throws Exception {
@@ -237,8 +231,6 @@ public class PforBitPackingTest {
 
     writer.close();
   }
-
-  // ========== Exception Handling ==========
 
   @Test
   public void testIntManyExceptions() throws Exception {

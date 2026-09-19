@@ -60,7 +60,6 @@ public class BenchmarkPforEncoding {
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
 
-  // ========== Pre-computed data ==========
   private static int[] intConstant;
   private static int[] intSequential;
   private static int[] intSmallRange;
@@ -155,8 +154,6 @@ public class BenchmarkPforEncoding {
     printLongRatio("TpcdsSoldDateSk", longTpcdsSoldDateSkBytes, longTpcdsSoldDateSk.length);
   }
 
-  // ========== INT32 Encode Benchmarks ==========
-
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void encodeIntConstant() throws IOException {
@@ -204,8 +201,6 @@ public class BenchmarkPforEncoding {
   public void encodeIntTpcdsQuantity() throws IOException {
     benchmarkIntEncode(intTpcdsQuantity);
   }
-
-  // ========== INT32 Decode Benchmarks ==========
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
@@ -255,8 +250,6 @@ public class BenchmarkPforEncoding {
     benchmarkIntDecode(intTpcdsQuantityBytes, intTpcdsQuantity.length);
   }
 
-  // ========== INT64 Encode Benchmarks ==========
-
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void encodeLongConstant() throws IOException {
@@ -298,8 +291,6 @@ public class BenchmarkPforEncoding {
   public void encodeLongTpcdsSoldDateSk() throws IOException {
     benchmarkLongEncode(longTpcdsSoldDateSk);
   }
-
-  // ========== INT64 Decode Benchmarks ==========
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
@@ -343,8 +334,6 @@ public class BenchmarkPforEncoding {
     benchmarkLongDecode(longTpcdsSoldDateSkBytes, longTpcdsSoldDateSk.length);
   }
 
-  // ========== Benchmark Helpers ==========
-
   private void benchmarkIntEncode(int[] values) throws IOException {
     int capacity = Math.max(256, values.length * 8);
     PforValuesWriter.IntPforValuesWriter writer =
@@ -382,8 +371,6 @@ public class BenchmarkPforEncoding {
       reader.readLong();
     }
   }
-
-  // ========== Data Generators ==========
 
   private static int[] genIntConstant(int n) {
     int[] v = new int[n];
@@ -496,8 +483,6 @@ public class BenchmarkPforEncoding {
     for (int i = 0; i < n; i++) v[i] = 2450815L + rng.nextInt(1821);
     return v;
   }
-
-  // ========== Encoding Helpers ==========
 
   private static byte[] encodeInts(int[] values) throws IOException {
     int capacity = Math.max(256, values.length * 8);

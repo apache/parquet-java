@@ -27,8 +27,6 @@ import org.junit.Test;
  */
 public class PforEncoderDecoderTest {
 
-  // ========== Bit Width Tests ==========
-
   @Test
   public void testBitWidthForInt() {
     assertEquals(0, PforEncoderDecoder.bitWidthForInt(0));
@@ -40,7 +38,7 @@ public class PforEncoderDecoderTest {
     assertEquals(9, PforEncoderDecoder.bitWidthForInt(256));
     assertEquals(16, PforEncoderDecoder.bitWidthForInt(65535));
     assertEquals(31, PforEncoderDecoder.bitWidthForInt(Integer.MAX_VALUE));
-    // Unsigned: -1 == 0xFFFFFFFF → 32 bits
+    // Unsigned: -1 == 0xFFFFFFFF -> 32 bits
     assertEquals(32, PforEncoderDecoder.bitWidthForInt(-1));
   }
 
@@ -56,15 +54,13 @@ public class PforEncoderDecoderTest {
     assertEquals(16, PforEncoderDecoder.bitWidthForLong(65535L));
     assertEquals(31, PforEncoderDecoder.bitWidthForLong((long) Integer.MAX_VALUE));
     assertEquals(63, PforEncoderDecoder.bitWidthForLong(Long.MAX_VALUE));
-    // Unsigned: -1 == 0xFFFFFFFFFFFFFFFF → 64 bits
+    // Unsigned: -1 == 0xFFFFFFFFFFFFFFFF -> 64 bits
     assertEquals(64, PforEncoderDecoder.bitWidthForLong(-1L));
   }
 
-  // ========== Cost Model Tests: INT32 ==========
-
   @Test
   public void testOptimalBitWidthAllIdentical() {
-    // All deltas are 0 → bit_width=0, no exceptions
+    // All deltas are 0 -> bit_width=0, no exceptions
     int[] deltas = new int[1024];
     PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForInt(deltas, 1024);
     assertEquals(0, result.bitWidth);
@@ -73,7 +69,7 @@ public class PforEncoderDecoderTest {
 
   @Test
   public void testOptimalBitWidthNoOutliers() {
-    // Deltas 0..255 → all fit in 8 bits, no exceptions
+    // Deltas 0..255 -> all fit in 8 bits, no exceptions
     int[] deltas = new int[256];
     for (int i = 0; i < 256; i++) {
       deltas[i] = i;
@@ -102,7 +98,7 @@ public class PforEncoderDecoderTest {
 
   @Test
   public void testOptimalBitWidthManyOutliers() {
-    // All values need 32 bits → bit_width=32, no exceptions
+    // All values need 32 bits -> bit_width=32, no exceptions
     int[] deltas = new int[100];
     for (int i = 0; i < 100; i++) {
       deltas[i] = Integer.MAX_VALUE - i;
@@ -127,8 +123,6 @@ public class PforEncoderDecoderTest {
     assertEquals(0, result.bitWidth);
     assertEquals(0, result.numExceptions);
   }
-
-  // ========== Cost Model Tests: INT64 ==========
 
   @Test
   public void testOptimalBitWidthLongAllIdentical() {
@@ -171,8 +165,6 @@ public class PforEncoderDecoderTest {
     assertEquals(63, result.bitWidth);
     assertEquals(0, result.numExceptions);
   }
-
-  // ========== Cost Model Sanity Checks ==========
 
   @Test
   public void testCostModelPrefersFewerExceptions() {

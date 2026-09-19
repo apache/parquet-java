@@ -47,10 +47,6 @@ public class PforAdversarialTest {
   private static final int VECTOR_START = PforConstants.PFOR_HEADER_SIZE + Integer.BYTES;
   private static final int OUTLIER_VECTOR_LEN = 5;
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
   private static byte[] validIntPage(int valueCount, int vectorSize) throws Exception {
     PforValuesWriter.IntPforValuesWriter writer = null;
     try {
@@ -270,9 +266,7 @@ public class PforAdversarialTest {
     reader.readLong();
   }
 
-  // ---------------------------------------------------------------------------
   // Sanity: valid pages decode cleanly
-  // ---------------------------------------------------------------------------
 
   @Test
   public void sanityBaselineDecodesClean() throws Exception {
@@ -294,9 +288,7 @@ public class PforAdversarialTest {
     }
   }
 
-  // ---------------------------------------------------------------------------
   // Header validation
-  // ---------------------------------------------------------------------------
 
   @Test
   public void rejectsBadPackingMode() throws Exception {
@@ -345,9 +337,7 @@ public class PforAdversarialTest {
     assertThrows(ParquetDecodingException.class, () -> initIntReader(page, 500));
   }
 
-  // ---------------------------------------------------------------------------
   // Truncation / corruption
-  // ---------------------------------------------------------------------------
 
   @Test
   public void rejectsHeaderOnlyPage() {
@@ -414,9 +404,7 @@ public class PforAdversarialTest {
     }
   }
 
-  // ---------------------------------------------------------------------------
   // Per-vector info validation
-  // ---------------------------------------------------------------------------
 
   @Test
   public void sanityOutlierPagesCarryAnException() throws Exception {
@@ -516,9 +504,7 @@ public class PforAdversarialTest {
     assertThrows(ParquetDecodingException.class, () -> initIntReader(bad, DELTA_VECTOR_LEN));
   }
 
-  // ---------------------------------------------------------------------------
   // Skip/read bounds
-  // ---------------------------------------------------------------------------
 
   @Test
   public void rejectsSkipPastEnd() throws Exception {
@@ -558,9 +544,7 @@ public class PforAdversarialTest {
     assertThrows(ParquetDecodingException.class, reader::readLong);
   }
 
-  // ---------------------------------------------------------------------------
   // Skip across vector boundaries works correctly
-  // ---------------------------------------------------------------------------
 
   @Test
   public void skipAcrossVectorBoundary() throws Exception {

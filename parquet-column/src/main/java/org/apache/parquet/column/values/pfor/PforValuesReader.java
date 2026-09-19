@@ -30,11 +30,11 @@ import org.apache.parquet.io.ParquetDecodingException;
 /**
  * Abstract base class for PFOR values readers with lazy per-vector decoding.
  *
- * <p>Reads PFOR-encoded values from the interleaved page layout:
+ * <p>Reads PFOR-encoded values from the page layout:
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 7 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B x numVectors      │ info + data  │ info + data  │     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *
