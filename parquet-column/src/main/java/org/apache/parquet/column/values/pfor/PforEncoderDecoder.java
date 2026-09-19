@@ -69,14 +69,9 @@ public final class PforEncoderDecoder {
     int bestBitWidth = 0;
     int bestExceptions = 0;
 
-    // exceptionsAbove[b] = number of deltas requiring > b bits
-    int exceptionsAbove = numElements; // at b=0, all nonzero deltas might be exceptions
-    // Actually: deltas requiring > 0 bits = all deltas with bitsRequired > 0
-    // We need to track cumulative: exceptionsAbove starts at numElements - bitsHist[0]
-    // But let's compute it properly by starting from b=0.
-    // At b=0, only deltas requiring 0 bits (i.e., delta==0) are NOT exceptions.
-    // Correction: at candidate bit_width = b, values needing bitsRequired > b are exceptions.
-    // bitsRequired(0) = 0, so delta==0 needs 0 bits. At b=0, exceptions = values with bitsRequired > 0.
+    // At candidate width b, the deltas needing more than b bits are exceptions.
+    // A zero delta needs no bits, so at b=0 that is every nonzero delta.
+    int exceptionsAbove = numElements;
     exceptionsAbove = numElements - bitsHist[0];
 
     for (int b = 0; b <= 32; b++) {

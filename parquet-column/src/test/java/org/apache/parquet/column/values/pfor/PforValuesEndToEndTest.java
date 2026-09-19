@@ -29,13 +29,11 @@ import org.junit.Test;
 
 /**
  * End-to-end tests for PFOR encoding and decoding pipeline.
- * Tests the full writer → serialized bytes → reader round-trip.
+ * Tests the full writer -> serialized bytes -> reader round-trip.
  */
 public class PforValuesEndToEndTest {
 
   private static final int DEFAULT_VECTOR_SIZE = PforConstants.DEFAULT_VECTOR_SIZE;
-
-  // ========== INT32 Helper ==========
 
   private void roundTripInt(int[] values) throws Exception {
     roundTripInt(values, DEFAULT_VECTOR_SIZE);
@@ -69,8 +67,6 @@ public class PforValuesEndToEndTest {
     }
   }
 
-  // ========== INT64 Helper ==========
-
   private void roundTripLong(long[] values) throws Exception {
     roundTripLong(values, DEFAULT_VECTOR_SIZE);
   }
@@ -102,8 +98,6 @@ public class PforValuesEndToEndTest {
       }
     }
   }
-
-  // ========== INT32 Tests ==========
 
   @Test
   public void testIntSimpleSequence() throws Exception {
@@ -223,8 +217,6 @@ public class PforValuesEndToEndTest {
     roundTripInt(values);
   }
 
-  // ========== INT64 Tests ==========
-
   @Test
   public void testLongSimpleSequence() throws Exception {
     long[] values = new long[100];
@@ -313,8 +305,6 @@ public class PforValuesEndToEndTest {
     roundTripLong(values, 8);
   }
 
-  // ========== Writer Reset/Reuse ==========
-
   @Test
   public void testIntWriterReset() throws Exception {
     PforValuesWriter.IntPforValuesWriter writer =
@@ -370,8 +360,6 @@ public class PforValuesEndToEndTest {
     writer.close();
   }
 
-  // ========== Reader Skip Tests ==========
-
   @Test
   public void testIntSkip() throws Exception {
     int[] values = new int[2048];
@@ -423,8 +411,6 @@ public class PforValuesEndToEndTest {
 
     writer.close();
   }
-
-  // ========== Empty Input ==========
 
   @Test
   public void testIntEmptyInput() throws Exception {

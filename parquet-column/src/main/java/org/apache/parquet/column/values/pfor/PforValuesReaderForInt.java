@@ -28,7 +28,7 @@ import org.apache.parquet.io.ParquetDecodingException;
 /**
  * PFOR values reader for INT32 type with lazy per-vector decoding.
  *
- * <p>Reads PFOR-encoded int values from the interleaved page layout.
+ * <p>Reads PFOR-encoded int values from the PFOR page layout.
  * Each vector is decoded on first access using BytePacker-based unpacking.
  *
  * <p>Per-vector format:

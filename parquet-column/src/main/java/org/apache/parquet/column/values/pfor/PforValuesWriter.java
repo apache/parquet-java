@@ -45,16 +45,18 @@ import org.apache.parquet.column.values.bitpacking.Packer;
  * On {@link #getBytes()}, any remaining partial vector is flushed, and the
  * final page bytes are assembled.
  *
- * <p>Interleaved Page Layout:
+ * <p>Page layout:
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 7 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B x numVectors      │ info + data  │ info + data  │     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *
- * <p>Each vector contains interleaved:
- * PforVectorInfo(7B/11B) + PackedValues + ExceptionPositions + ExceptionValues
+ * <p>A vector carries its own info ahead of its data, so it can be decoded
+ * without reading any other vector: PforVectorInfo (7B for INT32, 11B for
+ * INT64), then the packed values, then the exception positions, then the
+ * exception values.
  */
 public abstract class PforValuesWriter extends ValuesWriter {
 
