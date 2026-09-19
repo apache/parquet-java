@@ -71,8 +71,7 @@ public final class PforEncoderDecoder {
 
     // At candidate width b, the deltas needing more than b bits are exceptions.
     // A zero delta needs no bits, so at b=0 that is every nonzero delta.
-    int exceptionsAbove = numElements;
-    exceptionsAbove = numElements - bitsHist[0];
+    int exceptionsAbove = numElements - bitsHist[0];
 
     for (int b = 0; b <= 32; b++) {
       long packingCost = (long) numElements * b;
