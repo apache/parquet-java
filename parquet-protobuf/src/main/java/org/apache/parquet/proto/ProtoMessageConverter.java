@@ -36,6 +36,7 @@ import com.google.protobuf.DoubleValue;
 import com.google.protobuf.FloatValue;
 import com.google.protobuf.Int32Value;
 import com.google.protobuf.Int64Value;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
 import com.google.protobuf.UInt32Value;
@@ -347,6 +348,9 @@ class ProtoMessageConverter extends GroupConverter {
           if (messageType.equals(BytesValue.getDescriptor())) {
             return new ProtoBytesValueConverter(pvc);
           }
+          if (parquetType.asPrimitiveType().getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.BINARY) {
+            return new ProtoMessageBytesConverter(pvc, parentBuilder.newBuilderForField(fieldDescriptor));
+          }
         }
         Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
         return new ProtoMessageConverter(conf, pvc, subBuilder, parquetType.asGroupType(), extraMetadata);
@@ -492,6 +496,28 @@ class ProtoMessageConverter extends GroupConverter {
         Binary binaryValue = dictionary.decodeToBinary(i);
         dict[i] = translateEnumValue(binaryValue);
       }
+    }
+  }
+
+  static final class ProtoMessageBytesConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+    final Message.Builder builder;
+
+    public ProtoMessageBytesConverter(ParentValueContainer parent, Message.Builder builder) {
+      this.parent = parent;
+      this.builder = builder;
+    }
+
+    @Override
+    public void addBinary(Binary binary) {
+      builder.clear();
+      try {
+        builder.mergeFrom(ByteString.copyFrom(binary.toByteBuffer()));
+      } catch (InvalidProtocolBufferException e) {
+        throw new ParquetDecodingException("Cannot parse protocol buffer bytes", e);
+      }
+      parent.add(builder.build());
     }
   }
 

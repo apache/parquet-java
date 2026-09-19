@@ -361,7 +361,27 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         return new BinaryWriter();
       }
 
+      Type listElementType = getListElementType(fieldDescriptor, type);
+      if (listElementType != null) {
+        if (isBinary(listElementType)) {
+          return new BinaryWriter();
+        }
+        return new MessageWriter(fieldDescriptor.getMessageType(), listElementType.asGroupType());
+      }
+
       return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type));
+    }
+
+    private boolean isBinary(Type type) {
+      return type.isPrimitive()
+          && type.asPrimitiveType().getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.BINARY;
+    }
+
+    private Type getListElementType(FieldDescriptor fieldDescriptor, Type type) {
+      if (!writeSpecsCompliant || !fieldDescriptor.isRepeated() || fieldDescriptor.isMapField()) {
+        return null;
+      }
+      return type.asGroupType().getType("list").asGroupType().getType("element");
     }
 
     private GroupType getGroupType(Type type) {
@@ -403,15 +423,18 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       // KeyFieldWriter
       FieldDescriptor keyProtoField = fields.get(0);
-      FieldWriter keyWriter = createWriter(keyProtoField, type);
+      GroupType keyValueType = type.asGroupType().getType("key_value").asGroupType();
+      Type keyType = keyValueType.getType("key");
+      FieldWriter keyWriter = createWriter(keyProtoField, keyType);
       keyWriter.setFieldName(keyProtoField.getName());
-      keyWriter.setIndex(0);
+      keyWriter.setIndex(keyValueType.getFieldIndex(keyProtoField.getName()));
 
       // ValueFieldWriter
       FieldDescriptor valueProtoField = fields.get(1);
-      FieldWriter valueWriter = createWriter(valueProtoField, type);
+      Type valueType = keyValueType.getType("value");
+      FieldWriter valueWriter = createWriter(valueProtoField, valueType);
       valueWriter.setFieldName(valueProtoField.getName());
-      valueWriter.setIndex(1);
+      valueWriter.setIndex(keyValueType.getFieldIndex(valueProtoField.getName()));
 
       return new MapWriter(keyWriter, valueWriter);
     }
