@@ -37,6 +37,11 @@ public class LocalInputFile implements InputFile {
   }
 
   @Override
+  public String toString() {
+    return path.toString();
+  }
+
+  @Override
   public long getLength() throws IOException {
     if (length == -1) {
       try (RandomAccessFile file = new RandomAccessFile(path.toFile(), "r")) {
