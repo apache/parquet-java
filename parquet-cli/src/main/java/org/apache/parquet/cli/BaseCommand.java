@@ -34,7 +34,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -63,9 +65,12 @@ import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 
 public abstract class BaseCommand implements Command, Configurable {
@@ -284,6 +289,16 @@ public abstract class BaseCommand implements Command, Configurable {
     return new SeekableFSDataInputStream(fs, path);
   }
 
+  protected boolean isParquetFile(String source) throws IOException {
+    if (STDIN_AS_SOURCE.equals(source)) {
+      return false;
+    }
+
+    try (InputStream in = open(source)) {
+      return Formats.detectFormat(in) == Formats.Format.PARQUET;
+    }
+  }
+
   @Override
   public void setConf(Configuration conf) {
     this.conf = conf;
@@ -376,6 +391,100 @@ public abstract class BaseCommand implements Command, Configurable {
     }
 
     return ParquetFileReader.open(in, optionsBuilder.build());
+  }
+
+  protected MessageType getParquetFileSchema(String source) throws IOException {
+    try (ParquetFileReader reader = createParquetFileReader(source)) {
+      return reader.getFileMetaData().getSchema();
+    }
+  }
+
+  protected MessageType getParquetProjection(String source, List<String> columns) throws IOException {
+    MessageType schema = getParquetFileSchema(source);
+    if (columns == null || columns.isEmpty()) {
+      return schema;
+    }
+
+    ParquetProjection projection = new ParquetProjection();
+    for (String column : uniqueColumns(columns)) {
+      addProjectionPath(schema, projection, column);
+    }
+
+    List<Type> fields = new ArrayList<>(projection.children.size());
+    for (Map.Entry<String, ParquetProjection> entry : projection.children.entrySet()) {
+      Type field = schema.getType(entry.getKey());
+      fields.add(projectType(field, entry.getValue()));
+    }
+    return new MessageType(schema.getName(), fields);
+  }
+
+  protected ParquetReader<Group> openParquetGroupReader(String source, List<String> columns) throws IOException {
+    MessageType projection = columns == null || columns.isEmpty() ? null : getParquetProjection(source, columns);
+    return openParquetGroupReader(source, projection);
+  }
+
+  protected ParquetReader<Group> openParquetGroupReader(String source, MessageType projection) throws IOException {
+    Configuration conf = new Configuration(getConf());
+    if (projection != null) {
+      conf.set(ReadSupport.PARQUET_READ_SCHEMA, projection.toString());
+    }
+    return ParquetReader.<Group>builder(new GroupReadSupport(), qualifiedPath(source))
+        .withConf(conf)
+        .build();
+  }
+
+  protected List<String> uniqueColumns(List<String> columns) {
+    if (columns == null) {
+      return null;
+    }
+    Map<String, Boolean> uniqueColumns = new LinkedHashMap<>();
+    for (String column : columns) {
+      uniqueColumns.put(column, Boolean.TRUE);
+    }
+    return new ArrayList<>(uniqueColumns.keySet());
+  }
+
+  private void addProjectionPath(MessageType schema, ParquetProjection projection, String column) {
+    String[] path = column.split("\\.");
+    ParquetProjection currentProjection = projection;
+    Type currentType = schema;
+    for (int i = 0; i < path.length; i++) {
+      String name = path[i];
+      Preconditions.checkArgument(!name.isEmpty(), "Empty reference: ''");
+      Preconditions.checkArgument(
+          currentType.asGroupType().containsField(name), "Cannot find field '%s' in schema: %s", column, schema);
+
+      Type childType = currentType.asGroupType().getType(name);
+      ParquetProjection childProjection =
+          currentProjection.children.computeIfAbsent(name, ignored -> new ParquetProjection());
+      if (i + 1 == path.length) {
+        childProjection.includeWholeType = true;
+        childProjection.children.clear();
+      } else {
+        Preconditions.checkArgument(
+            !childType.isPrimitive(), "Cannot find field '%s' in primitive schema: %s", column, childType);
+        currentType = childType;
+        currentProjection = childProjection;
+      }
+    }
+  }
+
+  private Type projectType(Type type, ParquetProjection projection) {
+    if (projection.includeWholeType || projection.children.isEmpty()) {
+      return type;
+    }
+
+    List<Type> fields = new ArrayList<>(projection.children.size());
+    for (Map.Entry<String, ParquetProjection> entry : projection.children.entrySet()) {
+      Type field = type.asGroupType().getType(entry.getKey());
+      fields.add(projectType(field, entry.getValue()));
+    }
+    return type.asGroupType().withNewFields(fields);
+  }
+
+  private static class ParquetProjection {
+    private boolean includeWholeType = false;
+    private final Map<String, ParquetProjection> children = new LinkedHashMap<>();
   }
 
   protected FileDecryptionProperties createFileDecryptionProperties() {
