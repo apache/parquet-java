@@ -25,6 +25,7 @@ import com.google.protobuf.Message;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Queue;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -37,6 +38,8 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.event.LoggingEvent;
 
 public class CatCommandTest extends ParquetFileTest {
   @Test
@@ -68,6 +71,46 @@ public class CatCommandTest extends ParquetFileTest {
   }
 
   @Test
+  public void testCatCommandSingleColumnProjectionOutput() {
+    withLogger(this::testCatCommandSingleColumnProjectionOutput);
+  }
+
+  private void testCatCommandSingleColumnProjectionOutput(Logger console, Queue<? extends LoggingEvent> loggingEvents)
+      throws IOException {
+    File file = parquetFile();
+    CatCommand command = new CatCommand(console, 2);
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList(INT32_FIELD);
+    command.setConf(new Configuration());
+
+    assertThat(command.run()).isZero();
+    assertThat(loggingEvents).extracting(LoggingEvent::getMessage).containsExactly("32", "33");
+    loggingEvents.clear();
+  }
+
+  @Test
+  public void testCatCommandMultipleColumnProjectionOutput() {
+    withLogger(this::testCatCommandMultipleColumnProjectionOutput);
+  }
+
+  private void testCatCommandMultipleColumnProjectionOutput(Logger console, Queue<? extends LoggingEvent> loggingEvents)
+      throws IOException {
+    File file = parquetFile();
+    CatCommand command = new CatCommand(console, 1);
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList(INT32_FIELD, INT64_FIELD);
+    command.setConf(new Configuration());
+
+    assertThat(command.run()).isZero();
+    assertThat(loggingEvents).hasSize(1);
+    assertThat(loggingEvents.remove().getMessage())
+        .contains(INT32_FIELD)
+        .contains(INT64_FIELD)
+        .doesNotContain(FLOAT_FIELD);
+    loggingEvents.clear();
+  }
+
+  @Test
   public void testCatCommandWithInvalidColumn() {
     File file = parquetFile();
     CatCommand command = new CatCommand(createLogger(), 0);
@@ -90,6 +133,29 @@ public class CatCommandTest extends ParquetFileTest {
 
     int result = cmd.run();
     assertThat(result).isZero();
+  }
+
+  @Test
+  public void testCatCommandWithAvroCompatListInList() throws Exception {
+    File listInListFile = AvroIsolationParquetFiles.writeAvroCompatListInList(
+        new File(getTempFolder(), "avro_compat_list_in_list.parquet"));
+
+    CatCommand cmd = new CatCommand(createLogger(), 0);
+    cmd.sourceFiles = Arrays.asList(listInListFile.getAbsolutePath());
+    cmd.setConf(new Configuration());
+
+    assertThat(cmd.run()).isZero();
+  }
+
+  @Test
+  public void testCatCommandWithNestedInt96() throws Exception {
+    File int96File = AvroIsolationParquetFiles.writeNestedInt96(new File(getTempFolder(), "nested_int96.parquet"));
+
+    CatCommand cmd = new CatCommand(createLogger(), 0);
+    cmd.sourceFiles = Arrays.asList(int96File.getAbsolutePath());
+    cmd.setConf(new Configuration());
+
+    assertThat(cmd.run()).isZero();
   }
 
   @Test
