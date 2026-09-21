@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 public class DictionaryValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesReader.class);
 
+  private static final String EMPTY_PAGE_MESSAGE = "Attempt to read from empty page";
+
   private ByteBufferInputStream in;
 
   private Dictionary dictionary;
@@ -57,7 +59,21 @@ public class DictionaryValuesReader extends ValuesReader {
       decoder = new RunLengthBitPackingHybridDecoder(1, in) {
         @Override
         public int readInt() throws IOException {
-          throw new IOException("Attempt to read from empty page");
+          throw new IOException(EMPTY_PAGE_MESSAGE);
+        }
+
+        /**
+         * Skipping goes through the decoder directly instead of {@link #readInt()}, so it needs the
+         * same guard: without it, readNext() would hit the empty stream and throw a raw
+         * IllegalArgumentException that {@link DictionaryValuesReader#skip(int)} does not wrap.
+         * Skipping zero values reads nothing and stays silent, matching the loop that
+         * {@link org.apache.parquet.column.values.ValuesReader#skip(int)} used to run.
+         */
+        @Override
+        public void skipInts(int n) throws IOException {
+          if (n > 0) {
+            throw new IOException(EMPTY_PAGE_MESSAGE);
+          }
         }
       };
     }
