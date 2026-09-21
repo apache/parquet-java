@@ -412,11 +412,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
 
       long nanos1 = bb1.getLong(0);
       long nanos2 = bb2.getLong(0);
-      if (nanos1 < 0 || nanos1 > NANOSECONDS_PER_DAY) {
+      if (nanos1 < 0 || nanos1 >= NANOSECONDS_PER_DAY) {
         throw new IllegalArgumentException(
             "Invalid nanos value (must be positive and less than 1 day): " + nanos1);
       }
-      if (nanos2 < 0 || nanos2 > NANOSECONDS_PER_DAY) {
+      if (nanos2 < 0 || nanos2 >= NANOSECONDS_PER_DAY) {
         throw new IllegalArgumentException(
             "Invalid nanos value (must be positive and less than 1 day): " + nanos2);
       }

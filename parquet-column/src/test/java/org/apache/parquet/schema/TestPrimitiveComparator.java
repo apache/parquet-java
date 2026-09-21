@@ -389,7 +389,7 @@ public class TestPrimitiveComparator {
     // Same Julian day so the comparator reaches the nanos validation instead of
     // returning early on the day comparison.
     Binary valid = int96(0, 0);
-    for (long invalidNanos : new long[] {-1L, Long.MIN_VALUE, 86_400_000_000_001L, Long.MAX_VALUE}) {
+    for (long invalidNanos : new long[] {-1L, Long.MIN_VALUE, 86_400_000_000_000L, Long.MAX_VALUE}) {
       Binary invalid = int96(0, invalidNanos);
       assertThatThrownBy(() -> BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(valid, invalid))
           .as("Expected IllegalArgumentException for nanos=" + invalidNanos)
