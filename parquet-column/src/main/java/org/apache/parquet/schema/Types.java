@@ -22,9 +22,11 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -339,11 +341,156 @@ public class Types {
     private static final long MAX_PRECISION_INT64 = maxPrecision(8);
     private static final String LOGICAL_TYPES_DOC_URL =
         "https://github.com/apache/parquet-format/blob/master/LogicalTypes.md";
+    private static final LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<AllowedPhysicalTypes>
+        ALLOWED_PHYSICAL_TYPES =
+            new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<AllowedPhysicalTypes>() {
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.BINARY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.BINARY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.BINARY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.UUIDLogicalTypeAnnotation uuidLogicalType) {
+                return AllowedPhysicalTypes.fixed(
+                    LogicalTypeAnnotation.UUIDLogicalTypeAnnotation.BYTES);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
+                return AllowedPhysicalTypes.fixed(
+                    LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
+                return Optional.of(AllowedPhysicalTypes.ANY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+                return AllowedPhysicalTypes.of(
+                    PrimitiveTypeName.INT32,
+                    PrimitiveTypeName.INT64,
+                    PrimitiveTypeName.BINARY,
+                    PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.INT32);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+                return timeLogicalType.getUnit() == LogicalTypeAnnotation.TimeUnit.MILLIS
+                    ? AllowedPhysicalTypes.of(PrimitiveTypeName.INT32)
+                    : AllowedPhysicalTypes.of(PrimitiveTypeName.INT64);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+                return intLogicalType.getBitWidth() == 64
+                    ? AllowedPhysicalTypes.of(PrimitiveTypeName.INT64)
+                    : AllowedPhysicalTypes.of(PrimitiveTypeName.INT32);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.INT64);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
+                return AllowedPhysicalTypes.fixed(12);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.BINARY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.BINARY);
+              }
+
+              @Override
+              public Optional<AllowedPhysicalTypes> visit(
+                  LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
+                return AllowedPhysicalTypes.of(PrimitiveTypeName.BINARY);
+              }
+            };
+
+    private static final class AllowedPhysicalTypes {
+      private static final AllowedPhysicalTypes NONE =
+          new AllowedPhysicalTypes(EnumSet.noneOf(PrimitiveTypeName.class), NOT_SET);
+      private static final AllowedPhysicalTypes ANY =
+          new AllowedPhysicalTypes(EnumSet.allOf(PrimitiveTypeName.class), NOT_SET);
+
+      private final EnumSet<PrimitiveTypeName> types;
+      private final int requiredLength;
+
+      private AllowedPhysicalTypes(EnumSet<PrimitiveTypeName> types, int requiredLength) {
+        this.types = types;
+        this.requiredLength = requiredLength;
+      }
+
+      private static Optional<AllowedPhysicalTypes> of(PrimitiveTypeName first, PrimitiveTypeName... rest) {
+        return Optional.of(new AllowedPhysicalTypes(EnumSet.of(first, rest), NOT_SET));
+      }
+
+      private static Optional<AllowedPhysicalTypes> fixed(int requiredLength) {
+        return Optional.of(
+            new AllowedPhysicalTypes(EnumSet.of(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY), requiredLength));
+      }
+
+      private boolean accepts(PrimitiveTypeName type, int length) {
+        return types.contains(type) && (requiredLength == NOT_SET || length == requiredLength);
+      }
+
+      private boolean isEmpty() {
+        return types.isEmpty();
+      }
+
+      @Override
+      public String toString() {
+        if (requiredLength != NOT_SET) {
+          return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY + "(" + requiredLength + ")";
+        }
+        return types.stream().map(Enum::name).collect(Collectors.joining(", "));
+      }
+    }
+
     private final PrimitiveTypeName primitiveType;
     private int length = NOT_SET;
     private int precision = NOT_SET;
     private int scale = NOT_SET;
     private ColumnOrder columnOrder;
+    private boolean ignoreUnsupportedLogicalAnnotations = false;
 
     private BasePrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
@@ -428,6 +575,18 @@ public class Types {
       return self();
     }
 
+    /**
+     * When set, an unsupported logical type annotation or logical/physical type combination
+     * results in the annotation being dropped rather than throwing. The associated statistics are
+     * also forcefully ignored by setting the column order to {@link ColumnOrderName#UNDEFINED}.
+     *
+     * @return this builder for method chaining
+     */
+    public THIS ignoreUnsupportedLogicalAnnotations() {
+      this.ignoreUnsupportedLogicalAnnotations = true;
+      return self();
+    }
+
     @Override
     protected PrimitiveType build(String name) {
       if (length == 0 && logicalTypeAnnotation instanceof LogicalTypeAnnotation.UUIDLogicalTypeAnnotation) {
@@ -439,198 +598,27 @@ public class Types {
 
       DecimalMetadata meta = decimalMetadata();
 
-      // validate type annotations and required metadata
       if (logicalTypeAnnotation != null) {
-        logicalTypeAnnotation
-            .accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Boolean>() {
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
-                return checkBinaryPrimitiveType(stringLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
-                return checkBinaryPrimitiveType(jsonLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
-                return checkBinaryPrimitiveType(bsonLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.UUIDLogicalTypeAnnotation uuidLogicalType) {
-                return checkFixedPrimitiveType(
-                    LogicalTypeAnnotation.UUIDLogicalTypeAnnotation.BYTES, uuidLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
-                return checkFixedPrimitiveType(
-                    LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES, float16LogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
-                return Optional.of(true);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
-                Preconditions.checkState(
-                    (primitiveType == PrimitiveTypeName.INT32)
-                        || (primitiveType == PrimitiveTypeName.INT64)
-                        || (primitiveType == PrimitiveTypeName.BINARY)
-                        || (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY),
-                    "DECIMAL can only annotate INT32, INT64, BINARY, and FIXED");
-                if (primitiveType == PrimitiveTypeName.INT32) {
-                  Preconditions.checkState(
-                      meta.getPrecision() <= MAX_PRECISION_INT32,
-                      "INT32 cannot store %s digits (max %s)",
-                      meta.getPrecision(),
-                      MAX_PRECISION_INT32);
-                } else if (primitiveType == PrimitiveTypeName.INT64) {
-                  Preconditions.checkState(
-                      meta.getPrecision() <= MAX_PRECISION_INT64,
-                      "INT64 cannot store %s digits (max %s)",
-                      meta.getPrecision(),
-                      MAX_PRECISION_INT64);
-                  if (meta.getPrecision() <= MAX_PRECISION_INT32) {
-                    LOGGER.warn(
-                        "Decimal with {} digits is stored in an INT64, but fits in an INT32. See {}.",
-                        precision,
-                        LOGICAL_TYPES_DOC_URL);
-                  }
-                } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
-                  Preconditions.checkState(
-                      meta.getPrecision() <= maxPrecision(length),
-                      "FIXED(%s) cannot store %s digits (max %s)",
-                      length,
-                      meta.getPrecision(),
-                      maxPrecision(length));
-                }
-                return Optional.of(true);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
-                return checkInt32PrimitiveType(dateLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
-                LogicalTypeAnnotation.TimeUnit unit = timeLogicalType.getUnit();
-                switch (unit) {
-                  case MILLIS:
-                    checkInt32PrimitiveType(timeLogicalType);
-                    break;
-                  case MICROS:
-                  case NANOS:
-                    checkInt64PrimitiveType(timeLogicalType);
-                    break;
-                  default:
-                    throw new RuntimeException("Invalid time unit: " + unit);
-                }
-                return Optional.of(true);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
-                int bitWidth = intLogicalType.getBitWidth();
-                switch (bitWidth) {
-                  case 8:
-                  case 16:
-                  case 32:
-                    checkInt32PrimitiveType(intLogicalType);
-                    break;
-                  case 64:
-                    checkInt64PrimitiveType(intLogicalType);
-                    break;
-                  default:
-                    throw new RuntimeException("Invalid bit width: " + bitWidth);
-                }
-                return Optional.of(true);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
-                return checkInt64PrimitiveType(timestampLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
-                return checkFixedPrimitiveType(12, intervalLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
-                return checkBinaryPrimitiveType(enumLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
-                return checkBinaryPrimitiveType(geometryLogicalType);
-              }
-
-              @Override
-              public Optional<Boolean> visit(
-                  LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
-                return checkBinaryPrimitiveType(geographyLogicalType);
-              }
-
-              private Optional<Boolean> checkFixedPrimitiveType(
-                  int l, LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
-                    primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY && length == l,
-                    "%s can only annotate FIXED_LEN_BYTE_ARRAY(%s)",
-                    logicalTypeAnnotation,
-                    l);
-                return Optional.of(true);
-              }
-
-              private Optional<Boolean> checkBinaryPrimitiveType(
-                  LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
-                    primitiveType == PrimitiveTypeName.BINARY,
-                    "%s can only annotate BINARY",
-                    logicalTypeAnnotation);
-                return Optional.of(true);
-              }
-
-              private Optional<Boolean> checkInt32PrimitiveType(
-                  LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
-                    primitiveType == PrimitiveTypeName.INT32,
-                    "%s can only annotate INT32",
-                    logicalTypeAnnotation);
-                return Optional.of(true);
-              }
-
-              private Optional<Boolean> checkInt64PrimitiveType(
-                  LogicalTypeAnnotation logicalTypeAnnotation) {
-                Preconditions.checkState(
-                    primitiveType == PrimitiveTypeName.INT64,
-                    "%s can only annotate INT64",
-                    logicalTypeAnnotation);
-                return Optional.of(true);
-              }
-            })
-            .orElseThrow(() -> new IllegalStateException(
-                logicalTypeAnnotation + " can not be applied to a primitive type"));
+        String annotation = newLogicalTypeSet
+            ? logicalTypeAnnotation.toString()
+            : getOriginalType().toString();
+        AllowedPhysicalTypes allowed =
+            logicalTypeAnnotation.accept(ALLOWED_PHYSICAL_TYPES).orElse(AllowedPhysicalTypes.NONE);
+        if (!allowed.accepts(primitiveType, length)) {
+          if (!ignoreUnsupportedLogicalAnnotations) {
+            throw new IllegalStateException(
+                allowed.isEmpty()
+                    ? annotation + " can not be applied to a primitive type"
+                    : String.format("%s can only annotate [%s]", annotation, allowed));
+          }
+          LOGGER.warn(
+              "Dropping unsupported logical type annotation {} on physical type {}",
+              logicalTypeAnnotation,
+              primitiveType);
+          return new PrimitiveType(
+              repetition, primitiveType, length, name, null, null, id, ColumnOrder.undefined());
+        }
+        validateDecimalPrecision(meta);
       }
 
       if (newLogicalTypeSet) {
@@ -639,6 +627,38 @@ public class Types {
       } else {
         return new PrimitiveType(
             repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
+      }
+    }
+
+    private void validateDecimalPrecision(DecimalMetadata meta) {
+      if (meta == null) {
+        return;
+      }
+      if (primitiveType == PrimitiveTypeName.INT32) {
+        Preconditions.checkState(
+            meta.getPrecision() <= MAX_PRECISION_INT32,
+            "INT32 cannot store %s digits (max %s)",
+            meta.getPrecision(),
+            MAX_PRECISION_INT32);
+      } else if (primitiveType == PrimitiveTypeName.INT64) {
+        Preconditions.checkState(
+            meta.getPrecision() <= MAX_PRECISION_INT64,
+            "INT64 cannot store %s digits (max %s)",
+            meta.getPrecision(),
+            MAX_PRECISION_INT64);
+        if (meta.getPrecision() <= MAX_PRECISION_INT32) {
+          LOGGER.warn(
+              "Decimal with {} digits is stored in an INT64, but fits in an INT32. See {}.",
+              precision,
+              LOGICAL_TYPES_DOC_URL);
+        }
+      } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+        Preconditions.checkState(
+            meta.getPrecision() <= maxPrecision(length),
+            "FIXED(%s) cannot store %s digits (max %s)",
+            length,
+            meta.getPrecision(),
+            maxPrecision(length));
       }
     }
 

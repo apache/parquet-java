@@ -467,7 +467,7 @@ public class TestTypeBuilders {
               .scale(2)
               .named("d"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage("DECIMAL can only annotate INT32, INT64, BINARY, and FIXED");
+          .hasMessage("DECIMAL can only annotate [INT64, INT32, BINARY, FIXED_LEN_BYTE_ARRAY]");
     }
   }
 
@@ -489,16 +489,14 @@ public class TestTypeBuilders {
       for (final PrimitiveTypeName type : nonBinary) {
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null)
-                + " can only annotate BINARY");
+            .hasMessage(logicalType + " can only annotate [BINARY]");
       }
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(
-              LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate BINARY");
+          .hasMessage(logicalType + " can only annotate [BINARY]");
     }
   }
 
@@ -520,15 +518,14 @@ public class TestTypeBuilders {
       for (final PrimitiveTypeName type : nonInt32) {
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage(
-                LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT32");
+            .hasMessage(logicalType + " can only annotate [INT32]");
       }
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT32");
+          .hasMessage(logicalType + " can only annotate [INT32]");
     }
   }
 
@@ -550,15 +547,14 @@ public class TestTypeBuilders {
       for (final PrimitiveTypeName type : nonInt64) {
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage(
-                LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
+            .hasMessage(logicalType + " can only annotate [INT64]");
       }
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(LogicalTypeAnnotation.fromOriginalType(logicalType, null) + " can only annotate INT64");
+          .hasMessage(logicalType + " can only annotate [INT64]");
     }
   }
 
@@ -576,7 +572,7 @@ public class TestTypeBuilders {
     for (final PrimitiveTypeName type : nonFixed) {
       assertThatThrownBy(() -> Types.required(type).as(INTERVAL).named("interval"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
+          .hasMessage("INTERVAL can only annotate [FIXED_LEN_BYTE_ARRAY(12)]");
     }
   }
 
@@ -587,7 +583,7 @@ public class TestTypeBuilders {
             .as(INTERVAL)
             .named("interval"))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
+        .hasMessage("INTERVAL can only annotate [FIXED_LEN_BYTE_ARRAY(12)]");
   }
 
   @Test
@@ -1604,5 +1600,27 @@ public class TestTypeBuilders {
     PrimitiveType optionalGeographyActual =
         Types.optional(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
     assertThat(optionalGeographyActual).isEqualTo(optionalGeographyExpected);
+  }
+
+  @Test
+  public void testIgnoreUnsupportedLogicalAnnotations() {
+    LogicalTypeAnnotation[] annotations = {
+      LogicalTypeAnnotation.timestampType(true, MILLIS), LogicalTypeAnnotation.decimalType(2, 9)
+    };
+    for (LogicalTypeAnnotation annotation : annotations) {
+      PrimitiveType pt = Types.required(BOOLEAN)
+          .ignoreUnsupportedLogicalAnnotations()
+          .as(annotation)
+          .named("unsupported");
+      assertThat(pt.getPrimitiveTypeName()).isEqualTo(BOOLEAN);
+      assertThat(pt.getLogicalTypeAnnotation()).isNull();
+      assertThat(pt.columnOrder().getColumnOrderName()).isEqualTo(ColumnOrder.ColumnOrderName.UNDEFINED);
+    }
+    assertThatThrownBy(() -> Types.required(INT32)
+            .ignoreUnsupportedLogicalAnnotations()
+            .as(LogicalTypeAnnotation.decimalType(2, 10))
+            .named("invalidDecimal"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("INT32 cannot store 10 digits (max 9)");
   }
 }
