@@ -28,11 +28,15 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.proto.test.Trees;
 import org.apache.parquet.schema.InvalidSchemaException;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.PrimitiveType;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -40,6 +44,10 @@ import org.junit.jupiter.api.Test;
  * groups, so writer construction used to fail with an {@code InvalidSchemaException}). They are
  * now terminated as proto bytes, like recursion beyond maxRecursion, which also keeps the field's
  * presence observable (null vs an empty byte array).
+ * <p>
+ * The written files are read back both with {@link ProtoParquetReader} (which parses the bytes
+ * back into the message) and with parquet-hadoop's protobuf-agnostic {@link GroupReadSupport},
+ * to show that a reader without protobuf knowledge sees plain, unannotated binary columns.
  */
 public class ProtoEmptyMessageTest {
 
@@ -58,7 +66,8 @@ public class ProtoEmptyMessageTest {
     return file;
   }
 
-  private static List<Group> read(Path file) throws IOException {
+  /** Reads with parquet-hadoop's generic {@link GroupReadSupport}, which knows nothing about protobuf. */
+  private static List<Group> readWithGenericReader(Path file) throws IOException {
     List<Group> rows = new ArrayList<>();
     try (ParquetReader<Group> reader =
         ParquetReader.builder(new GroupReadSupport(), file).build()) {
@@ -67,6 +76,62 @@ public class ProtoEmptyMessageTest {
       }
     }
     return rows;
+  }
+
+  private static MessageType readFooterSchema(Path file) throws IOException {
+    try (ParquetFileReader reader = ParquetFileReader.open(new Configuration(), file)) {
+      return reader.getFileMetaData().getSchema();
+    }
+  }
+
+  @Test
+  public void emptyMessageFieldsAreUnannotatedBinaryColumns() throws Exception {
+    // What a reader without protobuf knowledge sees in the footer: plain BINARY columns with no
+    // logical type, keeping the field's repetition (or the standard LIST/MAP wrappers).
+    MessageType schema = readFooterSchema(write(true, Trees.StubBox.getDefaultInstance()));
+
+    assertThat(schema)
+        .isEqualTo(MessageTypeParser.parseMessageType("message Trees.StubBox {\n"
+            + "  optional binary stub = 1;\n"
+            + "  optional group stubs (LIST) = 2 {\n"
+            + "    repeated group list {\n"
+            + "      required binary element;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional group stub_map (MAP) = 3 {\n"
+            + "    repeated group key_value {\n"
+            + "      required binary key (STRING);\n"
+            + "      optional binary value;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional binary name (STRING) = 4;\n"
+            + "}"));
+
+    PrimitiveType stub = schema.getType("stub").asPrimitiveType();
+    assertThat(stub.getPrimitiveTypeName()).isEqualTo(PrimitiveType.PrimitiveTypeName.BINARY);
+    assertThat(stub.getLogicalTypeAnnotation())
+        .as("no logical type: the bytes are opaque to non-protobuf readers")
+        .isNull();
+
+    PrimitiveType element = schema.getType("stubs", "list", "element").asPrimitiveType();
+    assertThat(element.getPrimitiveTypeName()).isEqualTo(PrimitiveType.PrimitiveTypeName.BINARY);
+    assertThat(element.getLogicalTypeAnnotation()).isNull();
+
+    PrimitiveType value = schema.getType("stub_map", "key_value", "value").asPrimitiveType();
+    assertThat(value.getPrimitiveTypeName()).isEqualTo(PrimitiveType.PrimitiveTypeName.BINARY);
+    assertThat(value.getLogicalTypeAnnotation()).isNull();
+  }
+
+  @Test
+  public void emptyMessageFieldsAreUnannotatedBinaryColumnsOldStyle() throws Exception {
+    MessageType schema = readFooterSchema(write(false, Trees.StubBox.getDefaultInstance()));
+
+    PrimitiveType stubs = schema.getType("stubs").asPrimitiveType();
+    assertThat(stubs.getRepetition())
+        .as("old style keeps the repeated field itself")
+        .isEqualTo(PrimitiveType.Repetition.REPEATED);
+    assertThat(stubs.getPrimitiveTypeName()).isEqualTo(PrimitiveType.PrimitiveTypeName.BINARY);
+    assertThat(stubs.getLogicalTypeAnnotation()).isNull();
   }
 
   @Test
@@ -79,7 +144,7 @@ public class ProtoEmptyMessageTest {
         .setName("x")
         .build();
 
-    Group row = read(write(true, box)).get(0);
+    Group row = readWithGenericReader(write(true, box)).get(0);
     assertThat(row.getBinary("stub", 0).length())
         .as("optional empty message present as zero bytes")
         .isEqualTo(0);
@@ -101,7 +166,7 @@ public class ProtoEmptyMessageTest {
         .build();
     Trees.StubBox without = Trees.StubBox.getDefaultInstance();
 
-    List<Group> rows = read(write(true, with, without));
+    List<Group> rows = readWithGenericReader(write(true, with, without));
     assertThat(rows.get(0).getFieldRepetitionCount("stub"))
         .as("set empty message is present")
         .isEqualTo(1);
@@ -117,7 +182,7 @@ public class ProtoEmptyMessageTest {
         .addStubs(Trees.Stub.getDefaultInstance())
         .build();
 
-    Group row = read(write(false, box)).get(0);
+    Group row = readWithGenericReader(write(false, box)).get(0);
     assertThat(row.getFieldRepetitionCount("stubs"))
         .as("repeated empty messages keep their cardinality")
         .isEqualTo(2);

@@ -21,3 +21,45 @@ parquet-protobuf
 ================
 
 Protocol Buffer support for Parquet columnar format.
+
+## Message fields stored as proto bytes
+
+Two kinds of message fields cannot be mapped to a Parquet group, so `ProtoSchemaConverter`
+terminates them as the **serialized protobuf message** instead:
+
+* **Fields of an empty message type** (`message Stub {}`) &mdash; Parquet forbids empty groups.
+  An empty message serializes to zero bytes, so the column is cheap, and field presence still
+  round-trips: `null` means the field was unset, an empty value means it was set.
+* **Recursive fields beyond `parquet.proto.maxRecursion`** (default 5) &mdash; the remaining
+  sub-tree is stored as the serialized message instead of expanding the schema forever.
+
+The Parquet type is an unannotated `BINARY` column that keeps the field's own repetition (or,
+for repeated fields and map values, sits inside the standard `LIST` / `MAP` wrappers when
+`parquet.proto.writeSpecsCompliant` is set):
+
+```
+message Trees.StubBox {
+  optional binary stub = 1;                    // Stub stub = 1;
+  optional group stubs (LIST) = 2 {            // repeated Stub stubs = 2;
+    repeated group list {
+      required binary element;
+    }
+  }
+  optional group stub_map (MAP) = 3 {          // map<string, Stub> stub_map = 3;
+    repeated group key_value {
+      required binary key (STRING);
+      optional binary value;
+    }
+  }
+}
+```
+
+Readers that do not know about protobuf simply see opaque bytes (all of them empty for an
+empty message type). Readers that do can parse the bytes with the message's descriptor, which
+the writer stores in the file footer under the `parquet.proto.descriptor` key;
+`ProtoParquetReader` does this automatically and materializes the original message.
+
+Note that the column type follows the proto schema at write time: if an empty message type later
+gains fields, or `parquet.proto.maxRecursion` is changed, new files store the field as a group
+where old files store `BINARY`. Tools that merge schemas across such files will report a type
+conflict, the same way they do for any other field whose type changed.
