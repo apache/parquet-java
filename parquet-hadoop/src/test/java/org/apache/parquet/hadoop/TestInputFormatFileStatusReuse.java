@@ -17,9 +17,7 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,16 +45,15 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestInputFormatFileStatusReuse {
   private static final String TRACKING_SCHEME = "tracking";
   private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("message test { required int32 id; }");
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   @Test
   public void reusesListedFileStatusAfterReadingAndCachingFooters() throws Exception {
@@ -65,13 +62,15 @@ public class TestInputFormatFileStatusReuse {
     FixedStatusInputFormat inputFormat = new FixedStatusInputFormat(context.status);
 
     assertUsesListedStatus(inputFormat, context, context.status);
-    assertEquals(1, inputFormat.getFooterReadCount());
+    assertThat(inputFormat.getFooterReadCount()).isEqualTo(1);
 
     FileStatus refreshedStatus = new FileStatus(context.status);
     inputFormat.setStatus(refreshedStatus);
     context.fileSystem.clearObservations();
     assertUsesListedStatus(inputFormat, context, refreshedStatus);
-    assertEquals("the second split plan should use the cached footer", 1, inputFormat.getFooterReadCount());
+    assertThat(inputFormat.getFooterReadCount())
+        .as("the second split plan should use the cached footer")
+        .isEqualTo(1);
   }
 
   @Test
@@ -84,11 +83,12 @@ public class TestInputFormatFileStatusReuse {
     assertUsesListedStatus(inputFormat, context, context.status);
 
     Path metadataPath = new Path(context.status.getPath().getParent(), ParquetFileWriter.PARQUET_METADATA_FILE);
-    assertTrue("the summary metadata should supply the footer", context.fileSystem.getOpenCount(metadataPath) > 0);
-    assertEquals(
-        "the data file should not be opened when its footer comes from summary metadata",
-        0,
-        context.fileSystem.getOpenCount(context.status.getPath()));
+    assertThat(context.fileSystem.getOpenCount(metadataPath))
+        .as("the summary metadata should supply the footer")
+        .isPositive();
+    assertThat(context.fileSystem.getOpenCount(context.status.getPath()))
+        .as("the data file should not be opened when its footer comes from summary metadata")
+        .isZero();
   }
 
   @Test
@@ -104,8 +104,9 @@ public class TestInputFormatFileStatusReuse {
     List<ParquetInputSplit> splits =
         inputFormat.getSplits(context.job.getConfiguration(), Collections.singletonList(footer));
 
-    assertEquals(1, splits.size());
-    assertEquals(1, context.fileSystem.getFileStatusCount(context.status.getPath()));
+    assertThat(splits).hasSize(1);
+    assertThat(context.fileSystem.getFileStatusCount(context.status.getPath()))
+        .isEqualTo(1);
   }
 
   @Test
@@ -120,24 +121,23 @@ public class TestInputFormatFileStatusReuse {
     context.fileSystem.clearObservations();
     List<ParquetInputSplit> splits = inputFormat.getSplits(context.job.getConfiguration(), footers);
 
-    assertEquals(1, splits.size());
-    assertEquals(0, context.fileSystem.getFileStatusCount(context.status.getPath()));
-    assertSame(context.status, context.fileSystem.getBlockLocationStatus());
+    assertThat(splits).hasSize(1);
+    assertThat(context.fileSystem.getFileStatusCount(context.status.getPath()))
+        .isZero();
+    assertThat(context.fileSystem.getBlockLocationStatus()).isSameAs(context.status);
   }
 
   private void assertUsesListedStatus(
       FixedStatusInputFormat inputFormat, TestContext context, FileStatus expectedStatus) throws IOException {
     List<InputSplit> splits = inputFormat.getSplits(context.job);
 
-    assertEquals(1, splits.size());
-    assertEquals(
-        "split planning should not request status for a file returned by listStatus",
-        0,
-        context.fileSystem.getFileStatusCount(context.status.getPath()));
-    assertSame(
-        "block location lookup should use the FileStatus returned by listStatus",
-        expectedStatus,
-        context.fileSystem.getBlockLocationStatus());
+    assertThat(splits).hasSize(1);
+    assertThat(context.fileSystem.getFileStatusCount(context.status.getPath()))
+        .as("split planning should not request status for a file returned by listStatus")
+        .isZero();
+    assertThat(context.fileSystem.getBlockLocationStatus())
+        .as("block location lookup should use the FileStatus returned by listStatus")
+        .isSameAs(expectedStatus);
   }
 
   private TestContext newTestContext(File parquetFile) throws Exception {
@@ -154,7 +154,7 @@ public class TestInputFormatFileStatusReuse {
   }
 
   private File writeParquetFile() throws IOException {
-    File file = new File(temporaryFolder.getRoot(), "part-00000.parquet");
+    File file = tempDir.resolve("part-00000.parquet").toFile();
     Configuration configuration = new Configuration();
     GroupWriteSupport.setSchema(SCHEMA, configuration);
 
