@@ -128,6 +128,12 @@ if [[ ${DRY_RUN:-1} -eq 1 ]]; then
   step_summary ""
 fi
 
+if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+  if ! require_env NEXUS_USERNAME NEXUS_PASSWORD SVN_USERNAME SVN_PASSWORD; then
+    exit 1
+  fi
+fi
+
 if ! validate_and_extract_version "${version}"; then
   print_error "Invalid version format: '${version}'"
   exit 1
@@ -246,15 +252,14 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 3: Create final release tag
+# Step 3: Create final release tag locally (pushed in step 5)
 # ---------------------------------------------------------------------------
 step_summary ""
 step_summary "### Release Tag"
 
 exec_process git tag -a "${final_tag}" "${rc_commit}" -m "Release Apache Parquet ${version}"
-exec_process git push origin "${final_tag}"
 
-step_summary "Created tag \`${final_tag}\` at \`${rc_commit}\`"
+step_summary "Created tag \`${final_tag}\` at \`${rc_commit}\` (pushed in step 5)"
 
 # ---------------------------------------------------------------------------
 # Step 4: Release Nexus staging repo
@@ -267,8 +272,17 @@ nexus_release_staging_repo "${staging_repo_id}" "Apache Parquet ${version}"
 step_summary "Released staging repository \`${staging_repo_id}\` to Maven Central"
 
 # ---------------------------------------------------------------------------
-# Step 5: Create GitHub Release
+# Step 5: Push the release tag and create the GitHub Release
 # ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### Tag Push"
+
+# Pushed here rather than with the tag creation in step 3: a Nexus failure in
+# step 4 would otherwise leave a published release tag, and the
+# "Final release tag already exists" guard then blocks the retry.
+exec_process git push origin "${final_tag}"
+step_summary "Pushed tag \`${final_tag}\`"
+
 step_summary ""
 step_summary "### GitHub Release"
 

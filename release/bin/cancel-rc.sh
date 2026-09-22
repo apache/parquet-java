@@ -115,6 +115,12 @@ if [[ ${DRY_RUN:-1} -eq 1 ]]; then
   step_summary ""
 fi
 
+if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+  if ! require_env NEXUS_USERNAME NEXUS_PASSWORD SVN_USERNAME SVN_PASSWORD; then
+    exit 1
+  fi
+fi
+
 if ! validate_and_extract_version "${version}"; then
   print_error "Invalid version format: '${version}'"
   exit 1
