@@ -66,8 +66,7 @@ public class DictionaryValuesReader extends ValuesReader {
          * Skipping goes through the decoder directly instead of {@link #readInt()}, so it needs the
          * same guard: without it, readNext() would hit the empty stream and throw a raw
          * IllegalArgumentException that {@link DictionaryValuesReader#skip(int)} does not wrap.
-         * Skipping zero values reads nothing and stays silent, matching the loop that
-         * {@link org.apache.parquet.column.values.ValuesReader#skip(int)} used to run.
+         * Skipping zero values reads nothing and stays silent.
          */
         @Override
         public void skipInts(int n) throws IOException {
