@@ -97,6 +97,11 @@ public class RunLengthBitPackingHybridDecoder {
         readNext();
       }
       int consume = Math.min(n, currentCount);
+      if (mode == MODE.PACKED) {
+        // The run is already unpacked into currentBuffer; skipping must advance the read
+        // position too, otherwise a later readInt() re-reads the values we just dropped.
+        currentBufferPosition += consume;
+      }
       currentCount -= consume;
       n -= consume;
     }
