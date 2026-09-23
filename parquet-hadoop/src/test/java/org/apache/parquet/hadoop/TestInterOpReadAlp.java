@@ -20,7 +20,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -341,7 +341,9 @@ public class TestInterOpReadAlp {
     Process check = new ProcessBuilder("python3", "-c", "import pyarrow.parquet")
         .redirectErrorStream(true)
         .start();
-    assumeTrue(check.waitFor() == 0, "python3/pyarrow not available, skipping cross-language test");
+    assumeThat(check.waitFor())
+        .as("python3/pyarrow not available, skipping cross-language test")
+        .isZero();
 
     for (WriterVersion version : new WriterVersion[] {WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0}) {
       MessageType schema = MessageTypeParser.parseMessageType(ALP_SCHEMA);
@@ -407,12 +409,12 @@ public class TestInterOpReadAlp {
       LOG.info("pyarrow cross-compat [{}]: {}", version, output.trim());
       // pyarrow may not yet support reading ALP (Arrow C++ PR #48345 in progress).
       // Skip rather than fail so the test becomes a passing signal once pyarrow adds ALP support.
-      assumeTrue(
-          !output.contains("Unknown encoding type"),
-          "pyarrow does not yet support reading ALP encoding (Arrow C++ PR #48345 pending): " + output);
+      assumeThat(output)
+          .as("pyarrow does not yet support reading ALP encoding (Arrow C++ PR #48345 pending)")
+          .doesNotContain("Unknown encoding type");
       assertThat(exitCode)
           .as("pyarrow failed to read Java-written ALP file (" + version + "): " + output)
-          .isEqualTo(0);
+          .isZero();
     }
   }
 

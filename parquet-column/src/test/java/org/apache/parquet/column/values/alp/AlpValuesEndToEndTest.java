@@ -19,7 +19,7 @@
 package org.apache.parquet.column.values.alp;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -289,23 +289,19 @@ public class AlpValuesEndToEndTest {
     int[] unfittableCounts = {1 << 20, Integer.MAX_VALUE / 2, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
     for (int forgedCount : unfittableCounts) {
       byte[] forged = withForgedElementCount(valid, forgedCount);
-      ParquetDecodingException e = assertThrows(
-          ParquetDecodingException.class,
-          () -> readAllDoubles(forged, Integer.MAX_VALUE),
-          "Forged element count " + forgedCount + " must be rejected");
-      assertThat(e.getMessage())
-          .as("count %s must be rejected by the allocation bound", forgedCount)
-          .contains("remain in the page");
+      // The message pins which check rejected it: the allocation bound, not a later one.
+      assertThatThrownBy(() -> readAllDoubles(forged, Integer.MAX_VALUE))
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("remain in the page");
     }
 
     // A count only slightly too large still fits within the bytes present, so the allocation bound
     // lets it through; the offset array then no longer describes the vectors it claims and the
     // offset validation rejects it. Either way the failure is clean and no vector is decoded.
     byte[] slightlyOver = withForgedElementCount(valid, values.length + 1);
-    assertThrows(
-        ParquetDecodingException.class,
-        () -> readAllDoubles(slightlyOver, Integer.MAX_VALUE),
-        "An element count implying one more vector than was written must be rejected");
+    assertThatThrownBy(() -> readAllDoubles(slightlyOver, Integer.MAX_VALUE))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP first vector offset");
   }
 
   @Test
@@ -334,30 +330,27 @@ public class AlpValuesEndToEndTest {
     // First offset must point exactly past the offset array.
     byte[] badFirst = valid.clone();
     ByteBuffer.wrap(badFirst).order(ByteOrder.LITTLE_ENDIAN).putInt(offsetArrayStart, firstOffset + 8);
-    assertThrows(
-        ParquetDecodingException.class,
-        () -> readAllDoubles(badFirst, values.length),
-        "A first offset that does not follow the offset array must be rejected");
+    assertThatThrownBy(() -> readAllDoubles(badFirst, values.length))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP first vector offset");
 
     // Offsets must increase: pointing vector 1 back at vector 0 would decode vector 0 twice.
     byte[] nonIncreasing = valid.clone();
     ByteBuffer.wrap(nonIncreasing)
         .order(ByteOrder.LITTLE_ENDIAN)
         .putInt(offsetArrayStart + Integer.BYTES, firstOffset);
-    assertThrows(
-        ParquetDecodingException.class,
-        () -> readAllDoubles(nonIncreasing, values.length),
-        "Non-increasing vector offsets must be rejected");
+    assertThatThrownBy(() -> readAllDoubles(nonIncreasing, values.length))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP vector offsets must increase");
 
     // An offset past the end of the page body must be rejected, not read out of bounds.
     byte[] pastEnd = valid.clone();
     ByteBuffer.wrap(pastEnd)
         .order(ByteOrder.LITTLE_ENDIAN)
         .putInt(offsetArrayStart + Integer.BYTES, valid.length * 4);
-    assertThrows(
-        ParquetDecodingException.class,
-        () -> readAllDoubles(pastEnd, values.length),
-        "A vector offset past the end of the body must be rejected");
+    assertThatThrownBy(() -> readAllDoubles(pastEnd, values.length))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP vector 1 offset");
 
     // Sanity: the untouched page still decodes, so the checks above are not rejecting everything.
     assertThat(secondOffset).isGreaterThan(firstOffset);
@@ -386,9 +379,13 @@ public class AlpValuesEndToEndTest {
     // pageValueIndex + n overflows to a negative number for these, which previously slipped past
     // the bounds check and left the reader at a negative index.
     for (int n : new int[] {Integer.MAX_VALUE, Integer.MAX_VALUE - 1, values.length}) {
-      assertThrows(ParquetDecodingException.class, () -> reader.skip(n), "skip(" + n + ") must be rejected");
+      assertThatThrownBy(() -> reader.skip(n))
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("Cannot skip this many elements");
     }
-    assertThrows(ParquetDecodingException.class, () -> reader.skip(-1));
+    assertThatThrownBy(() -> reader.skip(-1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Cannot skip this many elements");
 
     // A legal skip still works after the rejections.
     reader.skip(10);
@@ -1492,7 +1489,9 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(1, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       reader.readFloat(); // read the one value
-      assertThrows(ParquetDecodingException.class, () -> reader.readFloat());
+      assertThatThrownBy(reader::readFloat)
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("ALP float data was already exhausted");
     } finally {
       if (writer != null) {
         writer.reset();
@@ -1514,7 +1513,9 @@ public class AlpValuesEndToEndTest {
       reader.initFromPage(2, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
       // should throw - only 2 values
-      assertThrows(ParquetDecodingException.class, () -> reader.skip(3));
+      assertThatThrownBy(() -> reader.skip(3))
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("Cannot skip this many elements");
     } finally {
       if (writer != null) {
         writer.reset();
@@ -2161,9 +2162,10 @@ public class AlpValuesEndToEndTest {
    */
   @Test
   public void testVectorSize65536Rejected() throws Exception {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator(), 65536));
+    assertThatThrownBy(() ->
+            new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator(), 65536))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Vector size log2 must be between");
   }
 
   /**

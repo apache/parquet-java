@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.column.values.alp;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -30,6 +28,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -117,45 +116,40 @@ public class AlpAdversarialTest {
   public void rejectsBadCompressionMode() throws Exception {
     byte[] page = validDoublePage(32, 16);
     page[0] = (byte) 0x99; // mode is at byte 0
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    });
-    assertThat(ex.getMessage().toLowerCase().contains("compression"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(() -> new AlpValuesReaderForDouble()
+            .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Unsupported ALP compression mode");
   }
 
   @Test
   public void rejectsBadIntegerEncoding() throws Exception {
     byte[] page = validDoublePage(32, 16);
     page[1] = (byte) 0x99; // integer_encoding is at byte 1
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    });
-    assertThat(ex.getMessage().toLowerCase().contains("integer encoding"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(() -> new AlpValuesReaderForDouble()
+            .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Unsupported ALP integer encoding");
   }
 
   @Test
   public void rejectsLogVectorSizeTooLarge() throws Exception {
     byte[] page = validDoublePage(32, 16);
     page[2] = (byte) 99; // log_vector_size at byte 2
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    });
-    assertThat(ex.getMessage().toLowerCase().contains("vector size"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(() -> new AlpValuesReaderForDouble()
+            .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP log vector size");
   }
 
   @Test
   public void rejectsLogVectorSizeTooSmall() throws Exception {
     byte[] page = validDoublePage(32, 16);
     page[2] = (byte) 2; // below MIN_LOG_VECTOR_SIZE=3
-    assertThrows(ParquetDecodingException.class, () -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    });
+    assertThatThrownBy(() -> new AlpValuesReaderForDouble()
+            .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP log vector size");
   }
 
   @Test
@@ -166,24 +160,20 @@ public class AlpAdversarialTest {
     page[4] = (byte) 0xFF;
     page[5] = (byte) 0xFF;
     page[6] = (byte) 0xFF;
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
-      new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    });
-    assertThat(ex.getMessage().toLowerCase().contains("element count"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(() -> new AlpValuesReaderForDouble()
+            .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP element count");
   }
 
   @Test
   public void rejectsNumElementsGreaterThanValuesCount() throws Exception {
     byte[] page = validDoublePage(32, 16);
     // num_elements stays 32; pass valuesCount=10 (smaller than encoded count)
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, () -> {
-      new AlpValuesReaderForDouble().initFromPage(10, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    });
-    assertThat(ex.getMessage().toLowerCase().contains("exceeds"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(() -> new AlpValuesReaderForDouble()
+            .initFromPage(10, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("exceeds page valuesCount");
   }
 
   // ---------------------------------------------------------------------------
@@ -206,10 +196,9 @@ public class AlpAdversarialTest {
     page[v0] = (byte) 99; // exponent byte
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertThat(ex.getMessage().toLowerCase().contains("exponent"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP double exponent");
   }
 
   @Test
@@ -219,10 +208,9 @@ public class AlpAdversarialTest {
     page[v0] = (byte) 99;
     AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readFloat);
-    assertThat(ex.getMessage().toLowerCase().contains("exponent"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readFloat)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP float exponent");
   }
 
   @Test
@@ -233,10 +221,9 @@ public class AlpAdversarialTest {
     page[v0 + 1] = (byte) 5; // factor > exponent
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertThat(ex.getMessage().toLowerCase().contains("factor"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP double factor");
   }
 
   @Test
@@ -248,10 +235,9 @@ public class AlpAdversarialTest {
     page[v0 + 3] = (byte) ((9999 >>> 8) & 0xFF);
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertThat(ex.getMessage().toLowerCase().contains("numexceptions"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP numExceptions");
   }
 
   @Test
@@ -262,10 +248,9 @@ public class AlpAdversarialTest {
     page[v0 + 12] = (byte) 99;
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertThat(ex.getMessage().toLowerCase().contains("bitwidth"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP double bitWidth");
   }
 
   @Test
@@ -276,23 +261,22 @@ public class AlpAdversarialTest {
     page[v0 + 8] = (byte) 99;
     AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readFloat);
-    assertThat(ex.getMessage().toLowerCase().contains("bitwidth"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readFloat)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Invalid ALP float bitWidth");
   }
 
   // ---------------------------------------------------------------------------
   // Truncation and corrupted offsets
   // Each of these must fail cleanly: a catchable decoding exception, never an OutOfMemoryError
-  // from an unbounded allocation and never a silent wrong-value decode. See catchClean.
+  // from an unbounded allocation and never a silent wrong-value decode. See assertFailsCleanly.
   // ---------------------------------------------------------------------------
 
   /** Page with only the 7-byte header — nothing else. */
   @Test
   public void rejectsHeaderOnlyPage() {
     byte[] tiny = new byte[] {0x00, 0x00, 0x0A, 0x20, 0x00, 0x00, 0x00}; // 32 elements, log_vec=10
-    catchClean(() ->
+    assertFailsCleanly(() ->
         new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(tiny))));
   }
 
@@ -302,7 +286,7 @@ public class AlpAdversarialTest {
     // num_vectors = ceil(32/16) = 2, so offset array is 8 bytes. Truncate to chop the 2nd offset.
     byte[] truncated = new byte[7 + 4]; // header + first offset only
     System.arraycopy(page, 0, truncated, 0, truncated.length);
-    catchClean(() -> new AlpValuesReaderForDouble()
+    assertFailsCleanly(() -> new AlpValuesReaderForDouble()
         .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated))));
   }
 
@@ -314,7 +298,7 @@ public class AlpAdversarialTest {
     System.arraycopy(page, 0, truncated, 0, truncated.length);
     // The offset array still describes a second vector that the truncated body cannot hold, so
     // this is now caught up front when the offsets are validated against the body length.
-    catchClean(() -> new AlpValuesReaderForDouble()
+    assertFailsCleanly(() -> new AlpValuesReaderForDouble()
         .initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(truncated))));
   }
 
@@ -328,7 +312,7 @@ public class AlpAdversarialTest {
     page[10] = (byte) 0x7F;
     // Offsets are validated against the body length in initFromPage, so a bogus offset is
     // rejected before any vector is decoded rather than reading out of bounds later.
-    catchClean(() ->
+    assertFailsCleanly(() ->
         new AlpValuesReaderForDouble().initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page))));
   }
 
@@ -341,7 +325,9 @@ public class AlpAdversarialTest {
     byte[] page = validDoublePage(32, 16);
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    assertThrows(ParquetDecodingException.class, () -> reader.skip(33));
+    assertThatThrownBy(() -> reader.skip(33))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Cannot skip this many elements");
   }
 
   @Test
@@ -349,7 +335,9 @@ public class AlpAdversarialTest {
     byte[] page = validDoublePage(32, 16);
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
-    assertThrows(ParquetDecodingException.class, () -> reader.skip(-1));
+    assertThatThrownBy(() -> reader.skip(-1))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Cannot skip this many elements");
   }
 
   @Test
@@ -358,41 +346,35 @@ public class AlpAdversarialTest {
     AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
     reader.initFromPage(8, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
     for (int i = 0; i < 8; i++) reader.readDouble();
-    ParquetDecodingException ex = assertThrows(ParquetDecodingException.class, reader::readDouble);
-    assertThat(ex.getMessage().toLowerCase().contains("exhausted"))
-        .as(ex.getMessage())
-        .isTrue();
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP double data was already exhausted");
   }
 
   // ---------------------------------------------------------------------------
   // Utility
   // ---------------------------------------------------------------------------
 
-  @FunctionalInterface
-  private interface ThrowingRunnable {
-    void run() throws Exception;
-  }
-
   /**
-   * Runs {@code r}, requires it to fail, and requires that failure to be a clean one.
+   * Requires {@code action} to fail, and requires that failure to be a clean one.
    *
-   * <p>Errors are deliberately not caught. An {@link OutOfMemoryError} means a corrupt length drove
-   * an unbounded allocation, and an {@link AssertionError} means an assertion inside {@code r}
-   * failed; catching {@link Throwable} here would let either count as a successful rejection.
+   * <p>The accepted types are deliberately narrow. An {@link OutOfMemoryError} means a corrupt
+   * length drove an unbounded allocation, and an {@link AssertionError} means an assertion inside
+   * {@code action} failed; accepting any {@link Throwable} here would let either count as a
+   * successful rejection.
+   *
+   * <p>No message is asserted because these failures come from two sources: the reader's own
+   * validation, which carries an explanatory message, and the underlying {@link ByteBuffer}, whose
+   * {@link IndexOutOfBoundsException} and {@link BufferUnderflowException} have none. What these
+   * tests pin down is that the failure is loud and typed, not what it says.
    */
-  private static Exception catchClean(ThrowingRunnable r) {
-    try {
-      r.run();
-    } catch (ParquetDecodingException
-        | IOException
-        | IndexOutOfBoundsException
-        | BufferUnderflowException
-        | IllegalArgumentException e) {
-      return e;
-    } catch (Exception e) {
-      fail("Expected a clean decoding failure but got " + e.getClass().getName() + ": " + e.getMessage());
-    }
-    fail("Expected a decoding failure but none was raised");
-    return null; // unreachable
+  private static void assertFailsCleanly(ThrowingCallable action) {
+    assertThatThrownBy(action)
+        .isInstanceOfAny(
+            ParquetDecodingException.class,
+            IOException.class,
+            IndexOutOfBoundsException.class,
+            BufferUnderflowException.class,
+            IllegalArgumentException.class);
   }
 }

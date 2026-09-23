@@ -20,7 +20,7 @@
 package org.apache.parquet.column.values.alp;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -147,9 +147,11 @@ public class AlpExceptionCountTest {
   @Test
   public void testSpotifyExceptionCounts() throws IOException {
     File dir = getDataDir();
-    assumeTrue(dir != null, "alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR");
+    assumeThat(dir)
+        .as("alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR")
+        .isNotNull();
     File file = new File(dir, "floatingpoint_spotify1.csv");
-    assumeTrue(file.exists(), "floatingpoint_spotify1.csv not found in " + dir);
+    assumeThat(file).as("floatingpoint_spotify1.csv not found in " + dir).exists();
 
     reportDataset("Spotify", file);
 
@@ -162,17 +164,17 @@ public class AlpExceptionCountTest {
     }
     double excRate = 100.0 * totalExc / totalRows;
     System.out.printf("%nSpotify overall exception rate: %.2f%%%n", excRate);
-    assertThat(excRate < 10.0)
-        .as("Exception rate should be < 10% for Spotify data, got: " + excRate)
-        .isTrue();
+    assertThat(excRate).as("Exception rate for Spotify data").isLessThan(10.0);
   }
 
   @Test
   public void testAradeExceptionCounts() throws IOException {
     File dir = getDataDir();
-    assumeTrue(dir != null, "alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR");
+    assumeThat(dir)
+        .as("alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR")
+        .isNotNull();
     File file = new File(dir, "floatingpoint_arade.csv");
-    assumeTrue(file.exists(), "floatingpoint_arade.csv not found in " + dir);
+    assumeThat(file).as("floatingpoint_arade.csv not found in " + dir).exists();
 
     reportDataset("Arade", file);
 
@@ -184,18 +186,18 @@ public class AlpExceptionCountTest {
     }
     double excRate = 100.0 * totalExc / totalRows;
     System.out.printf("%nArade overall exception rate: %.2f%%%n", excRate);
-    assertThat(excRate < 10.0)
-        .as("Exception rate should be < 10% for Arade data, got: " + excRate)
-        .isTrue();
+    assertThat(excRate).as("Exception rate for Arade data").isLessThan(10.0);
   }
 
   @Test
   public void testAllDatasetsExceptionCounts() throws IOException {
     File dir = getDataDir();
-    assumeTrue(dir != null, "alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR");
+    assumeThat(dir)
+        .as("alp-test-data/ not found. Run from project root or set ALP_TEST_DATA_DIR")
+        .isNotNull();
 
     File[] csvFiles = dir.listFiles((d, name) -> name.startsWith("floatingpoint_") && name.endsWith(".csv"));
-    assumeTrue(csvFiles != null && csvFiles.length > 0, "No floatingpoint_*.csv files found in " + dir);
+    assumeThat(csvFiles).as("No floatingpoint_*.csv files found in " + dir).isNotEmpty();
 
     System.out.printf("%n=== All Datasets Summary ===%n");
     System.out.printf("  %-30s  %6s  %6s  %7s%n", "dataset", "rows", "exc", "exc%");

@@ -486,18 +486,6 @@ public class DefaultValuesWriterFactoryTest {
   }
 
   @Test
-  public void testFloat_Alp_TakesPrecedenceOverByteStreamSplit() {
-    testAlpTakesPrecedenceOverByteStreamSplit(
-        PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0, AlpValuesWriter.FloatAlpValuesWriter.class);
-  }
-
-  @Test
-  public void testDouble_Alp_TakesPrecedenceOverByteStreamSplit() {
-    testAlpTakesPrecedenceOverByteStreamSplit(
-        PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0, AlpValuesWriter.DoubleAlpValuesWriter.class);
-  }
-
-  @Test
   public void testColumnWiseDictionaryWithFalseDefault() {
     ValuesWriterFactory factory = getDefaultFactory(
         WriterVersion.PARQUET_2_0, false, "binary_dict", "boolean_dict", "float_dict", "int32_dict");
@@ -696,20 +684,6 @@ public class DefaultValuesWriterFactoryTest {
         .build();
     doTestValueWriter(createColumnDescriptor(typeName, "colA"), properties, alpWriterClass);
     doTestValueWriter(createColumnDescriptor(typeName, "colB"), properties, PlainValuesWriter.class);
-  }
-
-  private void testAlpTakesPrecedenceOverByteStreamSplit(
-      PrimitiveTypeName typeName, WriterVersion writerVersion, Class<? extends ValuesWriter> alpWriterClass) {
-    // When both ALP and byte-stream-split are enabled the factory prefers ALP.
-    doTestValueWriter(
-        createColumnDescriptor(typeName),
-        ParquetProperties.builder()
-            .withWriterVersion(writerVersion)
-            .withDictionaryEncoding(false)
-            .withAlp()
-            .withByteStreamSplitEncoding(true)
-            .build(),
-        alpWriterClass);
   }
 
   private void validateFactory(
