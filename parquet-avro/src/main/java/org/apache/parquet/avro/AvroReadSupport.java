@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
@@ -241,24 +242,31 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         .get();
   }
 
-  // Creates a copy of the user's Configuration with derived list encoding properties
+  // Returns a ParquetConfiguration with appropriate list-decoding properties set, inferred from
+  // the file schema as well as user-supplied Configuration properties.
+  // If no configuration changes are required, the original ParquetConfiguration object will be;
+  // returned; otherwise, a copy will be created with the correct properties.
   private static ParquetConfiguration getDerivedListEncodingConf(
       ParquetConfiguration configuration, MessageType fileSchema) {
-    Configuration copiedConfiguration =
-        new Configuration(ConfigurationUtil.createHadoopConfiguration(configuration));
-
-    boolean autoDetectListStructure =
+    final boolean autoDetectListStructure =
         configuration.getBoolean(AUTO_DETECT_LIST_STRUCTURE, AUTO_DETECT_LIST_STRUCTURE_DEFAULT);
 
-    if (autoDetectListStructure
-        && configuration.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE) == null
-        && configuration.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) == null
-        && writesNewListStructure(fileSchema)) {
-      copiedConfiguration.setBoolean(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, false);
-      copiedConfiguration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+    if (!autoDetectListStructure
+        || configuration.get(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE) != null
+        || configuration.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) != null
+        || !writesNewListStructure(fileSchema)) {
+      return configuration;
     }
 
-    return new HadoopParquetConfiguration(copiedConfiguration);
+    // Avoid mutating the original Configuration by creating a copy, with new properties set
+    final ParquetConfiguration copiedConfiguration = new PlainParquetConfiguration();
+    for (Map.Entry<String, String> property : configuration) {
+      copiedConfiguration.set(property.getKey(), property.getValue());
+    }
+    copiedConfiguration.setBoolean(AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, false);
+    copiedConfiguration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+
+    return copiedConfiguration;
   }
 
   private static boolean writesNewListStructure(MessageType schema) {
