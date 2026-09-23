@@ -381,7 +381,8 @@ public class TestStatistics {
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.FixedGenerator(random.nextLong(), 12),
-          new RandomValues.FixedGenerator(random.nextLong(), 2));
+          new RandomValues.FixedGenerator(random.nextLong(), 2),
+          new RandomValues.FixedGenerator(random.nextLong(), 12));
     }
 
     private static MessageType buildSchema(long seed) {
@@ -451,7 +452,12 @@ public class TestStatistics {
           Types.optional(FIXED_LEN_BYTE_ARRAY)
               .length(2)
               .named("float16")
-              .withLogicalTypeAnnotation(LogicalTypeAnnotation.float16Type()));
+              .withLogicalTypeAnnotation(LogicalTypeAnnotation.float16Type()),
+          Types.optional(FIXED_LEN_BYTE_ARRAY)
+              .length(12)
+              .named("timestamp-nanos-flba")
+              .withLogicalTypeAnnotation(
+                  LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.NANOS)));
     }
 
     private static int calculatePrecision(int byteCnt) {
