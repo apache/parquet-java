@@ -580,6 +580,27 @@ public class ProtoSchemaConverterTest {
   }
 
   @Test
+  public void testEmptyMessageFields() throws Exception {
+    String expectedSchema = JOINER.join(
+        "message Trees.StubBox {",
+        "  optional binary stub = 1;",
+        "  optional group stubs (LIST) = 2 {",
+        "    repeated group list {",
+        "      required binary element;",
+        "    }",
+        "  }",
+        "  optional group stub_map (MAP) = 3 {",
+        "    repeated group key_value {",
+        "      required binary key (STRING);",
+        "      optional binary value;",
+        "    }",
+        "  }",
+        "  optional binary name (STRING) = 4;",
+        "}");
+    testConversion(Trees.StubBox.class, expectedSchema, new ProtoSchemaConverter(true, 5, false));
+  }
+
+  @Test
   public void testDeepRecursion() {
     // The general idea is to test the fanout of the schema.
     // TODO: figured out closed forms of the binary tree and struct series.
