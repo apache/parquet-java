@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,6 +60,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class TestParquetFileReaderVectoredOwnership {
   private static final int ROWS = 128;
+  private static final int MAXIMUM_ALLOCATION = 128;
   private static final MessageType SCHEMA =
       MessageTypeParser.parseMessageType("message test { required int32 id; required binary padding (UTF8); }");
 
@@ -96,8 +98,23 @@ class TestParquetFileReaderVectoredOwnership {
   }
 
   @Test
-  void testReleasesMergedOriginalAndChecksumBufferWhenResultsAreSlices() throws Exception {
+  void testSupportsLargerMergedAllocationAndReleasesOriginalAndChecksumBuffers() throws Exception {
     assertSuccessfulReadReleasesBuffers(ReadMode.SLICES);
+  }
+
+  @Test
+  void testReaderCloseReleasesBuffersFromLastSequentialRowGroup() throws Exception {
+    CountingAllocator delegate = new CountingAllocator();
+    try (TrackingByteBufferAllocator tracking = TrackingByteBufferAllocator.wrap(delegate)) {
+      try (ParquetFileReader reader = ParquetFileReader.open(
+          inputFile, footer, options(tracking), new OwnedStream(inputFile.newStream(), ReadMode.SLICES))) {
+        PageReadStore pages = reader.readNextRowGroup();
+        assertThat(pages.getRowCount()).isEqualTo(ROWS);
+        assertThat(delegate.allocations.get()).isPositive();
+        assertThat(delegate.releases.get()).isZero();
+      }
+      assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+    }
   }
 
   @Test
@@ -107,7 +124,7 @@ class TestParquetFileReaderVectoredOwnership {
       ParquetReadOptions readOptions = ParquetReadOptions.builder()
           .withAllocator(tracking)
           .withUseHadoopVectoredIo(true)
-          .withMaxAllocationInBytes(128)
+          .withMaxAllocationInBytes(MAXIMUM_ALLOCATION)
           .useColumnIndexFilter(true)
           .withRecordFilter(FilterCompat.get(ltEq(intColumn("id"), 63)))
           .build();
@@ -150,10 +167,13 @@ class TestParquetFileReaderVectoredOwnership {
           assertEquals(0, delegate.releases.get());
         }
         assertTrue(stream.rangeCount > 1);
+        assertThat(stream.maximumRangeLength).isLessThanOrEqualTo(MAXIMUM_ALLOCATION);
         if (mode == ReadMode.SLICES) {
           assertEquals(2, delegate.allocations.get());
+          assertThat(delegate.maximumAllocation.get()).isGreaterThan(MAXIMUM_ALLOCATION);
         } else {
           assertEquals(stream.rangeCount, delegate.allocations.get());
+          assertThat(delegate.maximumAllocation.get()).isLessThanOrEqualTo(MAXIMUM_ALLOCATION);
         }
         assertEquals(delegate.allocations.get(), delegate.releases.get());
       }
@@ -198,7 +218,7 @@ class TestParquetFileReaderVectoredOwnership {
     return ParquetReadOptions.builder()
         .withAllocator(allocator)
         .withUseHadoopVectoredIo(true)
-        .withMaxAllocationInBytes(128)
+        .withMaxAllocationInBytes(MAXIMUM_ALLOCATION)
         .build();
   }
 
@@ -212,10 +232,12 @@ class TestParquetFileReaderVectoredOwnership {
   private static final class CountingAllocator extends HeapByteBufferAllocator {
     private final AtomicInteger allocations = new AtomicInteger();
     private final AtomicInteger releases = new AtomicInteger();
+    private final AtomicInteger maximumAllocation = new AtomicInteger();
 
     @Override
     public ByteBuffer allocate(int size) {
       allocations.incrementAndGet();
+      maximumAllocation.accumulateAndGet(size, Math::max);
       return super.allocate(size);
     }
 
@@ -231,6 +253,7 @@ class TestParquetFileReaderVectoredOwnership {
     private final ReadMode mode;
     private final CountDownLatch allowClose = new CountDownLatch(1);
     private int rangeCount;
+    private int maximumRangeLength;
 
     OwnedStream(SeekableInputStream delegate, ReadMode mode) {
       super(delegate);
@@ -285,6 +308,7 @@ class TestParquetFileReaderVectoredOwnership {
       }
       for (int index = 0; index < ranges.size(); index++) {
         ParquetFileRange range = ranges.get(index);
+        maximumRangeLength = Math.max(maximumRangeLength, range.getLength());
         ByteBuffer buffer;
         if (merged == null) {
           buffer = allocator.allocate(range.getLength());

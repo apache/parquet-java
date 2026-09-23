@@ -24,7 +24,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -53,6 +55,15 @@ final class VectoredReadOperation {
   private volatile boolean submissionSucceeded;
   private boolean aborted;
   private boolean releaseRegistered;
+
+  static ThreadPoolExecutor newExecutor() {
+    // Retain submission/cleanup ordering without keeping an idle thread for every open reader.
+    return new ThreadPoolExecutor(0, 1, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), task -> {
+      Thread thread = new Thread(task, "parquet-vectored-read");
+      thread.setDaemon(true);
+      return thread;
+    });
+  }
 
   VectoredReadOperation(
       SeekableInputStream stream,

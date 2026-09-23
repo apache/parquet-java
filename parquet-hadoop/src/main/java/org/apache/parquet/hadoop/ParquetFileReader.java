@@ -69,7 +69,6 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.ReusingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -139,7 +138,6 @@ public class ParquetFileReader implements Closeable {
   private final ParquetMetadataConverter converter;
 
   private final CRC32 crc;
-  private final ReusingByteBufferAllocator crcAllocator;
 
   /**
    * for files provided, check if there's a summary file.
@@ -846,10 +844,8 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
-      this.crcAllocator = null;
     }
   }
 
@@ -905,10 +901,8 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
-      this.crcAllocator = null;
     }
   }
 
@@ -958,10 +952,8 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
-      this.crcAllocator = null;
     }
   }
 
@@ -1016,10 +1008,8 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
-      this.crcAllocator = null;
     }
   }
 
@@ -1368,8 +1358,9 @@ public class ParquetFileReader implements Closeable {
    * Submission and all requested ranges share the vectored-read timeout. Failed
    * operations invalidate the stream; cleanup waits for submission to exit before
    * closing it, even if the backend does not respond promptly to interruption.
-   * The allocation limit applies to filesystem buffers; decoders can still require a
-   * contiguous buffer for an individual logical value larger than that limit.
+   * The allocation limit bounds requested range lengths. Filesystems may merge or
+   * checksum-align ranges and allocate larger buffers; decoders may also require
+   * larger contiguous buffers. This is not a total memory limit.
    * @param allParts all parts to be read.
    * @param builder used to build chunk list to read the pages for the different columns.
    * @throws IOException if submitting or consuming the vectored reads fails.
@@ -1404,11 +1395,7 @@ public class ParquetFileReader implements Closeable {
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     if (vectoredReadExecutor == null) {
-      vectoredReadExecutor = Executors.newSingleThreadExecutor(task -> {
-        Thread thread = new Thread(task, "parquet-vectored-read");
-        thread.setDaemon(true);
-        return thread;
-      });
+      vectoredReadExecutor = VectoredReadOperation.newExecutor();
     }
     VectoredReadOperation operation = new VectoredReadOperation(
         f,
@@ -2007,7 +1994,7 @@ public class ParquetFileReader implements Closeable {
       if (vectoredReadExecutor != null) {
         vectoredReadExecutor.shutdownNow();
       }
-      AutoCloseables.uncheckedClose(currentRowGroup, nextDictionaryReader, crcAllocator);
+      AutoCloseables.uncheckedClose(currentRowGroup, nextDictionaryReader);
       currentRowGroup = null;
       options.getCodecFactory().release();
     }

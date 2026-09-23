@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -39,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -61,6 +63,34 @@ public class TestVectoredReadOperation {
       executor.shutdownNow();
       assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS), "Submission worker did not stop");
     }
+  }
+
+  @Test
+  public void testIdleWorkerExpiresAndLaterSubmissionRecreatesIt() throws Exception {
+    ThreadPoolExecutor executor = newExecutor();
+    executor.setKeepAliveTime(10, TimeUnit.MILLISECONDS);
+    Thread firstWorker = executor.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+    firstWorker.join(TimeUnit.SECONDS.toMillis(5));
+    assertThat(firstWorker.isAlive())
+        .as("Idle worker should exit while its reader remains open")
+        .isFalse();
+    assertThat(executor.isShutdown()).isFalse();
+
+    RecordingAllocator allocator = new RecordingAllocator();
+    AtomicReference<Thread> nextWorker = new AtomicReference<>();
+    TestStream stream = new TestStream((ranges, buffers) -> {
+      nextWorker.set(Thread.currentThread());
+      ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(buffers.allocate(8)));
+    });
+    VectoredReadOperation operation =
+        new VectoredReadOperation(stream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
+    try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      operation.awaitSubmission();
+      operation.transferTo(releaser);
+    }
+    assertThat(nextWorker.get()).isNotSameAs(firstWorker);
+    assertThat(allocator.released).hasSize(1);
+    assertThat(stream.closes.get()).isZero();
   }
 
   @Test
@@ -358,12 +388,8 @@ public class TestVectoredReadOperation {
     assertSame(original, allocator.released.get(0));
   }
 
-  private ExecutorService newExecutor() {
-    ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
-      Thread thread = new Thread(runnable, "vectored-read-test");
-      thread.setDaemon(true);
-      return thread;
-    });
+  private ThreadPoolExecutor newExecutor() {
+    ThreadPoolExecutor executor = VectoredReadOperation.newExecutor();
     executors.add(executor);
     return executor;
   }
