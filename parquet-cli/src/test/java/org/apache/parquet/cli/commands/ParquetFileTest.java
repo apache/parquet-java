@@ -75,6 +75,8 @@ public abstract class ParquetFileTest extends FileTest {
         .required(PrimitiveTypeName.INT32)
         .as(LogicalTypeAnnotation.dateType())
         .named(DATE_FIELD)
+        .required(PrimitiveTypeName.INT96)
+        .named(INT96_FIELD)
         .named("schema");
   }
 
@@ -109,7 +111,8 @@ public abstract class ParquetFileTest extends FileTest {
             .append(DOUBLE_FIELD, 2.0d + i)
             .append(BINARY_FIELD, Binary.fromString(COLORS[i % COLORS.length]))
             .append(FIXED_LEN_BYTE_ARRAY_FIELD, Binary.fromConstantByteArray(bytes))
-            .append(DATE_FIELD, i));
+            .append(DATE_FIELD, i)
+            .append(INT96_FIELD, Binary.fromConstantByteArray(bytes)));
       }
     }
   }

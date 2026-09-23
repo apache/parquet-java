@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.avro;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -32,6 +34,7 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,12 +129,19 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public ReadContext init(
       ParquetConfiguration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     MessageType projection = fileSchema;
-    Map<String, String> metadata = new LinkedHashMap<String, String>();
+    Map<String, String> metadata = new LinkedHashMap<>();
 
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      projection = new AvroSchemaConverter(configuration).convert(avroRequestedProjection);
+      List<Type> types = new ArrayList<>();
+      for (Schema.Field field : avroRequestedProjection.getFields()) {
+        if (field.schema().getType().equals(Schema.Type.NULL)) {
+          continue; // Avro nulls are not encoded, unless they are null unions
+        }
+        types.add(fileSchema.getType(field.name()));
+      }
+      projection = new MessageType(avroRequestedProjection.getFullName(), types);
     }
 
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
