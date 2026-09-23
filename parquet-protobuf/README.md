@@ -55,9 +55,12 @@ message Trees.StubBox {
 ```
 
 Readers that do not know about protobuf simply see opaque bytes (all of them empty for an
-empty message type). Readers that do can parse the bytes with the message's descriptor, which
-the writer stores in the file footer under the `parquet.proto.descriptor` key;
-`ProtoParquetReader` does this automatically and materializes the original message.
+empty message type). Readers that have the generated message class can parse the bytes back into
+the message; `ProtoParquetReader` does this automatically, resolving the class from the
+`parquet.proto.class` footer key (or from the class configured for reading). The writer also stores
+the message descriptor in the footer under `parquet.proto.descriptor`, which tools that do not
+have the generated class can use to interpret the bytes; `ProtoParquetReader` itself does not read
+it.
 
 Note that the column type follows the proto schema at write time: if an empty message type later
 gains fields, or `parquet.proto.maxRecursion` is changed, new files store the field as a group

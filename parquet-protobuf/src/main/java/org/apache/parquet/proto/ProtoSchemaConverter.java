@@ -81,7 +81,8 @@ import org.slf4j.LoggerFactory;
  *   <li>recursive fields nested deeper than {@code maxRecursion}.</li>
  * </ul>
  * Readers unaware of protobuf see opaque bytes. {@code ProtoParquetReader} parses them back into the
- * message using the descriptor the writer stores in the file footer. Since the column type follows
+ * message using the generated class it resolves from the {@code parquet.proto.class} footer key (or
+ * the class configured for reading). Since the column type follows
  * the proto schema at write time, an empty message type that later gains fields (or a changed
  * {@code maxRecursion}) produces a group where older files hold {@code BINARY}, like any other
  * field whose type changed. See the parquet-protobuf README for details.
