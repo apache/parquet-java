@@ -1424,4 +1424,56 @@ public class ProtoWriteSupportTest {
     assertThat(gotBackFirst.getWrappedString().getValue()).isEqualTo("Good Will Hunting");
     assertThat(gotBackFirst.hasWrappedBytes()).isFalse();
   }
+
+  @Test
+  public void testWideTreeRealParquetWriterRecursion() throws Exception {
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoSchemaConverter.setMaxRecursion(conf, 2);
+
+    Trees.WideTree.Builder msg = Trees.WideTree.newBuilder();
+    Trees.WideTree.Builder cur = msg;
+    for (int i = 0; i < 10; ++i) {
+      cur.getValueBuilder().setTypeUrl("" + i);
+      cur = cur.addChildrenBuilder();
+    }
+    Trees.WideTree built = msg.build();
+
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    try (ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(Trees.WideTree.class)
+        .withConf(conf)
+        .build()) {
+      writer.write(built);
+    }
+
+    List<Trees.WideTree> gotBack = TestUtils.readMessages(tmpFilePath, Trees.WideTree.class);
+    assertThat(gotBack).containsExactly(built);
+  }
+
+  @Test
+  public void testValueRealParquetWriterMapRecursion() throws Exception {
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoSchemaConverter.setMaxRecursion(conf, 1);
+
+    Value.Builder msg = Value.newBuilder().setStringValue("last");
+    for (int i = 10; i > -1; --i) {
+      Value.Builder next = Value.newBuilder();
+      next.getStructValueBuilder().putFields("" + i, msg.build());
+      msg = next;
+    }
+    Value built = msg.build();
+
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    try (ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(Value.class)
+        .withConf(conf)
+        .build()) {
+      writer.write(built);
+    }
+
+    List<Value> gotBack = TestUtils.readMessages(tmpFilePath, Value.class);
+    assertThat(gotBack).containsExactly(built);
+  }
 }

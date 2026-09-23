@@ -307,6 +307,15 @@ public class ProtoSchemaConverter {
     return result.named("element").named("list");
   }
 
+  private <T> GroupBuilder<GroupBuilder<T>> addRepeatedMessageAsBytes(GroupBuilder<T> builder) {
+    return builder.group(Type.Repetition.OPTIONAL)
+        .as(listType())
+        .group(Type.Repetition.REPEATED)
+        .primitive(BINARY, Type.Repetition.OPTIONAL)
+        .named("element")
+        .named("list");
+  }
+
   private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addMessageField(
       FieldDescriptor descriptor,
       final GroupBuilder<T> builder,
@@ -318,6 +327,12 @@ public class ProtoSchemaConverter {
     LOG.trace("addMessageField: {} type: {} depth: {}", descriptor.getFullName(), typeName, depth);
     if (typeName != null) {
       if (seen.get(typeName).size() > maxRecursion) {
+        if (descriptor.isMapField() && parquetSpecsCompliant) {
+          return addMapFieldValueAsBytes(descriptor, builder);
+        }
+        if (descriptor.isRepeated() && parquetSpecsCompliant) {
+          return addRepeatedMessageAsBytes(builder);
+        }
         return builder.primitive(BINARY, Type.Repetition.OPTIONAL).as((LogicalTypeAnnotation) null);
       }
     }
@@ -376,6 +391,26 @@ public class ProtoSchemaConverter {
         .named("key");
 
     return addField(fields.get(1), group, seen, depth).named("value").named("key_value");
+  }
+
+  private <T> GroupBuilder<GroupBuilder<T>> addMapFieldValueAsBytes(
+      FieldDescriptor descriptor, final GroupBuilder<T> builder) {
+    List<FieldDescriptor> fields = descriptor.getMessageType().getFields();
+    if (fields.size() != 2) {
+      throw new UnsupportedOperationException("Expected two fields for the map (key/value), but got: " + fields);
+    }
+
+    ParquetType mapKeyParquetType = getParquetType(fields.get(0));
+
+    return builder.group(Type.Repetition.OPTIONAL)
+        .as(mapType()) // only optional maps are allowed in Proto3
+        .group(Type.Repetition.REPEATED) // key_value wrapper
+        .primitive(mapKeyParquetType.primitiveType, Type.Repetition.REQUIRED)
+        .as(mapKeyParquetType.logicalTypeAnnotation)
+        .named("key")
+        .primitive(BINARY, Type.Repetition.OPTIONAL)
+        .named("value")
+        .named("key_value");
   }
 
   private static ParquetType getParquetType(FieldDescriptor fieldDescriptor) {
