@@ -70,6 +70,22 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Converts a Protocol Buffer Descriptor into a Parquet schema.
+ * <p>
+ * Message fields normally become Parquet groups. Two kinds of message fields cannot, and are
+ * instead terminated as an unannotated {@code BINARY} column holding the serialized proto message
+ * (keeping the field's repetition, or sitting inside the usual LIST/MAP wrappers):
+ * <ul>
+ *   <li>fields of an <em>empty</em> message type, because Parquet forbids empty groups; the value is
+ *       zero bytes when the field is set and {@code null} when it is not, so presence still
+ *       round-trips;</li>
+ *   <li>recursive fields nested deeper than {@code maxRecursion}.</li>
+ * </ul>
+ * Readers unaware of protobuf see opaque bytes. {@code ProtoParquetReader} parses them back into the
+ * message using the generated class it resolves from the {@code parquet.proto.class} footer key (or
+ * the class configured for reading). Since the column type follows
+ * the proto schema at write time, an empty message type that later gains fields (or a changed
+ * {@code maxRecursion}) produces a group where older files hold {@code BINARY}, like any other
+ * field whose type changed. See the parquet-protobuf README for details.
  */
 public class ProtoSchemaConverter {
 
@@ -325,6 +341,18 @@ public class ProtoSchemaConverter {
     if (descriptor.isMapField() && parquetSpecsCompliant) {
       // the old schema style did not include the MAP wrapper around map groups
       return addMapField(descriptor, builder, seen, depth);
+    }
+
+    // Parquet forbids empty groups, so a field of an empty message type is terminated as proto
+    // bytes (zero bytes when the message is set - presence still round-trips), preserving the
+    // field's repetition so the write path (Array/Repeated/MapWriter) still matches the schema.
+    if (descriptor.getMessageType().getFields().isEmpty()) {
+      if (descriptor.isRepeated() && parquetSpecsCompliant) {
+        // LIST-wrap the truncated bytes the same way any repeated primitive is wrapped
+        return addRepeatedPrimitive(BINARY, null, builder);
+      }
+      // optional, required, or repeated in the old schema style
+      return builder.primitive(BINARY, getRepetition(descriptor)).as((LogicalTypeAnnotation) null);
     }
 
     seen = ImmutableSetMultimap.<String, Integer>builder()
