@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.StreamCapabilities;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.parquet.io.SeekableInputStream;
 import org.junit.jupiter.api.Test;
 
@@ -403,13 +405,20 @@ public class TestHadoop2ByteBufferReads {
   }
 
   /**
-   * Input stream which claims to implement ByteBufferReadable.
+   * Input stream which claims to implement ByteBufferReadable in both interfaces and
+   * in {@code hasCapability()}.
    */
-  private static final class MockByteBufferInputStream extends MockHadoopInputStream implements ByteBufferReadable {
+  private static final class MockByteBufferInputStream extends MockHadoopInputStream
+      implements ByteBufferReadable, StreamCapabilities {
 
     @Override
     public int read(final ByteBuffer buf) {
       return 0;
+    }
+
+    @Override
+    public boolean hasCapability(final String capability) {
+      return StringUtils.toLowerCase(capability).equals(READBYTEBUFFER);
     }
   }
 }
