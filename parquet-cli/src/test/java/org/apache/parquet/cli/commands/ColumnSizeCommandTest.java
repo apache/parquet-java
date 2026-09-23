@@ -55,6 +55,7 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
   @Test
   public void testColumnSize() throws Exception {
     String inputFile = createParquetFile();
+    command.setConf(conf);
     Map<String, Long> columnSizeInBytes = command.getColumnSizeInBytes(new Path(inputFile));
     assertThat(columnSizeInBytes).hasSize(2);
     assertThat(columnSizeInBytes.get("DocId")).isGreaterThan(columnSizeInBytes.get("Num"));
@@ -82,5 +83,19 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
     }
 
     return file;
+  }
+
+  @Test
+  public void testColumnSizeCommandWithEncryptedFile() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_columnsize_test.parquet");
+
+    ColumnSizeCommand command = new ColumnSizeCommand(createLogger());
+    command.target = encryptedFile.getAbsolutePath();
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
   }
 }

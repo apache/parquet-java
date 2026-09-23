@@ -62,7 +62,7 @@ public class ShowDictionaryCommand extends BaseCommand {
 
     String source = targets.get(0);
 
-    try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {
+    try (ParquetFileReader reader = createParquetFileReader(source)) {
       MessageType schema = reader.getFileMetaData().getSchema();
       ColumnDescriptor descriptor = Util.descriptor(column, schema);
       PrimitiveType type = Util.primitive(column, schema);

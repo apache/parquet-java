@@ -31,7 +31,6 @@ import java.util.List;
 import org.apache.avro.file.SeekableInput;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Formats;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.slf4j.Logger;
 
@@ -113,8 +112,7 @@ public class SchemaCommand extends BaseCommand {
 
       switch (format) {
         case PARQUET:
-          try (ParquetFileReader reader = new ParquetFileReader(
-              getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)) {
+          try (ParquetFileReader reader = createParquetFileReader(source)) {
             return reader.getFileMetaData().getSchema().toString();
           }
         default:
