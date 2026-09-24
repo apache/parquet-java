@@ -117,6 +117,7 @@ class InternalParquetRecordWriter<T> {
         .withPageWriteChecksumEnabled(props.getPageWriteChecksumEnabled())
         .withFileEncryptor(fileEncryptor)
         .withRowGroupOrdinal(rowGroupOrdinal)
+        .withPageCompressThreshold(props.pageCompressThreshold())
         .build();
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
