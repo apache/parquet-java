@@ -45,6 +45,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterApi;
@@ -96,7 +97,7 @@ public class TestInputOutputFormat {
 
   private Configuration createConf(boolean readType) {
     Configuration conf = new Configuration();
-    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, readType);
+    conf.setBoolean(ParquetInputProperties.HADOOP_VECTORED_IO_ENABLED, readType);
     return conf;
   }
 
@@ -268,12 +269,12 @@ public class TestInputOutputFormat {
 
     // this filter predicate should trigger row group filtering that drops all row-groups
     ParquetInputFormat.setFilterPredicate(conf, FilterApi.eq(FilterApi.intColumn("line"), -1000));
-    final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
+    final String fpString = conf.get(ParquetInputProperties.FILTER_PREDICATE);
 
     runMapReduceJob(conf, CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
       {
         put("parquet.task.side.metadata", "true");
-        put(ParquetInputFormat.FILTER_PREDICATE, fpString);
+        put(ParquetInputProperties.FILTER_PREDICATE, fpString);
       }
     });
 
@@ -290,12 +291,12 @@ public class TestInputOutputFormat {
     // this filter predicate should keep some records but not all (first 500 characters)
     // "line" is actually position in the file...
     ParquetInputFormat.setFilterPredicate(conf, FilterApi.lt(FilterApi.intColumn("line"), 500));
-    final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
+    final String fpString = conf.get(ParquetInputProperties.FILTER_PREDICATE);
 
     runMapReduceJob(conf, CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
       {
         put("parquet.task.side.metadata", "true");
-        put(ParquetInputFormat.FILTER_PREDICATE, fpString);
+        put(ParquetInputProperties.FILTER_PREDICATE, fpString);
       }
     });
 

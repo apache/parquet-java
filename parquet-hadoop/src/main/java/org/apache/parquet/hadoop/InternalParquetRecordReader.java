@@ -19,8 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import static java.lang.String.format;
-import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
-import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
+import static org.apache.parquet.conf.ParquetInputProperties.RECORD_FILTERING_ENABLED;
+import static org.apache.parquet.conf.ParquetInputProperties.STRICT_TYPE_CHECKING;
 
 import java.io.IOException;
 import java.util.Collections;
