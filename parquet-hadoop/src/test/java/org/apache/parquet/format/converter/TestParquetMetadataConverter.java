@@ -589,11 +589,6 @@ public class TestParquetMetadataConverter {
           .isEqualTo(encoding);
     }
     for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
-      // ALP is in the format spec but is not implemented on the Java side yet, so it has no
-      // org.apache.parquet.column.Encoding to round trip through. Remove this once it does.
-      if (encoding == org.apache.parquet.format.Encoding.ALP) {
-        continue;
-      }
       assertThat(parquetMetadataConverter.getEncoding(parquetMetadataConverter.getEncoding(encoding)))
           .isEqualTo(encoding);
     }
