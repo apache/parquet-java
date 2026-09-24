@@ -521,8 +521,8 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
-        <!-- Warning! 3.2.1 caused issues during verification, 3.2.0 is known to work correctly. -->
-        <version>3.2.0</version>
+        <!-- Warning! 3.2.1 caused issues during verification, 3.3.1 is known to work correctly. -->
+        <version>3.3.1</version>
         <configuration>
           <!-- Source distributions carry no .git metadata, so the revision cannot be read.
                Record an explicit value instead of leaving ${buildNumber} unresolved. -->
