@@ -70,6 +70,36 @@ public class TestUtil {
         .hasMessageContaining("Compressed page size");
   }
 
+  @Test
+  public void testReadFileMetaDataAcceptsMinusOneAsDefaultMaxMessageSize() throws Exception {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    FileMetaData md = sampleFileMetaData();
+    writeFileMetaData(md, baos);
+
+    assertThat(readFileMetaData(in(baos), -1)).isEqualTo(md);
+  }
+
+  @Test
+  public void testReadFileMetaDataRejectsZeroMaxMessageSize() {
+    assertRejectsNonPositiveMaxMessageSize(0);
+  }
+
+  @Test
+  public void testReadFileMetaDataRejectsInvalidNegativeMaxMessageSize() {
+    assertRejectsNonPositiveMaxMessageSize(-5);
+  }
+
+  private static FileMetaData sampleFileMetaData() {
+    return new FileMetaData(
+        1, asList(new SchemaElement("foo")), 10, asList(new RowGroup(asList(new ColumnChunk(0)), 10, 5)));
+  }
+
+  private static void assertRejectsNonPositiveMaxMessageSize(int maxMessageSize) {
+    assertThatThrownBy(() -> readFileMetaData(new ByteArrayInputStream(new byte[0]), maxMessageSize))
+        .isInstanceOf(NumberFormatException.class)
+        .hasMessage("Max message size must be positive: " + maxMessageSize);
+  }
+
   private ByteArrayInputStream in(ByteArrayOutputStream baos) {
     return new ByteArrayInputStream(baos.toByteArray());
   }
