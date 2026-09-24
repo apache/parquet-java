@@ -70,6 +70,7 @@ import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
@@ -157,15 +158,15 @@ public class DictionaryFilterTest {
     toBinary("9999999999999999999999999999999999999999", 17)
   };
   private static final Binary[] INT96_VALUES = new Binary[] {
-    toBinary("-9999999999999999999999999999", 12),
-    toBinary("-9999999999999999999999999998", 12),
-    toBinary("-1234567890", 12),
-    toBinary("-1", 12),
-    toBinary("-0", 12),
-    toBinary("1", 12),
-    toBinary("1234567890", 12),
-    toBinary("-9999999999999999999999999998", 12),
-    toBinary("9999999999999999999999999999", 12)
+    new NanoTime(2440587, 86_399_999_999_999L).toBinary(),
+    new NanoTime(2440588, 0L).toBinary(),
+    new NanoTime(2440588, 1L).toBinary(),
+    new NanoTime(2440588, 1_234_567_890L).toBinary(),
+    new NanoTime(2440588, 43_200_000_000_000L).toBinary(),
+    new NanoTime(2440588, 86_399_999_999_999L).toBinary(),
+    new NanoTime(2440589, 0L).toBinary(),
+    new NanoTime(2440589, 1L).toBinary(),
+    new NanoTime(2440589, 1_234_567_890L).toBinary()
   };
 
   private static Binary toBinary(String decimalWithoutScale, int byteCount) {
