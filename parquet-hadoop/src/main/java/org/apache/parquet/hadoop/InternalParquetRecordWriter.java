@@ -143,6 +143,7 @@ class InternalParquetRecordWriter<T> {
         }
         finalMetadata.putAll(finalWriteContext.getExtraMetaData());
         parquetFileWriter.end(finalMetadata);
+        lastRowGroupEndPos = parquetFileWriter.getPos();
       } catch (Exception e) {
         parquetFileWriter.abort();
         throw e;
@@ -171,7 +172,7 @@ class InternalParquetRecordWriter<T> {
    * @return the total size of data written to the file and buffered in memory
    */
   public long getDataSize() {
-    return lastRowGroupEndPos + columnStore.getBufferedSize();
+    return lastRowGroupEndPos + (columnStore == null ? 0 : columnStore.getBufferedSize());
   }
 
   private void checkBlockSizeReached() throws IOException {
