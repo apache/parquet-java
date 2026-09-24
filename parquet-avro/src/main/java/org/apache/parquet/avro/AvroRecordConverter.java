@@ -787,7 +787,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       } else if (elementClass == double.class) {
         parent.add(((DoubleArrayList) container).toDoubleArray());
       } else {
-        parent.add(((ArrayList) container).toArray());
+        parent.add(container.toArray((Object[]) java.lang.reflect.Array.newInstance(elementClass, 0)));
       }
     }
 
