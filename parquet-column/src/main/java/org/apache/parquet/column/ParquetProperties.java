@@ -70,6 +70,8 @@ public class ParquetProperties {
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
+  public static final boolean DEFAULT_CONTENT_DEFINED_CHUNKING_ENABLED = false;
+
   /**
    * @deprecated This shared instance can cause thread safety issues when used by multiple builders concurrently.
    * Use {@code new DefaultValuesWriterFactory()} instead to create individual instances.
@@ -138,6 +140,8 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> sizeStatistics;
   private final ColumnProperty<CompressionCodecName> columnCodecs;
   private final ColumnProperty<Integer> columnCompressionLevels;
+  private final boolean cdcEnabled;
+  private final CdcOptions cdcOptions;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -172,6 +176,8 @@ public class ParquetProperties {
     this.sizeStatistics = builder.sizeStatistics.build();
     this.columnCodecs = builder.columnCodecs.build();
     this.columnCompressionLevels = builder.columnCompressionLevels.build();
+    this.cdcEnabled = builder.cdcEnabled;
+    this.cdcOptions = builder.cdcOptions;
   }
 
   public static Builder builder() {
@@ -319,6 +325,26 @@ public class ParquetProperties {
     return rowGroupRowCountLimit;
   }
 
+  /**
+   * EXPERIMENTAL: Whether data page boundaries are derived from the content of the data.
+   *
+   * @return {@code true} if content defined chunking is enabled
+   */
+  public boolean isContentDefinedChunkingEnabled() {
+    return cdcEnabled;
+  }
+
+  /**
+   * EXPERIMENTAL: How to chunk. Only meaningful when
+   * {@link #isContentDefinedChunkingEnabled()} is {@code true}; otherwise these are the settings
+   * chunking <i>would</i> use, and are carried so that enabling it later does not lose them.
+   *
+   * @return the chunking options, never {@code null}
+   */
+  public CdcOptions getCdcOptions() {
+    return cdcOptions;
+  }
+
   public int getPageRowCountLimit() {
     return pageRowCountLimit;
   }
@@ -413,6 +439,9 @@ public class ParquetProperties {
         + "Bloom filter expected number of distinct values are: " + bloomFilterNDVs + '\n'
         + "Bloom filter false positive probabilities are: " + bloomFilterFPPs + '\n'
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
+        + "Content defined chunking is: "
+        + (cdcEnabled ? cdcOptions.toString() : "off")
+        + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
         + "Size statistics enabled: " + sizeStatisticsEnabled;
@@ -460,6 +489,8 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
     private final ColumnProperty.Builder<CompressionCodecName> columnCodecs;
     private final ColumnProperty.Builder<Integer> columnCompressionLevels;
+    private boolean cdcEnabled = DEFAULT_CONTENT_DEFINED_CHUNKING_ENABLED;
+    private CdcOptions cdcOptions = CdcOptions.DEFAULT;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -511,6 +542,8 @@ public class ParquetProperties {
       this.sizeStatisticsEnabled = toCopy.sizeStatisticsEnabled;
       this.columnCodecs = ColumnProperty.builder(toCopy.columnCodecs);
       this.columnCompressionLevels = ColumnProperty.builder(toCopy.columnCompressionLevels);
+      this.cdcEnabled = toCopy.cdcEnabled;
+      this.cdcOptions = toCopy.cdcOptions;
     }
 
     /**
@@ -752,6 +785,59 @@ public class ParquetProperties {
     public Builder withPageRowCountLimit(int rowCount) {
       Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for pages: %s", rowCount);
       pageRowCountLimit = rowCount;
+      return this;
+    }
+
+    /**
+     * EXPERIMENTAL: Enable or disable content defined chunking of data pages.
+     *
+     * <p>When enabled, the writer ends a data page at boundaries derived from a rolling hash of the
+     * column's logical {@code (definitionLevel, repetitionLevel, value)} triplets instead of only
+     * at the page size and row count limits. Files that share a run of values then share
+     * byte-identical data pages, so a content addressable storage system can deduplicate them. The
+     * result is an ordinary Parquet file and needs no reader support.
+     *
+     * <p>Chunking uses {@link CdcOptions#DEFAULT} unless
+     * {@link #withContentDefinedChunking(CdcOptions)} says otherwise.
+     *
+     * <p>Three other settings decide whether this achieves anything.
+     *
+     * <ul>
+     *   <li>{@link #withPageRowCountLimit(int)} still applies inside every chunk, and its default
+     *       of {@value #DEFAULT_PAGE_ROW_COUNT_LIMIT} rows is reached well before a default-sized
+     *       chunk of a narrow column is, which leaves chunking with nothing to decide. Raise it,
+     *       and keep {@link #withPageSize(int)} at or above the maximum chunk size.
+     *   <li>Row group boundaries stay where they were: they are still chosen by size or row count,
+     *       not by content, and the chunker starts afresh in each one. An edit early in a file
+     *       therefore shifts every later row group and the pages inside it, so the benefit falls
+     *       away as the row group count rises. Large row groups keep more of it.
+     *   <li>A chunk shorter than a column's dictionary can cost that column its dictionary
+     *       encoding altogether, because the encoder decides whether to keep the dictionary from
+     *       the first page alone. Keep the minimum chunk size comfortably above the expected
+     *       dictionary size; a small size envelope on a high-cardinality column can otherwise
+     *       inflate the file several-fold.
+     * </ul>
+     *
+     * @param enabled whether to derive data page boundaries from the content
+     * @return this builder for method chaining.
+     */
+    public Builder withContentDefinedChunking(boolean enabled) {
+      this.cdcEnabled = enabled;
+      return this;
+    }
+
+    /**
+     * EXPERIMENTAL: Set how to chunk, and enable content defined chunking.
+     *
+     * <p>Setting the options implies enabling chunking, so
+     * {@link #withContentDefinedChunking(boolean)} is only needed to turn it back off.
+     *
+     * @param options the chunking options
+     * @return this builder for method chaining.
+     */
+    public Builder withContentDefinedChunking(CdcOptions options) {
+      this.cdcOptions = Objects.requireNonNull(options, "CdcOptions cannot be null");
+      this.cdcEnabled = true;
       return this;
     }
 

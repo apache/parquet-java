@@ -56,3 +56,12 @@ make sense to group together or to run in isolation during development.  The
 ./parquet-benchmarks/run.sh clean
 ```
 
+
+## Content defined chunking
+
+`CdcWriteBenchmarks` measures what chunking costs to write with. It is an
+ordinary JMH benchmark:
+
+```
+./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.CdcWriteBenchmarks
+```

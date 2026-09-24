@@ -34,6 +34,7 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -164,6 +165,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
   public static final String COLUMN_COMPRESSION_LEVEL_PREFIX = "parquet.compression.level";
+  // EXPERIMENTAL: see ParquetProperties.Builder#withContentDefinedChunking
+  public static final String CONTENT_DEFINED_CHUNKING_ENABLED = "parquet.page.content-defined-chunking.enabled";
+  public static final String CONTENT_DEFINED_CHUNKING_MIN_SIZE = "parquet.page.content-defined-chunking.min.size";
+  public static final String CONTENT_DEFINED_CHUNKING_MAX_SIZE = "parquet.page.content-defined-chunking.max.size";
+  public static final String CONTENT_DEFINED_CHUNKING_NORM_LEVEL = "parquet.page.content-defined-chunking.norm.level";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -409,6 +415,19 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(PAGE_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_PAGE_ROW_COUNT_LIMIT);
   }
 
+  private static boolean getContentDefinedChunkingEnabled(Configuration conf) {
+    return conf.getBoolean(
+        CONTENT_DEFINED_CHUNKING_ENABLED, ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_ENABLED);
+  }
+
+  private static CdcOptions getCdcOptions(Configuration conf) {
+    return CdcOptions.builder()
+        .withMinChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MIN_SIZE, CdcOptions.DEFAULT.getMinChunkSize()))
+        .withMaxChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MAX_SIZE, CdcOptions.DEFAULT.getMaxChunkSize()))
+        .withNormLevel(conf.getInt(CONTENT_DEFINED_CHUNKING_NORM_LEVEL, CdcOptions.DEFAULT.getNormLevel()))
+        .build();
+  }
+
   public static void setPageWriteChecksumEnabled(JobContext jobContext, boolean val) {
     setPageWriteChecksumEnabled(getConfiguration(jobContext), val);
   }
@@ -536,6 +555,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
         .withStatisticsEnabled(getStatisticsEnabled(conf));
+    if (getContentDefinedChunkingEnabled(conf)) {
+      // Read only when the feature is on: building the options validates them, and a job that has
+      // chunking switched off must not fail over a size envelope it will never use.
+      propsBuilder.withContentDefinedChunking(getCdcOptions(conf));
+    }
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
