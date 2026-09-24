@@ -18,35 +18,23 @@
  */
 package org.apache.parquet.benchmarks;
 
-import static java.util.UUID.randomUUID;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.BLOCK_SIZE_256M;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.BLOCK_SIZE_512M;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.BLOCK_SIZE_DEFAULT;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.DICT_PAGE_SIZE;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.FIXED_LEN_BYTEARRAY_SIZE;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.PAGE_SIZE_4M;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.PAGE_SIZE_8M;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.PAGE_SIZE_DEFAULT;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.TARGET_DIR;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS4M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS8M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS4M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS8M;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_SNAPPY;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.targetDir;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -60,80 +48,13 @@ import org.apache.parquet.schema.MessageType;
 
 public class DataGenerator {
 
-  public void generateAll() {
-    try {
-      generateData(
-          file_1M,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_DEFAULT,
-          PAGE_SIZE_DEFAULT,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          UNCOMPRESSED,
-          ONE_MILLION);
-
-      // generate data for different block and page sizes
-      generateData(
-          file_1M_BS256M_PS4M,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_256M,
-          PAGE_SIZE_4M,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          UNCOMPRESSED,
-          ONE_MILLION);
-      generateData(
-          file_1M_BS256M_PS8M,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_256M,
-          PAGE_SIZE_8M,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          UNCOMPRESSED,
-          ONE_MILLION);
-      generateData(
-          file_1M_BS512M_PS4M,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_512M,
-          PAGE_SIZE_4M,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          UNCOMPRESSED,
-          ONE_MILLION);
-      generateData(
-          file_1M_BS512M_PS8M,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_512M,
-          PAGE_SIZE_8M,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          UNCOMPRESSED,
-          ONE_MILLION);
-
-      // generate data for different codecs
-      //      generateData(parquetFile_1M_LZO, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
-      // FIXED_LEN_BYTEARRAY_SIZE, LZO, ONE_MILLION);
-      generateData(
-          file_1M_SNAPPY,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_DEFAULT,
-          PAGE_SIZE_DEFAULT,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          SNAPPY,
-          ONE_MILLION);
-      generateData(
-          file_1M_GZIP,
-          configuration,
-          PARQUET_2_0,
-          BLOCK_SIZE_DEFAULT,
-          PAGE_SIZE_DEFAULT,
-          FIXED_LEN_BYTEARRAY_SIZE,
-          GZIP,
-          ONE_MILLION);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  /**
+   * Returns the canonical path of the 1M-row benchmark file for the given codec. Shared by
+   * {@link #generateAll()}, {@link WriteBenchmarks} and {@link ReadBenchmarks} so that a corpus
+   * built up front can be reused by the read benchmark instead of being regenerated on demand.
+   */
+  static Path benchmarkFile(CompressionCodecName codec) {
+    return new Path(TARGET_DIR + "/PARQUET-1M-V2-B128M-P1M-" + codec.name());
   }
 
   public void generateData(
@@ -166,7 +87,12 @@ public class DataGenerator {
 
     GroupWriteSupport.setSchema(schema, configuration);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
-    ParquetWriter<Group> writer = new ParquetWriter<Group>(
+    // generate some data for the fixed len byte array field
+    char[] chars = new char[fixedLenByteArraySize];
+    Arrays.fill(chars, '*');
+    Random random = new Random(42);
+
+    try (ParquetWriter<Group> writer = new ParquetWriter<Group>(
         outFile,
         new GroupWriteSupport(),
         codec,
@@ -176,28 +102,50 @@ public class DataGenerator {
         true,
         false,
         version,
-        configuration);
-
-    // generate some data for the fixed len byte array field
-    char[] chars = new char[fixedLenByteArraySize];
-    Arrays.fill(chars, '*');
-
-    for (int i = 0; i < nRows; i++) {
-      writer.write(f.newGroup()
-          .append("binary_field", randomUUID().toString())
-          .append("int32_field", i)
-          .append("int64_field", 64l)
-          .append("boolean_field", true)
-          .append("float_field", 1.0f)
-          .append("double_field", 2.0d)
-          .append("flba_field", new String(chars))
-          .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
+        configuration)) {
+      for (int i = 0; i < nRows; i++) {
+        writer.write(f.newGroup()
+            .append("binary_field", new UUID(random.nextLong(), random.nextLong()).toString())
+            .append("int32_field", i)
+            .append("int64_field", 64L)
+            .append("boolean_field", true)
+            .append("float_field", 1.0f)
+            .append("double_field", 2.0d)
+            .append("flba_field", new String(chars))
+            .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
+      }
+    } catch (IOException | RuntimeException e) {
+      deleteIfExists(configuration, outFile);
+      throw e;
     }
-    writer.close();
   }
 
   public void cleanup() {
     deleteIfExists(configuration, targetDir);
+  }
+
+  /**
+   * Pre-generates the 1M-row data file for every {@link CompressionCodecName} at the default block
+   * and page size. This is optional: {@link ReadBenchmarks} generates whichever file it needs on
+   * demand (and {@link #generateData} skips files that already exist), but building the whole
+   * corpus up front lets repeated read runs reuse it instead of regenerating each time.
+   */
+  public void generateAll() {
+    try {
+      for (CompressionCodecName codec : CompressionCodecName.values()) {
+        generateData(
+            benchmarkFile(codec),
+            configuration,
+            PARQUET_2_0,
+            BLOCK_SIZE_DEFAULT,
+            PAGE_SIZE_DEFAULT,
+            FIXED_LEN_BYTEARRAY_SIZE,
+            codec,
+            ONE_MILLION);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public static void main(String[] args) {
