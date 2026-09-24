@@ -165,7 +165,8 @@ public class ProtoSchemaConverter {
    * @param maxRecursion          The maximum recursion depth messages are allowed to go before terminating as
    *                              bytes instead of their actual schema.
    * @param unwrapProtoWrappers   If set to true, unwrap common Proto wrappers like Timestamp and DoubleValue
-   *                              with corresponding OPTIONAL logical annotations. Primitive types become REQUIRED.
+   *                              with corresponding OPTIONAL logical annotations. Primitive types become REQUIRED,
+   *                              except oneof members, which remain optional because only one can be set.
    */
   public ProtoSchemaConverter(boolean parquetSpecsCompliant, int maxRecursion, boolean unwrapProtoWrappers) {
     this.parquetSpecsCompliant = parquetSpecsCompliant;
@@ -291,7 +292,11 @@ public class ProtoSchemaConverter {
       // the old schema style did not include the LIST wrapper around repeated fields
       return addRepeatedPrimitive(parquetType.primitiveType, parquetType.logicalTypeAnnotation, builder);
     }
-    Repetition repetition = unwrapProtoWrappers ? Repetition.REQUIRED : getRepetition(descriptor);
+    // Unwrap mode marks scalars REQUIRED (an unwrapped wrapper value is always present),
+    // but oneof members must stay optional: at most one alternative is written.
+    Repetition repetition = unwrapProtoWrappers && descriptor.getContainingOneof() == null
+        ? Repetition.REQUIRED
+        : getRepetition(descriptor);
     return builder.primitive(parquetType.primitiveType, repetition).as(parquetType.logicalTypeAnnotation);
   }
 
