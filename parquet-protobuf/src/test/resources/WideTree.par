@@ -17,7 +17,11 @@ message Trees.WideTree {
                 optional binary type_url (STRING) = 1;
                 optional binary value = 2;
               }
-              optional binary children = 2;
+              optional group children (LIST) = 2 {
+                repeated group list {
+                  required binary element;
+                }
+              }
             }
           }
         }
