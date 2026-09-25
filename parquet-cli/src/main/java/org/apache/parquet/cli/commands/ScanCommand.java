@@ -25,12 +25,14 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Expressions;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Scan all records from a file")
@@ -52,36 +54,20 @@ public class ScanCommand extends BaseCommand {
   public int run() throws IOException {
     Preconditions.checkArgument(sourceFiles != null && !sourceFiles.isEmpty(), "Missing file name");
 
-    // Ensure all source files have the columns specified first
-    Map<String, Schema> schemas = new HashMap<>();
+    List<ScanFile> scanFiles = new ArrayList<>(sourceFiles.size());
     for (String sourceFile : sourceFiles) {
-      Schema schema = getAvroSchema(sourceFile);
-      schemas.put(sourceFile, Expressions.filterSchema(schema, columns));
+      scanFiles.add(prepare(sourceFile));
     }
 
     long totalStartTime = System.currentTimeMillis();
     long totalCount = 0;
-    for (String sourceFile : sourceFiles) {
+    for (ScanFile scanFile : scanFiles) {
       long startTime = System.currentTimeMillis();
-      Iterable<Object> reader = openDataFile(sourceFile, schemas.get(sourceFile));
-      boolean threw = true;
-      long count = 0;
-      try {
-        for (Object record : reader) {
-          count += 1;
-        }
-        threw = false;
-      } catch (RuntimeException e) {
-        throw new RuntimeException("Failed on record " + count + " in " + sourceFile, e);
-      } finally {
-        if (reader instanceof Closeable) {
-          Closeables.close((Closeable) reader, threw);
-        }
-      }
+      long count = scan(scanFile);
       totalCount += count;
       if (1 < sourceFiles.size()) {
         long endTime = System.currentTimeMillis();
-        console.info("Scanned " + count + " records from " + sourceFile + " in "
+        console.info("Scanned " + count + " records from " + scanFile.sourceFile + " in "
             + (endTime - startTime) / 1000.0 + " s");
       }
     }
@@ -89,6 +75,82 @@ public class ScanCommand extends BaseCommand {
     console.info("Scanned " + totalCount + " records from " + sourceFiles.size() + " file(s)");
     console.info("Time: " + (totalEndTime - totalStartTime) / 1000.0 + " s");
     return 0;
+  }
+
+  private ScanFile prepare(String sourceFile) throws IOException {
+    if (isParquetFile(sourceFile)) {
+      MessageType projection = columns == null || columns.isEmpty() ? null : getParquetProjection(sourceFile, columns);
+      return ScanFile.parquet(sourceFile, projection);
+    } else {
+      Schema schema = getAvroSchema(sourceFile);
+      return ScanFile.avro(sourceFile, Expressions.filterSchema(schema, columns));
+    }
+  }
+
+  private long scan(ScanFile scanFile) throws IOException {
+    if (scanFile.parquet) {
+      return scanParquetDataFile(scanFile);
+    } else {
+      return scanAvroDataFile(scanFile);
+    }
+  }
+
+  private long scanParquetDataFile(ScanFile scanFile) throws IOException {
+    ParquetReader<Group> reader = openParquetGroupReader(scanFile.sourceFile, scanFile.parquetProjection);
+    boolean threw = true;
+    long count = 0;
+    try {
+      for (Group record = reader.read(); record != null; record = reader.read()) {
+        count += 1;
+      }
+      threw = false;
+    } catch (IOException | RuntimeException e) {
+      throw new RuntimeException("Failed on record " + count + " in " + scanFile.sourceFile, e);
+    } finally {
+      Closeables.close(reader, threw);
+    }
+    return count;
+  }
+
+  private long scanAvroDataFile(ScanFile scanFile) throws IOException {
+    Iterable<Object> reader = openDataFile(scanFile.sourceFile, scanFile.avroProjection);
+    boolean threw = true;
+    long count = 0;
+    try {
+      for (Object record : reader) {
+        count += 1;
+      }
+      threw = false;
+    } catch (RuntimeException e) {
+      throw new RuntimeException("Failed on record " + count + " in " + scanFile.sourceFile, e);
+    } finally {
+      if (reader instanceof Closeable) {
+        Closeables.close((Closeable) reader, threw);
+      }
+    }
+    return count;
+  }
+
+  private static class ScanFile {
+    private final String sourceFile;
+    private final boolean parquet;
+    private final MessageType parquetProjection;
+    private final Schema avroProjection;
+
+    private ScanFile(String sourceFile, boolean parquet, MessageType parquetProjection, Schema avroProjection) {
+      this.sourceFile = sourceFile;
+      this.parquet = parquet;
+      this.parquetProjection = parquetProjection;
+      this.avroProjection = avroProjection;
+    }
+
+    private static ScanFile parquet(String sourceFile, MessageType projection) {
+      return new ScanFile(sourceFile, true, projection, null);
+    }
+
+    private static ScanFile avro(String sourceFile, Schema projection) {
+      return new ScanFile(sourceFile, false, null, projection);
+    }
   }
 
   @Override
