@@ -23,6 +23,7 @@ import static java.lang.Math.min;
 import static java.util.Collections.unmodifiableMap;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -44,7 +45,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   // Used to support the deprecated workflow of ColumnWriteStoreV1 (lazy init of ColumnWriters)
   private interface ColumnWriterProvider {
-    ColumnWriter getColumnWriter(ColumnDescriptor path);
+    ColumnWriterBase getColumnWriter(ColumnDescriptor path);
   }
 
   private final ColumnWriterProvider columnWriterProvider;
@@ -53,6 +54,8 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
 
   private final Map<ColumnDescriptor, ColumnWriterBase> columns;
+  // Content defined chunking wraps each writer once, so its chunker lives as long as the writer.
+  private final Map<ColumnDescriptor, ColumnWriter> chunkingColumns = new HashMap<>();
   private final ParquetProperties props;
   private final long thresholdTolerance;
   private long rowCount;
@@ -71,7 +74,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
-      public ColumnWriter getColumnWriter(ColumnDescriptor path) {
+      public ColumnWriterBase getColumnWriter(ColumnDescriptor path) {
         ColumnWriterBase column = columns.get(path);
         if (column == null) {
           column = createColumnWriterBase(path, pageWriteStore.getPageWriter(path), null, props);
@@ -96,7 +99,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
-      public ColumnWriter getColumnWriter(ColumnDescriptor path) {
+      public ColumnWriterBase getColumnWriter(ColumnDescriptor path) {
         return columns.get(path);
       }
     };
@@ -126,7 +129,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
-      public ColumnWriter getColumnWriter(ColumnDescriptor path) {
+      public ColumnWriterBase getColumnWriter(ColumnDescriptor path) {
         return columns.get(path);
       }
     };
@@ -147,7 +150,11 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   @Override
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
-    return columnWriterProvider.getColumnWriter(path);
+    ColumnWriterBase column = columnWriterProvider.getColumnWriter(path);
+    if (column == null || !props.isContentDefinedChunkingEnabled()) {
+      return column;
+    }
+    return chunkingColumns.computeIfAbsent(path, p -> new ChunkingColumnWriter(column, p, props.getCdcOptions()));
   }
 
   public Set<ColumnDescriptor> getColumnDescriptors() {
