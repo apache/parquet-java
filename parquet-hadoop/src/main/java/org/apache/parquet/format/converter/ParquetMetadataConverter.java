@@ -828,35 +828,43 @@ public class ParquetMetadataConverter {
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
     // value has been truncated and is a lower bound and not in the page.
-    if (!stats.isEmpty() && withinLimit(stats, truncateLength)) {
-      formatStats.setNull_count(stats.getNumNulls());
-      if (stats.isNanCountSet()) {
-        formatStats.setNan_count(stats.getNanCount());
+    if (stats.isEmpty()) {
+      return formatStats;
+    }
+
+    // null_count is independent of the min/max size limit and remains useful
+    // when min/max values are omitted.
+    formatStats.setNull_count(stats.getNumNulls());
+    if (!withinLimit(stats, truncateLength)) {
+      return formatStats;
+    }
+
+    if (stats.isNanCountSet()) {
+      formatStats.setNan_count(stats.getNanCount());
+    }
+    if (stats.hasNonNullValue()) {
+      byte[] min;
+      byte[] max;
+
+      if (stats instanceof BinaryStatistics && truncateLength != Integer.MAX_VALUE) {
+        BinaryTruncator truncator = BinaryTruncator.getTruncator(stats.type());
+        min = tuncateMin(truncator, truncateLength, stats.getMinBytes());
+        max = tuncateMax(truncator, truncateLength, stats.getMaxBytes());
+      } else {
+        min = stats.getMinBytes();
+        max = stats.getMaxBytes();
       }
-      if (stats.hasNonNullValue()) {
-        byte[] min;
-        byte[] max;
+      // Fill the former min-max statistics only if the comparison logic is
+      // signed so the logic of V1 and V2 stats are the same (which is
+      // trivially true for equal min-max values)
+      if (sortOrder(stats.type()) == SortOrder.SIGNED || Arrays.equals(min, max)) {
+        formatStats.setMin(min);
+        formatStats.setMax(max);
+      }
 
-        if (stats instanceof BinaryStatistics && truncateLength != Integer.MAX_VALUE) {
-          BinaryTruncator truncator = BinaryTruncator.getTruncator(stats.type());
-          min = tuncateMin(truncator, truncateLength, stats.getMinBytes());
-          max = tuncateMax(truncator, truncateLength, stats.getMaxBytes());
-        } else {
-          min = stats.getMinBytes();
-          max = stats.getMaxBytes();
-        }
-        // Fill the former min-max statistics only if the comparison logic is
-        // signed so the logic of V1 and V2 stats are the same (which is
-        // trivially true for equal min-max values)
-        if (sortOrder(stats.type()) == SortOrder.SIGNED || Arrays.equals(min, max)) {
-          formatStats.setMin(min);
-          formatStats.setMax(max);
-        }
-
-        if (isMinMaxStatsSupported(stats.type()) || Arrays.equals(min, max)) {
-          formatStats.setMin_value(min);
-          formatStats.setMax_value(max);
-        }
+      if (isMinMaxStatsSupported(stats.type()) || Arrays.equals(min, max)) {
+        formatStats.setMin_value(min);
+        formatStats.setMax_value(max);
       }
     }
     return formatStats;

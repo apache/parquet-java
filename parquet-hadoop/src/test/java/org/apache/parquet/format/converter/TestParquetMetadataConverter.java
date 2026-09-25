@@ -936,8 +936,11 @@ public class TestParquetMetadataConverter {
         .as("Max_value should not be set")
         .isFalse();
     assertThat(formatStats.isSetNull_count())
-        .as("Num nulls should not be set")
-        .isFalse();
+        .as("Num nulls should be preserved when min/max are too large")
+        .isTrue();
+    assertThat(formatStats.getNull_count())
+        .as("Num nulls should match when min/max are too large")
+        .isEqualTo(3004);
 
     Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
         Version.FULL_VERSION,
@@ -946,8 +949,9 @@ public class TestParquetMetadataConverter {
         ParquetMetadataConverter.SortOrder.SIGNED);
 
     assertThat(roundTripStats.isEmpty())
-        .as("Round-trip stats should not be empty (null count is set)")
-        .isTrue();
+        .as("Round-trip stats should retain the null count")
+        .isFalse();
+    assertThat(roundTripStats.getNumNulls()).isEqualTo(3004);
   }
 
   @Test
