@@ -56,8 +56,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -145,12 +143,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetMetadataConverter {
-  private static SecureRandom random = new SecureRandom();
-  private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
-  private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
-  private static final String NUMBER = "0123456789";
-  private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
-
   @TempDir
   private java.nio.file.Path tempDir;
 
@@ -952,57 +944,71 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testBinaryStatsWithTruncation() {
+    int maxStatsSize = (int) ParquetMetadataConverter.MAX_STATS_SIZE;
     int defaultTruncLen = ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
-    int[] validLengths = {1, 2, 16, 64, defaultTruncLen - 1};
+    int[] validLengths = {1, 2, 16, 64};
     for (int len : validLengths) {
-      testBinaryStatsWithTruncation(len, 60, 70);
-      testBinaryStatsWithTruncation(len, (int) ParquetMetadataConverter.MAX_STATS_SIZE, 190);
-      testBinaryStatsWithTruncation(len, 280, (int) ParquetMetadataConverter.MAX_STATS_SIZE);
-      testBinaryStatsWithTruncation(
-          len, (int) ParquetMetadataConverter.MAX_STATS_SIZE, (int) ParquetMetadataConverter.MAX_STATS_SIZE);
+      testBinaryStatsWithTruncation(len, 60, 70, true);
+      testBinaryStatsWithTruncation(len, maxStatsSize, 190, true);
+      testBinaryStatsWithTruncation(len, 280, maxStatsSize, true);
+      testBinaryStatsWithTruncation(len, maxStatsSize, maxStatsSize, true);
+    }
+
+    for (int len : new int[] {defaultTruncLen - 1, defaultTruncLen}) {
+      testBinaryStatsWithTruncation(len, 60, 70, true);
+      testBinaryStatsWithTruncation(len, maxStatsSize, 190, false);
+      testBinaryStatsWithTruncation(len, 280, maxStatsSize, false);
+      testBinaryStatsWithTruncation(len, maxStatsSize, maxStatsSize, false);
     }
 
     int[] invalidLengths = {-1, 0, Integer.MAX_VALUE + 1};
     for (int len : invalidLengths) {
-      assertThatThrownBy(() -> testBinaryStatsWithTruncation(len, 80, 20))
+      assertThatThrownBy(() -> new ParquetMetadataConverter(len))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("Truncate length should be greater than 0");
     }
   }
 
-  // The number of minLen and maxLen shouldn't matter because the comparision is controlled by prefix
-  private void testBinaryStatsWithTruncation(int truncateLen, int minLen, int maxLen) {
-    BinaryStatistics stats = new BinaryStatistics();
-    byte[] min = generateRandomString("a", minLen).getBytes();
-    byte[] max = generateRandomString("b", maxLen).getBytes();
-    stats.updateStats(Binary.fromConstantByteArray(min));
-    stats.updateStats(Binary.fromConstantByteArray(max));
-    ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter(truncateLen);
-    org.apache.parquet.format.Statistics formatStats = metadataConverter.toParquetStatistics(stats);
+  @Test
+  public void testBinaryStatsWithTruncationAtSizeLimit() {
+    int maxStatsSize = (int) ParquetMetadataConverter.MAX_STATS_SIZE;
+    int halfLimit = maxStatsSize / 2;
+    int defaultTruncLen = ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
 
-    if (minLen + maxLen >= ParquetMetadataConverter.MAX_STATS_SIZE) {
-      assertThat(formatStats.getMin_value()).isNull();
-      assertThat(formatStats.getMax_value()).isNull();
-    } else {
-      String minString = new String(min, Charset.forName("UTF-8"));
-      String minStatString = new String(formatStats.getMin_value(), Charset.forName("UTF-8"));
-      assertThat(minStatString.compareTo(minString)).isLessThanOrEqualTo(0);
-      String maxString = new String(max, Charset.forName("UTF-8"));
-      String maxStatString = new String(formatStats.getMax_value(), Charset.forName("UTF-8"));
-      assertThat(maxStatString.compareTo(maxString)).isGreaterThanOrEqualTo(0);
-    }
+    testBinaryStatsWithTruncation(defaultTruncLen, halfLimit - 1, halfLimit, true);
+    testBinaryStatsWithTruncation(defaultTruncLen, halfLimit, halfLimit, false);
+    testBinaryStatsWithTruncation(halfLimit, halfLimit - 1, maxStatsSize, true);
+    testBinaryStatsWithTruncation(halfLimit, halfLimit, maxStatsSize, false);
   }
 
-  private static String generateRandomString(String prefix, int length) {
-    assertThat(prefix.length()).isLessThanOrEqualTo(length);
-    StringBuilder sb = new StringBuilder(length);
-    sb.append(prefix);
-    for (int i = 0; i < length - prefix.length(); i++) {
-      int rndCharAt = random.nextInt(DATA_FOR_RANDOM_STRING.length());
-      char rndChar = DATA_FOR_RANDOM_STRING.charAt(rndCharAt);
-      sb.append(rndChar);
+  private void testBinaryStatsWithTruncation(int truncateLen, int minLen, int maxLen, boolean expectStats) {
+    BinaryStatistics stats = new BinaryStatistics();
+    byte[] min = new byte[minLen];
+    byte[] max = new byte[maxLen];
+    Arrays.fill(min, (byte) 'a');
+    Arrays.fill(max, (byte) 'b');
+    stats.updateStats(Binary.fromConstantByteArray(min));
+    stats.updateStats(Binary.fromConstantByteArray(max));
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats, truncateLen);
+
+    assertThat(formatStats.isSetMin()).isFalse();
+    assertThat(formatStats.isSetMax()).isFalse();
+    if (expectStats) {
+      byte[] expectedMin = Arrays.copyOf(min, Math.min(minLen, truncateLen));
+      byte[] expectedMax = Arrays.copyOf(max, Math.min(maxLen, truncateLen));
+      if (maxLen > truncateLen) {
+        expectedMax[expectedMax.length - 1] = (byte) 'c';
+      }
+      assertThat(formatStats.getMin_value()).hasSize(expectedMin.length).containsExactly(expectedMin);
+      assertThat(formatStats.getMax_value()).hasSize(expectedMax.length).containsExactly(expectedMax);
+      assertThat(formatStats.isSetNull_count()).isTrue();
+      assertThat(formatStats.getNull_count()).isZero();
+    } else {
+      assertThat(formatStats.isSetMin_value()).isFalse();
+      assertThat(formatStats.isSetMax_value()).isFalse();
+      assertThat(formatStats.isSetNull_count()).isFalse();
     }
-    return sb.toString();
   }
 
   @Test
