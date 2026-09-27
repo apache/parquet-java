@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -355,6 +356,130 @@ public class AlpValuesEndToEndTest {
     // Sanity: the untouched page still decodes, so the checks above are not rejecting everything.
     assertThat(secondOffset).isGreaterThan(firstOffset);
     readAllDoubles(valid, values.length);
+  }
+
+  /**
+   * The per-vector span bound must be generous enough for the largest vector ALP can legitimately
+   * produce: values needing the full FOR bit width, with a high exception rate on top. If the bound
+   * were computed too tightly this would fail to read back.
+   */
+  @Test
+  public void testWorstCaseVectorSizeIsAccepted() throws Exception {
+    double[] values = new double[DEFAULT_VECTOR_SIZE];
+    for (int i = 0; i < values.length; i++) {
+      // Alternate values that force a wide frame of reference with values ALP cannot represent,
+      // so the vector carries both a full-width packed body and a large exception block.
+      values[i] = (i % 2 == 0) ? (i % 4 == 0 ? -8e18 : 8e18) : Double.longBitsToDouble(0x7FF8000000000000L + i);
+    }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        1 << 20, 1 << 20, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+    for (double v : values) {
+      writer.writeDouble(v);
+    }
+    byte[] page = writer.getBytes().toByteArray();
+    writer.reset();
+    writer.close();
+
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    for (int i = 0; i < values.length; i++) {
+      assertThat(Double.doubleToRawLongBits(reader.readDouble()))
+          .as("raw bits differ at %s", i)
+          .isEqualTo(Double.doubleToRawLongBits(values[i]));
+    }
+  }
+
+  /**
+   * Sweeps page shapes against the per-vector span bound: several vector sizes, value counts that
+   * land on and around vector boundaries so the last vector is often partial, and three data
+   * profiles (narrow bit width, full bit width, mostly exceptions). A bound computed too tightly
+   * would reject one of these instead of reading it back.
+   */
+  @Test
+  public void testSpanBoundAcceptsEveryLegitimatePageShape() throws Exception {
+    Random rnd = new Random(42);
+    int shapes = 0;
+    for (int perVector : new int[] {8, 16, 1024, 4096}) {
+      for (int count :
+          new int[] {1, 2, perVector - 1, perVector, perVector + 1, 2 * perVector + 1, 5 * perVector + 3}) {
+        for (int profile = 0; profile < 3; profile++) {
+          double[] values = new double[count];
+          for (int i = 0; i < count; i++) {
+            if (profile == 0) {
+              values[i] = i / 8.0;
+            } else if (profile == 1) {
+              values[i] = (i % 2 == 0) ? 8e18 : -8e18;
+            } else {
+              values[i] = Double.longBitsToDouble(rnd.nextLong());
+            }
+          }
+          assertDoublesRoundTripExactly(values, perVector, profile);
+          shapes++;
+        }
+      }
+    }
+    assertThat(shapes).isEqualTo(84);
+  }
+
+  private void assertDoublesRoundTripExactly(double[] values, int perVector, int profile) throws Exception {
+    AlpValuesWriter.DoubleAlpValuesWriter writer =
+        new AlpValuesWriter.DoubleAlpValuesWriter(1 << 22, 1 << 22, new DirectByteBufferAllocator(), perVector);
+    byte[] page;
+    try {
+      for (double v : values) {
+        writer.writeDouble(v);
+      }
+      page = writer.getBytes().toByteArray();
+    } finally {
+      writer.reset();
+      writer.close();
+    }
+
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    for (int i = 0; i < values.length; i++) {
+      assertThat(Double.doubleToRawLongBits(reader.readDouble()))
+          .as("perVector=%s count=%s profile=%s index=%s", perVector, values.length, profile, i)
+          .isEqualTo(Double.doubleToRawLongBits(values[i]));
+    }
+  }
+
+  /**
+   * The reader must not assume the page buffer starts at position 0. Wrapping the same page behind
+   * some leading bytes exercises the paths where an absolute {@code get(index)} would silently read
+   * the wrong bytes, which is how a page arrives from a real column reader.
+   */
+  @Test
+  public void testReadsPageBackedByBufferWithNonZeroPosition() throws Exception {
+    double[] values = new double[3000];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = i / 16.0;
+    }
+    AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter(
+        1 << 20, 1 << 20, new DirectByteBufferAllocator(), DEFAULT_VECTOR_SIZE);
+    byte[] page;
+    try {
+      for (double v : values) {
+        writer.writeDouble(v);
+      }
+      page = writer.getBytes().toByteArray();
+    } finally {
+      writer.reset();
+      writer.close();
+    }
+
+    int lead = 37; // deliberately not a multiple of 4 or 8
+    byte[] padded = new byte[lead + page.length];
+    Arrays.fill(padded, 0, lead, (byte) 0xA5);
+    System.arraycopy(page, 0, padded, lead, page.length);
+    ByteBuffer buffer = ByteBuffer.wrap(padded);
+    buffer.position(lead);
+
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(buffer));
+    for (int i = 0; i < values.length; i++) {
+      assertThat(reader.readDouble()).as("value at %s", i).isEqualTo(values[i]);
+    }
   }
 
   @Test
