@@ -31,6 +31,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.ParquetDecodingException;
 
 /**
@@ -44,8 +45,8 @@ import org.apache.parquet.io.ParquetDecodingException;
 class DictionaryPageReader implements DictionaryPageReadStore {
 
   private final ParquetFileReader reader;
-  private final Map<String, ColumnChunkMetaData> columns;
-  private final Map<String, Optional<DictionaryPage>> dictionaryPageCache;
+  private final Map<ColumnPath, ColumnChunkMetaData> columns;
+  private final Map<ColumnPath, Optional<DictionaryPage>> dictionaryPageCache;
   private ColumnChunkPageReadStore rowGroup = null;
   private ByteBufferReleaser releaser;
 
@@ -64,7 +65,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
     releaser = new ByteBufferReleaser(allocator);
 
     for (ColumnChunkMetaData column : block.getColumns()) {
-      columns.put(column.getPath().toDotString(), column);
+      columns.put(column.getPath(), column);
     }
   }
 
@@ -87,14 +88,14 @@ class DictionaryPageReader implements DictionaryPageReadStore {
       return rowGroup.readDictionaryPage(descriptor);
     }
 
-    String dotPath = String.join(".", descriptor.getPath());
-    ColumnChunkMetaData column = columns.get(dotPath);
+    ColumnPath path = ColumnPath.get(descriptor.getPath());
+    ColumnChunkMetaData column = columns.get(path);
     if (column == null) {
-      throw new ParquetDecodingException("Failed to load dictionary, unknown column: " + dotPath);
+      throw new ParquetDecodingException("Failed to load dictionary, unknown column: " + path);
     }
 
     return dictionaryPageCache
-        .computeIfAbsent(dotPath, key -> {
+        .computeIfAbsent(path, key -> {
           try {
             final DictionaryPage dict = column.hasDictionaryPage() ? reader.readDictionary(column) : null;
 

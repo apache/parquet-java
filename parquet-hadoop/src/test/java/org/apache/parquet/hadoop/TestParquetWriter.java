@@ -61,11 +61,14 @@ import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
@@ -332,6 +335,61 @@ public class TestParquetWriter {
                 .hashBytes(Binary.fromString(name).toByteBuffer())))
             .isTrue();
       }
+    }
+  }
+
+  @Test
+  public void testDictionaryReaderKeepsCollidingDotStringPathsDistinct() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(stringType())
+        .named("b")
+        .named("a")
+        .named("msg");
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+
+    Path path = newTempPath();
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
+        .withConf(conf)
+        .withDictionaryEncoding(true)
+        .build()) {
+      for (int i = 0; i < 100; i++) {
+        String suffix = (i % 2 == 0) ? "one" : "two";
+        Group group = factory.newGroup().append("a.b", suffix);
+        group.addGroup("a").append("b", "nested-" + suffix);
+        writer.write(group);
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      ColumnDescriptor topLevelDescriptor = schema.getColumnDescription(new String[] {"a.b"});
+      ColumnDescriptor nestedDescriptor = schema.getColumnDescription(new String[] {"a", "b"});
+      DictionaryPageReadStore dictionaryReader = reader.getNextDictionaryReader();
+      DictionaryPage topLevelPage = dictionaryReader.readDictionaryPage(topLevelDescriptor);
+      DictionaryPage nestedPage = dictionaryReader.readDictionaryPage(nestedDescriptor);
+      assertThat(topLevelPage).isNotNull();
+      assertThat(nestedPage).isNotNull();
+
+      Dictionary topLevelDictionary = topLevelPage.getEncoding().initDictionary(topLevelDescriptor, topLevelPage);
+      Set<String> topLevelValues = new HashSet<>();
+      for (int id = 0; id <= topLevelDictionary.getMaxId(); id++) {
+        topLevelValues.add(topLevelDictionary.decodeToBinary(id).toStringUsingUTF8());
+      }
+      assertThat(topLevelValues).containsExactlyInAnyOrder("one", "two");
+
+      Dictionary nestedDictionary = nestedPage.getEncoding().initDictionary(nestedDescriptor, nestedPage);
+      Set<String> nestedValues = new HashSet<>();
+      for (int id = 0; id <= nestedDictionary.getMaxId(); id++) {
+        nestedValues.add(nestedDictionary.decodeToBinary(id).toStringUsingUTF8());
+      }
+      assertThat(nestedValues).containsExactlyInAnyOrder("nested-one", "nested-two");
     }
   }
 
