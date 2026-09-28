@@ -336,6 +336,62 @@ public class TestParquetWriter {
   }
 
   @Test
+  public void testStructuredColumnConfigKeepsCollidingDotStringPathsDistinct() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(stringType())
+        .named("b")
+        .named("a")
+        .named("msg");
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    conf.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, false);
+    conf.setBoolean(ParquetOutputFormat.BLOOM_FILTER_ENABLED, false);
+    conf.setBoolean(ParquetOutputFormat.STATISTICS_ENABLED, false);
+
+    // Structured keys encode each path component independently with unpadded URL-safe Base64.
+    // ["a.b"] becomes ["YS5i"], while ["a", "b"] becomes ["YQ", "Yg"]. These overrides
+    // therefore target only the top-level field whose literal name contains a dot.
+    String topLevelPathSuffix = ".column-path#YS5i";
+    conf.setBoolean(ParquetOutputFormat.BLOOM_FILTER_ENABLED + topLevelPathSuffix, true);
+    conf.setBoolean(ParquetOutputFormat.STATISTICS_ENABLED + topLevelPathSuffix, true);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Group group = factory.newGroup().append("a.b", "top-level");
+    group.addGroup("a").append("b", "nested");
+
+    Path path = newTempPath();
+    ParquetOutputFormat<Group> outputFormat = new ParquetOutputFormat<>(new GroupWriteSupport());
+    RecordWriter<Void, Group> writer = outputFormat.getRecordWriter(conf, path, UNCOMPRESSED);
+    try {
+      writer.write(null, group);
+    } finally {
+      writer.close(null);
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      BlockMetaData block = reader.getFooter().getBlocks().get(0);
+      ColumnChunkMetaData topLevelColumn = block.getColumns().stream()
+          .filter(column -> column.getPath().equals(ColumnPath.get("a.b")))
+          .findFirst()
+          .orElseThrow();
+      ColumnChunkMetaData nestedColumn = block.getColumns().stream()
+          .filter(column -> column.getPath().equals(ColumnPath.get("a", "b")))
+          .findFirst()
+          .orElseThrow();
+
+      assertThat(reader.readBloomFilter(topLevelColumn)).isNotNull();
+      assertThat(reader.readBloomFilter(nestedColumn)).isNull();
+      assertThat(topLevelColumn.getStatistics().hasNonNullValue()).isTrue();
+      assertThat(nestedColumn.getStatistics().hasNonNullValue()).isFalse();
+    }
+  }
+
+  @Test
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
     int buildBloomFilterCount = 100000;
     double[] testFpps = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
