@@ -247,6 +247,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(BLOOM_FILTER_ENABLED, DEFAULT_BLOOM_FILTER_ENABLED);
   }
 
+  /**
+   * Enables or disables Bloom filters for an unambiguous component-based column path.
+   */
+  public static void setBloomFilterEnabled(JobContext jobContext, String[] columnPath, boolean enabled) {
+    getConfiguration(jobContext)
+        .setBoolean(ColumnConfigParser.columnPathKey(BLOOM_FILTER_ENABLED, columnPath), enabled);
+  }
+
   public static boolean getAdaptiveBloomFilterEnabled(Configuration conf) {
     return conf.getBoolean(ADAPTIVE_BLOOM_FILTER_ENABLED, DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
   }
@@ -433,6 +441,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     getConfiguration(jobContext).set(STATISTICS_ENABLED + "#" + columnPath, String.valueOf(enabled));
   }
 
+  /**
+   * Enables or disables statistics for an unambiguous component-based column path.
+   */
+  public static void setStatisticsEnabled(JobContext jobContext, String[] columnPath, boolean enabled) {
+    getConfiguration(jobContext)
+        .setBoolean(ColumnConfigParser.columnPathKey(STATISTICS_ENABLED, columnPath), enabled);
+  }
+
   public static boolean getStatisticsEnabled(Configuration conf, String columnPath) {
     String columnSpecific = conf.get(STATISTICS_ENABLED + "#" + columnPath);
     if (columnSpecific != null) {
@@ -552,6 +568,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
             key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
             propsBuilder::withBloomFilterCandidatesNumber)
         .withColumnConfig(
+            STATISTICS_ENABLED,
+            key -> conf.getBoolean(key, ParquetProperties.DEFAULT_STATISTICS_ENABLED),
+            propsBuilder::withStatisticsEnabled)
+        .withColumnPathConfig(
+            BLOOM_FILTER_ENABLED, key -> conf.getBoolean(key, false), propsBuilder::withBloomFilterEnabled)
+        .withColumnPathConfig(
             STATISTICS_ENABLED,
             key -> conf.getBoolean(key, ParquetProperties.DEFAULT_STATISTICS_ENABLED),
             propsBuilder::withStatisticsEnabled)

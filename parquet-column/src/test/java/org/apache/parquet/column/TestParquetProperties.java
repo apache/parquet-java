@@ -21,11 +21,13 @@ package org.apache.parquet.column;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -79,6 +81,32 @@ public class TestParquetProperties {
         ParquetProperties.builder().withCompressionCodec("col_a", ZSTD).build();
     assertThat(props.getColumnCodec(colB)).isNull();
     assertThat(props.getColumnCodec(colC)).isNull();
+  }
+
+  @Test
+  public void componentPathsKeepDottedAndNestedColumnPropertiesDistinct() {
+    MessageType schema = Types.buildMessage()
+        .required(INT32)
+        .named("a.b")
+        .requiredGroup()
+        .required(INT32)
+        .named("b")
+        .named("a")
+        .named("msg");
+    ColumnDescriptor topLevel = schema.getColumnDescription(new String[] {"a.b"});
+    ColumnDescriptor nested = schema.getColumnDescription(new String[] {"a", "b"});
+
+    ParquetProperties props = ParquetProperties.builder()
+        .withBloomFilterEnabled(false)
+        .withBloomFilterEnabled(new String[] {"a.b"}, true)
+        .withStatisticsEnabled(false)
+        .withStatisticsEnabled(new String[] {"a.b"}, true)
+        .build();
+
+    assertThat(props.isBloomFilterEnabled(topLevel)).isTrue();
+    assertThat(props.isBloomFilterEnabled(nested)).isFalse();
+    assertThat(props.getStatisticsEnabled(topLevel)).isTrue();
+    assertThat(props.getStatisticsEnabled(nested)).isFalse();
   }
 
   @Test

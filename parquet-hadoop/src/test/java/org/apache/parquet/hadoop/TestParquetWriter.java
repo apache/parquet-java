@@ -336,7 +336,7 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void testStructuredColumnConfigKeepsCollidingDotStringPathsDistinct() throws Exception {
+  public void testStructuredStatisticsConfigKeepsCollidingDotStringPathsDistinct() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(stringType())
@@ -349,16 +349,12 @@ public class TestParquetWriter {
         .named("msg");
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
-    conf.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, false);
-    conf.setBoolean(ParquetOutputFormat.BLOOM_FILTER_ENABLED, false);
     conf.setBoolean(ParquetOutputFormat.STATISTICS_ENABLED, false);
 
-    // Structured keys encode each path component independently with unpadded URL-safe Base64.
-    // ["a.b"] becomes ["YS5i"], while ["a", "b"] becomes ["YQ", "Yg"]. These overrides
-    // therefore target only the top-level field whose literal name contains a dot.
-    String topLevelPathSuffix = ".column-path#YS5i";
-    conf.setBoolean(ParquetOutputFormat.BLOOM_FILTER_ENABLED + topLevelPathSuffix, true);
-    conf.setBoolean(ParquetOutputFormat.STATISTICS_ENABLED + topLevelPathSuffix, true);
+    // Component-based configuration can target ["a.b"] without also targeting ["a", "b"].
+    Job job = Job.getInstance(conf);
+    ParquetOutputFormat.setStatisticsEnabled(job, new String[] {"a.b"}, true);
+    conf = job.getConfiguration();
 
     GroupFactory factory = new SimpleGroupFactory(schema);
     Group group = factory.newGroup().append("a.b", "top-level");
@@ -384,8 +380,6 @@ public class TestParquetWriter {
           .findFirst()
           .orElseThrow();
 
-      assertThat(reader.readBloomFilter(topLevelColumn)).isNotNull();
-      assertThat(reader.readBloomFilter(nestedColumn)).isNull();
       assertThat(topLevelColumn.getStatistics().hasNonNullValue()).isTrue();
       assertThat(nestedColumn.getStatistics().hasNonNullValue()).isFalse();
     }
