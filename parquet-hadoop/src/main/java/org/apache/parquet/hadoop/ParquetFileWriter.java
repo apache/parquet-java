@@ -134,7 +134,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private final List<List<OffsetIndex>> offsetIndexes = new ArrayList<>();
 
   // The Bloom filters
-  private final List<Map<String, BloomFilter>> bloomFilters = new ArrayList<>();
+  private final List<Map<ColumnPath, BloomFilter>> bloomFilters = new ArrayList<>();
 
   // The file encryptor
   private final InternalFileEncryptor fileEncryptor;
@@ -147,7 +147,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private List<OffsetIndex> currentOffsetIndexes;
 
   // The Bloom filter for the actual block
-  private Map<String, BloomFilter> currentBloomFilters;
+  private Map<ColumnPath, BloomFilter> currentBloomFilters;
 
   // row group data set at the start of a row group
   private long currentRecordCount; // set in startBlock
@@ -1078,6 +1078,16 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param bloomFilter the bloom filter of column values
    */
   public void addBloomFilter(String column, BloomFilter bloomFilter) {
+    addBloomFilterForPath(ColumnPath.fromDotString(column), bloomFilter);
+  }
+
+  /**
+   * Add a Bloom filter that will be written out.
+   *
+   * @param column      the component-based column path
+   * @param bloomFilter the bloom filter of column values
+   */
+  public void addBloomFilterForPath(ColumnPath column, BloomFilter bloomFilter) {
     currentBloomFilters.put(column, bloomFilter);
   }
 
@@ -1531,7 +1541,7 @@ public class ParquetFileWriter implements AutoCloseable {
           }
         }
         if (isWriteBloomFilter) {
-          currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+          currentBloomFilters.put(ColumnPath.get(descriptor.getPath()), bloomFilter);
         } else {
           LOG.info(
               "No need to write bloom filter because column {} data pages are all encoded as dictionary.",
@@ -1813,7 +1823,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
       copy(from, out, start, length);
 
-      currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+      currentBloomFilters.put(ColumnPath.get(descriptor.getPath()), bloomFilter);
       currentColumnIndexes.add(columnIndex);
       currentOffsetIndexes.add(effectiveOffsetIndex);
 
@@ -2036,7 +2046,7 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   private static void serializeBloomFilters(
-      List<Map<String, BloomFilter>> bloomFilters,
+      List<Map<ColumnPath, BloomFilter>> bloomFilters,
       List<BlockMetaData> blocks,
       PositionOutputStream out,
       InternalFileEncryptor fileEncryptor)
@@ -2045,11 +2055,11 @@ public class ParquetFileWriter implements AutoCloseable {
     for (int bIndex = 0, bSize = blocks.size(); bIndex < bSize; ++bIndex) {
       BlockMetaData block = blocks.get(bIndex);
       List<ColumnChunkMetaData> columns = block.getColumns();
-      Map<String, BloomFilter> blockBloomFilters = bloomFilters.get(bIndex);
+      Map<ColumnPath, BloomFilter> blockBloomFilters = bloomFilters.get(bIndex);
       if (blockBloomFilters.isEmpty()) continue;
       for (int cIndex = 0, cSize = columns.size(); cIndex < cSize; ++cIndex) {
         ColumnChunkMetaData column = columns.get(cIndex);
-        BloomFilter bloomFilter = blockBloomFilters.get(column.getPath().toDotString());
+        BloomFilter bloomFilter = blockBloomFilters.get(column.getPath());
         if (bloomFilter == null) {
           continue;
         }
