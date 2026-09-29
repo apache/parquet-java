@@ -691,7 +691,7 @@ public class VariantBuilder {
 
     @Override
     public int compareTo(FieldEntry other) {
-      return key.compareTo(other.key);
+      return VariantUtil.compareKeys(key, other.key);
     }
   }
 

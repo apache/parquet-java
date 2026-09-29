@@ -71,11 +71,13 @@ public final class FloatingPointNanInteropFileGenerator {
       .columnOrder(ColumnOrder.ieee754TotalOrder())
       .named("float_ieee754")
       .required(FLOAT)
+      .columnOrder(ColumnOrder.typeDefined())
       .named("float_typedef")
       .required(DOUBLE)
       .columnOrder(ColumnOrder.ieee754TotalOrder())
       .named("double_ieee754")
       .required(DOUBLE)
+      .columnOrder(ColumnOrder.typeDefined())
       .named("double_typedef")
       .required(FIXED_LEN_BYTE_ARRAY)
       .length(2)
@@ -85,6 +87,7 @@ public final class FloatingPointNanInteropFileGenerator {
       .required(FIXED_LEN_BYTE_ARRAY)
       .length(2)
       .as(float16Type())
+      .columnOrder(ColumnOrder.typeDefined())
       .named("float16_typedef")
       .named("msg");
 

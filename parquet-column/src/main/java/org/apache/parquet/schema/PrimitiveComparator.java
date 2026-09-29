@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Comparator;
 import org.apache.parquet.io.api.Binary;
 
@@ -275,6 +276,34 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     @Override
     public String toString() {
       return "BINARY_AS_SIGNED_INTEGER_COMPARATOR";
+    }
+  };
+
+  /**
+   * Comparator for timestamps encoded as 12-byte little-endian two's-complement values.
+   */
+  static final PrimitiveComparator<Binary> BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR = new BinaryComparator() {
+    @Override
+    int compareBinary(Binary b1, Binary b2) {
+      if (b1.length() != 12 || b2.length() != 12) {
+        throw new IllegalArgumentException(
+            "Timestamp binary length must be 12 bytes, got " + b1.length() + " and " + b2.length());
+      }
+      ByteBuffer bb1 = b1.toByteBuffer().slice();
+      bb1.order(ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer bb2 = b2.toByteBuffer().slice();
+      bb2.order(ByteOrder.LITTLE_ENDIAN);
+      // Signed comparison of the high 4 bytes followed by unsigned comparison of the low 8 bytes.
+      int hiResult = Integer.compare(bb1.getInt(8), bb2.getInt(8));
+      if (hiResult != 0) {
+        return hiResult;
+      }
+      return Long.compareUnsigned(bb1.getLong(0), bb2.getLong(0));
+    }
+
+    @Override
+    public String toString() {
+      return "BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR";
     }
   };
 

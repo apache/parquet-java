@@ -178,71 +178,78 @@
 
 --------------------------------------------------------------------------------
 
-This product depends on Apache Thrift and includes it in this binary artifact.
-
-Copyright: 2006-2010 The Apache Software Foundation.
-Home page: https://thrift.apache.org/
-License: http://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
-This product depends on SLF4J and includes SLF4J in this binary artifact. SLF4J
-is a simple logging facade for Java.
-
-Copyright: 2004-2013 QOS.ch.
-Home page: http://www.slf4j.org/
-License: http://slf4j.org/license.html (MIT license)
-
-The following is the SLF4J license (MIT):
-
-  Copyright (c) 2004-2013 QOS.ch
-  All rights reserved.
-
-  Permission is hereby granted, free  of charge, to any person obtaining
-  a  copy  of this  software  and  associated  documentation files  (the
-  "Software"), to  deal in  the Software without  restriction, including
-  without limitation  the rights to  use, copy, modify,  merge, publish,
-  distribute,  sublicense, and/or sell  copies of  the Software,  and to
-  permit persons to whom the Software  is furnished to do so, subject to
-  the following conditions:
-
-  The  above  copyright  notice  and  this permission  notice  shall  be
-  included in all copies or substantial portions of the Software.
-
-  THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
-  EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
-  MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
-  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-  OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
-  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
---------------------------------------------------------------------------------
-
-This project includes code from Daniel Lemire's JavaFastPFOR project in this
+This product includes code from Daniel Lemire's JavaFastPFOR project in this
 binary artifact. The "Lemire" bit packing classes produced by parquet-generator
 are derived from the JavaFastPFOR project.
 
 Copyright: 2013 Daniel Lemire
 Home page: http://lemire.me/en/
 Project page: https://github.com/lemire/JavaFastPFOR
-License: Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
 --------------------------------------------------------------------------------
 
-This product depends on fastutil and includes it in this binary artifact.
-Fastutil provides type-specific collection implementations.
+This product bundles fastutil in this binary artifact. fastutil provides
+type-specific collection implementations.
 
-Copyright: 2002-2014 Sebastiano Vigna
-Home page: http://fasutil.di.unimi.it/
-License: http://www.apache.org/licenses/LICENSE-2.0.html
+Copyright: 2002-2024 Sebastiano Vigna
+Home page: https://fastutil.di.unimi.it/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
 --------------------------------------------------------------------------------
 
-This product depends on Jackson and includes it in this binary artifact.
-Jackson is a high-performance JSON processor.
+This product bundles Zero-Allocation-Hashing in this binary artifact.
+Zero-Allocation-Hashing provides fast non-cryptographic hashing.
 
-Copyright: 2007-2015 Tatu Saloranta and other contributors
-Home page: http://jackson.codehaus.org/
-License: http://www.apache.org/licenses/LICENSE-2.0.txt
+Copyright: 2014-2018 Chronicle Software Ltd
+Home page: https://github.com/OpenHFT/Zero-Allocation-Hashing
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Thrift (libthrift) in this binary artifact.
+
+Copyright: 2006-2019 The Apache Software Foundation
+Home page: https://thrift.apache.org/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles Jackson (jackson-core, jackson-databind, and
+jackson-annotations) in this binary artifact. Jackson is a high-performance
+JSON processor.
+
+Copyright: 2007-2024 Tatu Saloranta and other Jackson contributors
+Home page: https://github.com/FasterXML/jackson
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+jackson-core bundles a shaded copy of FastDoubleParser and a copy of the
+Schubfach number-writing code, both of which are available under the MIT
+License:
+
+  FastDoubleParser
+  Copyright (c) 2023 Werner Randelshofer, Switzerland
+  https://github.com/wrandelshofer/FastDoubleParser
+
+  Schubfach
+  Copyright (c) 2018-2020 Raffaello Giulietti
+  https://github.com/c4f7fcce9cb06515/Schubfach
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
 

@@ -47,6 +47,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
@@ -318,7 +320,14 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getLogicalTypeAnnotation() != null) {
-          element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          // The TimestampType logical type may have a converted type, but only for the INT64
+          // physical type.
+          boolean suppressConvertedType = primitiveType.getLogicalTypeAnnotation()
+                  instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation
+              && primitiveType.getPrimitiveTypeName() != PrimitiveTypeName.INT64;
+          if (!suppressConvertedType) {
+            element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          }
           element.setLogicalType(convertToLogicalType(primitiveType.getLogicalTypeAnnotation()));
         }
         if (primitiveType.getDecimalMetadata() != null) {
@@ -783,7 +792,7 @@ public class ParquetMetadataConverter {
       switch (stat.getPage_type()) {
         case DATA_PAGE_V2:
           builder.withV2Pages();
-          // falls through
+        // falls through
         case DATA_PAGE:
           builder.addDataEncoding(getEncoding(stat.getEncoding()), stat.getCount());
           break;
@@ -950,7 +959,16 @@ public class ParquetMetadataConverter {
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
       String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
-    // create stats object based on the column type
+    return fromParquetStatisticsInternal(null, createdBy, formatStats, type, typeSortOrder);
+  }
+
+  // Visible for testing
+  static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+      ParsedVersion writerVersion,
+      String createdBy,
+      Statistics formatStats,
+      PrimitiveType type,
+      SortOrder typeSortOrder) {
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
         org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
 
@@ -972,8 +990,11 @@ public class ParquetMetadataConverter {
         // valid with the type's sort order. In previous releases, all stats were
         // aggregated using a signed byte-wise ordering, which isn't valid for all the
         // types (e.g. strings, decimals etc.).
-        if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName())
-            && (sortOrdersMatch || maxEqualsMin)) {
+        boolean shouldIgnoreStatistics = writerVersion == null
+            ? CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName())
+            : CorruptStatistics.shouldIgnoreStatistics(
+                writerVersion, createdBy, type.getPrimitiveTypeName());
+        if (!shouldIgnoreStatistics && (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
             statsBuilder.withMin(formatStats.min.array());
             statsBuilder.withMax(formatStats.max.array());
@@ -994,7 +1015,13 @@ public class ParquetMetadataConverter {
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveType type) {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
-    return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
+    return fromParquetStatisticsInternal(null, createdBy, statistics, type, expectedOrder);
+  }
+
+  public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
+      ParsedVersion writerVersion, String createdBy, Statistics statistics, PrimitiveType type) {
+    SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
+    return fromParquetStatisticsInternal(writerVersion, createdBy, statistics, type, expectedOrder);
   }
 
   GeospatialStatistics toParquetGeospatialStatistics(
@@ -1828,13 +1855,22 @@ public class ParquetMetadataConverter {
 
   public ColumnChunkMetaData buildColumnChunkMetaData(
       ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, String createdBy) {
+    return buildColumnChunkMetaData(metaData, columnPath, type, null, createdBy);
+  }
+
+  public ColumnChunkMetaData buildColumnChunkMetaData(
+      ColumnMetaData metaData,
+      ColumnPath columnPath,
+      PrimitiveType type,
+      ParsedVersion writerVersion,
+      String createdBy) {
     return ColumnChunkMetaData.get(
         columnPath,
         type,
         fromFormatCodec(metaData.codec),
         convertEncodingStats(metaData.getEncoding_stats()),
         fromFormatEncodings(metaData.encodings),
-        fromParquetStatistics(createdBy, metaData.statistics, type),
+        fromParquetStatistics(writerVersion, createdBy, metaData.statistics, type),
         metaData.data_page_offset,
         metaData.dictionary_page_offset,
         metaData.num_values,
@@ -1861,6 +1897,15 @@ public class ParquetMetadataConverter {
       Map<RowGroup, Long> rowGroupToRowIndexOffsetMap)
       throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        buildFileMetaData(parquetMetadata, messageType, encryptedFooter, fileDecryptor);
+    String createdBy = fileMetaData.getCreatedBy();
+    ParsedVersion writerVersion = null;
+    try {
+      writerVersion = fileMetaData.getWriterVersion();
+    } catch (VersionParseException e) {
+      // Fall back to String-based path which logs the parse error with full context
+    }
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
 
@@ -1937,13 +1982,11 @@ public class ParquetMetadataConverter {
             }
           }
 
-          String createdBy = parquetMetadata.getCreated_by();
           if (!lazyMetadataDecryption) { // full column metadata (with stats) is available
-            column = buildColumnChunkMetaData(
-                metaData,
-                columnPath,
-                messageType.getType(columnPath.toArray()).asPrimitiveType(),
-                createdBy);
+            PrimitiveType primitiveType =
+                messageType.getType(columnPath.toArray()).asPrimitiveType();
+            column =
+                buildColumnChunkMetaData(metaData, columnPath, primitiveType, writerVersion, createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             if (metaData.isSetBloom_filter_offset()) {
               column.setBloomFilterOffset(metaData.getBloom_filter_offset());
@@ -1982,6 +2025,15 @@ public class ParquetMetadataConverter {
         blocks.add(blockMetaData);
       }
     }
+    return new ParquetMetadata(fileMetaData, blocks);
+  }
+
+  private static org.apache.parquet.hadoop.metadata.FileMetaData buildFileMetaData(
+      FileMetaData parquetMetadata,
+      MessageType messageType,
+      boolean encryptedFooter,
+      InternalFileDecryptor fileDecryptor) {
+    String createdBy = parquetMetadata.getCreated_by();
     Map<String, String> keyValueMetaData = new HashMap<String, String>();
     List<KeyValue> key_value_metadata = parquetMetadata.getKey_value_metadata();
     if (key_value_metadata != null) {
@@ -1997,10 +2049,8 @@ public class ParquetMetadataConverter {
     } else {
       encryptionType = EncryptionType.UNENCRYPTED;
     }
-    return new ParquetMetadata(
-        new org.apache.parquet.hadoop.metadata.FileMetaData(
-            messageType, keyValueMetaData, parquetMetadata.getCreated_by(), encryptionType, fileDecryptor),
-        blocks);
+    return new org.apache.parquet.hadoop.metadata.FileMetaData(
+        messageType, keyValueMetaData, createdBy, encryptionType, fileDecryptor);
   }
 
   private static IndexReference toColumnIndexReference(ColumnChunk columnChunk) {
@@ -2068,7 +2118,16 @@ public class ParquetMetadataConverter {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
           primitiveBuilder.columnOrder(columnOrder);
+        } else if (schemaElement.type == Type.FLOAT
+            || schemaElement.type == Type.DOUBLE
+            || (schemaElement.isSetLogicalType() && schemaElement.logicalType.isSetFLOAT16())) {
+          // A footer without column orders predates IEEE_754_TOTAL_ORDER, so a floating-point column
+          // here must not inherit the (IEEE 754 total order) construction-time default: its stats, if
+          // any, were written under the legacy type-defined order and must be read under it.
+          primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
         }
+        // Gracefully handle unsupported logical type combinations on the read path.
+        primitiveBuilder.ignoreUnsupportedLogicalAnnotations();
         childBuilder = primitiveBuilder;
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));

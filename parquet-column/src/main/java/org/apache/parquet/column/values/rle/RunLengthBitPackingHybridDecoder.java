@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
@@ -47,7 +48,9 @@ public class RunLengthBitPackingHybridDecoder {
   private MODE mode;
   private int currentCount;
   private int currentValue;
-  private int[] currentBuffer;
+  private int currentBufferPosition;
+  private int[] currentBuffer = new int[0];
+  private byte[] packedBytes = new byte[0];
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     LOG.debug("decoding bitWidth {}", bitWidth);
@@ -69,7 +72,7 @@ public class RunLengthBitPackingHybridDecoder {
         result = currentValue;
         break;
       case PACKED:
-        result = currentBuffer[currentBuffer.length - 1 - currentCount];
+        result = currentBuffer[currentBufferPosition++];
         break;
       default:
         throw new ParquetDecodingException("not a valid mode " + mode);
@@ -91,16 +94,25 @@ public class RunLengthBitPackingHybridDecoder {
         int numGroups = header >>> 1;
         currentCount = numGroups * 8;
         LOG.debug("reading {} values BIT PACKED", currentCount);
-        currentBuffer = new int[currentCount]; // TODO: reuse a buffer
-        byte[] bytes = new byte[numGroups * bitWidth];
+        if (currentBuffer.length < currentCount) {
+          currentBuffer = new int[currentCount];
+        }
+        currentBufferPosition = 0;
+        int bytesRequired = numGroups * bitWidth;
+        if (packedBytes.length < bytesRequired) {
+          packedBytes = new byte[bytesRequired];
+        }
         // At the end of the file RLE data though, there might not be that many bytes left.
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
         bytesToRead = Math.min(bytesToRead, in.available());
-        new DataInputStream(in).readFully(bytes, 0, bytesToRead);
+        if (in.readNBytes(packedBytes, 0, bytesToRead) != bytesToRead) {
+          throw new EOFException();
+        }
+        Arrays.fill(packedBytes, bytesToRead, bytesRequired, (byte) 0);
         for (int valueIndex = 0, byteIndex = 0;
             valueIndex < currentCount;
             valueIndex += 8, byteIndex += bitWidth) {
-          packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
+          packer.unpack8Values(packedBytes, byteIndex, currentBuffer, valueIndex);
         }
         break;
       default:

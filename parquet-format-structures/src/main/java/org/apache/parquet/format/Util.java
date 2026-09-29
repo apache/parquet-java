@@ -158,6 +158,14 @@ public class Util {
     return read(from, new FileMetaData(), decryptor, AAD);
   }
 
+  /**
+   * Reads file metadata using a custom Thrift max message size.
+   *
+   * @param from the stream to read the metadata from
+   * @param maxMessageSize maximum Thrift message size in bytes; {@code -1} uses the default (100 MB)
+   * @return the resulting metadata
+   * @throws IOException if any I/O error occurs during the reading
+   */
   public static FileMetaData readFileMetaData(InputStream from, int maxMessageSize) throws IOException {
     return readFileMetaData(from, null, null, maxMessageSize);
   }

@@ -178,10 +178,19 @@
 
 --------------------------------------------------------------------------------
 
-This product depends on fastutil and includes it in this binary artifact.
-Fastutil provides type-specific collection implementations.
+This product bundles fastutil in this binary artifact. fastutil provides
+type-specific collection implementations.
 
-Copyright: 2002-2014 Sebastiano Vigna
-Home page: http://fasutil.di.unimi.it/
-License: http://www.apache.org/licenses/LICENSE-2.0.html
+Copyright: 2002-2024 Sebastiano Vigna
+Home page: https://fastutil.di.unimi.it/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles Zero-Allocation-Hashing in this binary artifact.
+Zero-Allocation-Hashing provides fast non-cryptographic hashing.
+
+Copyright: 2014-2018 Chronicle Software Ltd
+Home page: https://github.com/OpenHFT/Zero-Allocation-Hashing
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 

@@ -485,13 +485,40 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
       if (footer == null) {
         // Footer was originally missing, so get it from the cache again
-        footers.add(footersCache.getCurrentValue(footerEntry.getKey()).getFooter());
-      } else {
-        footers.add(footer);
+        footer = footersCache.getCurrentValue(footerEntry.getKey()).getFooter();
       }
+      footers.add(new FooterWithFileStatus(footer, footerEntry.getKey().status));
     }
 
     return footers;
+  }
+
+  static FileStatus getFileStatus(Footer footer) {
+    return footer instanceof FooterWithFileStatus ? ((FooterWithFileStatus) footer).fileStatus : null;
+  }
+
+  private static List<Footer> withFileStatuses(List<Footer> footers, Collection<FileStatus> statuses) {
+    Map<Path, FileStatus> statusesByPath = new HashMap<Path, FileStatus>(statuses.size());
+    for (FileStatus status : statuses) {
+      statusesByPath.put(status.getPath(), status);
+    }
+
+    List<Footer> footersWithStatuses = new ArrayList<Footer>(footers.size());
+    for (Footer footer : footers) {
+      FileStatus status = statusesByPath.get(footer.getFile());
+      footersWithStatuses.add(status == null ? footer : new FooterWithFileStatus(footer, status));
+    }
+    return footersWithStatuses;
+  }
+
+  /** Carries an already-listed status through split planning without adding it to Footer's public API. */
+  private static final class FooterWithFileStatus extends Footer {
+    private final FileStatus fileStatus;
+
+    private FooterWithFileStatus(Footer footer, FileStatus fileStatus) {
+      super(footer.getFile(), footer.getParquetMetadata());
+      this.fileStatus = fileStatus;
+    }
   }
 
   public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
@@ -509,7 +536,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public List<Footer> getFooters(Configuration configuration, Collection<FileStatus> statuses) throws IOException {
     LOG.debug("reading {} files", statuses.size());
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
-    return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, taskSideMetaData);
+    List<Footer> footers =
+        ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, taskSideMetaData);
+    return withFileStatuses(footers, statuses);
   }
 
   /**
@@ -732,8 +761,6 @@ class ClientSideMetadataSplitStrategy {
     for (Footer footer : footers) {
       final Path file = footer.getFile();
       LOG.debug("{}", file);
-      FileSystem fs = file.getFileSystem(configuration);
-      FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
 
@@ -748,6 +775,11 @@ class ClientSideMetadataSplitStrategy {
         continue;
       }
 
+      FileSystem fs = file.getFileSystem(configuration);
+      FileStatus fileStatus = ParquetInputFormat.getFileStatus(footer);
+      if (fileStatus == null) {
+        fileStatus = fs.getFileStatus(file);
+      }
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
       splits.addAll(generateSplits(
           filteredBlocks,

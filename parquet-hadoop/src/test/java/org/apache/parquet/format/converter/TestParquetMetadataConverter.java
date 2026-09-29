@@ -101,17 +101,22 @@ import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.FileType;
 import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
+import org.apache.parquet.format.MilliSeconds;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.StringType;
+import org.apache.parquet.format.TimeUnit;
+import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
+import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -448,6 +453,18 @@ public class TestParquetMetadataConverter {
         .required(PrimitiveTypeName.INT64)
         .as(timestampType(true, NANOS))
         .named("aTimestampUtcNanos")
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, MILLIS))
+        .named("aTimestampFlbaMillis")
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, MICROS))
+        .named("aTimestampFlbaMicros")
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(timestampType(true, NANOS))
+        .named("aTimestampFlbaNanos")
         .required(PrimitiveTypeName.INT32)
         .as(timeType(false, MILLIS))
         .named("aTimeNonUtcMillis")
@@ -468,6 +485,19 @@ public class TestParquetMetadataConverter {
         .named("aTimeUtcNanos")
         .named("Message");
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    // FLBA(12) MILLIS/MICROS must not write a legacy converted_type (it is INT64-only).
+    SchemaElement flbaMillis = parquetSchema.stream()
+        .filter(e -> "aTimestampFlbaMillis".equals(e.getName()))
+        .findFirst()
+        .get();
+    assertThat(flbaMillis.isSetConverted_type()).isFalse();
+    assertThat(flbaMillis.isSetLogicalType()).isTrue();
+    SchemaElement flbaMicros = parquetSchema.stream()
+        .filter(e -> "aTimestampFlbaMicros".equals(e.getName()))
+        .findFirst()
+        .get();
+    assertThat(flbaMicros.isSetConverted_type()).isFalse();
+    assertThat(flbaMicros.isSetLogicalType()).isTrue();
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
     assertThat(schema).isEqualTo(expected);
   }
@@ -543,6 +573,15 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testFileLogicalTypeIsIgnoredRatherThanFailing() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    // FILE has no LogicalTypeAnnotation yet, so it must degrade to the physical type the way an
+    // unrecognised logical type does, rather than throwing.
+    assertThat(converter.getLogicalTypeAnnotation(LogicalType.FILE(new FileType())))
+        .isNull();
+  }
+
+  @Test
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
@@ -550,6 +589,11 @@ public class TestParquetMetadataConverter {
           .isEqualTo(encoding);
     }
     for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
+      // ALP is in the format spec but is not implemented on the Java side yet, so it has no
+      // org.apache.parquet.column.Encoding to round trip through. Remove this once it does.
+      if (encoding == org.apache.parquet.format.Encoding.ALP) {
+        continue;
+      }
       assertThat(parquetMetadataConverter.getEncoding(parquetMetadataConverter.getEncoding(encoding)))
           .isEqualTo(encoding);
     }
@@ -2134,6 +2178,72 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testFloatingPointColumnsDefaultToIeee754TotalOrder() throws IOException {
+    MessageType schema = parseMessageType("message test {"
+        + "  required float float_col;"
+        + "  required double double_col;"
+        + "  required fixed_len_byte_array(2) float16_col (FLOAT16);"
+        + "  required int32 int_col;"
+        + "}");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    // Floating-point columns serialize the new order; the int column keeps type-defined order.
+    List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
+    assertThat(columnOrders).hasSize(4);
+    assertThat(columnOrders.get(0).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(1).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(2).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(3).isSetTYPE_ORDER()).isTrue();
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    assertThat(resultSchema.getType("float_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(resultSchema.getType("double_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(resultSchema.getType("float16_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+    assertThat(resultSchema.getType("int_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+  }
+
+  @Test
+  public void testUndefinedFloatingPointColumnOrderReadsAsTypeDefined() throws IOException {
+    // A footer without column orders predates IEEE_754_TOTAL_ORDER: floating-point columns must be
+    // read back as type-defined order (the pre-existing default) so that legacy stats are not
+    // reinterpreted under IEEE 754 total order.
+    MessageType schema = parseMessageType("message test {"
+        + "  required float float_col;"
+        + "  required double double_col;"
+        + "  required fixed_len_byte_array(2) float16_col (FLOAT16);"
+        + "}");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    // Simulate a legacy footer that carries no column orders at all.
+    formatMetadata.unsetColumn_orders();
+    assertThat(formatMetadata.isSetColumn_orders()).isFalse();
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    assertThat(resultSchema.getType("float_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+    assertThat(resultSchema.getType("double_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+    assertThat(resultSchema.getType("float16_col").asPrimitiveType().columnOrder())
+        .isEqualTo(ColumnOrder.typeDefined());
+  }
+
+  @Test
   public void testNestedColumnOrdersUseLeafOrder() throws IOException {
     MessageType schema = Types.buildMessage()
         .requiredGroup()
@@ -2159,7 +2269,9 @@ public class TestParquetMetadataConverter {
     List<ColumnDescriptor> columns = resultSchema.getColumns();
     assertThat(columns).hasSize(3);
     assertThat(columns.get(0).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
-    assertThat(columns.get(1).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.typeDefined());
+    // Column "b" is a DOUBLE built without an explicit column order, so it picks up the
+    // floating-point default of IEEE 754 total order.
+    assertThat(columns.get(1).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
     assertThat(columns.get(2).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
   }
 
@@ -2331,5 +2443,94 @@ public class TestParquetMetadataConverter {
     assertThat(schema).isEqualTo(expected);
     LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
     assertThat(logicalType).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+  }
+
+  @Test
+  public void testV2StatsDoNotTriggerCorruptStatisticsCheck() {
+    // Regression test: when V2 stats (min_value/max_value) are present,
+    // shouldIgnoreStatistics should NOT be evaluated. This ensures the
+    // one-shot warning is not consumed for columns that use V2 stats.
+    org.apache.parquet.format.Statistics formatStats = new org.apache.parquet.format.Statistics();
+    formatStats.setMin_value(ByteBuffer.wrap(new byte[] {0}));
+    formatStats.setMax_value(ByteBuffer.wrap(new byte[] {1}));
+    formatStats.setNull_count(0);
+
+    PrimitiveType binaryType = Types.required(PrimitiveTypeName.BINARY).named("test_binary");
+
+    // Use a corrupt writer version (pre-1.8.0) — if shouldIgnoreStatistics were eagerly
+    // evaluated, it would log a warning and consume the one-shot flag
+    org.apache.parquet.VersionParser.ParsedVersion corruptVersion =
+        new org.apache.parquet.VersionParser.ParsedVersion("parquet-mr", "1.6.0", "abc");
+
+    org.apache.parquet.column.statistics.Statistics<?> result =
+        ParquetMetadataConverter.fromParquetStatisticsInternal(
+            corruptVersion,
+            "parquet-mr version 1.6.0 (build abc)",
+            formatStats,
+            binaryType,
+            ParquetMetadataConverter.SortOrder.SIGNED);
+
+    // V2 stats should be used regardless of corrupt version — min/max should be set
+    assertThat(result.hasNonNullValue()).isTrue();
+    assertThat(result.getMinBytes()).isEqualTo(new byte[] {0});
+    assertThat(result.getMaxBytes()).isEqualTo(new byte[] {1});
+  }
+
+  @Test
+  public void testUnsupportedTypeCombinationDropsAnnotationAndStats() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    TimeUnit unit = new TimeUnit();
+    unit.setMILLIS(new MilliSeconds());
+    SchemaElement leaf = new SchemaElement("bool_ts")
+        .setRepetition_type(FieldRepetitionType.OPTIONAL)
+        .setType(Type.BOOLEAN)
+        .setLogicalType(LogicalType.TIMESTAMP(new TimestampType(true, unit)));
+    List<SchemaElement> parquetSchema = Lists.newArrayList(new SchemaElement("Message").setNum_children(1), leaf);
+    List<org.apache.parquet.format.ColumnOrder> columnOrders =
+        Lists.newArrayList(new org.apache.parquet.format.ColumnOrder());
+    columnOrders.get(0).setTYPE_ORDER(new TypeDefinedOrder());
+
+    MessageType schema = converter.fromParquetSchema(parquetSchema, columnOrders);
+
+    PrimitiveType result = schema.getType("bool_ts").asPrimitiveType();
+    assertThat(result.getPrimitiveTypeName()).isEqualTo(PrimitiveTypeName.BOOLEAN);
+    assertThat(result.getLogicalTypeAnnotation()).isNull();
+    assertThat(result.columnOrder().getColumnOrderName()).isEqualTo(ColumnOrder.ColumnOrderName.UNDEFINED);
+  }
+
+  private static PrimitiveType droppedAnnotationInt32() {
+    return Types.optional(PrimitiveTypeName.INT32)
+        .columnOrder(ColumnOrder.undefined())
+        .named("ts_int32");
+  }
+
+  @Test
+  public void testDroppedAnnotationIgnoresStats() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    org.apache.parquet.format.Statistics stats = new org.apache.parquet.format.Statistics();
+    stats.setMin_value(new byte[] {1, 2, 3, 4});
+    stats.setMax_value(new byte[] {0, 1, 2, 3});
+    stats.setNull_count(3L);
+
+    Statistics<?> result = converter.fromParquetStatistics(Version.FULL_VERSION, stats, droppedAnnotationInt32());
+
+    assertThat(result.hasNonNullValue()).isFalse();
+    assertThat(result.isNumNullsSet()).isTrue();
+    assertThat(result.getNumNulls()).isEqualTo(3L);
+  }
+
+  @Test
+  public void testDroppedAnnotationColumnIndexIsNull() {
+    PrimitiveType int32Type = Types.required(PrimitiveTypeName.INT32).named("i32");
+    ColumnIndexBuilder cb = ColumnIndexBuilder.getBuilder(int32Type, Integer.MAX_VALUE);
+    Statistics<?> stats = Statistics.createStats(int32Type);
+    stats.updateStats(-100);
+    stats.updateStats(100);
+    cb.add(stats, null);
+    org.apache.parquet.format.ColumnIndex parquetColumnIndex =
+        ParquetMetadataConverter.toParquetColumnIndex(int32Type, cb.build());
+
+    assertThat(ParquetMetadataConverter.fromParquetColumnIndex(droppedAnnotationInt32(), parquetColumnIndex))
+        .isNull();
   }
 }

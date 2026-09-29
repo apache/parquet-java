@@ -185,5 +185,14 @@ This product includes code from Twitter's ElephantBird project.
 
 Copyright: 2012-2014 Twitter
 Home page: https://github.com/twitter/elephant-bird
-License: http://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles fastutil in this binary artifact. fastutil provides
+type-specific collection implementations.
+
+Copyright: 2002-2024 Sebastiano Vigna
+Home page: https://fastutil.di.unimi.it/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 

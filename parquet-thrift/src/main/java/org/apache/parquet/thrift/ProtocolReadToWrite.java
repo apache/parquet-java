@@ -74,7 +74,7 @@ public class ProtocolReadToWrite implements ProtocolPipe {
         out.writeI16(in.readI16());
         break;
       case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32
-        // field
+      // field
       case TType.I32:
         out.writeI32(in.readI32());
         break;
