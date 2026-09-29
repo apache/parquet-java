@@ -263,27 +263,23 @@ step_summary "### Nexus Deployment"
 settings_file=$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/parquet-release-settings.XXXXXX")
 generate_maven_settings "${settings_file}"
 
-maven_deploy "${settings_file}"
+staging_description="Apache Parquet ${version} RC${rc_number}"
 
-step_summary "Deployed artifacts to Apache Nexus staging"
-
-# Find and close the staging repo. Verify it actually contains the
-# artifacts we just deployed before closing -- another concurrent run
-# could have created the only open repo we see, and closing the wrong
-# one would corrupt that release.
-nexus_find_open_staging_repo "${NEXUS_PROFILE_NAME}"
-
-if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-  if ! nexus_check_staging_artifact "${staging_repo_id}" "${version}"; then
-    print_error "Open staging repo ${staging_repo_id} does not contain ${version} artifacts."
-    print_error "Refusing to close it -- another release may be in flight. Investigate Nexus before retrying."
-    exit 1
+if ! maven_deploy "${settings_file}" "${staging_description}"; then
+  if maven_read_staging_repo_id; then
+    print_error "Deploy failed after uploading to ${staging_repo_id}; inspect it in Nexus, then drop it before retrying."
+    step_summary "Deploy **FAILED**; staging repository \`${staging_repo_id}\` was left in Nexus"
   fi
+  exit 1
 fi
 
-nexus_close_staging_repo "${staging_repo_id}" "Apache Parquet ${version} RC${rc_number}"
+maven_read_staging_repo_id
 
-step_summary "Closed staging repository: \`${staging_repo_id}\`"
+step_summary "Deployed and closed staging repository: \`${staging_repo_id}\`"
+
+if ! nexus_verify_staging_repo "${staging_repo_id}" "${version}" "${rc_number}"; then
+  exit 1
+fi
 
 maven_cleanup_settings "${settings_file}"
 

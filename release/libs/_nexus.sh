@@ -50,12 +50,6 @@ function _nexus_bulk_action {
   fi
 }
 
-function nexus_close_staging_repo {
-  local repo_id="$1"
-  local description="${2:-Closing staging repository}"
-  _nexus_bulk_action "close" "${repo_id}" "${description}"
-}
-
 function nexus_release_staging_repo {
   local repo_id="$1"
   local description="${2:-Releasing staging repository}"
@@ -168,73 +162,5 @@ function nexus_verify_staging_repo {
   fi
 
   print_info "Staging repository ${repo_id} verified."
-  return 0
-}
-
-function nexus_find_open_staging_repo {
-  local profile_name="${1:-${NEXUS_PROFILE_NAME}}"
-
-  print_info "Searching for open staging repository for ${profile_name}..."
-
-  if [[ ${DRY_RUN:-1} -eq 1 ]]; then
-    print_command "Dry-run, WOULD search Nexus for open staging repo"
-    staging_repo_id="DRY-RUN-REPO-ID"
-    return 0
-  fi
-
-  local response
-  if ! response=$(curl --fail --silent --show-error \
-    -K <(printf 'user = "%s:%s"\n' "${NEXUS_USERNAME}" "${NEXUS_PASSWORD}") \
-    "${NEXUS_BASE_URL}/staging/profile_repositories"); then
-    print_error "Failed to query Nexus staging repositories"
-    return 1
-  fi
-
-  # Filter on <profileName> exactly (not on a substring of <repositoryId>),
-  # and reject the result if multiple open repos exist for the profile —
-  # Nexus permits this but it indicates a leftover from a previous failed
-  # run that the operator must clean up before we can pick the right one.
-  local matches
-  matches=$(echo "${response}" | \
-    NEXUS_PROFILE_NAME_VAR="${profile_name}" python3 -c "
-import sys, os, xml.etree.ElementTree as ET
-profile = os.environ['NEXUS_PROFILE_NAME_VAR']
-try:
-    tree = ET.parse(sys.stdin)
-except ET.ParseError as e:
-    print('PARSE_ERROR:' + str(e), file=sys.stderr)
-    sys.exit(2)
-for repo in tree.findall('.//stagingProfileRepository'):
-    repo_type = repo.find('type')
-    repo_profile = repo.find('profileName')
-    repo_id = repo.find('repositoryId')
-    if repo_type is None or repo_id is None or repo_profile is None:
-        continue
-    if repo_type.text == 'open' and repo_profile.text == profile:
-        print(repo_id.text)
-" 2>&1)
-  local py_status=$?
-
-  if [[ ${py_status} -ne 0 ]]; then
-    print_error "Failed to parse Nexus staging response: ${matches}"
-    return 1
-  fi
-
-  local match_count
-  match_count=$(echo -n "${matches}" | grep -c . || true)
-
-  if [[ ${match_count} -eq 0 ]]; then
-    print_error "No open staging repository found for profile '${profile_name}'"
-    return 1
-  fi
-  if [[ ${match_count} -gt 1 ]]; then
-    print_error "Multiple open staging repositories found for profile '${profile_name}':"
-    echo "${matches}" | while read -r line; do print_error "  - ${line}"; done
-    print_error "Please drop or close the stale repos in Nexus and re-run."
-    return 1
-  fi
-
-  staging_repo_id=$(echo "${matches}" | head -n 1)
-  print_info "Found staging repository: ${staging_repo_id}"
   return 0
 }
