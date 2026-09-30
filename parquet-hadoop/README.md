@@ -284,6 +284,43 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 ---
 
+**Property:** `parquet.page.content-defined-chunking.enabled`  
+**Description:** EXPERIMENTAL: Whether to end data pages at boundaries derived from a rolling hash of the column's
+values rather than at the page size and row count limits alone. Files that share a run of values then share
+byte-identical data pages, so a content addressable storage system can deduplicate them. The written file is an
+ordinary Parquet file and needs no reader support.  
+Note that `parquet.page.row.count.limit` still applies inside every chunk, and its default of `20000` rows is reached
+well before a default-sized chunk of a narrow column is, which leaves chunking with nothing to decide -- raise it, and
+keep `parquet.page.size` at or above the maximum chunk size, to get the benefit. Row group boundaries are unaffected
+and stay position-based, so an edit early in a file still shifts every later row group.  
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.min.size`  
+**Description:** EXPERIMENTAL: The smallest content defined chunk, in bytes. The rolling hash is not updated until a
+chunk reaches this size, so no chunk is shorter than it. Keep it comfortably above a column's expected dictionary
+size: a chunk shorter than the dictionary can cost that column its dictionary encoding altogether.  
+**Default value:** `262144` (256 KiB)
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.max.size`  
+**Description:** EXPERIMENTAL: The largest content defined chunk, in bytes. A new chunk starts whenever the current
+one reaches this size, whatever the rolling hash says. Very small envelopes produce very many pages per column chunk;
+encrypted files cannot exceed 32767 pages per chunk.  
+**Default value:** `1048576` (1 MiB)
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.norm.level`  
+**Description:** EXPERIMENTAL: Adjusts the rolling hash mask. Raising it makes a boundary more likely, which tightens
+the chunk size distribution around the average and improves the deduplication ratio at the cost of more small pages;
+lowering it does the reverse. Values outside `[-3, 3]` are not useful.  
+**Default value:** `0`
+
+---
+
 **Property:** `parquet.page.write-checksum.enabled`  
 **Description:** Whether to write out page level checksums.  
 **Default value:** `true`

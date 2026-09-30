@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column;
 
+import static org.apache.parquet.column.impl.ChunkingTestSupport.options;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
@@ -137,5 +138,59 @@ public class TestParquetProperties {
     assertThat(copy.getColumnCodec(colB)).isEqualTo(SNAPPY);
     assertThat(copy.getColumnCompressionLevel(colB)).isNull();
     assertThat(copy.getColumnCodec(colC)).isNull();
+  }
+
+  // ------------------------------------------- content defined chunking
+
+  private static final CdcOptions CHUNKING = options(4 * 1024, 16 * 1024, 0);
+
+  @Test
+  public void contentDefinedChunking_byDefault_isDisabled() {
+    assertThat(ParquetProperties.builder().build().isContentDefinedChunkingEnabled())
+        .isFalse();
+  }
+
+  @Test
+  public void withContentDefinedChunking_options_enablesChunking() {
+    assertThat(ParquetProperties.builder()
+            .withContentDefinedChunking(CHUNKING)
+            .build()
+            .isContentDefinedChunkingEnabled())
+        .isTrue();
+  }
+
+  @Test
+  public void withContentDefinedChunking_nullOptions_throwsNullPointerException() {
+    assertThatThrownBy(() -> ParquetProperties.builder().withContentDefinedChunking(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("CdcOptions cannot be null");
+  }
+
+  @Test
+  public void copyBuilder_preservesCdcOptions() {
+    // A setting silently dropped by copy() is the classic way a writer property stops working.
+    ParquetProperties original =
+        ParquetProperties.builder().withContentDefinedChunking(CHUNKING).build();
+    ParquetProperties copy = ParquetProperties.copy(original).build();
+
+    assertThat(copy.isContentDefinedChunkingEnabled()).isTrue();
+    assertThat(copy.getCdcOptions()).isEqualTo(CHUNKING);
+  }
+
+  @Test
+  public void copyBuilder_whileChunkingIsDisabled_stillPreservesTheOptions() {
+    // The settings must survive copy() even while chunking is off, so that enabling it afterwards
+    // does not silently fall back to the defaults.
+    ParquetProperties disabled = ParquetProperties.builder()
+        .withContentDefinedChunking(CHUNKING)
+        .withContentDefinedChunking(false)
+        .build();
+    assertThat(disabled.isContentDefinedChunkingEnabled()).isFalse();
+
+    ParquetProperties reEnabled = ParquetProperties.copy(disabled)
+        .withContentDefinedChunking(true)
+        .build();
+    assertThat(reEnabled.isContentDefinedChunkingEnabled()).isTrue();
+    assertThat(reEnabled.getCdcOptions()).isEqualTo(CHUNKING);
   }
 }
