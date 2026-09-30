@@ -173,6 +173,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
   // set when end is called
   private ParquetMetadata footer = null;
+  private long finalPosition = -1;
   private boolean aborted;
   private boolean closed;
 
@@ -1882,6 +1883,7 @@ public class ParquetFileWriter implements AutoCloseable {
         this.footer =
             new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
         serializeFooter(footer, out, fileEncryptor, metadataConverter);
+        finalPosition = out.getPos();
       } finally {
         close();
       }
@@ -2351,11 +2353,13 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
+   * Returns the cached position once the footer has been written.
+   *
    * @return the current position in the underlying file
    * @throws IOException if there is an error while getting the current stream's position
    */
   public long getPos() throws IOException {
-    return withAbortOnFailure(() -> out.getPos());
+    return finalPosition >= 0 ? finalPosition : withAbortOnFailure(() -> out.getPos());
   }
 
   public long getNextRowGroupSize() throws IOException {

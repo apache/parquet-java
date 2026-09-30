@@ -45,6 +45,10 @@ import static org.assertj.core.data.Offset.offset;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -92,6 +96,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.io.DelegatingPositionOutputStream;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
@@ -103,6 +109,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class TestParquetWriter {
 
@@ -236,6 +244,53 @@ public class TestParquetWriter {
 
   @TempDir
   private java.nio.file.Path tempDir;
+
+  @ParameterizedTest
+  @CsvSource({"0,false", "1,false", "5,false", "0,true", "1,true", "5,true"})
+  public void testDataSizeAfterClose(int records, boolean channelBacked) throws IOException {
+    java.nio.file.Path file = tempDir.resolve("size.parquet");
+    MessageType schema = parseMessageType("message test { required int32 value; }");
+    OutputFile output = channelBacked ? channelOutputFile(file) : new LocalOutputFile(file);
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(output)
+        .withType(schema)
+        .withAllocator(allocator)
+        .withRowGroupRowCountLimit(2)
+        .build();
+    try (writer) {
+      assertThat(writer.getDataSize()).isZero();
+      SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+      for (int i = 0; i < records; i++) {
+        writer.write(factory.newGroup().append("value", i));
+      }
+    }
+
+    assertThat(writer.getDataSize()).isEqualTo(Files.size(file));
+    writer.close();
+    assertThat(writer.getDataSize()).isEqualTo(Files.size(file));
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file.toUri()))
+        .build()) {
+      for (int i = 0; i < records; i++) {
+        assertThat(reader.read().getInteger("value", 0)).isEqualTo(i);
+      }
+      assertThat(reader.read()).isNull();
+    }
+  }
+
+  private static OutputFile channelOutputFile(java.nio.file.Path path) {
+    return new LocalOutputFile(path) {
+      @Override
+      public PositionOutputStream create(long blockSizeHint) throws IOException {
+        FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        return new DelegatingPositionOutputStream(Channels.newOutputStream(channel)) {
+          @Override
+          public long getPos() throws IOException {
+            return channel.position();
+          }
+        };
+      }
+    };
+  }
 
   @Test
   public void testBadWriteSchema() throws IOException {
