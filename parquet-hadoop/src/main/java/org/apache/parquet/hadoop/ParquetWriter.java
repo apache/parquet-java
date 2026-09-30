@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.alp.AlpConfig;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -734,6 +735,36 @@ public class ParquetWriter<T> implements Closeable {
 
     public SELF withByteStreamSplitEncoding(String columnPath, boolean enableByteStreamSplit) {
       encodingPropsBuilder.withByteStreamSplitEncoding(columnPath, enableByteStreamSplit);
+      return self();
+    }
+
+    public SELF withAlp() {
+      encodingPropsBuilder.withAlp();
+      return self();
+    }
+
+    public SELF withAlp(AlpConfig config) {
+      encodingPropsBuilder.withAlp(config);
+      return self();
+    }
+
+    public SELF withAlp(String columnPath) {
+      encodingPropsBuilder.withAlp(columnPath);
+      return self();
+    }
+
+    public SELF withAlp(String columnPath, AlpConfig config) {
+      encodingPropsBuilder.withAlp(columnPath, config);
+      return self();
+    }
+
+    public SELF withoutAlp() {
+      encodingPropsBuilder.withoutAlp();
+      return self();
+    }
+
+    public SELF withoutAlp(String columnPath) {
+      encodingPropsBuilder.withoutAlp(columnPath);
       return self();
     }
 
