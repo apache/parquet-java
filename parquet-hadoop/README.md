@@ -403,6 +403,17 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 **Description:** The number of threads will be spawned to compress in parallel. More workers improve speed, but also increase memory usage. When it is 0, it works as single-threaded mode.  
 **Default value:** `0`
 
+## Class: ParquetReadOptions
+
+**Property:** `parquet.read.allocation.size`
+
+**Description:** Size in bytes used to split planned column-chunk ranges into read buffers.
+For vectored IO, this limits the length of each range requested from the filesystem.
+Filesystems may merge or align ranges for checksums and allocate larger buffers.
+This setting does not limit other allocations, such as footer reads or decoding, or total memory use.
+
+**Default value:** `8388608` (8 MiB)
+
 ## Class: HadoopReadOptions
 
 **Property:** `parquet.crypto.factory.class`  

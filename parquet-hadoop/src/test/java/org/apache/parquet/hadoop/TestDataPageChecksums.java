@@ -24,16 +24,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -58,9 +61,11 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetFileRange;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
@@ -445,6 +450,90 @@ public class TestDataPageChecksums {
   @Test
   public void testWriteOnVerifyOnV2() throws IOException {
     testWriteOnVerifyOn(ParquetProperties.WriterVersion.PARQUET_2_0);
+  }
+
+  private void testVectoredChecksumsRespectAllocationLimit(ParquetProperties.WriterVersion version)
+      throws IOException {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, true);
+    Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
+    InputFile inputFile = HadoopInputFile.fromPath(path, conf);
+    final int allocationLimit = 64 * 1024;
+    final int[] vectorRangeCount = {0};
+
+    ByteBufferAllocator boundedAllocator = new HeapByteBufferAllocator() {
+      @Override
+      public ByteBuffer allocate(int size) {
+        assertThat(size)
+            .as("Checksum verification must not allocate above the %s-byte limit", allocationLimit)
+            .isLessThanOrEqualTo(allocationLimit);
+        return super.allocate(size);
+      }
+    };
+
+    SeekableInputStream delegate = inputFile.newStream();
+    SeekableInputStream vectoredStream = new DelegatingSeekableInputStream(delegate) {
+      @Override
+      public long getPos() throws IOException {
+        return delegate.getPos();
+      }
+
+      @Override
+      public void seek(long position) throws IOException {
+        delegate.seek(position);
+      }
+
+      @Override
+      public boolean readVectoredAvailable(ByteBufferAllocator allocator) {
+        return true;
+      }
+
+      @Override
+      public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) throws IOException {
+        long originalPosition = delegate.getPos();
+        try {
+          for (ParquetFileRange range : ranges) {
+            vectorRangeCount[0]++;
+            ByteBuffer buffer = allocator.allocate(range.getLength());
+            delegate.seek(range.getOffset());
+            delegate.readFully(buffer);
+            buffer.flip();
+            range.setDataReadFuture(CompletableFuture.completedFuture(buffer));
+          }
+        } finally {
+          delegate.seek(originalPosition);
+        }
+      }
+    };
+
+    ParquetReadOptions options = ParquetReadOptions.builder()
+        .withUseHadoopVectoredIo(true)
+        .withAllocator(boundedAllocator)
+        .withMaxAllocationInBytes(allocationLimit)
+        .withPageChecksumVerification(true)
+        .build();
+
+    try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options, vectoredStream);
+        PageReadStore pages = reader.readNextRowGroup()) {
+      assertCorrectContent(getPageBytes(readNextPage(colADesc, pages)), colAPage1Bytes);
+      assertCorrectContent(getPageBytes(readNextPage(colADesc, pages)), colAPage2Bytes);
+      assertCorrectContent(getPageBytes(readNextPage(colBDesc, pages)), colBPage1Bytes);
+      assertCorrectContent(getPageBytes(readNextPage(colBDesc, pages)), colBPage2Bytes);
+    }
+
+    assertThat(vectorRangeCount[0])
+        .as("Expected each checksummed page to span multiple vectored ranges")
+        .isGreaterThan(4);
+  }
+
+  @Test
+  public void testVectoredChecksumsRespectAllocationLimitV1() throws IOException {
+    testVectoredChecksumsRespectAllocationLimit(ParquetProperties.WriterVersion.PARQUET_1_0);
+  }
+
+  @Test
+  public void testVectoredChecksumsRespectAllocationLimitV2() throws IOException {
+    testVectoredChecksumsRespectAllocationLimit(ParquetProperties.WriterVersion.PARQUET_2_0);
   }
 
   /**
