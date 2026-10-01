@@ -336,6 +336,56 @@ public class TestParquetWriter {
   }
 
   @Test
+  public void testStructuredStatisticsConfigKeepsCollidingDotStringPathsDistinct() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(stringType())
+        .named("b")
+        .named("a")
+        .named("msg");
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    conf.setBoolean(ParquetOutputFormat.STATISTICS_ENABLED, false);
+
+    // Component-based configuration can target ["a.b"] without also targeting ["a", "b"].
+    Job job = Job.getInstance(conf);
+    ParquetOutputFormat.setStatisticsEnabled(job, new String[] {"a.b"}, true);
+    conf = job.getConfiguration();
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Group group = factory.newGroup().append("a.b", "top-level");
+    group.addGroup("a").append("b", "nested");
+
+    Path path = newTempPath();
+    ParquetOutputFormat<Group> outputFormat = new ParquetOutputFormat<>(new GroupWriteSupport());
+    RecordWriter<Void, Group> writer = outputFormat.getRecordWriter(conf, path, UNCOMPRESSED);
+    try {
+      writer.write(null, group);
+    } finally {
+      writer.close(null);
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      BlockMetaData block = reader.getFooter().getBlocks().get(0);
+      ColumnChunkMetaData topLevelColumn = block.getColumns().stream()
+          .filter(column -> column.getPath().equals(ColumnPath.get("a.b")))
+          .findFirst()
+          .orElseThrow();
+      ColumnChunkMetaData nestedColumn = block.getColumns().stream()
+          .filter(column -> column.getPath().equals(ColumnPath.get("a", "b")))
+          .findFirst()
+          .orElseThrow();
+
+      assertThat(topLevelColumn.getStatistics().hasNonNullValue()).isTrue();
+      assertThat(nestedColumn.getStatistics().hasNonNullValue()).isFalse();
+    }
+  }
+
+  @Test
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
     int buildBloomFilterCount = 100000;
     double[] testFpps = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
