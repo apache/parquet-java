@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.dictionary;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.Dictionary;
@@ -52,12 +53,13 @@ public class DictionaryValuesReader extends ValuesReader {
       LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
       LOG.debug("bit width {}", bitWidth);
-      decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+      ByteBuffer buf = in.slice(in.available());
+      decoder = new RunLengthBitPackingHybridDecoder(bitWidth, buf);
     } else {
-      decoder = new RunLengthBitPackingHybridDecoder(1, in) {
+      decoder = new RunLengthBitPackingHybridDecoder(1, ByteBuffer.allocate(0)) {
         @Override
-        public int readInt() throws IOException {
-          throw new IOException("Attempt to read from empty page");
+        public int readInt() {
+          throw new ParquetDecodingException("Attempt to read from empty page");
         }
       };
     }
@@ -65,64 +67,36 @@ public class DictionaryValuesReader extends ValuesReader {
 
   @Override
   public int readValueDictionaryId() {
-    try {
-      return decoder.readInt();
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return decoder.readInt();
   }
 
   @Override
   public Binary readBytes() {
-    try {
-      return dictionary.decodeToBinary(decoder.readInt());
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return dictionary.decodeToBinary(decoder.readInt());
   }
 
   @Override
   public float readFloat() {
-    try {
-      return dictionary.decodeToFloat(decoder.readInt());
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return dictionary.decodeToFloat(decoder.readInt());
   }
 
   @Override
   public double readDouble() {
-    try {
-      return dictionary.decodeToDouble(decoder.readInt());
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return dictionary.decodeToDouble(decoder.readInt());
   }
 
   @Override
   public int readInteger() {
-    try {
-      return dictionary.decodeToInt(decoder.readInt());
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return dictionary.decodeToInt(decoder.readInt());
   }
 
   @Override
   public long readLong() {
-    try {
-      return dictionary.decodeToLong(decoder.readInt());
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return dictionary.decodeToLong(decoder.readInt());
   }
 
   @Override
   public void skip() {
-    try {
-      decoder.readInt(); // Type does not matter as we are just skipping dictionary keys
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    decoder.readInt(); // Type does not matter as we are just skipping dictionary keys
   }
 }
