@@ -614,7 +614,7 @@ public class ParquetRewriter implements Closeable {
     }
 
     if (bloomFilter != null) {
-      writer.addBloomFilter(normalizeFieldsInPath(chunk.getPath()).toDotString(), bloomFilter);
+      writer.addBloomFilterForPath(normalizeFieldsInPath(chunk.getPath()), bloomFilter);
     }
 
     reader.setStreamPosition(chunk.getStartingPos());
