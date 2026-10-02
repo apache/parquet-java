@@ -573,12 +573,10 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testFileLogicalTypeIsIgnoredRatherThanFailing() {
+  public void testFileLogicalTypeIsConverted() {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    // FILE has no LogicalTypeAnnotation yet, so it must degrade to the physical type the way an
-    // unrecognised logical type does, rather than throwing.
     assertThat(converter.getLogicalTypeAnnotation(LogicalType.FILE(new FileType())))
-        .isNull();
+        .isEqualTo(LogicalTypeAnnotation.fileType());
   }
 
   @Test

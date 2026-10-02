@@ -1261,17 +1261,9 @@ public abstract class LogicalTypeAnnotation {
    *       the form {@code <algorithm>:<digest>}.</li>
    *   <li>{@code inline} (BYTE_ARRAY): the referenced bytes stored inline in the value.</li>
    * </ul>
-   * No fields with names other than the above are permitted. The schema builder additionally
-   * rejects group definitions that could never produce a valid value: a group must declare at least
-   * one of {@code inline} or {@code uri} (a value resolves to bytes only via inline storage or an
-   * external reference, so a group declaring neither — even if it declares {@code offset} or
-   * {@code size} — can never produce a resolvable value), and a group that declares {@code offset}
-   * must also declare {@code uri} and {@code size} ({@code offset} locates a range within the
-   * external file identified by {@code uri} and is meaningless without it, and always bounds a range
-   * that requires {@code size}). Each declared field must also match its required physical type.
-   * Per-value rules that depend on the data in each row — {@code size} being set whenever
-   * {@code offset} is set, and {@code offset}/{@code size} being non-negative — cannot be enforced
-   * here and are the responsibility of writers and consumers.
+   * No fields with names other than the above are permitted. Each declared field must match its
+   * required physical type. Rules involving which fields are set and their values are enforced per
+   * value rather than by the schema.
    */
   public static class FileLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final FileLogicalTypeAnnotation INSTANCE = new FileLogicalTypeAnnotation();

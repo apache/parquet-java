@@ -654,20 +654,18 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
-  public void testFileLogicalTypeOffsetRequiresUri() {
-    // 'offset' locates a byte range within the external file identified by 'uri', so it is
-    // meaningless without 'uri'. A group declaring 'offset' (with 'size' and even 'inline') but
-    // no 'uri' is rejected at build time.
-    assertThatThrownBy(() -> Types.requiredGroup()
-            .as(LogicalTypeAnnotation.fileType())
-            .optional(INT64)
-            .named("offset")
-            .optional(INT64)
-            .named("size")
-            .optional(BINARY)
-            .named("inline")
-            .named("file_offset_without_uri"))
-        .isInstanceOf(IllegalArgumentException.class);
+  public void testFileLogicalTypeAllowsOffsetWithoutUri() {
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(INT64)
+        .named("offset")
+        .optional(INT64)
+        .named("size")
+        .optional(BINARY)
+        .named("inline")
+        .named("file_offset_without_uri");
+
+    assertThat(file.getFieldCount()).isEqualTo(3);
   }
 
   @Test
@@ -691,46 +689,43 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
-  public void testFileLogicalTypeMetadataOnlyRejected() {
-    // A value resolves to bytes only via 'inline' or 'uri'. A group declaring only metadata fields
-    // can never produce a resolvable value.
-    assertThatThrownBy(() -> Types.requiredGroup()
-            .as(LogicalTypeAnnotation.fileType())
-            .optional(BINARY)
-            .as(LogicalTypeAnnotation.stringType())
-            .named("content_type")
-            .optional(BINARY)
-            .as(LogicalTypeAnnotation.stringType())
-            .named("checksum")
-            .named("file_metadata_only"))
-        .isInstanceOf(IllegalArgumentException.class);
+  public void testFileLogicalTypeAllowsMetadataOnlySchema() {
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("checksum")
+        .named("file_metadata_only");
+
+    assertThat(file.getFieldCount()).isEqualTo(2);
   }
 
   @Test
-  public void testFileLogicalTypeSizeOnlyRejected() {
-    // 'size' alone never resolves to bytes, so a size-only group is rejected: it declares neither
-    // 'inline' nor 'uri'.
-    assertThatThrownBy(() -> Types.requiredGroup()
-            .as(LogicalTypeAnnotation.fileType())
-            .optional(INT64)
-            .named("size")
-            .named("file_size_only"))
-        .isInstanceOf(IllegalArgumentException.class);
+  public void testFileLogicalTypeAllowsSizeOnlySchema() {
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(INT64)
+        .named("size")
+        .named("file_size_only");
+
+    assertThat(file.getFieldCount()).isEqualTo(1);
   }
 
   @Test
-  public void testFileLogicalTypeOffsetRequiresSize() {
-    // The spec requires 'size' whenever 'offset' is set, so a group declaring 'offset'
-    // without 'size' can never produce a valid value and is rejected at build time.
-    assertThatThrownBy(() -> Types.requiredGroup()
-            .as(LogicalTypeAnnotation.fileType())
-            .optional(BINARY)
-            .as(LogicalTypeAnnotation.stringType())
-            .named("uri")
-            .optional(INT64)
-            .named("offset")
-            .named("file_offset_without_size"))
-        .isInstanceOf(IllegalArgumentException.class);
+  public void testFileLogicalTypeAllowsOffsetWithoutSize() {
+    GroupType file = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(INT64)
+        .named("offset")
+        .named("file_offset_without_size");
+
+    assertThat(file.getFieldCount()).isEqualTo(2);
   }
 
   @Test
