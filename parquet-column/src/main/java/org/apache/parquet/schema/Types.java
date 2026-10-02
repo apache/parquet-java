@@ -847,9 +847,70 @@ public class Types {
     @Override
     protected GroupType build(String name) {
       if (newLogicalTypeSet) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+          validateFileTypeFields(name, fields);
+        }
         return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
       } else {
         return new GroupType(repetition, name, getOriginalType(), fields, id);
+      }
+    }
+
+    private static void validateFileTypeFields(String name, List<Type> fields) {
+      for (Type field : fields) {
+        String fieldName = field.getName();
+        if (!LogicalTypeAnnotation.FileLogicalTypeAnnotation.FIELD_NAMES.contains(fieldName)) {
+          throw new IllegalArgumentException("FILE type group '" + name + "' contains unrecognized field '"
+              + fieldName + "'. Valid fields are: "
+              + String.join(", ", LogicalTypeAnnotation.FileLogicalTypeAnnotation.FIELD_NAMES));
+        }
+        Preconditions.checkArgument(
+            field.isPrimitive() && field.getRepetition() == Type.Repetition.OPTIONAL,
+            "FILE type field '%s' must be an optional primitive in group '%s'",
+            fieldName,
+            name);
+        validateFileTypeFieldPhysicalType(name, field.asPrimitiveType());
+      }
+    }
+
+    /**
+     * Validates that a declared FILE field uses the physical type required by the spec:
+     * {@code uri}, {@code content_type}, and {@code checksum} are STRING (BINARY), {@code offset}
+     * and {@code size} are INT64, and {@code inline} is BYTE_ARRAY (BINARY).
+     */
+    private static void validateFileTypeFieldPhysicalType(String name, PrimitiveType field) {
+      String fieldName = field.getName();
+      PrimitiveType.PrimitiveTypeName physicalType = field.getPrimitiveTypeName();
+      switch (fieldName) {
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.URI_FIELD:
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CONTENT_TYPE_FIELD:
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CHECKSUM_FIELD:
+          Preconditions.checkArgument(
+              physicalType == PrimitiveType.PrimitiveTypeName.BINARY
+                  && field.getLogicalTypeAnnotation()
+                      instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation,
+              "FILE type field '%s' must be a STRING (BINARY annotated as STRING) in group '%s'",
+              fieldName,
+              name);
+          break;
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.OFFSET_FIELD:
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.SIZE_FIELD:
+          Preconditions.checkArgument(
+              physicalType == PrimitiveType.PrimitiveTypeName.INT64,
+              "FILE type field '%s' must be an INT64 in group '%s'",
+              fieldName,
+              name);
+          break;
+        case LogicalTypeAnnotation.FileLogicalTypeAnnotation.INLINE_FIELD:
+          Preconditions.checkArgument(
+              physicalType == PrimitiveType.PrimitiveTypeName.BINARY,
+              "FILE type field '%s' must be a BYTE_ARRAY (BINARY) in group '%s'",
+              fieldName,
+              name);
+          break;
+        default:
+          // Unreachable: field names are validated against FIELD_NAMES before this call.
+          break;
       }
     }
 
