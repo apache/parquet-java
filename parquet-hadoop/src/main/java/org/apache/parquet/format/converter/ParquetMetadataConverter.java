@@ -835,13 +835,13 @@ public class ParquetMetadataConverter {
     // null_count is independent of the min/max size limit and remains useful
     // when min/max values are omitted.
     formatStats.setNull_count(stats.getNumNulls());
+    if (stats.isNanCountSet()) {
+      formatStats.setNan_count(stats.getNanCount());
+    }
     if (!withinLimit(stats, truncateLength)) {
       return formatStats;
     }
 
-    if (stats.isNanCountSet()) {
-      formatStats.setNan_count(stats.getNanCount());
-    }
     if (stats.hasNonNullValue()) {
       byte[] min;
       byte[] max;

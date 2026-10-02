@@ -955,6 +955,29 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testNanCountIsPreservedWhenMinMaxExceedLimit() {
+    DoubleStatistics stats = new DoubleStatistics() {
+      @Override
+      public boolean isSmallerThan(long size) {
+        return false;
+      }
+    };
+    stats.incrementNumNulls(3);
+    stats.updateStats(Double.NaN);
+    stats.updateStats(1.0);
+    stats.updateStats(2.0);
+
+    org.apache.parquet.format.Statistics formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+
+    assertThat(formatStats.isSetMin()).isFalse();
+    assertThat(formatStats.isSetMax()).isFalse();
+    assertThat(formatStats.isSetNull_count()).isTrue();
+    assertThat(formatStats.getNull_count()).isEqualTo(3);
+    assertThat(formatStats.isSetNan_count()).isTrue();
+    assertThat(formatStats.getNan_count()).isEqualTo(1);
+  }
+
+  @Test
   public void testBinaryStatsWithTruncation() {
     int defaultTruncLen = ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     int[] validLengths = {1, 2, 16, 64, defaultTruncLen - 1};
