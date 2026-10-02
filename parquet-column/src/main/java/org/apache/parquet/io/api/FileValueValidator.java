@@ -28,8 +28,8 @@ final class FileValueValidator {
 
   static void validateSchema(GroupType schema) {
     if (!(schema.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation)) {
-      throw new IllegalArgumentException("Cannot use a FILE value with a group without the FILE logical type: "
-          + schema.getName());
+      throw new IllegalArgumentException(
+          "Cannot use a FILE value with a group without the FILE logical type: " + schema.getName());
     }
     for (Type field : schema.getFields()) {
       String fieldName = field.getName();
@@ -38,8 +38,8 @@ final class FileValueValidator {
             "Unrecognized field '" + fieldName + "' in FILE group '" + schema.getName() + "'");
       }
       if (!field.isPrimitive() || field.getRepetition() != Type.Repetition.OPTIONAL) {
-        throw new IllegalArgumentException(
-            "FILE type field '" + fieldName + "' must be an optional primitive in group '" + schema.getName() + "'");
+        throw new IllegalArgumentException("FILE type field '" + fieldName
+            + "' must be an optional primitive in group '" + schema.getName() + "'");
       }
       validatePhysicalType(schema.getName(), field.asPrimitiveType());
     }
@@ -75,8 +75,9 @@ final class FileValueValidator {
       case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CHECKSUM_FIELD:
         if (physicalType != PrimitiveType.PrimitiveTypeName.BINARY
             || !(field.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation)) {
-          throw new IllegalArgumentException("FILE type field '" + fieldName
-              + "' must be a STRING (BINARY annotated as STRING) in group '" + groupName + "'");
+          throw new IllegalArgumentException(
+              "FILE type field '" + fieldName
+                  + "' must be a STRING (BINARY annotated as STRING) in group '" + groupName + "'");
         }
         break;
       case LogicalTypeAnnotation.FileLogicalTypeAnnotation.OFFSET_FIELD:
@@ -88,8 +89,8 @@ final class FileValueValidator {
         break;
       case LogicalTypeAnnotation.FileLogicalTypeAnnotation.INLINE_FIELD:
         if (physicalType != PrimitiveType.PrimitiveTypeName.BINARY) {
-          throw new IllegalArgumentException(
-              "FILE type field '" + fieldName + "' must be a BYTE_ARRAY (BINARY) in group '" + groupName + "'");
+          throw new IllegalArgumentException("FILE type field '" + fieldName
+              + "' must be a BYTE_ARRAY (BINARY) in group '" + groupName + "'");
         }
         break;
       default:

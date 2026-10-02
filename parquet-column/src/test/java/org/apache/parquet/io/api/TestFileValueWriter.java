@@ -140,8 +140,10 @@ public class TestFileValueWriter {
 
   @Test
   public void testRejectsNegativeOffsetAndSize() {
-    FileValue negativeOffset = FileValue.builder().withUri("file").withOffset(-1).withSize(1).build();
-    FileValue negativeSize = FileValue.builder().withUri("file").withSize(-1).build();
+    FileValue negativeOffset =
+        FileValue.builder().withUri("file").withOffset(-1).withSize(1).build();
+    FileValue negativeSize =
+        FileValue.builder().withUri("file").withSize(-1).build();
 
     assertThatThrownBy(() -> FileValueWriter.write(noopConsumer(), ALL_FIELDS_SCHEMA, negativeOffset))
         .isInstanceOf(IllegalArgumentException.class)

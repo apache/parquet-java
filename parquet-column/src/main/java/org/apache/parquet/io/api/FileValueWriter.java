@@ -73,7 +73,8 @@ public final class FileValueWriter {
     requireField(schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.URI_FIELD, value.getUri());
     requireField(schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.OFFSET_FIELD, value.getOffset());
     requireField(schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.SIZE_FIELD, value.getSize());
-    requireField(schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.CONTENT_TYPE_FIELD, value.getContentType());
+    requireField(
+        schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.CONTENT_TYPE_FIELD, value.getContentType());
     requireField(schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.CHECKSUM_FIELD, value.getChecksum());
     requireField(schema, LogicalTypeAnnotation.FileLogicalTypeAnnotation.INLINE_FIELD, value.getInline());
   }
