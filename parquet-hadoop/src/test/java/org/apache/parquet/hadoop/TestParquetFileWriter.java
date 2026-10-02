@@ -78,10 +78,13 @@ import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -98,6 +101,7 @@ import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.PositionOutputStream;
@@ -1545,6 +1549,52 @@ public class TestParquetFileWriter {
     // the incomplete stream is never flushed to storage.
     assertThat(out.flushCount)
         .as("end() must not flush the output stream when it fails")
+        .isEqualTo(0);
+  }
+
+  @Test
+  public void testNoFlushWhenRecordWriterCloseFailsWithError() throws Exception {
+    // An Error thrown from close() outside ParquetFileWriter (e.g. finalizeWrite) must abort
+    // before the finally flushes, so an incomplete file is never committed.
+    java.nio.file.Path path = tempDir.resolve(java.util.UUID.randomUUID() + ".tmp");
+    Configuration conf = getTestConfiguration(false);
+
+    FaultInjectingOutputFile out = new FaultInjectingOutputFile(new LocalOutputFile(path));
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required int64 id; }");
+    WriteSupport<Group> writeSupport = new GroupWriteSupport() {
+      @Override
+      public FinalizedWriteContext finalizeWrite() {
+        throw new AssertionError("injected finalizeWrite() failure");
+      }
+    };
+    GroupWriteSupport.setSchema(schema, conf);
+
+    ParquetWriter<Group> writer = new ParquetWriter<Group>(
+        out,
+        ParquetFileWriter.Mode.CREATE,
+        writeSupport,
+        CompressionCodecName.UNCOMPRESSED,
+        DEFAULT_BLOCK_SIZE,
+        false,
+        conf,
+        MAX_PADDING_SIZE_DEFAULT,
+        ParquetProperties.builder().withAllocator(allocator).build(),
+        null);
+
+    // Write enough rows to form a row group, so close() flushes pages before finalizeWrite().
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+    for (int i = 0; i < 100; i++) {
+      writer.write(groupFactory.newGroup().append("id", (long) i));
+    }
+
+    out.flushCount = 0;
+    assertThatThrownBy(writer::close)
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("injected finalizeWrite() failure");
+
+    // Aborted before close(), so the flush is skipped and the incomplete file is never committed.
+    assertThat(out.flushCount)
+        .as("close() must not flush the output stream when finalizeWrite() fails with an Error")
         .isEqualTo(0);
   }
 
