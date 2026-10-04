@@ -24,6 +24,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,6 +65,16 @@ public class ShowFooterCommand extends BaseCommand {
     return 0;
   }
 
+  /**
+   * The footer records the file it was read from, which is of no interest here and not something Jackson can walk.
+   * Its own {@code @JsonIgnore} is not visible to this mapper, as the annotations in parquet-hadoop are relocated
+   * into {@code shaded.parquet}, so the property is dropped with a mix-in instead.
+   */
+  abstract static class MixIn {
+    @JsonIgnore
+    abstract InputFile getInputFile();
+  }
+
   private String readFooter(InputFile inputFile) throws JsonProcessingException, IOException {
     String json;
     try (ParquetFileReader reader = ParquetFileReader.open(inputFile)) {
@@ -71,6 +82,7 @@ public class ShowFooterCommand extends BaseCommand {
       ObjectMapper mapper = RawUtils.createObjectMapper();
       mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
       mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+      mapper.addMixIn(ParquetMetadata.class, MixIn.class);
       json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(footer);
     }
     return json;

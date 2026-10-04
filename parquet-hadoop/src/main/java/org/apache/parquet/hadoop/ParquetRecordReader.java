@@ -43,9 +43,11 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,9 +156,16 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       optionsBuilder.withRange(split.getStart(), split.getEnd());
     }
 
-    // open a reader with the metadata filter
-    ParquetFileReader reader =
-        ParquetFileReader.open(HadoopInputFile.fromPath(path, configuration), optionsBuilder.build());
+    // open a reader with the metadata filter, reusing the footer of the split and the file it was read from
+    // when the split was built by a caller which had already read them
+    ParquetMetadata footer = split.getFooter();
+    InputFile inputFile = footer != null && footer.getInputFile() != null
+        ? footer.getInputFile()
+        : HadoopInputFile.fromPath(path, configuration);
+    ParquetReadOptions options = optionsBuilder.build();
+    ParquetFileReader reader = footer != null
+        ? ParquetFileReader.open(inputFile, footer, options, inputFile.newStream())
+        : ParquetFileReader.open(inputFile, options);
 
     if (rowGroupOffsets != null) {
       // verify a row group was found for each offset

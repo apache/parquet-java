@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import org.apache.parquet.io.InputFile;
 
 /**
  * Metadata block stored in the footer of the file
@@ -92,6 +94,12 @@ public class ParquetMetadata {
   private final List<BlockMetaData> blocks;
 
   /**
+   * The file this metadata was read from, if known; not part of the serialized footer.
+   */
+  @JsonIgnore
+  private volatile InputFile inputFile;
+
+  /**
    * @param fileMetaData file level metadata
    * @param blocks       block level metadata
    */
@@ -112,6 +120,26 @@ public class ParquetMetadata {
    */
   public FileMetaData getFileMetaData() {
     return fileMetaData;
+  }
+
+  /**
+   * The file this metadata was read from. Set when the footer is read through
+   * {@link org.apache.parquet.hadoop.ParquetFileReader}; a caller which already holds the metadata can pass this
+   * file on to a new reader rather than opening the path again.
+   *
+   * @return the file the footer was read from, or null if it is not known
+   */
+  public InputFile getInputFile() {
+    return inputFile;
+  }
+
+  /**
+   * Record the file this metadata was read from, so that it can be reused when opening a reader over the same file.
+   *
+   * @param inputFile the file the footer was read from
+   */
+  public void setInputFile(InputFile inputFile) {
+    this.inputFile = inputFile;
   }
 
   @Override
