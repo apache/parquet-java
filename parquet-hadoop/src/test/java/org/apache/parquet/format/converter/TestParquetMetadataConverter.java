@@ -936,8 +936,11 @@ public class TestParquetMetadataConverter {
         .as("Max_value should not be set")
         .isFalse();
     assertThat(formatStats.isSetNull_count())
-        .as("Num nulls should not be set")
-        .isFalse();
+        .as("Num nulls should be preserved when min/max are too large")
+        .isTrue();
+    assertThat(formatStats.getNull_count())
+        .as("Num nulls should match when min/max are too large")
+        .isEqualTo(3004);
 
     Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
         Version.FULL_VERSION,
@@ -946,8 +949,32 @@ public class TestParquetMetadataConverter {
         ParquetMetadataConverter.SortOrder.SIGNED);
 
     assertThat(roundTripStats.isEmpty())
-        .as("Round-trip stats should not be empty (null count is set)")
-        .isTrue();
+        .as("Round-trip stats should retain the null count")
+        .isFalse();
+    assertThat(roundTripStats.getNumNulls()).isEqualTo(3004);
+  }
+
+  @Test
+  public void testNanCountIsPreservedWhenMinMaxExceedLimit() {
+    DoubleStatistics stats = new DoubleStatistics() {
+      @Override
+      public boolean isSmallerThan(long size) {
+        return false;
+      }
+    };
+    stats.incrementNumNulls(3);
+    stats.updateStats(Double.NaN);
+    stats.updateStats(1.0);
+    stats.updateStats(2.0);
+
+    org.apache.parquet.format.Statistics formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+
+    assertThat(formatStats.isSetMin()).isFalse();
+    assertThat(formatStats.isSetMax()).isFalse();
+    assertThat(formatStats.isSetNull_count()).isTrue();
+    assertThat(formatStats.getNull_count()).isEqualTo(3);
+    assertThat(formatStats.isSetNan_count()).isTrue();
+    assertThat(formatStats.getNan_count()).isEqualTo(1);
   }
 
   @Test
