@@ -138,7 +138,7 @@ public class TestVariantObject {
 
   @Test
   public void testEmptyObject() {
-    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10, 0x00}), VariantTestUtil.EMPTY_METADATA);
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
       assertThat(v.numObjectElements()).isEqualTo(0);
@@ -148,7 +148,7 @@ public class TestVariantObject {
   @Test
   public void testEmptyLargeObject() {
     Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {0b1000010, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
+        ByteBuffer.wrap(new byte[] {0b1000010, 0x00, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
       assertThat(v.numObjectElements()).isEqualTo(0);
@@ -332,7 +332,8 @@ public class TestVariantObject {
 
   @Test
   public void testInvalidObject() {
-    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10011}), VariantTestUtil.EMPTY_METADATA);
+    // A minimal well-formed array value (header, numElements=0, terminator=0).
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b0011, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     assertThatThrownBy(value::numObjectElements)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot read ARRAY value as OBJECT");

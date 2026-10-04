@@ -76,7 +76,7 @@ public class TestVariantArray {
 
   @Test
   public void testEmptyArray() {
-    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b0011, 0x00}), VariantTestUtil.EMPTY_METADATA);
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b0011, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       assertThat(v.numArrayElements()).isEqualTo(0);
@@ -86,7 +86,7 @@ public class TestVariantArray {
   @Test
   public void testEmptyLargeArray() {
     Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {0b10011, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
+        ByteBuffer.wrap(new byte[] {0b10011, 0x00, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       assertThat(v.numArrayElements()).isEqualTo(0);
@@ -95,9 +95,18 @@ public class TestVariantArray {
 
   @Test
   public void testLargeArraySize() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {0b10011, (byte) 0xFF, (byte) 0x01, 0x00, 0x00}),
-        VariantTestUtil.EMPTY_METADATA);
+    int n = 511;
+    // largeSize array, offsetSize=2, 511 NULL elements
+    ByteBuffer buf = ByteBuffer.allocate(1 + 4 + (n + 1) * 2 + n).order(ByteOrder.LITTLE_ENDIAN);
+    buf.put((byte) 0b10111);
+    buf.putInt(n);
+    for (int i = 0; i <= n; i++) {
+      buf.putShort((short) i);
+    }
+    for (int i = 0; i < n; i++) {
+      buf.put(VariantTestUtil.primitiveHeader(0)); // NULL
+    }
+    Variant value = new Variant(ByteBuffer.wrap(buf.array()), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       assertThat(v.numArrayElements()).isEqualTo(511);
@@ -171,8 +180,8 @@ public class TestVariantArray {
 
   @Test
   public void testInvalidArray() {
-    // An object header
-    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b1000010}), VariantTestUtil.EMPTY_METADATA);
+    // A minimal well-formed object value (header, numElements=0, terminator=0).
+    Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     assertThatThrownBy(value::numArrayElements)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot read OBJECT value as ARRAY");
