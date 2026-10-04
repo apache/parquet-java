@@ -150,7 +150,7 @@ public enum Encoding {
   },
 
   /**
-   * Adaptive Lossless floating-Point (ALP) encoding for FLOAT and DOUBLE columns.
+   * Adaptive Lossless Floating-Point (ALP) encoding for FLOAT and DOUBLE columns.
    */
   ALP {
     @Override
