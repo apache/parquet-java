@@ -21,18 +21,23 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
@@ -57,6 +62,8 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class TestParquetFileReaderVectoredOwnership {
   private static final int ROWS = 128;
@@ -214,6 +221,90 @@ class TestParquetFileReaderVectoredOwnership {
     }
   }
 
+  @ParameterizedTest
+  @MethodSource("initialReadFailures")
+  void testErrorWhileDrainingInvalidatesReaderAndRetainsBuffersUntilAllRangesFinish(Throwable initialFailure)
+      throws Exception {
+    CountingAllocator delegate = new CountingAllocator();
+    try (TrackingByteBufferAllocator tracking = TrackingByteBufferAllocator.wrap(delegate)) {
+      ErrorWhileDrainingStream stream = new ErrorWhileDrainingStream(inputFile.newStream(), initialFailure);
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, options(tracking), stream)) {
+        try {
+          assertThatThrownBy(() -> reader.readRowGroup(0))
+              .isInstanceOf(AssertionError.class)
+              .hasMessage("injected sibling error")
+              .isSameAs(stream.siblingError);
+          assertThat(stream.siblingError.getSuppressed()).hasSize(1);
+          Throwable original = stream.siblingError.getSuppressed()[0];
+          if (initialFailure instanceof IllegalArgumentException
+              || initialFailure instanceof UnsupportedOperationException) {
+            assertThat(original)
+                .isInstanceOf(IOException.class)
+                .hasMessage("Vectored read failed after asynchronous reads may have been submitted")
+                .hasCause(initialFailure);
+          } else {
+            assertThat(original).isSameAs(initialFailure);
+          }
+          assertThat(delegate.allocations.get()).isGreaterThanOrEqualTo(3);
+          assertThat(delegate.releases.get()).isZero();
+          assertThatThrownBy(() -> reader.readRowGroup(0))
+              .isInstanceOf(IOException.class)
+              .hasMessage("Cannot reuse a reader after a vectored read failure");
+          assertThat(stream.vectorCalls).isEqualTo(1);
+
+          stream.closeCompleted.get(10, TimeUnit.SECONDS);
+          // A backend may continue using allocated memory after its stream closes.
+          assertThat(stream.pendingRead.isDone()).isFalse();
+          assertThat(delegate.releases.get()).isZero();
+        } finally {
+          stream.finishPendingRead();
+        }
+        assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+      }
+      assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+    }
+  }
+
+  private static Stream<Throwable> initialReadFailures() {
+    return Stream.of(
+        new IOException("injected initial IO failure"),
+        new IllegalArgumentException("injected initial argument failure"),
+        new UnsupportedOperationException("injected initial unsupported failure"),
+        new AssertionError("injected initial error"));
+  }
+
+  @Test
+  void testInterruptedAdmissionLeavesReaderUsable() throws Exception {
+    CountingAllocator delegate = new CountingAllocator();
+    try (TrackingByteBufferAllocator tracking = TrackingByteBufferAllocator.wrap(delegate)) {
+      OwnedStream stream = new OwnedStream(inputFile.newStream(), ReadMode.ORIGINALS);
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, options(tracking), stream)) {
+        try {
+          Thread.currentThread().interrupt();
+          assertThatThrownBy(() -> reader.readRowGroup(0))
+              .isInstanceOf(InterruptedIOException.class)
+              .hasMessage("Interrupted waiting for vectored read worker capacity")
+              .hasCauseInstanceOf(InterruptedException.class);
+          assertThat(Thread.currentThread().isInterrupted()).isTrue();
+          assertThat(stream.vectorCalls).isZero();
+          assertThat(stream.closeCalls.get()).isZero();
+          assertThat(delegate.allocations.get()).isZero();
+        } finally {
+          Thread.interrupted();
+        }
+
+        try (PageReadStore pages = reader.readRowGroup(0)) {
+          assertThat(pages.getRowCount()).isEqualTo(ROWS);
+          assertThat(delegate.allocations.get()).isPositive();
+        }
+        assertThat(stream.vectorCalls).isEqualTo(1);
+        assertThat(stream.closeCalls.get()).isZero();
+        assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+      }
+      assertThat(stream.closeCalls.get()).isEqualTo(1);
+    }
+  }
+
   private static ParquetReadOptions options(ByteBufferAllocator allocator) {
     return ParquetReadOptions.builder()
         .withAllocator(allocator)
@@ -247,11 +338,91 @@ class TestParquetFileReaderVectoredOwnership {
     }
   }
 
+  private static final class ErrorWhileDrainingStream extends DelegatingSeekableInputStream {
+    private final SeekableInputStream delegate;
+    private final Throwable initialFailure;
+    private final AssertionError siblingError = new AssertionError("injected sibling error");
+    private final CompletableFuture<ByteBuffer> pendingRead = new CompletableFuture<>();
+    private final CompletableFuture<Void> closeCompleted = new CompletableFuture<>();
+    private ByteBuffer pendingBuffer;
+    private int vectorCalls;
+
+    private ErrorWhileDrainingStream(SeekableInputStream delegate, Throwable initialFailure) {
+      super(delegate);
+      this.delegate = delegate;
+      this.initialFailure = initialFailure;
+    }
+
+    @Override
+    public long getPos() throws IOException {
+      return delegate.getPos();
+    }
+
+    @Override
+    public void seek(long newPos) throws IOException {
+      delegate.seek(newPos);
+    }
+
+    @Override
+    public boolean readVectoredAvailable(ByteBufferAllocator allocator) {
+      return true;
+    }
+
+    @Override
+    public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) {
+      vectorCalls++;
+      assertThat(ranges).hasSizeGreaterThanOrEqualTo(3);
+      for (int index = 0; index < ranges.size(); index++) {
+        ParquetFileRange range = ranges.get(index);
+        ByteBuffer buffer = allocator.allocate(range.getLength());
+        CompletableFuture<ByteBuffer> future;
+        if (index == 0) {
+          future = new CompletableFuture<>();
+          future.completeExceptionally(initialFailure);
+        } else if (index == 1) {
+          future = new CompletableFuture<ByteBuffer>() {
+            @Override
+            public ByteBuffer get(long timeout, TimeUnit unit)
+                throws InterruptedException, ExecutionException, TimeoutException {
+              // Remain pending until the reader starts draining after the first range fails.
+              completeExceptionally(siblingError);
+              return super.get(timeout, unit);
+            }
+          };
+        } else if (index == 2) {
+          future = pendingRead;
+          pendingBuffer = buffer;
+        } else {
+          future = CompletableFuture.completedFuture(buffer);
+        }
+        range.setDataReadFuture(future);
+      }
+    }
+
+    private void finishPendingRead() {
+      if (pendingBuffer != null) {
+        pendingBuffer.put(0, (byte) 1);
+        pendingRead.complete(pendingBuffer);
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      try {
+        super.close();
+      } finally {
+        closeCompleted.complete(null);
+      }
+    }
+  }
+
   /** Supports vectored IO independently of the Hadoop version used to run the test. */
   private static final class OwnedStream extends DelegatingSeekableInputStream {
     private final SeekableInputStream delegate;
     private final ReadMode mode;
     private final CountDownLatch allowClose = new CountDownLatch(1);
+    private final AtomicInteger closeCalls = new AtomicInteger();
+    private int vectorCalls;
     private int rangeCount;
     private int maximumRangeLength;
 
@@ -278,6 +449,7 @@ class TestParquetFileReaderVectoredOwnership {
 
     @Override
     public void close() throws IOException {
+      closeCalls.incrementAndGet();
       try {
         if (mode == ReadMode.FAILED_RANGE) {
           try {
@@ -296,6 +468,7 @@ class TestParquetFileReaderVectoredOwnership {
 
     @Override
     public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) throws IOException {
+      vectorCalls++;
       rangeCount = ranges.size();
       ByteBuffer merged = null;
       if (mode == ReadMode.SLICES) {

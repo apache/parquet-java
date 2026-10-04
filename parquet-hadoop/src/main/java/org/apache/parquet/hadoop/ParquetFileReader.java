@@ -776,7 +776,6 @@ public class ParquetFileReader implements Closeable {
   // vectored range-validation length lazily so ordinary reads need no extra lookup.
   private long vectoredReadFileLength = -1;
   private boolean vectoredIoDisabled;
-  private ExecutorService vectoredReadExecutor;
 
   private int currentBlock = 0;
   private ColumnChunkPageReadStore currentRowGroup = null;
@@ -1355,9 +1354,10 @@ public class ParquetFileReader implements Closeable {
    * If directly implemented by a Filesystem then it is likely to be a more efficient
    * operation such as a scatter-gather read (native IO) or set of parallel
    * GET requests against an object store.
-   * Submission and all requested ranges share the vectored-read timeout. Failed
-   * operations invalidate the stream; cleanup waits for submission to exit before
-   * closing it, even if the backend does not respond promptly to interruption.
+   * Waiting for a shared worker, submission, and all requested ranges share the
+   * vectored-read timeout. After submission is accepted, failed operations invalidate
+   * the stream; cleanup waits for submission to exit before closing it, even if the
+   * backend does not respond promptly to interruption.
    * The allocation limit bounds requested range lengths. Filesystems may merge or
    * checksum-align ranges and allocate larger buffers; decoders may also require
    * larger contiguous buffers. This is not a total memory limit.
@@ -1394,16 +1394,8 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    if (vectoredReadExecutor == null) {
-      vectoredReadExecutor = VectoredReadOperation.newExecutor();
-    }
     VectoredReadOperation operation = new VectoredReadOperation(
-        f,
-        ranges,
-        options.getAllocator(),
-        vectoredReadExecutor,
-        HADOOP_VECTORED_READ_TIMEOUT_SECONDS,
-        TimeUnit.SECONDS);
+        f, ranges, options.getAllocator(), HADOOP_VECTORED_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     try {
       // Even a synchronous rejection can follow partial submission. The Hadoop bridge
       // may expose futures for reads which were never scheduled. Once submission is
@@ -1425,22 +1417,32 @@ public class ParquetFileReader implements Closeable {
       // Consumption may also have populated the builder. Do not replay those chunks.
       IOException failure =
           new IOException("Vectored read failed after asynchronous reads may have been submitted", e);
-      if (operation.submissionSucceeded()) {
-        awaitRemainingVectoredReads(ranges, operation, failure);
+      try {
+        if (operation.submissionSucceeded()) {
+          awaitRemainingVectoredReads(ranges, operation, failure);
+        }
+      } finally {
+        abortVectoredRead(operation, failure);
       }
-      abortVectoredRead(operation, failure);
       throw failure;
     } catch (IOException | RuntimeException | Error e) {
-      if (operation.submissionSucceeded()) {
-        awaitRemainingVectoredReads(ranges, operation, e);
+      try {
+        if (operation.submissionSucceeded()) {
+          awaitRemainingVectoredReads(ranges, operation, e);
+        }
+      } finally {
+        abortVectoredRead(operation, e);
       }
-      abortVectoredRead(operation, e);
       throw e;
     }
   }
 
   private void abortVectoredRead(VectoredReadOperation operation, Throwable failure) {
-    // Deferred cleanup now owns the original stream and executor. Prevent a later
+    if (!operation.hasSubmission()) {
+      // Admission failed before the backend was called. The reader still owns its stream.
+      return;
+    }
+    // Deferred cleanup now owns the original stream. Prevent a later
     // call (including an attempted ordinary read) from racing that cleanup.
     f =
         new DelegatingSeekableInputStream(new InputStream() {
@@ -1459,7 +1461,6 @@ public class ParquetFileReader implements Closeable {
             throw new IOException("Cannot reuse a reader after a vectored read failure", failure);
           }
         };
-    vectoredReadExecutor = null;
     operation.abort(failure);
   }
 
@@ -1498,6 +1499,12 @@ public class ParquetFileReader implements Closeable {
         if (failure != e) {
           failure.addSuppressed(e);
         }
+      } catch (Error e) {
+        // Errors must still escape, with the original read failure available for diagnosis.
+        if (failure != e) {
+          e.addSuppressed(failure);
+        }
+        throw e;
       }
     }
   }
@@ -1991,9 +1998,6 @@ public class ParquetFileReader implements Closeable {
         f.close();
       }
     } finally {
-      if (vectoredReadExecutor != null) {
-        vectoredReadExecutor.shutdownNow();
-      }
       AutoCloseables.uncheckedClose(currentRowGroup, nextDictionaryReader);
       currentRowGroup = null;
       options.getCodecFactory().release();

@@ -558,6 +558,26 @@ if not found then the library will use the classic non-vectored reads: it is saf
 
 ---
 
+**JVM system property:** `parquet.hadoop.vectored.io.threads`
+
+**Description:** Maximum number of shared vectored-read workers. Set a positive integer
+with `-Dparquet.hadoop.vectored.io.threads=N` before the first vectored read; this is
+read once per JVM, not from the Hadoop configuration. Invalid values fail initialization.
+All readers share this limit. Waiting for a worker, submitting the read, and waiting
+for its results share the same 300-second deadline. If admission times out, the read
+fails before submitting filesystem work and the reader retains its stream.
+
+A worker remains occupied until submission returns, the caller transfers or abandons
+the buffers, and any failure cleanup closes the stream. A backend that ignores
+interruption therefore retains capacity; repeated timeouts cannot create workers
+beyond the configured limit. If all workers are blocked, further vectored reads time
+out waiting for capacity. Idle workers expire after 60 seconds. This limit does not
+bound threads created by the filesystem or total buffer memory.
+
+**Default value:** `64`
+
+---
+
 **Property:** `parquet.column.statistics.enabled`  
 **Description:** Whether to enable column statistics collection.
 If `true`, statistics will be collected for all columns unless explicitly disabled for specific columns.

@@ -19,14 +19,11 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -39,8 +36,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Owns one vectored submission and its allocations until the reader can take ownership.
- * The executor must have a single worker: queued failure cleanup must not overtake a
- * submission which is still running after its Future has been cancelled.
+ * Its worker retains ownership until submission exits and the caller transfers or aborts the read.
+ * Cleanup therefore cannot overtake a backend which continues after interruption.
  */
 final class VectoredReadOperation {
   private static final Logger LOG = LoggerFactory.getLogger(VectoredReadOperation.class);
@@ -48,28 +45,43 @@ final class VectoredReadOperation {
   private final SeekableInputStream stream;
   private final List<ParquetFileRange> ranges;
   private final VectoredReadBufferAllocator allocator;
-  private final ExecutorService executor;
+  private final VectoredReadExecutor executor;
   private final long timeoutNanos;
   private final long readStart = System.nanoTime();
-  private Future<Void> submission;
+  private final CompletableFuture<Void> submission = new CompletableFuture<>();
+  private final CountDownLatch finished = new CountDownLatch(1);
+  private Thread submittingThread;
+  private boolean submitted;
   private volatile boolean submissionSucceeded;
-  private boolean aborted;
+  private volatile Throwable abortFailure;
   private boolean releaseRegistered;
 
-  static ThreadPoolExecutor newExecutor() {
-    // Retain submission/cleanup ordering without keeping an idle thread for every open reader.
-    return new ThreadPoolExecutor(0, 1, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), task -> {
-      Thread thread = new Thread(task, "parquet-vectored-read");
-      thread.setDaemon(true);
-      return thread;
-    });
+  private static final class SharedExecutor {
+    private static final VectoredReadExecutor INSTANCE = create();
+
+    private static VectoredReadExecutor create() {
+      int threads = Integer.parseInt(System.getProperty("parquet.hadoop.vectored.io.threads", "64"));
+      if (threads <= 0) {
+        throw new IllegalArgumentException("parquet.hadoop.vectored.io.threads must be positive");
+      }
+      return new VectoredReadExecutor(threads);
+    }
   }
 
   VectoredReadOperation(
       SeekableInputStream stream,
       List<ParquetFileRange> ranges,
       ByteBufferAllocator allocator,
-      ExecutorService executor,
+      long timeout,
+      TimeUnit unit) {
+    this(stream, ranges, allocator, SharedExecutor.INSTANCE, timeout, unit);
+  }
+
+  VectoredReadOperation(
+      SeekableInputStream stream,
+      List<ParquetFileRange> ranges,
+      ByteBufferAllocator allocator,
+      VectoredReadExecutor executor,
       long timeout,
       TimeUnit unit) {
     this.stream = stream;
@@ -80,12 +92,73 @@ final class VectoredReadOperation {
   }
 
   void awaitSubmission() throws IOException, TimeoutException {
-    submission = executor.submit(() -> {
-      stream.readVectored(ranges, allocator);
-      submissionSucceeded = true;
-      return null;
-    });
+    try {
+      executor.execute(this::run, remainingNanos());
+      submitted = true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      InterruptedIOException failure =
+          new InterruptedIOException("Interrupted waiting for vectored read worker capacity");
+      failure.initCause(e);
+      throw failure;
+    }
     FutureIO.awaitFuture(submission, remainingNanos(), TimeUnit.NANOSECONDS);
+  }
+
+  boolean hasSubmission() {
+    return submitted;
+  }
+
+  private void run() {
+    try {
+      boolean submit;
+      synchronized (this) {
+        submit = abortFailure == null;
+        if (submit) {
+          submittingThread = Thread.currentThread();
+        }
+      }
+      if (submit) {
+        try {
+          stream.readVectored(ranges, allocator);
+          submissionSucceeded = true;
+          submission.complete(null);
+        } catch (Throwable failure) {
+          // Errors must also wake the caller so that it can abort this operation.
+          submission.completeExceptionally(failure);
+        } finally {
+          synchronized (this) {
+            submittingThread = null;
+          }
+        }
+      }
+      // Keep this worker and its capacity until the caller decides buffer ownership.
+      // Abort interrupts only submission; clear any remaining interrupt before cleanup.
+      while (true) {
+        try {
+          finished.await();
+          break;
+        } catch (InterruptedException ignored) {
+          // Interruption alone does not establish that the caller has finished with this operation.
+        }
+      }
+      Throwable failure = abortFailure;
+      if (failure != null) {
+        releaseWhenReadsFinish(failure);
+        try {
+          stream.close();
+        } catch (IOException | RuntimeException closeFailure) {
+          if (failure != closeFailure) {
+            failure.addSuppressed(closeFailure);
+          }
+          LOG.warn("Failed to close a stream after a vectored read failure", closeFailure);
+        }
+      }
+    } finally {
+      synchronized (this) {
+        submittingThread = null;
+      }
+    }
   }
 
   boolean submissionSucceeded() {
@@ -97,7 +170,7 @@ final class VectoredReadOperation {
   }
 
   void transferTo(ByteBufferReleaser releaser) {
-    if (!submissionSucceeded || aborted) {
+    if (!submissionSucceeded || abortFailure != null) {
       throw new IllegalStateException("Cannot transfer buffers from an unsuccessful vectored read");
     }
     for (ParquetFileRange range : ranges) {
@@ -107,56 +180,39 @@ final class VectoredReadOperation {
       }
     }
     allocator.transferTo(releaser);
+    finished.countDown();
   }
 
   /**
    * Stop the caller's wait without treating interruption as proof that backend IO stopped.
-   * Once aborted, the reader must not reuse the stream or this executor.
+   * Once an accepted submission is aborted, the reader must not reuse its stream.
    */
-  void abort(Throwable failure) {
-    if (aborted) {
+  synchronized void abort(Throwable failure) {
+    if (abortFailure != null) {
       return;
     }
-    aborted = true;
+    abortFailure = failure;
     allocator.stopAllocating();
-    if (submission != null) {
-      submission.cancel(true);
+    if (submittingThread != null) {
+      // The worker clears this reference before returning to the shared executor, so
+      // interruption can never reach a later operation which reuses the same thread.
+      submittingThread.interrupt();
     }
     if (submissionSucceeded) {
-      // All futures are published. If the failed read and its siblings already
-      // finished, reclaim their buffers before the caller closes its allocator.
+      // Reclaim completed reads before the caller closes its allocator. If submission
+      // is still running, only its worker may inspect the final published futures.
       releaseWhenReadsFinish(failure);
     }
-    try {
-      // Future.cancel(true) may return while the callable is still running. A task on
-      // the same single worker cannot close the stream until that callable has exited.
-      executor.execute(() -> {
-        releaseWhenReadsFinish(failure);
-        try {
-          stream.close();
-        } catch (IOException | RuntimeException closeFailure) {
-          if (failure != closeFailure) {
-            failure.addSuppressed(closeFailure);
-          }
-          LOG.warn("Failed to close a stream after a vectored read failure", closeFailure);
-        }
-      });
-    } catch (RejectedExecutionException cleanupFailure) {
-      // The reader owns this executor and must not shut it down before queuing cleanup.
-      // Do not mask the read error or recycle buffers whose IO lifetime is now unknown.
-      failure.addSuppressed(cleanupFailure);
-      LOG.warn("Could not schedule cleanup after a vectored read failure", cleanupFailure);
-    } finally {
-      // shutdownNow would discard the queued cleanup or interrupt its close operation.
-      executor.shutdown();
-    }
+    finished.countDown();
   }
 
   private void releaseWhenReadsFinish(Throwable failure) {
-    if (releaseRegistered) {
-      return;
+    synchronized (this) {
+      if (releaseRegistered) {
+        return;
+      }
+      releaseRegistered = true;
     }
-    releaseRegistered = true;
     CompletableFuture<?>[] futures = new CompletableFuture<?>[ranges.size()];
     for (int i = 0; i < ranges.size(); i++) {
       CompletableFuture<ByteBuffer> future = ranges.get(i).getDataReadFuture();

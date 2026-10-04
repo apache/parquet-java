@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -39,8 +40,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +68,7 @@ public class TestVectoredReadOperation {
 
   @Test
   public void testIdleWorkerExpiresAndLaterSubmissionRecreatesIt() throws Exception {
-    ThreadPoolExecutor executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     executor.setKeepAliveTime(10, TimeUnit.MILLISECONDS);
     Thread firstWorker = executor.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
     firstWorker.join(TimeUnit.SECONDS.toMillis(5));
@@ -117,7 +118,7 @@ public class TestVectoredReadOperation {
         throw failure;
       }
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(1), allocator, executor, 50, TimeUnit.MILLISECONDS);
     try {
@@ -128,7 +129,7 @@ public class TestVectoredReadOperation {
       operation.abort(failure);
 
       await(interrupted);
-      assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      await(stream.closed);
       assertEquals(1, stream.closes.get());
       assertFalse(stream.closedDuringSubmission);
       assertEquals(1, allocator.released.size());
@@ -152,7 +153,7 @@ public class TestVectoredReadOperation {
       buffer.put(0, (byte) 37);
       read.complete(buffer);
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(1), allocator, executor, 50, TimeUnit.MILLISECONDS);
     try {
@@ -166,7 +167,7 @@ public class TestVectoredReadOperation {
       assertTrue(allocator.released.isEmpty());
 
       finishSubmission.countDown();
-      assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      await(stream.closed);
       assertFalse(stream.closedDuringSubmission);
       assertEquals(1, stream.closes.get());
       assertEquals(1, allocator.released.size());
@@ -195,7 +196,7 @@ public class TestVectoredReadOperation {
         read.completeExceptionally(e);
       }
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(1), allocator, executor, 50, TimeUnit.MILLISECONDS);
     try {
@@ -206,7 +207,7 @@ public class TestVectoredReadOperation {
       assertEquals(0, stream.closes.get());
 
       finishSubmission.countDown();
-      assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      await(stream.closed);
       assertNotNull(allocationFailure.get());
       assertTrue(allocator.allocated.isEmpty());
       assertTrue(allocator.released.isEmpty());
@@ -243,7 +244,7 @@ public class TestVectoredReadOperation {
         read.completeExceptionally(e);
       }
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(1), allocator, executor, 50, TimeUnit.MILLISECONDS);
     try {
@@ -255,7 +256,7 @@ public class TestVectoredReadOperation {
       assertEquals(0, stream.closes.get());
 
       finishAllocation.countDown();
-      assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      await(stream.closed);
       assertEquals(1, allocator.allocated.size());
       assertEquals(1, allocator.released.size());
       assertSame(allocator.allocated.get(0), allocator.released.get(0));
@@ -328,13 +329,13 @@ public class TestVectoredReadOperation {
       ranges.get(0).setDataReadFuture(read);
       read.cancel(false);
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
     operation.awaitSubmission();
     operation.abort(new IOException("Read was cancelled without stopping backend IO"));
 
-    assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+    await(stream.closed);
     assertEquals(1, stream.closes.get());
     assertEquals(1, allocator.allocated.size());
     assertTrue(allocator.released.isEmpty());
@@ -348,14 +349,14 @@ public class TestVectoredReadOperation {
       ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(original));
       throw new IOException("Rejected before publishing the second range future");
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(2), allocator, executor, 5, TimeUnit.SECONDS);
     IOException failure = assertThrows(IOException.class, operation::awaitSubmission);
     assertFalse(operation.submissionSucceeded());
     operation.abort(failure);
 
-    assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+    await(stream.closed);
     assertEquals(1, stream.closes.get());
     assertEquals(1, allocator.allocated.size());
     assertTrue(allocator.released.isEmpty());
@@ -369,13 +370,13 @@ public class TestVectoredReadOperation {
       buffers.allocate(8);
       ranges.get(0).setDataReadFuture(read);
     });
-    ExecutorService executor = newExecutor();
+    VectoredReadExecutor executor = newExecutor();
     VectoredReadOperation operation =
         new VectoredReadOperation(stream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
     operation.awaitSubmission();
     operation.abort(new IOException("Another read failed"));
 
-    assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+    await(stream.closed);
     assertEquals(1, stream.closes.get());
     assertTrue(allocator.released.isEmpty());
     assertFalse(read.isCancelled());
@@ -388,8 +389,252 @@ public class TestVectoredReadOperation {
     assertSame(original, allocator.released.get(0));
   }
 
-  private ThreadPoolExecutor newExecutor() {
-    ThreadPoolExecutor executor = VectoredReadOperation.newExecutor();
+  @Test
+  public void testBlockedSubmissionsKeepCapacityAcrossRepeatedTimeouts() throws Exception {
+    VectoredReadExecutor executor = newExecutor(2);
+    CountDownLatch finishSubmissions = new CountDownLatch(1);
+    AtomicInteger backendCalls = new AtomicInteger();
+    List<TestStream> blockedStreams = new ArrayList<>();
+    try {
+      for (int i = 0; i < 2; i++) {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch interrupted = new CountDownLatch(1);
+        TestStream stream = new TestStream((ranges, buffers) -> {
+          backendCalls.incrementAndGet();
+          ByteBuffer buffer = buffers.allocate(8);
+          CompletableFuture<ByteBuffer> read = new CompletableFuture<>();
+          ranges.get(0).setDataReadFuture(read);
+          started.countDown();
+          awaitIgnoringInterrupts(finishSubmissions, interrupted);
+          read.complete(buffer);
+        });
+        blockedStreams.add(stream);
+        VectoredReadOperation operation = new VectoredReadOperation(
+            stream, ranges(1), new RecordingAllocator(), executor, 50, TimeUnit.MILLISECONDS);
+        TimeoutException failure = awaitSubmissionTimeout(operation);
+        await(started);
+        operation.abort(failure);
+        await(interrupted);
+      }
+
+      for (int retry = 0; retry < 3; retry++) {
+        TestStream unusedStream = new TestStream((ranges, buffers) -> backendCalls.incrementAndGet());
+        VectoredReadOperation retryOperation = new VectoredReadOperation(
+            unusedStream, ranges(1), new RecordingAllocator(), executor, 30, TimeUnit.MILLISECONDS);
+        assertThatThrownBy(retryOperation::awaitSubmission)
+            .isInstanceOf(TimeoutException.class)
+            .hasMessage("Timed out waiting for vectored read worker capacity");
+        assertThat(retryOperation.hasSubmission()).isFalse();
+        assertThat(retryOperation.remainingNanos()).isZero();
+        assertThat(unusedStream.closes.get()).isZero();
+      }
+      assertThat(backendCalls.get()).isEqualTo(2);
+      assertThat(executor.getLargestPoolSize()).isEqualTo(2);
+      assertThat(executor.getQueue()).isEmpty();
+      for (TestStream stream : blockedStreams) {
+        assertThat(stream.closes.get()).isZero();
+      }
+    } finally {
+      finishSubmissions.countDown();
+    }
+    for (TestStream stream : blockedStreams) {
+      await(stream.closed);
+      assertThat(stream.closedDuringSubmission).isFalse();
+    }
+
+    RecordingAllocator allocator = new RecordingAllocator();
+    TestStream succeedingStream = new TestStream((ranges, buffers) -> {
+      backendCalls.incrementAndGet();
+      ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(buffers.allocate(8)));
+    });
+    VectoredReadOperation succeedingOperation =
+        new VectoredReadOperation(succeedingStream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
+    try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      succeedingOperation.awaitSubmission();
+      succeedingOperation.transferTo(releaser);
+    }
+    assertThat(backendCalls.get()).isEqualTo(3);
+    assertThat(allocator.released).hasSize(1);
+    assertThat(executor.isShutdown()).isFalse();
+  }
+
+  @Test
+  public void testSuccessfulSubmissionRetainsCapacityUntilTransfer() throws Exception {
+    VectoredReadExecutor executor = newExecutor();
+    RecordingAllocator allocator = new RecordingAllocator();
+    TestStream firstStream = new TestStream((ranges, buffers) ->
+        ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(buffers.allocate(8))));
+    VectoredReadOperation first =
+        new VectoredReadOperation(firstStream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
+    first.awaitSubmission();
+    try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      TestStream unusedStream = new TestStream((ranges, buffers) -> {
+        throw new AssertionError("Submission must wait for the previous operation to transfer ownership");
+      });
+      VectoredReadOperation waiting =
+          new VectoredReadOperation(unusedStream, ranges(1), allocator, executor, 30, TimeUnit.MILLISECONDS);
+      assertThatThrownBy(waiting::awaitSubmission)
+          .isInstanceOf(TimeoutException.class)
+          .hasMessage("Timed out waiting for vectored read worker capacity");
+      assertThat(waiting.hasSubmission()).isFalse();
+      first.transferTo(releaser);
+    } catch (Throwable failure) {
+      first.abort(failure);
+      throw failure;
+    }
+    TestStream nextStream = new TestStream((ranges, buffers) ->
+        ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(buffers.allocate(8))));
+    VectoredReadOperation next =
+        new VectoredReadOperation(nextStream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
+    try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      next.awaitSubmission();
+      next.transferTo(releaser);
+    }
+    assertThat(allocator.released).hasSize(2);
+    assertThat(executor.getLargestPoolSize()).isEqualTo(1);
+  }
+
+  @Test
+  public void testInterruptWhileWaitingForCapacityDoesNotSubmitOrCloseStream() throws Exception {
+    VectoredReadExecutor executor = newExecutor();
+    RecordingAllocator allocator = new RecordingAllocator();
+    TestStream occupyingStream = new TestStream((ranges, buffers) ->
+        ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(buffers.allocate(8))));
+    VectoredReadOperation occupying =
+        new VectoredReadOperation(occupyingStream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
+    occupying.awaitSubmission();
+    TestStream waitingStream = new TestStream((ranges, buffers) -> {
+      throw new AssertionError("Interrupted admission must not submit a backend read");
+    });
+    VectoredReadOperation waiting =
+        new VectoredReadOperation(waitingStream, ranges(1), allocator, executor, 5, TimeUnit.SECONDS);
+    try {
+      Thread.currentThread().interrupt();
+      assertThatThrownBy(waiting::awaitSubmission)
+          .isInstanceOf(InterruptedIOException.class)
+          .hasMessage("Interrupted waiting for vectored read worker capacity")
+          .hasCauseInstanceOf(InterruptedException.class);
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+      assertThat(waiting.hasSubmission()).isFalse();
+      assertThat(waitingStream.closes.get()).isZero();
+    } finally {
+      Thread.interrupted();
+      try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+        occupying.transferTo(releaser);
+      }
+    }
+  }
+
+  @Test
+  public void testSubmissionErrorReachesCallerAndReleasesWorkerAfterAbort() throws Exception {
+    VectoredReadExecutor executor = newExecutor();
+    AssertionError failure = new AssertionError("Submission failed");
+    TestStream stream = new TestStream((ranges, buffers) -> {
+      throw failure;
+    });
+    VectoredReadOperation operation =
+        new VectoredReadOperation(stream, ranges(1), new RecordingAllocator(), executor, 5, TimeUnit.SECONDS);
+    assertThatThrownBy(operation::awaitSubmission)
+        .isInstanceOf(AssertionError.class)
+        .hasMessage("Submission failed")
+        .isSameAs(failure);
+    operation.abort(failure);
+    await(stream.closed);
+    assertThat(executor.isShutdown()).isFalse();
+    assertThat(stream.closedDuringSubmission).isFalse();
+  }
+
+  @Test
+  public void testBlockedCleanupRetainsWorkerCapacity() throws Exception {
+    VectoredReadExecutor executor = newExecutor();
+    CountDownLatch closeStarted = new CountDownLatch(1);
+    CountDownLatch finishClose = new CountDownLatch(1);
+    TestStream stream =
+        new TestStream((ranges, buffers) ->
+            ranges.get(0).setDataReadFuture(CompletableFuture.completedFuture(buffers.allocate(8)))) {
+          @Override
+          public void close() throws IOException {
+            closeStarted.countDown();
+            awaitIgnoringInterrupts(finishClose, new CountDownLatch(1));
+            super.close();
+          }
+        };
+    VectoredReadOperation operation =
+        new VectoredReadOperation(stream, ranges(1), new RecordingAllocator(), executor, 5, TimeUnit.SECONDS);
+    operation.awaitSubmission();
+    operation.abort(new IOException("Test read failed"));
+    try {
+      await(closeStarted);
+      TestStream unusedStream = new TestStream((ranges, buffers) -> {
+        throw new AssertionError("Cleanup still owns the only worker");
+      });
+      VectoredReadOperation waiting = new VectoredReadOperation(
+          unusedStream, ranges(1), new RecordingAllocator(), executor, 30, TimeUnit.MILLISECONDS);
+      assertThatThrownBy(waiting::awaitSubmission)
+          .isInstanceOf(TimeoutException.class)
+          .hasMessage("Timed out waiting for vectored read worker capacity");
+      assertThat(waiting.hasSubmission()).isFalse();
+      assertThat(executor.getLargestPoolSize()).isEqualTo(1);
+    } finally {
+      finishClose.countDown();
+    }
+    await(stream.closed);
+  }
+
+  @Test
+  public void testAbortBeforeWorkerStartsStillClosesStreamWithoutSubmitting() throws Exception {
+    VectoredReadExecutor executor = newExecutor();
+    CountDownLatch workerStarted = new CountDownLatch(1);
+    CountDownLatch releaseWorker = new CountDownLatch(1);
+    executor.submit(() -> {
+      workerStarted.countDown();
+      awaitIgnoringInterrupts(releaseWorker, new CountDownLatch(1));
+      return null;
+    });
+    await(workerStarted);
+    AtomicInteger backendCalls = new AtomicInteger();
+    TestStream stream = new TestStream((ranges, buffers) -> backendCalls.incrementAndGet());
+    VectoredReadOperation operation = new VectoredReadOperation(
+        stream, ranges(1), new RecordingAllocator(), executor, 30, TimeUnit.MILLISECONDS);
+    try {
+      TimeoutException failure = awaitSubmissionTimeout(operation);
+      assertThat(operation.hasSubmission()).isTrue();
+      operation.abort(failure);
+      assertThat(stream.closes.get()).isZero();
+      assertThat(executor.getQueue()).hasSize(1);
+    } finally {
+      releaseWorker.countDown();
+    }
+    await(stream.closed);
+    assertThat(backendCalls.get()).isZero();
+    assertThat(stream.closedDuringSubmission).isFalse();
+    assertThat(executor.isShutdown()).isFalse();
+  }
+
+  @Test
+  public void testRejectedSubmissionDoesNotTakeOwnershipOrLeakCapacity() {
+    VectoredReadExecutor executor = newExecutor();
+    executor.shutdown();
+    for (int retry = 0; retry < 2; retry++) {
+      TestStream stream = new TestStream((ranges, buffers) -> {
+        throw new AssertionError("Rejected admission must not submit a backend read");
+      });
+      VectoredReadOperation operation = new VectoredReadOperation(
+          stream, ranges(1), new RecordingAllocator(), executor, 30, TimeUnit.MILLISECONDS);
+      assertThatThrownBy(operation::awaitSubmission)
+          .isInstanceOf(RejectedExecutionException.class)
+          .hasMessageContaining("rejected from");
+      assertThat(operation.hasSubmission()).isFalse();
+      assertThat(stream.closes.get()).isZero();
+    }
+  }
+
+  private VectoredReadExecutor newExecutor() {
+    return newExecutor(1);
+  }
+
+  private VectoredReadExecutor newExecutor(int maximumThreads) {
+    VectoredReadExecutor executor = new VectoredReadExecutor(maximumThreads);
     executors.add(executor);
     return executor;
   }
@@ -432,6 +677,7 @@ public class TestVectoredReadOperation {
   private static class TestStream extends DelegatingSeekableInputStream {
     private final Submission submission;
     private final AtomicInteger closes = new AtomicInteger();
+    private final CountDownLatch closed = new CountDownLatch(1);
     private volatile boolean submitting;
     private volatile boolean closedDuringSubmission;
 
@@ -455,6 +701,7 @@ public class TestVectoredReadOperation {
       closedDuringSubmission |= submitting;
       closes.incrementAndGet();
       super.close();
+      closed.countDown();
     }
 
     @Override
