@@ -25,6 +25,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Offset.offset;
 
 import java.io.IOException;
@@ -50,6 +51,7 @@ import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.jupiter.api.AfterEach;
@@ -801,6 +803,22 @@ public class TestDictionary {
       int offset = bytes.remaining();
       reader.initFromPage(100, bytes, offset);
     }
+  }
+
+  @Test
+  public void testInvalidDictionaryId() throws IOException {
+    BytesInput dictionaryBytes = BytesInput.fromInt(34);
+    DictionaryPage dictionaryPage = new DictionaryPage(dictionaryBytes, 1, PLAIN);
+    ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, INT32, 0, 0);
+    Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
+    DictionaryValuesReader reader = new DictionaryValuesReader(dictionary);
+
+    // A bit width of 1 can represent dictionary id 1, but this dictionary only contains id 0.
+    reader.initFromPage(1, BytesInput.from(new byte[] {0x01, 0x02, 0x01}).toInputStream());
+
+    assertThatThrownBy(reader::readInteger)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Dictionary id 1 is outside the valid range 0 to 0");
   }
 
   @Test
