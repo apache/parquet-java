@@ -64,7 +64,8 @@ SETTINGS_EOF
 
 # maven_deploy <settings-file> <staging-description>
 #   Deploys through nexus-staging-maven-plugin, which opens one staging
-#   repository, uploads every module into it, and closes it.
+#   repository, uploads every module into it, and closes it. Output is
+#   also written to MAVEN_DEPLOY_LOG.
 function maven_deploy {
   local settings_file="${1:-.release-settings.xml}"
   local staging_description="$2"
@@ -75,6 +76,7 @@ function maven_deploy {
   fi
 
   exec_process rm -rf "${NEXUS_LOCAL_STAGING_DIR}"
+  mkdir -p "$(dirname "${MAVEN_DEPLOY_LOG}")"
 
   exec_process ./mvnw deploy \
     -Papache-release \
@@ -82,7 +84,8 @@ function maven_deploy {
     -Darguments=-DskipTests \
     "-DstagingDescription=${staging_description}" \
     --settings "${settings_file}" \
-    --batch-mode
+    --batch-mode | tee "${MAVEN_DEPLOY_LOG}"
+  return "${PIPESTATUS[0]}"
 }
 
 # maven_read_staging_repo_id [local-staging-dir]
@@ -111,6 +114,24 @@ function maven_read_staging_repo_id {
 
   print_info "Staging repository: ${staging_repo_id}"
   return 0
+}
+
+# maven_find_created_staging_repos [deploy-log]
+#   Sets created_staging_repo_ids to every staging repository the plugin
+#   reported creating. Used after a failed deploy, when the plugin may
+#   already have deleted its properties file.
+function maven_find_created_staging_repos {
+  local deploy_log="${1:-${MAVEN_DEPLOY_LOG}}"
+
+  created_staging_repo_ids=()
+  if [[ -f "${deploy_log}" ]]; then
+    local repo_id
+    while IFS= read -r repo_id; do
+      created_staging_repo_ids+=("${repo_id}")
+    done < <(sed -n 's/.*Created staging repository with ID "\([^"]*\)".*/\1/p' "${deploy_log}")
+  fi
+
+  [[ ${#created_staging_repo_ids[@]} -gt 0 ]]
 }
 
 function maven_cleanup_settings {

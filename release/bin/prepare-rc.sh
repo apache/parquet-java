@@ -266,20 +266,26 @@ generate_maven_settings "${settings_file}"
 staging_description="Apache Parquet ${version} RC${rc_number}"
 
 if ! maven_deploy "${settings_file}" "${staging_description}"; then
-  if maven_read_staging_repo_id; then
-    print_error "Deploy failed after uploading to ${staging_repo_id}; inspect it in Nexus, then drop it before retrying."
-    step_summary "Deploy **FAILED**; staging repository \`${staging_repo_id}\` was left in Nexus"
+  if maven_find_created_staging_repos; then
+    print_error "Deploy failed after creating staging repository ${created_staging_repo_ids[*]}; check whether it is still in Nexus and drop it before retrying."
+    step_summary "Deploy **FAILED** after creating staging repository \`${created_staging_repo_ids[*]}\`; check Nexus for leftovers"
+  else
+    step_summary "Deploy **FAILED** before a staging repository was created"
   fi
   exit 1
 fi
 
-maven_read_staging_repo_id
-
-step_summary "Deployed and closed staging repository: \`${staging_repo_id}\`"
-
-if ! nexus_verify_staging_repo "${staging_repo_id}" "${version}" "${rc_number}"; then
+if ! maven_read_staging_repo_id; then
+  step_summary "Deploy succeeded but the staging repository ID could not be read; see the Maven log for the closed repository"
   exit 1
 fi
+
+if ! nexus_verify_staging_repo "${staging_repo_id}" "${version}" "${rc_number}"; then
+  step_summary "Verification **FAILED** for staging repository \`${staging_repo_id}\`"
+  exit 1
+fi
+
+step_summary "Deployed, closed and verified staging repository: \`${staging_repo_id}\`"
 
 maven_cleanup_settings "${settings_file}"
 

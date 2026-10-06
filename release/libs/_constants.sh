@@ -34,6 +34,7 @@ NEXUS_STAGING_GROUP_URL="https://repository.apache.org/content/groups/staging/or
 
 NEXUS_PROFILE_NAME="org.apache.parquet"
 NEXUS_LOCAL_STAGING_DIR="target/nexus-staging"
+MAVEN_DEPLOY_LOG="target/nexus-deploy.log"
 NEXUS_VERIFY_GROUP_PATH="org/apache/parquet"
 NEXUS_VERIFY_ARTIFACT_ID="parquet-common"
 

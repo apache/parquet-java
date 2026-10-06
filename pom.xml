@@ -103,6 +103,7 @@
     <net.openhft.version>0.27ea1</net.openhft.version>
     <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
     <exec-maven-plugin.version>3.6.4</exec-maven-plugin.version>
+    <nexus-staging-maven-plugin.version>1.7.0</nexus-staging-maven-plugin.version>
     <protoc-jar-maven-plugin.version>3.11.4</protoc-jar-maven-plugin.version>
     <jts.version>1.20.0</jts.version>
 
@@ -732,11 +733,12 @@
           <plugin>
             <groupId>org.sonatype.plugins</groupId>
             <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.7.0</version>
+            <version>${nexus-staging-maven-plugin.version}</version>
             <extensions>true</extensions>
             <configuration>
               <nexusUrl>https://repository.apache.org/</nexusUrl>
               <serverId>apache.releases.https</serverId>
+              <autoReleaseAfterClose>false</autoReleaseAfterClose>
               <keepStagingRepositoryOnCloseRuleFailure>true</keepStagingRepositoryOnCloseRuleFailure>
               <stagingProgressTimeoutMinutes>15</stagingProgressTimeoutMinutes>
             </configuration>
