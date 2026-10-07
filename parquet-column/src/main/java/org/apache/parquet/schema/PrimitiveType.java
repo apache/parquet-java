@@ -446,6 +446,12 @@ public final class PrimitiveType extends Type {
 
               @Override
               public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+                return of(PrimitiveComparator.BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR);
+              }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
                   LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
                 return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
               }

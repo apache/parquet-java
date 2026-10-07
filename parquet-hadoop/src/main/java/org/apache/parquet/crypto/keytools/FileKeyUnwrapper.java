@@ -19,8 +19,6 @@
 
 package org.apache.parquet.crypto.keytools;
 
-import static org.apache.parquet.crypto.keytools.KeyToolkit.KEK_READ_CACHE_PER_TOKEN;
-import static org.apache.parquet.crypto.keytools.KeyToolkit.KMS_CLIENT_CACHE_PER_TOKEN;
 import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 import java.io.IOException;
@@ -47,6 +45,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   private final Path parquetFilePath;
   private final String accessToken;
   private final long cacheEntryLifetime;
+  private final KeyToolkit.KmsClientCacheContext cacheContext;
 
   FileKeyUnwrapper(Configuration hadoopConfiguration, Path filePath) {
     this.hadoopConfiguration = hadoopConfiguration;
@@ -58,11 +57,13 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
     accessToken = hadoopConfiguration.getTrimmed(
         KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, KmsClient.KEY_ACCESS_TOKEN_DEFAULT);
+    cacheContext = KeyToolkit.getKmsClientCacheContext(hadoopConfiguration);
 
     // Check cache upon each file reading (clean once in cacheEntryLifetime)
-    KMS_CLIENT_CACHE_PER_TOKEN.checkCacheForExpiredTokens(cacheEntryLifetime);
-    KEK_READ_CACHE_PER_TOKEN.checkCacheForExpiredTokens(cacheEntryLifetime);
-    kekPerKekID = KEK_READ_CACHE_PER_TOKEN.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+    cacheContext.getKmsClientCache().checkCacheForExpiredTokens(cacheEntryLifetime);
+    TwoLevelCacheWithExpiration<byte[]> kekReadCache = cacheContext.getKekReadCache();
+    kekReadCache.checkCacheForExpiredTokens(cacheEntryLifetime);
+    kekPerKekID = kekReadCache.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
 
     if (LOG.isDebugEnabled()) {
       LOG.debug(
@@ -168,7 +169,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     }
 
     KmsClient kmsClient = KeyToolkit.getKmsClient(
-        kmsInstanceID, kmsInstanceURL, hadoopConfiguration, accessToken, cacheEntryLifetime);
+        kmsInstanceID, kmsInstanceURL, hadoopConfiguration, accessToken, cacheEntryLifetime, cacheContext);
     if (null == kmsClient) {
       throw new ParquetCryptoRuntimeException(
           "KMSClient was not successfully created for reading encrypted data.");

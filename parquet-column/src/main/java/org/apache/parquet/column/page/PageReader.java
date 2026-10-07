@@ -21,7 +21,7 @@ package org.apache.parquet.column.page;
 /**
  * Reader for a sequence a page from a given column chunk
  */
-public interface PageReader {
+public interface PageReader extends AutoCloseable {
 
   /**
    * @return the dictionary page in that chunk or null if none
@@ -37,4 +37,10 @@ public interface PageReader {
    * @return the next page in that chunk or null if after the last page
    */
   DataPage readPage();
+
+  /**
+   * Releases any resources this reader holds (buffers, native handles, etc.).
+   */
+  @Override
+  default void close() {}
 }

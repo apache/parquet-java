@@ -49,6 +49,27 @@ function _redact_secrets {
   echo "${cmd_str}"
 }
 
+# require_env <var>...
+#   Fails unless every named variable is set and non-empty; a nonexistent
+#   GitHub Actions secret expands to empty rather than unset.
+function require_env {
+  local missing=()
+  local var
+  for var in "$@"; do
+    if [[ -z "${!var:-}" ]]; then
+      missing+=("${var}")
+    fi
+  done
+
+  if [[ ${#missing[@]} -ne 0 ]]; then
+    print_error "Missing required environment variable(s): ${missing[*]}"
+    print_error "Under GitHub Actions this usually means the workflow references a secret name that does not exist on this repository."
+    return 1
+  fi
+
+  return 0
+}
+
 function exec_process {
   local redacted
   redacted=$(_redact_secrets "$@")

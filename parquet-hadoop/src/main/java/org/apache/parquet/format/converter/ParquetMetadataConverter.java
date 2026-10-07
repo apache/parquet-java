@@ -320,7 +320,14 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getLogicalTypeAnnotation() != null) {
-          element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          // The TimestampType logical type may have a converted type, but only for the INT64
+          // physical type.
+          boolean suppressConvertedType = primitiveType.getLogicalTypeAnnotation()
+                  instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation
+              && primitiveType.getPrimitiveTypeName() != PrimitiveTypeName.INT64;
+          if (!suppressConvertedType) {
+            element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          }
           element.setLogicalType(convertToLogicalType(primitiveType.getLogicalTypeAnnotation()));
         }
         if (primitiveType.getDecimalMetadata() != null) {
@@ -2116,6 +2123,8 @@ public class ParquetMetadataConverter {
           // any, were written under the legacy type-defined order and must be read under it.
           primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
         }
+        // Gracefully handle unsupported logical type combinations on the read path.
+        primitiveBuilder.ignoreUnsupportedLogicalAnnotations();
         childBuilder = primitiveBuilder;
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));

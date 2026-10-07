@@ -345,4 +345,12 @@ public class BytesUtils {
   public static boolean bytesToBool(byte[] bytes) {
     return ((int) (bytes[0] & 255) != 0);
   }
+
+  public static byte[] reverse(byte[] bytes) {
+    byte[] reversed = new byte[bytes.length];
+    for (int i = 0; i < bytes.length; i++) {
+      reversed[i] = bytes[bytes.length - 1 - i];
+    }
+    return reversed;
+  }
 }
