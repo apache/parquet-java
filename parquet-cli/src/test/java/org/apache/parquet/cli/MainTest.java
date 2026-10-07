@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,9 @@ public class MainTest {
 
   @Test
   public void testLocalPropertiesFile() throws Exception {
-    String configFile = getClass().getResource("/test-config.properties").getPath();
+    String configFile = Path.of(
+            getClass().getResource("/test-config.properties").toURI())
+        .toString();
     assertThatCode(() -> ToolRunner.run(
             new Configuration(),
             new Main(LoggerFactory.getLogger(MainTest.class)),
@@ -62,7 +65,8 @@ public class MainTest {
 
   @Test
   public void testLocalXmlFile() throws Exception {
-    String configFile = getClass().getResource("/test-config.xml").getPath();
+    String configFile =
+        Path.of(getClass().getResource("/test-config.xml").toURI()).toString();
     assertThatCode(() -> ToolRunner.run(
             new Configuration(),
             new Main(LoggerFactory.getLogger(MainTest.class)),
