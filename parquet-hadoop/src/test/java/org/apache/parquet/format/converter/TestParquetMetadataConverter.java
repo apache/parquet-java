@@ -2178,7 +2178,7 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testFloatingPointColumnsDefaultToIeee754TotalOrder() throws IOException {
+  public void testFloatingPointColumnsDefaultToTypeDefinedOrder() throws IOException {
     MessageType schema = parseMessageType("message test {"
         + "  required float float_col;"
         + "  required double double_col;"
@@ -2192,22 +2192,23 @@ public class TestParquetMetadataConverter {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
 
-    // Floating-point columns serialize the new order; the int column keeps type-defined order.
+    // Preserve the pre-1.18 default for interoperability with older readers. Callers can opt in
+    // to IEEE 754 total order explicitly on the schema.
     List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
     assertThat(columnOrders).hasSize(4);
-    assertThat(columnOrders.get(0).isSetIEEE_754_TOTAL_ORDER()).isTrue();
-    assertThat(columnOrders.get(1).isSetIEEE_754_TOTAL_ORDER()).isTrue();
-    assertThat(columnOrders.get(2).isSetIEEE_754_TOTAL_ORDER()).isTrue();
+    assertThat(columnOrders.get(0).isSetTYPE_ORDER()).isTrue();
+    assertThat(columnOrders.get(1).isSetTYPE_ORDER()).isTrue();
+    assertThat(columnOrders.get(2).isSetTYPE_ORDER()).isTrue();
     assertThat(columnOrders.get(3).isSetTYPE_ORDER()).isTrue();
 
     MessageType resultSchema =
         converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
     assertThat(resultSchema.getType("float_col").asPrimitiveType().columnOrder())
-        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+        .isEqualTo(ColumnOrder.typeDefined());
     assertThat(resultSchema.getType("double_col").asPrimitiveType().columnOrder())
-        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+        .isEqualTo(ColumnOrder.typeDefined());
     assertThat(resultSchema.getType("float16_col").asPrimitiveType().columnOrder())
-        .isEqualTo(ColumnOrder.ieee754TotalOrder());
+        .isEqualTo(ColumnOrder.typeDefined());
     assertThat(resultSchema.getType("int_col").asPrimitiveType().columnOrder())
         .isEqualTo(ColumnOrder.typeDefined());
   }
@@ -2269,9 +2270,9 @@ public class TestParquetMetadataConverter {
     List<ColumnDescriptor> columns = resultSchema.getColumns();
     assertThat(columns).hasSize(3);
     assertThat(columns.get(0).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
-    // Column "b" is a DOUBLE built without an explicit column order, so it picks up the
-    // floating-point default of IEEE 754 total order.
-    assertThat(columns.get(1).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
+    // Column "b" is a DOUBLE built without an explicit column order, so it retains type-defined
+    // order for compatibility with readers that predate IEEE 754 total order.
+    assertThat(columns.get(1).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.typeDefined());
     assertThat(columns.get(2).getPrimitiveType().columnOrder()).isEqualTo(ColumnOrder.ieee754TotalOrder());
   }
 

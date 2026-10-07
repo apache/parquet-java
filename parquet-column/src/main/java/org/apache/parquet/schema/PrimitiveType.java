@@ -587,7 +587,7 @@ public final class PrimitiveType extends Type {
     this.decimalMeta = decimalMeta;
 
     if (columnOrder == null) {
-      columnOrder = defaultColumnOrder(primitive, originalType, getLogicalTypeAnnotation());
+      columnOrder = defaultColumnOrder(primitive, originalType);
     } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
       Preconditions.checkArgument(
           primitive == PrimitiveTypeName.FLOAT || primitive == PrimitiveTypeName.DOUBLE,
@@ -636,7 +636,7 @@ public final class PrimitiveType extends Type {
     }
 
     if (columnOrder == null) {
-      columnOrder = defaultColumnOrder(primitive, getOriginalType(), logicalTypeAnnotation);
+      columnOrder = defaultColumnOrder(primitive, getOriginalType());
     } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
       Preconditions.checkArgument(
           primitive == PrimitiveTypeName.FLOAT
@@ -654,23 +654,15 @@ public final class PrimitiveType extends Type {
 
   /**
    * The column order used when none is specified explicitly. INT96 and INTERVAL have no defined
-   * ordering, so they default to undefined. Floating-point types default to IEEE 754 total order so
-   * that NaN values and the sign of zero are ordered deterministically and nan_count statistics can
-   * be written; this is skipped when the logical type annotation does not accept IEEE 754 total
-   * order (e.g. an unknown annotation), leaving the type constructible with the type-defined order.
+   * ordering, so they default to undefined. Other types, including floating-point types, retain the
+   * type-defined order by default for compatibility with readers that predate IEEE 754 total order.
+   * Floating-point columns can opt in to IEEE 754 total order explicitly.
    */
-  private static ColumnOrder defaultColumnOrder(
-      PrimitiveTypeName primitive, OriginalType originalType, LogicalTypeAnnotation logicalTypeAnnotation) {
+  private static ColumnOrder defaultColumnOrder(PrimitiveTypeName primitive, OriginalType originalType) {
     if (primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL) {
       return ColumnOrder.undefined();
     }
-    boolean isFloatingType = primitive == PrimitiveTypeName.FLOAT
-        || primitive == PrimitiveTypeName.DOUBLE
-        || (logicalTypeAnnotation != null
-            && logicalTypeAnnotation.getType() == LogicalTypeAnnotation.LogicalTypeToken.FLOAT16);
-    boolean acceptsIeee754 = logicalTypeAnnotation == null
-        || logicalTypeAnnotation.isValidColumnOrder(ColumnOrder.ieee754TotalOrder());
-    return isFloatingType && acceptsIeee754 ? ColumnOrder.ieee754TotalOrder() : ColumnOrder.typeDefined();
+    return ColumnOrder.typeDefined();
   }
 
   private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
@@ -775,7 +767,7 @@ public final class PrimitiveType extends Type {
     }
     // Only emit the column order when it differs from the default, so schemas that rely on the
     // default stay textually unchanged.
-    if (!columnOrder.equals(defaultColumnOrder(primitive, getOriginalType(), getLogicalTypeAnnotation()))) {
+    if (!columnOrder.equals(defaultColumnOrder(primitive, getOriginalType()))) {
       sb.append(" ").append(COLUMN_ORDER_KEYWORD).append("(");
       sb.append(columnOrder.getColumnOrderName().name());
       sb.append(")");

@@ -565,11 +565,10 @@ public class Types {
     /**
      * Adds the column order for the primitive type.
      * <p>
-     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER}, with the following
-     * exceptions: the floating-point types {@link PrimitiveTypeName#FLOAT}, {@link PrimitiveTypeName#DOUBLE} and the
-     * {@code FLOAT16} logical type default to {@link ColumnOrderName#IEEE_754_TOTAL_ORDER}; the type
+     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER}, except that the type
      * {@link PrimitiveTypeName#INT96} and the types annotated by {@link OriginalType#INTERVAL} default to
-     * {@link ColumnOrderName#UNDEFINED}.
+     * {@link ColumnOrderName#UNDEFINED}. Floating-point types can opt in to
+     * {@link ColumnOrderName#IEEE_754_TOTAL_ORDER} explicitly.
      *
      * @param columnOrder the column order for the primitive type
      * @return this builder for method chaining
