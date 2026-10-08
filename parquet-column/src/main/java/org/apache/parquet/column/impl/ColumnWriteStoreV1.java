@@ -45,6 +45,15 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
     super(schema, pageWriteStore, bloomFilterWriteStore, props);
   }
 
+  ColumnWriteStoreV1(
+      MessageType schema,
+      PageWriteStore pageWriteStore,
+      BloomFilterWriteStore bloomFilterWriteStore,
+      ParquetProperties props,
+      CdcChunkers chunkers) {
+    super(schema, pageWriteStore, bloomFilterWriteStore, props, chunkers);
+  }
+
   @Override
   ColumnWriterBase createColumnWriter(
       ColumnDescriptor path,
