@@ -284,6 +284,42 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 ---
 
+**Property:** `parquet.page.content-defined-chunking.enabled`  
+**Description:** EXPERIMENTAL: Whether data pages also end at boundaries derived from a rolling hash of the
+column's values, so that files sharing a run of values share byte-identical pages a content addressable storage
+system can deduplicate. The file needs no reader support.  
+As in Arrow C++, `parquet.page.size` and `parquet.page.row.count.limit` still cut pages inside a chunk, counted from
+the page start, so they add pages without moving any after an edit; and a column falls back from dictionary encoding
+only when its dictionary outgrows `parquet.dictionary.page.size`, not on its first page. Dictionary ids follow the order
+values first appear in, so an edit that adds new values renumbers the later ones within its row group: columns of many
+distinct values deduplicate best with `parquet.enable.dictionary` off.  
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.min.size`  
+**Description:** EXPERIMENTAL: The minimum content defined chunk size in bytes. No chunk is shorter but a file's
+last; pages can be, where a row group or a page limit ends one.  
+**Default value:** `262144` (256 KiB)
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.max.size`  
+**Description:** EXPERIMENTAL: The maximum content defined chunk size in bytes; a chunk ends here whatever the
+rolling hash says. Very small sizes produce very many pages, and encrypted files cannot exceed 32767 pages per column
+chunk.  
+**Default value:** `1048576` (1 MiB)
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.norm.level`  
+**Description:** EXPERIMENTAL: The normalization level of the rolling hash mask. Raising it makes a boundary more
+likely, tightening the chunk size distribution and improving deduplication at the cost of more small pages; lowering
+it does the reverse. Values outside `[-3, 3]` are not useful.  
+**Default value:** `0`
+
+---
+
 **Property:** `parquet.page.write-checksum.enabled`  
 **Description:** Whether to write out page level checksums.  
 **Default value:** `true`
