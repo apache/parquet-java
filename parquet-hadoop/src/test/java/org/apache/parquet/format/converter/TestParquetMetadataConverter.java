@@ -573,12 +573,10 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testFileLogicalTypeIsIgnoredRatherThanFailing() {
+  public void testFileLogicalTypeIsConverted() {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    // FILE has no LogicalTypeAnnotation yet, so it must degrade to the physical type the way an
-    // unrecognised logical type does, rather than throwing.
     assertThat(converter.getLogicalTypeAnnotation(LogicalType.FILE(new FileType())))
-        .isNull();
+        .isEqualTo(LogicalTypeAnnotation.fileType());
   }
 
   @Test
@@ -2390,6 +2388,59 @@ public class TestParquetMetadataConverter {
     ColumnIndex roundTrip = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
     assertThat(roundTrip).isNotNull();
     assertThat(roundTrip.getNanCounts()).containsExactly(1L, 0L, 0L);
+  }
+
+  @Test
+  public void testFileLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    MessageType expected = Types.buildMessage()
+        .requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(PrimitiveTypeName.INT64)
+        .named("offset")
+        .optional(PrimitiveTypeName.INT64)
+        .named("size")
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("checksum")
+        .optional(PrimitiveTypeName.BINARY)
+        .named("inline")
+        .named("f")
+        .named("example");
+
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertThat(schema).isEqualTo(expected);
+    LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
+    assertThat(logicalType).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
+    assertThat(logicalType).isEqualTo(LogicalTypeAnnotation.fileType());
+  }
+
+  @Test
+  public void testFileLogicalTypeRoundTripUriOnly() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    MessageType expected = Types.buildMessage()
+        .requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .named("f")
+        .named("example");
+
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertThat(schema).isEqualTo(expected);
+    LogicalTypeAnnotation logicalType = schema.getType("f").getLogicalTypeAnnotation();
+    assertThat(logicalType).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
   }
 
   @Test

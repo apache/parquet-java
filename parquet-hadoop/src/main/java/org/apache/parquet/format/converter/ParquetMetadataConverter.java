@@ -600,6 +600,11 @@ public class ParquetMetadataConverter {
       geographyType.setAlgorithm(fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm()));
       return of(LogicalType.GEOGRAPHY(geographyType));
     }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.FileLogicalTypeAnnotation fileLogicalType) {
+      return of(LogicalTypes.FILE);
+    }
   }
 
   private void addRowGroup(
@@ -1417,9 +1422,7 @@ public class ParquetMetadataConverter {
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
       case FILE:
-        // Present in the format but not mapped to a LogicalTypeAnnotation yet. Ignore it to
-        // preserve the physical type, as an unrecognised logical type would be.
-        return null;
+        return LogicalTypeAnnotation.fileType();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
