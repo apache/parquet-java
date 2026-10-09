@@ -74,10 +74,10 @@ final class FileValueValidator {
       case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CONTENT_TYPE_FIELD:
       case LogicalTypeAnnotation.FileLogicalTypeAnnotation.CHECKSUM_FIELD:
         if (physicalType != PrimitiveType.PrimitiveTypeName.BINARY
-            || !(field.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation)) {
-          throw new IllegalArgumentException(
-              "FILE type field '" + fieldName
-                  + "' must be a STRING (BINARY annotated as STRING) in group '" + groupName + "'");
+            || !(field.getLogicalTypeAnnotation()
+                instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation)) {
+          throw new IllegalArgumentException("FILE type field '" + fieldName
+              + "' must be a STRING (BINARY annotated as STRING) in group '" + groupName + "'");
         }
         break;
       case LogicalTypeAnnotation.FileLogicalTypeAnnotation.OFFSET_FIELD:
