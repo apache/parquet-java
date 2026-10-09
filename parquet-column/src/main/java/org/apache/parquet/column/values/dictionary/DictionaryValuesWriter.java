@@ -82,6 +82,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /* size in items of the dictionary at the end of last dictionary encoded page (in case the current page falls back to PLAIN) */
   protected int lastUsedDictionarySize;
 
+  /* whether a page was dictionary encoded since the dictionary was reset, so one is due even if empty */
+  protected boolean encodedAPage;
+
   /* dictionary encoded values */
   protected IntList encodedValues = new IntList();
 
@@ -111,6 +114,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         new DictionaryPage(dictPageWriter.getBytes(), lastUsedDictionarySize, encodingForDictionaryPage);
     toClose.add(dictPageWriter);
     return ret;
+  }
+
+  /**
+   * A dictionary page without entries where pages were dictionary encoded with nulls alone, as Arrow
+   * C++ writes one, since such a page still needs a dictionary to be read.
+   */
+  protected DictionaryPage emptyDictPage() {
+    return encodedAPage ? new DictionaryPage(BytesInput.empty(), 0, encodingForDictionaryPage) : null;
   }
 
   @Override
@@ -173,6 +184,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = getDictionarySize();
       lastUsedDictionaryByteSize = Math.toIntExact(dictionaryByteSize);
+      encodedAPage = true;
       return bytes;
     } catch (IOException e) {
       throw new ParquetEncodingException("could not encode the values", e);
@@ -201,6 +213,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   public void resetDictionary() {
     lastUsedDictionaryByteSize = 0;
     lastUsedDictionarySize = 0;
+    encodedAPage = false;
     dictionaryTooBig = false;
     dictionaryByteSize = 0;
     clearDictionaryContent();
@@ -264,7 +277,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         }
         return dictPage(dictionaryEncoder);
       }
-      return null;
+      return emptyDictPage();
     }
 
     @Override
@@ -334,7 +347,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         }
         return dictPage(dictionaryEncoder);
       }
-      return null;
+      return emptyDictPage();
     }
   }
 
@@ -376,7 +389,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         }
         return dictPage(dictionaryEncoder);
       }
-      return null;
+      return emptyDictPage();
     }
 
     @Override
@@ -448,7 +461,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         }
         return dictPage(dictionaryEncoder);
       }
-      return null;
+      return emptyDictPage();
     }
 
     @Override
@@ -523,7 +536,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         }
         return dictPage(dictionaryEncoder);
       }
-      return null;
+      return emptyDictPage();
     }
 
     @Override
@@ -596,7 +609,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         }
         return dictPage(dictionaryEncoder);
       }
-      return null;
+      return emptyDictPage();
     }
 
     @Override

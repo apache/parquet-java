@@ -138,4 +138,49 @@ public class TestParquetProperties {
     assertThat(copy.getColumnCompressionLevel(colB)).isNull();
     assertThat(copy.getColumnCodec(colC)).isNull();
   }
+
+  // ------------------------------------------- content defined chunking
+
+  private static final CdcOptions CHUNKING = CdcOptions.builder()
+      .withMinChunkSize(4 * 1024)
+      .withMaxChunkSize(16 * 1024)
+      .build();
+
+  @Test
+  public void contentDefinedChunking_byDefault_isDisabled() {
+    assertThat(ParquetProperties.builder().build().isContentDefinedChunkingEnabled())
+        .isFalse();
+  }
+
+  @Test
+  public void withContentDefinedChunking_nullOptions_throwsNullPointerException() {
+    assertThatThrownBy(() -> ParquetProperties.builder().withContentDefinedChunking(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("CdcOptions cannot be null");
+  }
+
+  @Test
+  public void withContentDefinedChunking_options_enablesChunkingAndSurvivesCopy() {
+    ParquetProperties original =
+        ParquetProperties.builder().withContentDefinedChunking(CHUNKING).build();
+    ParquetProperties copy = ParquetProperties.copy(original).build();
+
+    assertThat(copy.isContentDefinedChunkingEnabled()).isTrue();
+    assertThat(copy.getCdcOptions()).isSameAs(CHUNKING);
+  }
+
+  @Test
+  public void copyBuilder_whileChunkingIsDisabled_stillPreservesTheOptions() {
+    ParquetProperties disabled = ParquetProperties.builder()
+        .withContentDefinedChunking(CHUNKING)
+        .withContentDefinedChunkingEnabled(false)
+        .build();
+    assertThat(disabled.isContentDefinedChunkingEnabled()).isFalse();
+
+    ParquetProperties reEnabled = ParquetProperties.copy(disabled)
+        .withContentDefinedChunkingEnabled(true)
+        .build();
+    assertThat(reEnabled.isContentDefinedChunkingEnabled()).isTrue();
+    assertThat(reEnabled.getCdcOptions()).isSameAs(CHUNKING);
+  }
 }

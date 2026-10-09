@@ -30,13 +30,17 @@ import static org.assertj.core.data.Offset.offset;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
+import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -52,6 +56,7 @@ import org.apache.parquet.column.values.plain.PlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -208,6 +213,68 @@ public class TestDictionary {
       cw.reset();
       assertThat(cw.getBufferedSize()).isEqualTo(0);
     }
+  }
+
+  /**
+   * Without the first-page judgement, as content defined chunking asks for, a dictionary falls back
+   * only on its size limit, as Arrow C++ decides it, even after a first page of nulls alone.
+   */
+  @Test
+  public void fallsBackOnTheSizeLimitAloneWithoutAFirstPageJudgement() throws IOException {
+    // One page of 100 distinct values is less than its dictionary costs.
+    assertThat(pageEncodings(true, 1 << 20, 100)).containsExactly(PLAIN, PLAIN, PLAIN);
+    assertThat(pageEncodings(false, 1 << 20, 100))
+        .containsExactly(PLAIN_DICTIONARY, PLAIN_DICTIONARY, PLAIN_DICTIONARY);
+    // 150 entries of 8 bytes fill the limit during the second page.
+    assertThat(pageEncodings(false, 150 * 8, 100)).containsExactly(PLAIN_DICTIONARY, PLAIN, PLAIN);
+    assertThat(pageEncodings(false, 1 << 20, 0))
+        .containsExactly(PLAIN_DICTIONARY, PLAIN_DICTIONARY, PLAIN_DICTIONARY);
+  }
+
+  /** The writer factory judges the first page unless content defined chunking is enabled. */
+  @Test
+  public void theFactoryJudgesTheFirstPageUnlessChunking() {
+    ColumnDescriptor path =
+        new ColumnDescriptor(new String[] {"v"}, Types.required(BINARY).named("v"), 0, 0);
+    assertThat(firstPageEncoding(ParquetProperties.builder().build(), path)).isEqualTo(PLAIN);
+    assertThat(firstPageEncoding(
+            ParquetProperties.builder()
+                .withContentDefinedChunking(CdcOptions.DEFAULT)
+                .build(),
+            path))
+        .isEqualTo(PLAIN_DICTIONARY);
+  }
+
+  /** The encoding of a first page of 100 distinct values, less than their dictionary costs. */
+  private static Encoding firstPageEncoding(ParquetProperties props, ColumnDescriptor path) {
+    try (ValuesWriter writer = props.newValuesWriter(path)) {
+      for (int i = 0; i < 100; i++) {
+        writer.writeBytes(Binary.fromString(String.format("v%03d", i)));
+      }
+      writer.getBytes();
+      return writer.getEncoding();
+    }
+  }
+
+  /** Three pages of {@code valuesPerPage} distinct four-character values, 8 bytes of raw data each. */
+  private List<Encoding> pageEncodings(boolean judgeFirstPage, int maxDictionaryByteSize, int valuesPerPage)
+      throws IOException {
+    List<Encoding> encodings = new ArrayList<>();
+    try (FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> cw = new FallbackValuesWriter<>(
+        new PlainBinaryDictionaryValuesWriter(
+            maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, allocator),
+        new PlainValuesWriter(100, 500, allocator),
+        judgeFirstPage)) {
+      for (int page = 0; page < 3; page++) {
+        for (int i = 0; i < valuesPerPage; i++) {
+          cw.writeBytes(Binary.fromString(String.format("v%03d", page * valuesPerPage + i)));
+        }
+        cw.getBytes();
+        encodings.add(cw.getEncoding());
+        cw.reset();
+      }
+    }
+    return encodings;
   }
 
   @Test
