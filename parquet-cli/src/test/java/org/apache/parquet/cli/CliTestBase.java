@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.parquet.cli.commands.ParquetFileTest;
+import org.slf4j.event.Level;
 import org.slf4j.event.LoggingEvent;
 import org.slf4j.helpers.MessageFormatter;
 import org.slf4j.helpers.SubstituteLoggerFactory;
@@ -35,6 +36,7 @@ abstract class CliTestBase extends ParquetFileTest {
     try {
       int exitCode = ToolRunner.run(new Configuration(), new Main(loggerFactory.getLogger("cli-test")), args);
       String output = loggerFactory.getEventQueue().stream()
+          .filter(event -> event.getLevel().toInt() >= Level.INFO.toInt())
           .map(CliTestBase::formatEvent)
           .collect(Collectors.joining("\n"));
       return new CliResult(exitCode, output);
