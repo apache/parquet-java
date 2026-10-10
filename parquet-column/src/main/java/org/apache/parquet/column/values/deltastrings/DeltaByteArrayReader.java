@@ -19,11 +19,13 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 
 /**
@@ -70,7 +72,11 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
     if (prefixLength != 0) {
       byte[] out = new byte[length];
       System.arraycopy(previous.getBytesUnsafe(), 0, out, 0, prefixLength);
-      System.arraycopy(suffix.getBytesUnsafe(), 0, out, prefixLength, suffix.length());
+      try {
+        suffix.writeTo(new ByteArraySliceOutputStream(out, prefixLength));
+      } catch (IOException e) {
+        throw new ParquetDecodingException("Failed to materialize delta byte array suffix", e);
+      }
       previous = Binary.fromConstantByteArray(out);
     } else {
       previous = suffix;
@@ -90,6 +96,27 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
   public void setPreviousReader(ValuesReader reader) {
     if (reader instanceof DeltaByteArrayReader) {
       this.previous = ((DeltaByteArrayReader) reader).previous;
+    }
+  }
+
+  private static final class ByteArraySliceOutputStream extends OutputStream {
+    private final byte[] output;
+    private int position;
+
+    private ByteArraySliceOutputStream(byte[] output, int position) {
+      this.output = output;
+      this.position = position;
+    }
+
+    @Override
+    public void write(int b) {
+      output[position++] = (byte) b;
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) {
+      System.arraycopy(b, off, output, position, len);
+      position += len;
     }
   }
 }
