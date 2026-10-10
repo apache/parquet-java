@@ -36,6 +36,7 @@ import com.google.protobuf.DoubleValue;
 import com.google.protobuf.FloatValue;
 import com.google.protobuf.Int32Value;
 import com.google.protobuf.Int64Value;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
 import com.google.protobuf.UInt32Value;
@@ -347,6 +348,9 @@ class ProtoMessageConverter extends GroupConverter {
           if (messageType.equals(BytesValue.getDescriptor())) {
             return new ProtoBytesValueConverter(pvc);
           }
+          // Otherwise the column holds the serialized message itself: ProtoSchemaConverter stores
+          // fields of empty message types and recursion beyond maxRecursion as proto bytes.
+          return new ProtoBinaryMessageConverter(pvc, parentBuilder, fieldDescriptor);
         }
         Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
         return new ProtoMessageConverter(conf, pvc, subBuilder, parquetType.asGroupType(), extraMetadata);
@@ -492,6 +496,39 @@ class ProtoMessageConverter extends GroupConverter {
         Binary binaryValue = dictionary.decodeToBinary(i);
         dict[i] = translateEnumValue(binaryValue);
       }
+    }
+  }
+
+  /**
+   * Reads a message field that {@link ProtoSchemaConverter} stored as the serialized proto bytes
+   * (a field of an empty message type, or recursion truncated at maxRecursion) back into the
+   * message.
+   */
+  static final class ProtoBinaryMessageConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+    private final Message.Builder parentBuilder;
+    private final Descriptors.FieldDescriptor fieldDescriptor;
+
+    ProtoBinaryMessageConverter(
+        ParentValueContainer parent,
+        Message.Builder parentBuilder,
+        Descriptors.FieldDescriptor fieldDescriptor) {
+      this.parent = parent;
+      this.parentBuilder = parentBuilder;
+      this.fieldDescriptor = fieldDescriptor;
+    }
+
+    @Override
+    public void addBinary(Binary binary) {
+      Message.Builder builder = parentBuilder.newBuilderForField(fieldDescriptor);
+      try {
+        builder.mergeFrom(ByteString.copyFrom(binary.toByteBuffer()));
+      } catch (InvalidProtocolBufferException e) {
+        throw new ParquetDecodingException(
+            "Cannot parse field " + fieldDescriptor.getFullName() + " from its serialized proto bytes", e);
+      }
+      parent.add(builder.build());
     }
   }
 
