@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.benchmarks;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
@@ -76,7 +76,7 @@ public class RunLengthBitPackingHybridDecodingBenchmark {
   @OperationsPerInvocation(VALUE_COUNT)
   public void decode(Blackhole bh) throws IOException {
     RunLengthBitPackingHybridDecoder decoder =
-        new RunLengthBitPackingHybridDecoder(bitWidth, new ByteArrayInputStream(encoded));
+        new RunLengthBitPackingHybridDecoder(bitWidth, ByteBuffer.wrap(encoded));
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(decoder.readInt());
     }
