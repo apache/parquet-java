@@ -20,7 +20,12 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -57,6 +62,23 @@ public class TestColumnChunkPageReadStore {
     @Override
     public void release() {}
   };
+
+  @Test
+  public void heapDataPagesAreNotRetainedUntilRowGroupClose() throws Exception {
+    ByteBufferAllocator allocator = spy(new HeapByteBufferAllocator());
+    ParquetReadOptions options =
+        ParquetReadOptions.builder().withAllocator(allocator).build();
+    byte[] bytes = {1, 2, 3, 4};
+    DataPageV1 page = new DataPageV1(BytesInput.from(bytes), 1, bytes.length, null, RLE, RLE, PLAIN);
+    ColumnChunkPageReader reader = new ColumnChunkPageReader(
+        NOOP_DECOMPRESSOR, Collections.singletonList(page), null, null, 1L, null, null, 0, 0, options);
+    try (ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L)) {
+      store.addColumn(COLUMN, reader);
+      assertThat(((DataPageV1) reader.readPage()).getBytes().toByteArray())
+          .isEqualTo(bytes);
+      verify(allocator, never()).allocate(anyInt());
+    }
+  }
 
   @Test
   public void closeWithoutSetReleaserDoesNotThrow() {
