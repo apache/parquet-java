@@ -70,6 +70,22 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Converts a Protocol Buffer Descriptor into a Parquet schema.
+ * <p>
+ * Message fields normally become Parquet groups. Two kinds of message fields cannot, and are
+ * instead terminated as an unannotated {@code BINARY} column holding the serialized proto message
+ * (keeping the field's repetition, or sitting inside the usual LIST/MAP wrappers):
+ * <ul>
+ *   <li>fields of an <em>empty</em> message type, because Parquet forbids empty groups; the value is
+ *       zero bytes when the field is set and {@code null} when it is not, so presence still
+ *       round-trips;</li>
+ *   <li>recursive fields nested deeper than {@code maxRecursion}.</li>
+ * </ul>
+ * Readers unaware of protobuf see opaque bytes. {@code ProtoParquetReader} parses them back into the
+ * message using the generated class it resolves from the {@code parquet.proto.class} footer key (or
+ * the class configured for reading). Since the column type follows
+ * the proto schema at write time, an empty message type that later gains fields (or a changed
+ * {@code maxRecursion}) produces a group where older files hold {@code BINARY}, like any other
+ * field whose type changed. See the parquet-protobuf README for details.
  */
 public class ProtoSchemaConverter {
 
@@ -312,19 +328,28 @@ public class ProtoSchemaConverter {
       final GroupBuilder<T> builder,
       ImmutableSetMultimap<String, Integer> seen,
       int depth) {
-    // Prevent recursion by terminating with optional proto bytes.
+    // Terminate with proto bytes anything a static parquet schema cannot represent - recursion
+    // beyond maxRecursion and empty message types (parquet forbids empty groups) - preserving the
+    // field's repetition so the write path (Array/Repeated/MapWriter) still matches the schema.
     depth += 1;
     String typeName = getInnerTypeName(descriptor);
     LOG.trace("addMessageField: {} type: {} depth: {}", descriptor.getFullName(), typeName, depth);
-    if (typeName != null) {
-      if (seen.get(typeName).size() > maxRecursion) {
-        return builder.primitive(BINARY, Type.Repetition.OPTIONAL).as((LogicalTypeAnnotation) null);
-      }
-    }
 
     if (descriptor.isMapField() && parquetSpecsCompliant) {
-      // the old schema style did not include the MAP wrapper around map groups
+      // the old schema style did not include the MAP wrapper around map groups.
+      // The MAP structure is always preserved; a recursive or empty value type is truncated to
+      // proto bytes by the check below when addMapField recurses into the value field.
       return addMapField(descriptor, builder, seen, depth);
+    }
+
+    boolean emptyMessage = descriptor.getMessageType().getFields().isEmpty();
+    if (emptyMessage || (typeName != null && seen.get(typeName).size() > maxRecursion)) {
+      if (descriptor.isRepeated() && parquetSpecsCompliant) {
+        // LIST-wrap the truncated bytes the same way any repeated primitive is wrapped
+        return addRepeatedPrimitive(BINARY, null, builder);
+      }
+      // optional, required, or repeated in the old schema style
+      return builder.primitive(BINARY, getRepetition(descriptor)).as((LogicalTypeAnnotation) null);
     }
 
     seen = ImmutableSetMultimap.<String, Integer>builder()
