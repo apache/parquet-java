@@ -107,8 +107,11 @@ public class ShowPagesCommandTest extends ParquetFileTest {
       ColumnChunkMetaData column =
           reader.getRowGroups().get(0).getColumns().get(0);
       assertThat(column.getEncodingStats().hasDictionaryPages()).isTrue();
+      assertThat(column.getEncodingStats().hasDictionaryEncodedPages()).isFalse();
+      assertThat(column.getEncodings()).containsExactlyInAnyOrder(PLAIN, RLE);
       assertThat(column.hasDictionaryPage()).isFalse();
       assertThat(column.getDictionaryPageOffset()).isPositive().isLessThan(column.getFirstDataPageOffset());
+      assertThat(column.getStartingPos()).isEqualTo(column.getDictionaryPageOffset());
     }
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path)
         .withConf(conf)
