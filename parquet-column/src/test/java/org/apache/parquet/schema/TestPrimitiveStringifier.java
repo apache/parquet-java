@@ -45,12 +45,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
 
@@ -193,7 +195,29 @@ public class TestPrimitiveStringifier {
       assertThat(stringifier.stringify(cal.getTimeInMillis()))
           .isEqualTo(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment));
 
-      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      // The FIXED_LEN_BYTE_ARRAY(12) carrier renders identically to the int64 carrier. Includes a
+      // pre-epoch (negative) value to exercise the signed little-endian decoding.
+      assertThat(stringifier.stringify(toFlba12Timestamp(0L)))
+          .isEqualTo(withZoneString("1970-01-01T00:00:00.000", timezoneAmendment));
+      cal.clear();
+      cal.set(2017, Calendar.DECEMBER, 15, 10, 9, 54);
+      cal.set(Calendar.MILLISECOND, 120);
+      assertThat(stringifier.stringify(toFlba12Timestamp(cal.getTimeInMillis())))
+          .isEqualTo(withZoneString("2017-12-15T10:09:54.120", timezoneAmendment));
+      cal.clear();
+      cal.set(1948, Calendar.NOVEMBER, 23, 20, 19, 1);
+      cal.set(Calendar.MILLISECOND, 9);
+      assertThat(stringifier.stringify(toFlba12Timestamp(cal.getTimeInMillis())))
+          .isEqualTo(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment));
+
+      // Test FLBA(12) timestamps that overflow the Instant range.
+      BigInteger overflowsLong = BigInteger.valueOf(2).pow(94).negate();
+      assertThat(stringifier.stringify(toFlba12Timestamp(overflowsLong))).isEqualTo(overflowsLong.toString());
+      BigInteger overflowsInstant = BigInteger.valueOf(2).pow(70);
+      assertThat(stringifier.stringify(toFlba12Timestamp(overflowsInstant)))
+          .isEqualTo(overflowsInstant.toString());
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE, Binary.class);
     }
   }
 
@@ -221,7 +245,21 @@ public class TestPrimitiveStringifier {
       assertThat(stringifier.stringify(micros))
           .isEqualTo(withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment));
 
-      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      // The FIXED_LEN_BYTE_ARRAY(12) carrier renders identically to the int64 carrier, including
+      // the pre-epoch (negative) value above which exercises the signed little-endian decoding.
+      assertThat(stringifier.stringify(toFlba12Timestamp(0L)))
+          .isEqualTo(withZoneString("1970-01-01T00:00:00.000000", timezoneAmendment));
+      assertThat(stringifier.stringify(toFlba12Timestamp(micros)))
+          .isEqualTo(withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment));
+
+      // Test FLBA(12) timestamps that overflow the Instant range.
+      BigInteger overflowsLong = BigInteger.valueOf(2).pow(94).negate();
+      assertThat(stringifier.stringify(toFlba12Timestamp(overflowsLong))).isEqualTo(overflowsLong.toString());
+      BigInteger overflowsInstant = BigInteger.valueOf(2).pow(80);
+      assertThat(stringifier.stringify(toFlba12Timestamp(overflowsInstant)))
+          .isEqualTo(overflowsInstant.toString());
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE, Binary.class);
     }
   }
 
@@ -248,7 +286,21 @@ public class TestPrimitiveStringifier {
       assertThat(stringifier.stringify(nanos))
           .isEqualTo(withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment));
 
-      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      // The FIXED_LEN_BYTE_ARRAY(12) carrier renders identically to the int64 carrier, including
+      // the pre-epoch (negative) value above which exercises the signed little-endian decoding.
+      assertThat(stringifier.stringify(toFlba12Timestamp(0L)))
+          .isEqualTo(withZoneString("1970-01-01T00:00:00.000000000", timezoneAmendment));
+      assertThat(stringifier.stringify(toFlba12Timestamp(nanos)))
+          .isEqualTo(withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment));
+
+      // Test FLBA(12) timestamps that overflow the Instant range.
+      BigInteger overflowsLong = BigInteger.valueOf(2).pow(94).negate();
+      assertThat(stringifier.stringify(toFlba12Timestamp(overflowsLong))).isEqualTo(overflowsLong.toString());
+      BigInteger overflowsInstant = BigInteger.valueOf(2).pow(90);
+      assertThat(stringifier.stringify(toFlba12Timestamp(overflowsInstant)))
+          .isEqualTo(overflowsInstant.toString());
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE, Binary.class);
     }
   }
 
@@ -415,6 +467,20 @@ public class TestPrimitiveStringifier {
       array[i] = (byte) bytes[i];
     }
     return Binary.fromConstantByteArray(array);
+  }
+
+  private Binary toFlba12Timestamp(long units) {
+    return toFlba12Timestamp(BigInteger.valueOf(units));
+  }
+
+  private Binary toFlba12Timestamp(BigInteger units) {
+    byte[] bigEndian = units.toByteArray();
+    assertThat(bigEndian.length).isLessThanOrEqualTo(12);
+
+    byte[] padded = new byte[12];
+    Arrays.fill(padded, 0, 12 - bigEndian.length, (byte) (units.signum() < 0 ? 0xFF : 0x00));
+    System.arraycopy(bigEndian, 0, padded, 12 - bigEndian.length, bigEndian.length);
+    return Binary.fromConstantByteArray(BytesUtils.reverse(padded));
   }
 
   private void checkThrowingUnsupportedException(PrimitiveStringifier stringifier, Class<?>... excludes) {

@@ -35,3 +35,15 @@ message WideTree {
     google.protobuf.Any value = 1;
     repeated WideTree children = 2;
 }
+
+// An empty message: parquet cannot represent an empty group, so fields of this
+// type are terminated as proto bytes (like recursion beyond maxRecursion).
+message Stub {
+}
+
+message StubBox {
+    Stub stub = 1;
+    repeated Stub stubs = 2;
+    map<string, Stub> stub_map = 3;
+    string name = 4;
+}

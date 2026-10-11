@@ -20,6 +20,7 @@
 package org.apache.parquet.hadoop.util;
 
 import java.io.ByteArrayInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import org.apache.hadoop.fs.PositionedReadable;
 import org.apache.hadoop.fs.Seekable;
@@ -71,6 +72,7 @@ class MockHadoopInputStream extends ByteArrayInputStream implements Seekable, Po
 
   @Override
   public void seek(long pos) throws IOException {
+    rejectNegativePosition(pos);
     this.pos = (int) pos;
   }
 
@@ -83,5 +85,28 @@ class MockHadoopInputStream extends ByteArrayInputStream implements Seekable, Po
   public boolean seekToNewSource(long targetPos) throws IOException {
     seek(targetPos);
     return true;
+  }
+
+  /**
+   * How long is the actual test data.
+   * @return the test data
+   */
+  int length() {
+    return TEST_ARRAY.length;
+  }
+
+  byte[] data() {
+    return TEST_ARRAY;
+  }
+
+  /**
+   * For consistency with real Hadoop streams: reject negative positions.
+   * @param pos position to read/seek to.
+   * @throws EOFException if pos is negative
+   */
+  static void rejectNegativePosition(final long pos) throws EOFException {
+    if (pos < 0) {
+      throw new EOFException("Seek before file start: " + pos);
+    }
   }
 }
