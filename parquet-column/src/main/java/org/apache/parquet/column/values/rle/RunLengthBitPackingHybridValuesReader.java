@@ -19,10 +19,10 @@
 package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * This ValuesReader does all the reading in {@link #initFromPage}
@@ -39,7 +39,8 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCountL, ByteBufferInputStream stream) throws IOException {
     int length = BytesUtils.readIntLittleEndian(stream);
-    this.decoder = new RunLengthBitPackingHybridDecoder(bitWidth, stream.sliceStream(length));
+    ByteBuffer buf = stream.slice(length);
+    this.decoder = new RunLengthBitPackingHybridDecoder(bitWidth, buf);
 
     // 4 is for the length which is stored as 4 bytes little endian
     updateNextOffset(length + 4);
@@ -47,11 +48,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
 
   @Override
   public int readInteger() {
-    try {
-      return decoder.readInt();
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
+    return decoder.readInt();
   }
 
   @Override

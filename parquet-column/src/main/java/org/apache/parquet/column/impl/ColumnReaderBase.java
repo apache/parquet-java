@@ -773,7 +773,7 @@ abstract class ColumnReaderBase implements ColumnReader {
         return new NullIntIterator();
       }
       return new RLEIntIterator(new RunLengthBitPackingHybridDecoder(
-          BytesUtils.getWidthFromMaxInt(maxLevel), bytes.toInputStream()));
+          BytesUtils.getWidthFromMaxInt(maxLevel), bytes.toByteBuffer()));
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read levels in page for col " + path, e);
     }
@@ -832,11 +832,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
     @Override
     int nextInt() {
-      try {
-        return delegate.readInt();
-      } catch (IOException e) {
-        throw new ParquetDecodingException(e);
-      }
+      return delegate.readInt();
     }
   }
 
