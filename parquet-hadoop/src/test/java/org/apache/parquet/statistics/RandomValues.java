@@ -26,7 +26,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
-import org.apache.parquet.FixedBinaryTestUtils;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 
 public class RandomValues {
@@ -214,6 +214,7 @@ public class RandomValues {
   }
 
   public static class Int96Generator extends RandomBinaryBase<BigInteger> {
+    private static final long NANOSECONDS_PER_DAY = 86_400_000_000_000L;
     private final RandomRange<BigInteger> randomRange = new RandomRange<BigInteger>(randomInt96(), randomInt96());
     private final BigInteger minimum = randomRange.minimum();
     private final BigInteger maximum = randomRange.maximum();
@@ -232,7 +233,7 @@ public class RandomValues {
 
     @Override
     public Binary nextBinaryValue() {
-      return FixedBinaryTestUtils.getFixedBinary(INT_96_LENGTH, nextValue());
+      return new NanoTime(randomInt(), Math.floorMod(randomLong(), NANOSECONDS_PER_DAY)).toBinary();
     }
   }
 
