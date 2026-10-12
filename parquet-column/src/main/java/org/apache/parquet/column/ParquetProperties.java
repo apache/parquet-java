@@ -51,6 +51,7 @@ public class ParquetProperties {
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
+  public static final boolean DEFAULT_IS_PFOR_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -133,6 +134,7 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
+  private final ColumnProperty<Boolean> pforEnabled;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
@@ -167,6 +169,7 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
+    this.pforEnabled = builder.pforEnabled.build();
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
@@ -259,6 +262,23 @@ public class ParquetProperties {
       case INT64:
       case FIXED_LEN_BYTE_ARRAY:
         return byteStreamSplitEnabled.getValue(column) == ByteStreamSplitMode.EXTENDED;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Check if PFOR encoding is enabled for the given column.
+   * PFOR encoding is only supported for INT32 and INT64 types.
+   *
+   * @param column the column descriptor
+   * @return true if PFOR encoding is enabled for this column
+   */
+  public boolean isPforEnabled(ColumnDescriptor column) {
+    switch (column.getPrimitiveType().getPrimitiveTypeName()) {
+      case INT32:
+      case INT64:
+        return pforEnabled.getValue(column);
       default:
         return false;
     }
@@ -455,6 +475,7 @@ public class ParquetProperties {
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
+    private final ColumnProperty.Builder<Boolean> pforEnabled;
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
@@ -468,6 +489,7 @@ public class ParquetProperties {
               DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED
                   ? ByteStreamSplitMode.FLOATING_POINT
                   : ByteStreamSplitMode.NONE);
+      pforEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_PFOR_ENABLED);
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
@@ -504,6 +526,7 @@ public class ParquetProperties {
       this.numBloomFilterCandidates = ColumnProperty.builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
+      this.pforEnabled = ColumnProperty.builder(toCopy.pforEnabled);
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.statisticsEnabled = toCopy.statisticsEnabled;
@@ -582,6 +605,29 @@ public class ParquetProperties {
     public Builder withExtendedByteStreamSplitEncoding(boolean enable) {
       this.byteStreamSplitEnabled.withDefaultValue(
           enable ? ByteStreamSplitMode.EXTENDED : ByteStreamSplitMode.NONE);
+      return this;
+    }
+
+    /**
+     * Enable or disable PFOR encoding for INT32 and INT64 columns.
+     *
+     * @param enable whether PFOR encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withPforEncoding(boolean enable) {
+      this.pforEnabled.withDefaultValue(enable);
+      return this;
+    }
+
+    /**
+     * Enable or disable PFOR encoding for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enable     whether PFOR encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withPforEncoding(String columnPath, boolean enable) {
+      this.pforEnabled.withValue(columnPath, enable);
       return this;
     }
 
