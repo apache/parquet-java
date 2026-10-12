@@ -75,48 +75,61 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
 
   @Override
   public float readFloat() {
-    if (pageValueIndex >= totalCount) {
+    if (pageValueIndex >= totalValueCount) {
       throw new ParquetDecodingException("ALP float data was already exhausted.");
     }
     ensureVectorDecoded();
-    int vectorSlot = pageValueIndex % vectorSize;
+    int vectorValueIndex = pageValueIndex % valuesPerVector;
     pageValueIndex++;
-    return decodedValues[vectorSlot];
+    return decodedValues[vectorValueIndex];
   }
 
   @Override
-  protected int decodeBody(int pos, int vectorNumber, int vectorLen, int exponent, int factor) {
-    int frameOfReference = vectorsData.getInt(pos);
-    int bitWidth = vectorsData.get(pos + Integer.BYTES) & 0xFF;
-    if (bitWidth > Integer.SIZE) {
+  protected int readForInfo(int pos, int vectorIndex, ForInfo out) {
+    out.base = vectorsData.getInt(pos);
+    out.bitWidth = vectorsData.get(pos + Integer.BYTES) & 0xFF;
+    if (out.bitWidth > Integer.SIZE) {
       throw new ParquetDecodingException(
-          "Invalid ALP float bitWidth " + bitWidth + " > 32 in vector " + vectorNumber);
+          "Invalid ALP float bitWidth " + out.bitWidth + " > 32 in vector " + vectorIndex);
     }
-    pos += FLOAT_FOR_INFO_SIZE;
+    return pos + FLOAT_FOR_INFO_SIZE;
+  }
 
-    if (bitWidth > 0) {
-      pos = unpackIntsWithBytePacker(vectorsData, pos, deltasBuffer, vectorLen, bitWidth);
+  @Override
+  protected int decodePackedValues(int pos, int vectorSize, int exponent, int factor, ForInfo forInfo) {
+    // Narrow the base before adding: the sum must wrap in 32 bits exactly as the writer's did.
+    int frameOfReference = (int) forInfo.base;
+    if (forInfo.bitWidth > 0) {
+      pos = unpackIntsWithBytePacker(vectorsData, pos, deltasBuffer, vectorSize, forInfo.bitWidth);
     } else {
-      Arrays.fill(deltasBuffer, 0, vectorLen, 0);
+      Arrays.fill(deltasBuffer, 0, vectorSize, 0);
     }
 
-    for (int i = 0; i < vectorLen; i++) {
+    for (int i = 0; i < vectorSize; i++) {
       int encoded = deltasBuffer[i] + frameOfReference;
       decodedValues[i] = AlpCodec.decodeFloat(encoded, exponent, factor);
     }
     return pos;
   }
 
-  // Overwrite exception slots with their original float values
   @Override
-  protected void applyExceptionValues(int pos, int numExceptions) {
+  protected void applyExceptions(int pos, int numExceptions, int vectorSize) {
+    pos = readExceptionPositions(vectorsData, pos, numExceptions, vectorSize, excPositionsBuffer);
+    applyExceptionValues(vectorsData, pos, numExceptions, excPositionsBuffer, decodedValues);
+  }
+
+  /**
+   * Writes {@code numExceptions} raw float values over the decoded values at the given positions.
+   * Static and fully parameterised so it can be exercised directly.
+   */
+  static void applyExceptionValues(
+      ByteBuffer data, int pos, int numExceptions, int[] positions, float[] decodedValues) {
     for (int e = 0; e < numExceptions; e++) {
-      decodedValues[excPositionsBuffer[e]] = vectorsData.getFloat(pos);
+      decodedValues[positions[e]] = data.getFloat(pos);
       pos += Float.BYTES;
     }
   }
 
-  /** Unpack bit-packed ints in groups of 8, returns position after packed data. */
   private int unpackIntsWithBytePacker(ByteBuffer buf, int pos, int[] output, int count, int bitWidth) {
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     int numFullGroups = count / PACK_GROUP_SIZE;

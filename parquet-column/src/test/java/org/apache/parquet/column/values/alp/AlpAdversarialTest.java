@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.alp;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
@@ -264,6 +265,75 @@ public class AlpAdversarialTest {
     assertThatThrownBy(reader::readFloat)
         .isInstanceOf(ParquetDecodingException.class)
         .hasMessageContaining("Invalid ALP float bitWidth");
+  }
+
+  /**
+   * A bit width that is legal on its own but larger than the vector actually used makes the packed
+   * values overrun into the next vector. Decoding another vector's bytes would be a silent wrong
+   * answer, so this must be rejected.
+   */
+  @Test
+  public void rejectsPackedValuesRunningPastVectorEnd() throws Exception {
+    // 16 vectors, so the inflated packed body stays inside the page and crosses into the vectors
+    // that follow rather than simply running off the end, which the buffer bounds would catch.
+    byte[] page = validDoublePage(256, 16);
+    int v0 = firstVectorOffset(page);
+    // bitWidth lives after ALP_INFO(4) + frameOfReference(8). 64 is the maximum legal width, so it
+    // passes the width check and then claims far more packed bytes than this vector holds.
+    page[v0 + 12] = (byte) 64;
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(256, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("packed values end at");
+  }
+
+  /**
+   * An exception count that is legal against the vector size can still declare an exception block
+   * larger than the vector holds. numExceptions == vectorSize passes the AlpInfo check and then
+   * needs 16 * (2 + 8) bytes, far more than this vector's span.
+   */
+  @Test
+  public void rejectsExceptionBlockLargerThanVector() throws Exception {
+    byte[] page = validDoublePage(256, 16);
+    int v0 = firstVectorOffset(page);
+    page[v0 + 2] = (byte) 16; // num_exceptions, uint16 LE
+    page[v0 + 3] = (byte) 0;
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(256, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("exceptions needing");
+  }
+
+  /**
+   * An exception position at or past the end of the vector would write outside the decoded values.
+   * Exercises the static reader directly, which is the whole point of it taking its inputs
+   * explicitly rather than reaching for fields.
+   */
+  @Test
+  public void rejectsExceptionPositionOutOfBounds() {
+    ByteBuffer data = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+    data.putShort(0, (short) 3); // in range
+    data.putShort(2, (short) 16); // == vectorSize, so one past the last valid slot
+    int[] positions = new int[4];
+
+    assertThatThrownBy(() -> AlpValuesReader.readExceptionPositions(data, 0, 2, 16, positions))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP exception position 16 out of bounds for vectorSize 16");
+  }
+
+  /** The last vector is partial whenever the value count is not a whole number of vectors. */
+  @Test
+  public void vectorSizeAccountsForAPartialLastVector() {
+    // 3 vectors of 16 holding 40 values: two full, one holding the remaining 8.
+    assertThat(AlpValuesReader.getVectorSize(0, 16, 40, 3)).isEqualTo(16);
+    assertThat(AlpValuesReader.getVectorSize(1, 16, 40, 3)).isEqualTo(16);
+    assertThat(AlpValuesReader.getVectorSize(2, 16, 40, 3)).isEqualTo(8);
+    // An exact multiple leaves the last vector full rather than empty.
+    assertThat(AlpValuesReader.getVectorSize(1, 16, 32, 2)).isEqualTo(16);
+    assertThat(AlpValuesReader.isLast(1, 2)).isTrue();
+    assertThat(AlpValuesReader.isLast(0, 2)).isFalse();
   }
 
   // ---------------------------------------------------------------------------

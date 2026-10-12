@@ -79,7 +79,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
   protected final int initialCapacity;
   protected final int pageSize;
   protected final ByteBufferAllocator allocator;
-  protected final int vectorSize;
+  protected final int valuesPerVector;
   protected final int logVectorSize;
 
   AlpValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator, int vectorSize) {
@@ -87,7 +87,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     this.initialCapacity = initialCapacity;
     this.pageSize = pageSize;
     this.allocator = allocator;
-    this.vectorSize = vectorSize;
+    this.valuesPerVector = vectorSize;
     this.logVectorSize = Integer.numberOfTrailingZeros(vectorSize);
   }
 
@@ -100,7 +100,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
   public static class FloatAlpValuesWriter extends AlpValuesWriter {
     private final float[] vectorBuffer;
     private int bufferCount;
-    private int totalCount;
+    private int totalValueCount;
     private CapacityByteArrayOutputStream encodedVectors;
     private final List<Integer> vectorByteSizes;
 
@@ -130,7 +130,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       super(initialCapacity, pageSize, allocator, vectorSize);
       this.vectorBuffer = new float[vectorSize];
       this.bufferCount = 0;
-      this.totalCount = 0;
+      this.totalValueCount = 0;
       this.encodedVectors = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
       this.vectorByteSizes = new ArrayList<>();
       this.vectorsProcessed = 0;
@@ -139,7 +139,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       // Space samples evenly: one sample every jump vectors across the rowgroup.
       // Math.max(1, ...) guards against very small rowgroups or large vector sizes.
       this.rowgroupSampleJump =
-          Math.max(1, SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP / vectorSize);
+          Math.max(1, SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP / valuesPerVector);
       // Pre-allocate reusable buffers
       this.encodedBuffer = new int[vectorSize];
       this.excPosBuffer = new short[vectorSize];
@@ -152,19 +152,19 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public void writeFloat(float v) {
       vectorBuffer[bufferCount++] = v;
-      totalCount++;
-      if (bufferCount == vectorSize) {
+      totalValueCount++;
+      if (bufferCount == valuesPerVector) {
         encodeAndFlushVector(bufferCount);
         bufferCount = 0;
       }
     }
 
-    private void encodeAndFlushVector(int vectorLen) {
+    private void encodeAndFlushVector(int vectorSize) {
       // Sampling phase first (full search + collect evenly-spaced samples, then build the preset
       // cache once enough are gathered); after the cache is built, later vectors take the else branch.
       AlpCodec.EncodingParams params;
       if (cachedPresets == null) {
-        params = AlpCodec.findBestFloatParams(vectorBuffer, 0, vectorLen);
+        params = AlpCodec.findBestFloatParams(vectorBuffer, 0, vectorSize);
         // Collect one sample every rowgroupSampleJump vectors so that samples are
         // evenly distributed across the rowgroup (matching C++ AlpSampler spacing).
         if (vectorsProcessed % rowgroupSampleJump == 0
@@ -175,7 +175,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
           buildPresetCache();
         }
       } else {
-        params = AlpCodec.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
+        params = AlpCodec.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorSize, cachedPresets);
       }
       vectorsProcessed++;
 
@@ -186,7 +186,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       // check has to encode the value in order to test the round trip.
       int placeholder = 0;
       boolean havePlaceholder = false;
-      for (int i = 0; i < vectorLen; i++) {
+      for (int i = 0; i < vectorSize; i++) {
         AlpCodec.tryEncodeFloat(vectorBuffer[i], params.exponent, params.factor, encodeResult);
         if (encodeResult.isException) {
           excPosBuffer[excIdx] = (short) i;
@@ -212,7 +212,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       }
 
       int minValue = Integer.MAX_VALUE;
-      for (int i = 0; i < vectorLen; i++) {
+      for (int i = 0; i < vectorSize; i++) {
         if (encodedBuffer[i] < minValue) {
           minValue = encodedBuffer[i];
         }
@@ -221,7 +221,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       // Subtract min so deltas start at 0, reducing bit width.
       // The subtraction may wrap for large ranges but unsigned bits stay correct.
       int maxDelta = 0;
-      for (int i = 0; i < vectorLen; i++) {
+      for (int i = 0; i < vectorSize; i++) {
         encodedBuffer[i] = encodedBuffer[i] - minValue;
         if (Integer.compareUnsigned(encodedBuffer[i], maxDelta) > 0) {
           maxDelta = encodedBuffer[i];
@@ -248,7 +248,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       encodedVectors.write(metadataBuf, 0, FLOAT_FOR_INFO_SIZE);
 
       if (bitWidth > 0) {
-        packIntsWithBytePacker(encodedBuffer, vectorLen, bitWidth);
+        packIntsWithBytePacker(encodedBuffer, vectorSize, bitWidth);
       }
 
       // Exception positions then values, written as separate blocks
@@ -321,7 +321,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public long getBufferedSize() {
       // Encoded vectors so far + estimate for buffered values.
-      // 3 bytes/value ≈ ALP_INFO_SIZE(4) + FLOAT_FOR_INFO_SIZE(5) amortized over vectorSize(1024),
+      // 3 bytes/value ≈ ALP_INFO_SIZE(4) + FLOAT_FOR_INFO_SIZE(5) amortized over valuesPerVector(1024),
       // plus ~1 bit/value for packed data at typical bit widths — rounds up to ~3 bytes.
       return encodedVectors.size() + (long) bufferCount * 3;
     }
@@ -340,9 +340,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       header.put((byte) ALP_COMPRESSION_MODE);
       header.put((byte) ALP_INTEGER_ENCODING_FOR);
       header.put((byte) logVectorSize);
-      header.putInt(totalCount);
+      header.putInt(totalValueCount);
 
-      if (totalCount == 0) {
+      if (totalValueCount == 0) {
         return BytesInput.from(header.array());
       }
 
@@ -361,7 +361,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public void reset() {
       bufferCount = 0;
-      totalCount = 0;
+      totalValueCount = 0;
       encodedVectors.reset();
       vectorByteSizes.clear();
       // Sampling state deliberately survives reset(). The sampler's unit is a rowgroup
@@ -396,7 +396,8 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public String memUsageString(String prefix) {
       return String.format(
-          "%s FloatAlpValuesWriter %d values, %d bytes allocated", prefix, totalCount, getAllocatedSize());
+          "%s FloatAlpValuesWriter %d values, %d bytes allocated",
+          prefix, totalValueCount, getAllocatedSize());
     }
   }
 
@@ -404,7 +405,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
   public static class DoubleAlpValuesWriter extends AlpValuesWriter {
     private final double[] vectorBuffer;
     private int bufferCount;
-    private int totalCount;
+    private int totalValueCount;
     private CapacityByteArrayOutputStream encodedVectors;
     private final List<Integer> vectorByteSizes;
 
@@ -434,14 +435,14 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       super(initialCapacity, pageSize, allocator, vectorSize);
       this.vectorBuffer = new double[vectorSize];
       this.bufferCount = 0;
-      this.totalCount = 0;
+      this.totalValueCount = 0;
       this.encodedVectors = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
       this.vectorByteSizes = new ArrayList<>();
       this.vectorsProcessed = 0;
       this.cachedPresets = null;
       this.sampledParams = new ArrayList<>();
       this.rowgroupSampleJump =
-          Math.max(1, SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP / vectorSize);
+          Math.max(1, SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP / valuesPerVector);
       // Pre-allocate reusable buffers
       this.encodedBuffer = new long[vectorSize];
       this.excPosBuffer = new short[vectorSize];
@@ -454,19 +455,19 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public void writeDouble(double v) {
       vectorBuffer[bufferCount++] = v;
-      totalCount++;
-      if (bufferCount == vectorSize) {
+      totalValueCount++;
+      if (bufferCount == valuesPerVector) {
         encodeAndFlushVector(bufferCount);
         bufferCount = 0;
       }
     }
 
-    private void encodeAndFlushVector(int vectorLen) {
+    private void encodeAndFlushVector(int vectorSize) {
       // Sampling phase first (full search + collect evenly-spaced samples, then build the preset
       // cache once enough are gathered); after the cache is built, later vectors take the else branch.
       AlpCodec.EncodingParams params;
       if (cachedPresets == null) {
-        params = AlpCodec.findBestDoubleParams(vectorBuffer, 0, vectorLen);
+        params = AlpCodec.findBestDoubleParams(vectorBuffer, 0, vectorSize);
         if (vectorsProcessed % rowgroupSampleJump == 0
             && sampledParams.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
           sampledParams.add(new int[] {params.exponent, params.factor});
@@ -475,7 +476,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
           buildPresetCache();
         }
       } else {
-        params = AlpCodec.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
+        params = AlpCodec.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorSize, cachedPresets);
       }
       vectorsProcessed++;
 
@@ -486,7 +487,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       // check has to encode the value in order to test the round trip.
       long placeholder = 0;
       boolean havePlaceholder = false;
-      for (int i = 0; i < vectorLen; i++) {
+      for (int i = 0; i < vectorSize; i++) {
         AlpCodec.tryEncodeDouble(vectorBuffer[i], params.exponent, params.factor, encodeResult);
         if (encodeResult.isException) {
           excPosBuffer[excIdx] = (short) i;
@@ -512,14 +513,14 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       }
 
       long minValue = Long.MAX_VALUE;
-      for (int i = 0; i < vectorLen; i++) {
+      for (int i = 0; i < vectorSize; i++) {
         if (encodedBuffer[i] < minValue) {
           minValue = encodedBuffer[i];
         }
       }
 
       long maxDelta = 0;
-      for (int i = 0; i < vectorLen; i++) {
+      for (int i = 0; i < vectorSize; i++) {
         encodedBuffer[i] = encodedBuffer[i] - minValue;
         if (Long.compareUnsigned(encodedBuffer[i], maxDelta) > 0) {
           maxDelta = encodedBuffer[i];
@@ -550,7 +551,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       encodedVectors.write(metadataBuf, 0, DOUBLE_FOR_INFO_SIZE);
 
       if (bitWidth > 0) {
-        packLongsWithBytePacker(encodedBuffer, vectorLen, bitWidth);
+        packLongsWithBytePacker(encodedBuffer, vectorSize, bitWidth);
       }
 
       if (params.numExceptions > 0) {
@@ -622,7 +623,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public long getBufferedSize() {
       // Encoded vectors so far + estimate for buffered values.
-      // 5 bytes/value ≈ ALP_INFO_SIZE(4) + DOUBLE_FOR_INFO_SIZE(9) amortized over vectorSize(1024),
+      // 5 bytes/value ≈ ALP_INFO_SIZE(4) + DOUBLE_FOR_INFO_SIZE(9) amortized over valuesPerVector(1024),
       // plus ~1 bit/value for packed data at typical bit widths — rounds up to ~5 bytes.
       return encodedVectors.size() + (long) bufferCount * 5;
     }
@@ -640,9 +641,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       header.put((byte) ALP_COMPRESSION_MODE);
       header.put((byte) ALP_INTEGER_ENCODING_FOR);
       header.put((byte) logVectorSize);
-      header.putInt(totalCount);
+      header.putInt(totalValueCount);
 
-      if (totalCount == 0) {
+      if (totalValueCount == 0) {
         return BytesInput.from(header.array());
       }
 
@@ -662,7 +663,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public void reset() {
       bufferCount = 0;
-      totalCount = 0;
+      totalValueCount = 0;
       encodedVectors.reset();
       vectorByteSizes.clear();
       // Sampling state deliberately survives reset(). The sampler's unit is a rowgroup
@@ -697,7 +698,8 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     @Override
     public String memUsageString(String prefix) {
       return String.format(
-          "%s DoubleAlpValuesWriter %d values, %d bytes allocated", prefix, totalCount, getAllocatedSize());
+          "%s DoubleAlpValuesWriter %d values, %d bytes allocated",
+          prefix, totalValueCount, getAllocatedSize());
     }
   }
 }

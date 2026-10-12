@@ -75,42 +75,55 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   @Override
   public double readDouble() {
-    if (pageValueIndex >= totalCount) {
+    if (pageValueIndex >= totalValueCount) {
       throw new ParquetDecodingException("ALP double data was already exhausted.");
     }
     ensureVectorDecoded();
-    int vectorSlot = pageValueIndex % vectorSize;
+    int vectorValueIndex = pageValueIndex % valuesPerVector;
     pageValueIndex++;
-    return decodedValues[vectorSlot];
+    return decodedValues[vectorValueIndex];
   }
 
   @Override
-  protected int decodeBody(int pos, int vectorNumber, int vectorLen, int exponent, int factor) {
-    long frameOfReference = vectorsData.getLong(pos);
-    int bitWidth = vectorsData.get(pos + Long.BYTES) & 0xFF;
-    if (bitWidth > Long.SIZE) {
+  protected int readForInfo(int pos, int vectorIndex, ForInfo out) {
+    out.base = vectorsData.getLong(pos);
+    out.bitWidth = vectorsData.get(pos + Long.BYTES) & 0xFF;
+    if (out.bitWidth > Long.SIZE) {
       throw new ParquetDecodingException(
-          "Invalid ALP double bitWidth " + bitWidth + " > 64 in vector " + vectorNumber);
+          "Invalid ALP double bitWidth " + out.bitWidth + " > 64 in vector " + vectorIndex);
     }
-    pos += DOUBLE_FOR_INFO_SIZE;
+    return pos + DOUBLE_FOR_INFO_SIZE;
+  }
 
-    if (bitWidth > 0) {
-      pos = unpackLongsWithBytePacker(vectorsData, pos, deltasBuffer, vectorLen, bitWidth);
+  @Override
+  protected int decodePackedValues(int pos, int vectorSize, int exponent, int factor, ForInfo forInfo) {
+    if (forInfo.bitWidth > 0) {
+      pos = unpackLongsWithBytePacker(vectorsData, pos, deltasBuffer, vectorSize, forInfo.bitWidth);
     } else {
-      Arrays.fill(deltasBuffer, 0, vectorLen, 0L);
+      Arrays.fill(deltasBuffer, 0, vectorSize, 0L);
     }
 
-    for (int i = 0; i < vectorLen; i++) {
-      long encoded = deltasBuffer[i] + frameOfReference;
+    for (int i = 0; i < vectorSize; i++) {
+      long encoded = deltasBuffer[i] + forInfo.base;
       decodedValues[i] = AlpCodec.decodeDouble(encoded, exponent, factor);
     }
     return pos;
   }
 
   @Override
-  protected void applyExceptionValues(int pos, int numExceptions) {
+  protected void applyExceptions(int pos, int numExceptions, int vectorSize) {
+    pos = readExceptionPositions(vectorsData, pos, numExceptions, vectorSize, excPositionsBuffer);
+    applyExceptionValues(vectorsData, pos, numExceptions, excPositionsBuffer, decodedValues);
+  }
+
+  /**
+   * Writes {@code numExceptions} raw double values over the decoded values at the given positions.
+   * Static and fully parameterised so it can be exercised directly.
+   */
+  static void applyExceptionValues(
+      ByteBuffer data, int pos, int numExceptions, int[] positions, double[] decodedValues) {
     for (int e = 0; e < numExceptions; e++) {
-      decodedValues[excPositionsBuffer[e]] = vectorsData.getDouble(pos);
+      decodedValues[positions[e]] = data.getDouble(pos);
       pos += Double.BYTES;
     }
   }
