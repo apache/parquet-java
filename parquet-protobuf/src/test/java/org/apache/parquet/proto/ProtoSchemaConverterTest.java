@@ -394,6 +394,29 @@ public class ProtoSchemaConverterTest {
   }
 
   @Test
+  public void testProto3ConvertOneOf() {
+    String expectedSchema = JOINER.join(
+        "message TestProto3.OneOfTestMessage {",
+        "  optional int32 first = 1;",
+        "  optional int32 second = 2;",
+        "}");
+
+    testConversion(TestProto3.OneOfTestMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testProto3ConvertOneOfUnwrapped() {
+    String expectedSchema = JOINER.join(
+        "message TestProto3.OneOfTestMessage {",
+        "  optional int32 first = 1;",
+        "  optional int32 second = 2;",
+        "}");
+
+    testConversion(TestProto3.OneOfTestMessage.class, expectedSchema, true, true);
+    testConversion(TestProto3.OneOfTestMessage.class, expectedSchema, false, true);
+  }
+
+  @Test
   public void testProto3ConvertWrappedMessageUnwrapped() throws Exception {
     String expectedSchema = "message TestProto3.WrappedMessage {\n" + "  optional double wrappedDouble = 1;\n"
         + "  optional float wrappedFloat = 2;\n"
