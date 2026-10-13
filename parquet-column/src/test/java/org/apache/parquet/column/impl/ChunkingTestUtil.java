@@ -19,6 +19,7 @@
 package org.apache.parquet.column.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.function.IntPredicate;
@@ -35,11 +36,20 @@ import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.column.page.mem.MemPageWriter;
 import org.apache.parquet.schema.MessageType;
 
-final class ChunkingTestSupport {
+public final class ChunkingTestUtil {
 
-  private ChunkingTestSupport() {}
+  /**
+   * The page value counts pyarrow writes for an {@code optional list<int64>} column of 200 000
+   * {@link #lcg} rows, chunked with a 64 to 256 KiB envelope: a null list where a value is divisible
+   * by 11, otherwise as many elements as its remainder by 4, each a shift of it by 16 bits more.
+   */
+  public static final List<Integer> OPTIONAL_LIST_OF_INT64_PAGES = Arrays.asList(
+      13336, 9928, 13972, 11483, 10503, 11533, 15500, 9599, 14956, 11109, 10846, 14956, 13858, 15861, 13510,
+      16720, 11116, 10562, 9536, 11052, 12880, 12392, 10121, 14988, 13928, 10761, 11464);
 
-  static CdcOptions options(long min, long max, int normLevel) {
+  private ChunkingTestUtil() {}
+
+  public static CdcOptions options(long min, long max, int normLevel) {
     return CdcOptions.builder()
         .withMinChunkSize(min)
         .withMaxChunkSize(max)
@@ -53,7 +63,7 @@ final class ChunkingTestSupport {
   }
 
   /** The generator the golden boundary vectors are built from. */
-  static long[] lcg(int count) {
+  public static long[] lcg(int count) {
     long[] values = new long[count];
     long x = 0x243F6A8885A308D3L;
     for (int i = 0; i < count; ++i) {
@@ -95,14 +105,16 @@ final class ChunkingTestSupport {
       ObjIntConsumer<ColumnWriter> writeRecord,
       int... rowGroupStarts) {
     ColumnDescriptor path = schema.getColumns().get(0);
-    CdcChunkers chunkers = new CdcChunkers();
+    List<ContentDefinedChunker> chunkers = props.isContentDefinedChunkingEnabled()
+        ? ContentDefinedChunker.forColumns(schema, props.getContentDefinedChunkingOptions())
+        : null;
     List<DataPage> pages = new ArrayList<>();
     int record = 0;
     for (int end : IntStream.concat(IntStream.of(rowGroupStarts), IntStream.of(rows))
         .toArray()) {
       MemPageStore pageStore = new MemPageStore(end - record);
       // No bloom filters are enabled, so the store never asks for a writer.
-      ColumnWriteStore store = chunkers.newColumnWriteStore(props, schema, pageStore, column -> null);
+      ColumnWriteStore store = props.newColumnWriteStore(schema, pageStore, column -> null, chunkers);
       ColumnWriter writer = store.getColumnWriter(path);
       for (; record < end; ++record) {
         writeRecord.accept(writer, record);
@@ -110,6 +122,7 @@ final class ChunkingTestSupport {
       }
       store.flush();
       pages.addAll(((MemPageWriter) pageStore.getPageWriter(path)).getPages());
+      store.close();
     }
     return pages;
   }
@@ -118,11 +131,11 @@ final class ChunkingTestSupport {
    * Value counts per page, as {@code ChunkingColumnWriter} counts them: a boundary closes the page
    * before the triplet that triggered it.
    */
-  static List<Integer> chunkSizes(int count, IntPredicate offer) {
+  static List<Integer> chunkSizes(int count, IntPredicate roll) {
     List<Integer> sizes = new ArrayList<>();
     int current = 0;
     for (int i = 0; i < count; ++i) {
-      if (offer.test(i) && current > 0) {
+      if (roll.test(i) && current > 0) {
         sizes.add(current);
         current = 0;
       }
@@ -136,25 +149,5 @@ final class ChunkingTestSupport {
 
   static List<Integer> valueCounts(List<DataPage> pages) {
     return pages.stream().map(DataPage::getValueCount).collect(Collectors.toList());
-  }
-
-  /** How many leading elements the two lists agree on. */
-  static int sharedPrefix(List<?> before, List<?> after) {
-    int i = 0;
-    while (i < before.size() && i < after.size() && before.get(i).equals(after.get(i))) {
-      i++;
-    }
-    return i;
-  }
-
-  /** How many trailing elements they agree on, beyond the {@code prefix} already counted. */
-  static int sharedSuffix(List<?> before, List<?> after, int prefix) {
-    int i = 0;
-    while (i < before.size() - prefix
-        && i < after.size() - prefix
-        && before.get(before.size() - 1 - i).equals(after.get(after.size() - 1 - i))) {
-      i++;
-    }
-    return i;
   }
 }
