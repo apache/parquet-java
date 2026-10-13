@@ -1,6 +1,0 @@
-{
-  "topLevelPath" : [ "a.b" ],
-  "topLevelContainsOwnBloomValues" : true,
-  "nestedPath" : [ "a", "b" ],
-  "nestedContainsOwnBloomValues" : true
-}

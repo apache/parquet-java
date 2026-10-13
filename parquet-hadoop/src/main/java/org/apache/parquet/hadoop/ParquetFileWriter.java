@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.zip.CRC32;
@@ -1074,11 +1075,40 @@ public class ParquetFileWriter implements AutoCloseable {
   /**
    * Add a Bloom filter that will be written out.
    *
-   * @param column      the column name
+   * <p>The string is matched against the dot-separated form of the columns in the writer schema. If more than one
+   * component path has the same string form, callers must use {@link #addBloomFilterForPath(ColumnPath, BloomFilter)}
+   * to identify the intended column.
+   *
+   * @param column      the dot-separated column path
    * @param bloomFilter the bloom filter of column values
+   * @throws IllegalArgumentException if no schema column matches the string or if more than one component path has the
+   *     same string form
+   * @deprecated use {@link #addBloomFilterForPath(ColumnPath, BloomFilter)} to preserve component boundaries
    */
+  @Deprecated
   public void addBloomFilter(String column, BloomFilter bloomFilter) {
-    addBloomFilterForPath(ColumnPath.fromDotString(column), bloomFilter);
+    Objects.requireNonNull(column, "column cannot be null");
+
+    // Dot strings are display names, not lossless identifiers: ["a.b"] and ["a", "b"] both render
+    // as "a.b". Resolve against the schema so an unambiguous legacy name still works, and reject
+    // collisions instead of attaching a filter to the wrong column.
+    ColumnPath resolvedPath = null;
+    for (ColumnDescriptor descriptor : schema.getColumns()) {
+      ColumnPath candidate = ColumnPath.get(descriptor.getPath());
+      if (candidate.toDotString().equals(column)) {
+        if (resolvedPath != null) {
+          throw new IllegalArgumentException("Ambiguous column path '" + column
+              + "'; use addBloomFilterForPath(ColumnPath, BloomFilter)");
+        }
+        resolvedPath = candidate;
+      }
+    }
+
+    if (resolvedPath == null) {
+      throw new IllegalArgumentException(
+          "Unknown column path '" + column + "'; use addBloomFilterForPath(ColumnPath, BloomFilter)");
+    }
+    addBloomFilterForPath(resolvedPath, bloomFilter);
   }
 
   /**

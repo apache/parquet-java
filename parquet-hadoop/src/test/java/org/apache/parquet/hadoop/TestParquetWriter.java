@@ -44,9 +44,7 @@ import static org.assertj.core.data.Offset.offset;
 
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -342,6 +340,8 @@ public class TestParquetWriter {
     Map<ColumnPath, BloomFilter> bloomFilters = writeBloomFiltersForCollidingPaths();
     BloomFilter topLevelBloom = bloomFilters.get(ColumnPath.get("a.b"));
     BloomFilter nestedBloom = bloomFilters.get(ColumnPath.get("a", "b"));
+    assertThat(topLevelBloom).isNotNull();
+    assertThat(nestedBloom).isNotNull();
 
     for (int valueId = 0; valueId < 10; valueId++) {
       long topLevelHash = LongHashFunction.xx(0)
@@ -350,26 +350,6 @@ public class TestParquetWriter {
           .hashBytes(Binary.fromString("nested-" + valueId).toByteBuffer());
       assertThat(topLevelBloom.findHash(topLevelHash)).isTrue();
       assertThat(nestedBloom.findHash(nestedHash)).isTrue();
-    }
-  }
-
-  @Test
-  public void testBloomFilterPathCollisionGolden() throws IOException {
-    Map<ColumnPath, BloomFilter> bloomFilters = writeBloomFiltersForCollidingPaths();
-    String actual = String.format(
-        "{\n"
-            + "  \"topLevelPath\" : [ \"a.b\" ],\n"
-            + "  \"topLevelContainsOwnBloomValues\" : %s,\n"
-            + "  \"nestedPath\" : [ \"a\", \"b\" ],\n"
-            + "  \"nestedContainsOwnBloomValues\" : %s\n"
-            + "}\n",
-        containsAllBloomValues(bloomFilters.get(ColumnPath.get("a.b")), "top-"),
-        containsAllBloomValues(bloomFilters.get(ColumnPath.get("a", "b")), "nested-"));
-
-    try (InputStream input = TestParquetWriter.class.getResourceAsStream("/bloom-filter-path-collision.json")) {
-      assertThat(input).isNotNull();
-      String expected = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-      assertThat(actual).isEqualTo(expected);
     }
   }
 
@@ -425,6 +405,9 @@ public class TestParquetWriter {
           .filter(column -> column.getPath().equals(ColumnPath.get("a", "b")))
           .findFirst()
           .orElseThrow();
+      // Different offsets prove that the footer references two separately serialized filters rather
+      // than pointing both columns at whichever filter was inserted last.
+      assertThat(topLevelColumn.getBloomFilterOffset()).isNotEqualTo(nestedColumn.getBloomFilterOffset());
       BloomFilter topLevelBloom = reader.readBloomFilter(topLevelColumn);
       BloomFilter nestedBloom = reader.readBloomFilter(nestedColumn);
       Map<ColumnPath, BloomFilter> bloomFilters = new HashMap<>();
@@ -432,17 +415,6 @@ public class TestParquetWriter {
       bloomFilters.put(ColumnPath.get("a", "b"), nestedBloom);
       return bloomFilters;
     }
-  }
-
-  private static boolean containsAllBloomValues(BloomFilter bloomFilter, String prefix) {
-    for (int valueId = 0; valueId < 10; valueId++) {
-      long hash = LongHashFunction.xx(0)
-          .hashBytes(Binary.fromString(prefix + valueId).toByteBuffer());
-      if (!bloomFilter.findHash(hash)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   @Test
