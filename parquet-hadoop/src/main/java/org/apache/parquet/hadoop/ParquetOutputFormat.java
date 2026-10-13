@@ -415,12 +415,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(PAGE_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_PAGE_ROW_COUNT_LIMIT);
   }
 
-  private static boolean getContentDefinedChunkingEnabled(Configuration conf) {
-    return conf.getBoolean(
-        CONTENT_DEFINED_CHUNKING_ENABLED, ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_ENABLED);
-  }
-
-  private static CdcOptions getCdcOptions(Configuration conf) {
+  private static CdcOptions getContentDefinedChunkingOptions(Configuration conf) {
     return CdcOptions.builder()
         .withMinChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MIN_SIZE, CdcOptions.DEFAULT.getMinChunkSize()))
         .withMaxChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MAX_SIZE, CdcOptions.DEFAULT.getMaxChunkSize()))
@@ -555,9 +550,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
         .withStatisticsEnabled(getStatisticsEnabled(conf));
-    if (getContentDefinedChunkingEnabled(conf)) {
-      // Only when enabled: building the options validates them, and a disabled job must not fail.
-      propsBuilder.withContentDefinedChunking(getCdcOptions(conf));
+    if (conf.getBoolean(CONTENT_DEFINED_CHUNKING_ENABLED, false)) {
+      // Only when enabled, as passing options enables content defined chunking.
+      propsBuilder.withContentDefinedChunking(getContentDefinedChunkingOptions(conf));
     }
     new ColumnConfigParser()
         .withColumnConfig(
