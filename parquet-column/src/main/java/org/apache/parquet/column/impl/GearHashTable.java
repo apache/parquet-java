@@ -19,12 +19,8 @@
 package org.apache.parquet.column.impl;
 
 /**
- * The gear hash tables used by {@link CdcChunker}, copied from Arrow C++
- * ({@code cpp/src/parquet/chunker_internal_generated.h}) -- do not edit.
- *
- * <p>Eight tables of 256 64-bit values. Table {@code r}, byte {@code b} is {@code TABLE[r][b]}.
- * arrow-rs ({@code parquet/src/column/chunker/cdc_generated.rs}) ships the same tables.
- * {@code TestGearHashTable} pins them to the MD5 specification they were generated from.
+ * The eight gear hash tables of {@link ContentDefinedChunker}, copied from Arrow C++
+ * {@code cpp/src/parquet/chunker_internal_generated.h}; do not edit.
  */
 final class GearHashTable {
 

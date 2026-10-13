@@ -40,12 +40,13 @@ public class ColumnWriteStoreV2 extends ColumnWriteStoreBase {
     super(schema, pageWriteStore, bloomFilterWriteStore, props);
   }
 
-  ColumnWriteStoreV2(
+  /** EXPERIMENTAL: A store continuing the content defined chunking of {@code chunkers}. */
+  public ColumnWriteStoreV2(
       MessageType schema,
       PageWriteStore pageWriteStore,
       BloomFilterWriteStore bloomFilterWriteStore,
       ParquetProperties props,
-      CdcChunkers chunkers) {
+      ContentDefinedChunkers chunkers) {
     super(schema, pageWriteStore, bloomFilterWriteStore, props, chunkers);
   }
 

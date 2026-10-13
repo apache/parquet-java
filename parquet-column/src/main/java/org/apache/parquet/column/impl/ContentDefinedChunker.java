@@ -18,29 +18,20 @@
  */
 package org.apache.parquet.column.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.internal.column.chunking.RollingHashMask;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * Decides content defined data page boundaries for one column.
+ * Decides the content defined data page boundaries of one leaf column for a whole file: each
+ * {@code offer} of a triplet says whether a page should end before it.
  *
- * <p>The column writer offers every {@code (definitionLevel, repetitionLevel, value)} triplet, and
- * each {@code offer} says whether a page should end <i>before</i> it.
- *
- * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs
- * {@code column/chunker/cdc.rs}. Pages only deduplicate across implementations while all of them
- * place the same boundaries, which {@code TestCdcChunkerGoldenBoundaries} pins against Arrow C++.
- *
- * <p>Not thread safe. One instance serves one leaf column for a whole file: it is never reset, at a
- * page or a row group boundary, but carried to the next row group's store.
+ * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
+ * whose boundaries it must reproduce. Not thread safe.
  */
-final class CdcChunker {
+final class ContentDefinedChunker {
 
   private final long minChunkSize;
   private final long maxChunkSize;
@@ -53,12 +44,55 @@ final class CdcChunker {
   private int nthRun;
   private long chunkSize;
 
-  CdcChunker(CdcOptions options, ColumnDescriptor path) {
+  ContentDefinedChunker(CdcOptions options, ColumnDescriptor path) {
     this.minChunkSize = options.getMinChunkSize();
     this.maxChunkSize = options.getMaxChunkSize();
-    this.mask = RollingHashMask.calculate(minChunkSize, maxChunkSize, options.getNormLevel());
+    this.mask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
     this.maxDef = path.getMaxDefinitionLevel();
     this.maxRep = path.getMaxRepetitionLevel();
+  }
+
+  /**
+   * Derives the rolling hash mask, validating the envelope. Ported from Arrow C++
+   * {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
+   * bit-identical to theirs.
+   *
+   * <p>A mask with the top {@code n} bits set matches a uniform hash with probability 1/2^n. The
+   * target is the average chunk size minus the skipped {@code minChunkSize}, divided by the
+   * eight matches a boundary needs.
+   *
+   * @param minChunkSize the minimum chunk size in bytes
+   * @param maxChunkSize the maximum chunk size in bytes
+   * @param normLevel the normalization level
+   * @return the rolling hash mask
+   * @throws IllegalArgumentException if the arguments cannot produce a usable mask
+   */
+  static long calculateMask(long minChunkSize, long maxChunkSize, int normLevel) {
+    Preconditions.checkArgument(
+        minChunkSize >= 0, "Invalid content defined chunking minimum chunk size (negative): %s", minChunkSize);
+    Preconditions.checkArgument(
+        maxChunkSize > minChunkSize,
+        "Invalid content defined chunking size range: maximum chunk size (%s) must be greater than minimum chunk size (%s)",
+        maxChunkSize,
+        minChunkSize);
+
+    // Halve before adding, so that the sum cannot overflow; the references do overflow there.
+    long avgChunkSize = minChunkSize / 2 + maxChunkSize / 2 + (minChunkSize % 2 + maxChunkSize % 2) / 2;
+    long targetSize = (avgChunkSize - minChunkSize) / GearHashTable.TABLE.length;
+    int targetBits = Long.SIZE - Long.numberOfLeadingZeros(targetSize);
+    int maskBits = targetBits == 0 ? 0 : targetBits - 1;
+    int effectiveBits = maskBits - normLevel;
+
+    // Java takes a long's shift count modulo 64, so an out-of-range width must be rejected here.
+    Preconditions.checkArgument(
+        effectiveBits >= 1 && effectiveBits <= 63,
+        "The content defined chunking mask must be between 1 and 63 bits but was %s"
+            + " (minimum chunk size %s, maximum chunk size %s, normalization level %s)",
+        effectiveBits,
+        minChunkSize,
+        maxChunkSize,
+        normLevel);
+    return -1L << (Long.SIZE - effectiveBits);
   }
 
   boolean offer(int value, int repetitionLevel, int definitionLevel) {
@@ -125,58 +159,19 @@ final class CdcChunker {
     return repetitionLevel == 0 && needNewChunk();
   }
 
-  // The one kind of binary whose bytes may lie in a direct buffer, which Binary.writeTo would copy.
-  private static final Class<? extends Binary> BUFFER_BACKED =
-      Binary.fromConstantByteBuffer(ByteBuffer.allocate(0)).getClass();
-
-  /** The value's bytes without a length prefix, as the references hash them, read where they lie. */
+  /** The value's bytes without a length prefix, as the references hash them. */
   private void rollBinary(Binary value) {
     chunkSize += value.length();
     if (chunkSize < minChunkSize) {
       return;
     }
-    if (value.getClass() != BUFFER_BACKED) {
-      try {
-        value.writeTo(binaryRoller);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-      return;
-    }
+    // A view of the value's bytes, wherever they lie, not a copy.
     ByteBuffer bytes = value.toByteBuffer();
-    if (bytes.hasArray()) {
-      rollBytes(bytes.array(), bytes.arrayOffset() + bytes.position(), bytes.remaining());
-      return;
-    }
     long hash = rollingHash;
     boolean matched = hasMatched;
     long[] table = GearHashTable.TABLE[nthRun];
     for (int i = bytes.position(); i < bytes.limit(); ++i) {
       hash = (hash << 1) + table[bytes.get(i) & 0xFF];
-      matched |= (hash & mask) == 0;
-    }
-    rollingHash = hash;
-    hasMatched = matched;
-  }
-
-  private final OutputStream binaryRoller = new OutputStream() {
-    @Override
-    public void write(int b) {
-      rollBytes(new byte[] {(byte) b}, 0, 1);
-    }
-
-    @Override
-    public void write(byte[] bytes, int offset, int length) {
-      rollBytes(bytes, offset, length);
-    }
-  };
-
-  private void rollBytes(byte[] bytes, int offset, int length) {
-    long hash = rollingHash;
-    boolean matched = hasMatched;
-    long[] table = GearHashTable.TABLE[nthRun];
-    for (int i = offset; i < offset + length; ++i) {
-      hash = (hash << 1) + table[bytes[i] & 0xFF];
       matched |= (hash & mask) == 0;
     }
     rollingHash = hash;
