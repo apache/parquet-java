@@ -39,6 +39,7 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
@@ -743,6 +744,18 @@ public class ParquetProperties {
       return this;
     }
 
+    /**
+     * Enable or disable the bloom filter for the specified component-based column path.
+     *
+     * @param columnPath the path components of the column
+     * @param enabled whether bloom filter shall be enabled
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterEnabled(String[] columnPath, boolean enabled) {
+      this.bloomFilterEnabled.withValue(ColumnPath.get(columnPath), enabled);
+      return this;
+    }
+
     public Builder withRowGroupRowCountLimit(int rowCount) {
       Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for row groups: %s", rowCount);
       rowGroupRowCountLimit = rowCount;
@@ -774,6 +787,18 @@ public class ParquetProperties {
      */
     public Builder withStatisticsEnabled(String columnPath, boolean enabled) {
       this.statistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Enable or disable statistics for the specified component-based column path.
+     *
+     * @param columnPath the path components of the column
+     * @param enabled whether statistics shall be enabled
+     * @return this builder for method chaining
+     */
+    public Builder withStatisticsEnabled(String[] columnPath, boolean enabled) {
+      this.statistics.withValue(ColumnPath.get(columnPath), enabled);
       return this;
     }
 
