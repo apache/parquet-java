@@ -451,6 +451,58 @@ public class TestParquetFileWriter {
     }
   }
 
+  @Test
+  public void testAddBloomFilterStringResolvesUnambiguousDottedColumn() throws Exception {
+    MessageType schema = Types.buildMessage().required(BINARY).named("a.b").named("test");
+    Path path = newTempPath();
+    Configuration configuration = new Configuration();
+    ColumnDescriptor column = schema.getColumnDescription(new String[] {"a.b"});
+    BloomFilter expectedBloomFilter = new BlockSplitBloomFilter(0);
+    expectedBloomFilter.insertHash(expectedBloomFilter.hash(Binary.fromString("hello")));
+
+    ParquetFileWriter writer = createWriter(configuration, schema, path);
+    writer.start();
+    writer.startBlock(1);
+    writer.startColumn(column, 1, CODEC);
+    writer.writeDataPage(1, 1, BytesInput.from(BYTES1), new BinaryStatistics(), BIT_PACKED, BIT_PACKED, PLAIN);
+    writer.endColumn();
+    writer.addBloomFilter("a.b", expectedBloomFilter);
+    writer.endBlock();
+    writer.end(new HashMap<>());
+
+    ParquetMetadata footer = ParquetFileReader.readFooter(configuration, path);
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, configuration))) {
+      ColumnChunkMetaData columnMetadata =
+          footer.getBlocks().get(0).getColumns().get(0);
+      BloomFilter actualBloomFilter = reader.readBloomFilter(columnMetadata);
+      assertThat(actualBloomFilter).isNotNull();
+      assertThat(actualBloomFilter.findHash(actualBloomFilter.hash(Binary.fromString("hello"))))
+          .isTrue();
+    }
+  }
+
+  @Test
+  public void testAddBloomFilterStringRejectsAmbiguousDottedColumn() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .named("b")
+        .named("a")
+        .named("test");
+    Path path = newTempPath();
+    ParquetFileWriter writer = createWriter(new Configuration(), schema, path);
+    writer.start();
+    writer.startBlock(1);
+
+    assertThatThrownBy(() -> writer.addBloomFilter("a.b", new BlockSplitBloomFilter(0)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Ambiguous column path 'a.b'; use addBloomFilterForPath(ColumnPath, BloomFilter)");
+
+    writer.close();
+  }
+
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testWriteReadDataPageV2(boolean vectoredRead) throws Exception {
