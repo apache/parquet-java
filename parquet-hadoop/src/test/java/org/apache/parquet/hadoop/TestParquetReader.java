@@ -35,24 +35,35 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.hadoop.ParquetReader.Builder;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class TestParquetReader {
@@ -64,6 +75,9 @@ public class TestParquetReader {
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(1000));
 
   private TrackingByteBufferAllocator allocator;
+
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   static Stream<Arguments> data() {
     return Stream.of(Arguments.of(FILE_V1), Arguments.of(FILE_V2), Arguments.of(STATIC_FILE_WITHOUT_COL_INDEXES));
@@ -172,6 +186,84 @@ public class TestParquetReader {
   @AfterEach
   public void closeAllocator() {
     allocator.close();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "SNAPPY, PARQUET_1_0, false",
+    "SNAPPY, PARQUET_2_0, false",
+    "ZSTD, PARQUET_1_0, false",
+    "ZSTD, PARQUET_2_0, false",
+    "SNAPPY, PARQUET_1_0, true",
+    "SNAPPY, PARQUET_2_0, true",
+    "ZSTD, PARQUET_1_0, true",
+    "ZSTD, PARQUET_2_0, true"
+  })
+  public void testSharedDirectCodecPreservesColumnValues(
+      CompressionCodecName codec, WriterVersion version, boolean dictionaryEnabled) throws IOException {
+    Path path = new Path(tempDir.resolve("compressed.parquet").toUri());
+    Configuration conf = new Configuration();
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message records { optional binary key (STRING); optional binary value (STRING); }");
+    SimpleGroupFactory groups = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withConf(conf)
+        .withType(schema)
+        .withCompressionCodec(codec)
+        .withWriterVersion(version)
+        .withDictionaryEncoding(dictionaryEnabled)
+        .withPageRowCountLimit(100)
+        .build()) {
+      for (int i = 1; i <= 1000; i++) {
+        int valueIndex = dictionaryEnabled ? i % 17 : i;
+        writer.write(
+            groups.newGroup().append("key", "key_" + valueIndex).append("value", "value_" + valueIndex));
+      }
+    }
+
+    for (boolean direct : new boolean[] {false, true}) {
+      try (TrackingByteBufferAllocator codecAllocator =
+          TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator())) {
+        ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), path)
+            .withConf(conf)
+            .withAllocator(allocator);
+        if (direct) {
+          builder.withCodecFactory(CodecFactory.createDirectCodecFactory(
+              conf, codecAllocator, ParquetProperties.DEFAULT_PAGE_SIZE));
+        }
+        try (ParquetReader<Group> reader = builder.build()) {
+          for (int i = 1; i <= 1000; i++) {
+            int valueIndex = dictionaryEnabled ? i % 17 : i;
+            Group record = reader.read();
+            assertThat(record).isNotNull();
+            assertThat(record.getBinary("key", 0).toStringUsingUTF8())
+                .as("key at row %s with direct codec %s", i, direct)
+                .isEqualTo("key_" + valueIndex);
+            assertThat(record.getBinary("value", 0).toStringUsingUTF8())
+                .as("value at row %s with direct codec %s", i, direct)
+                .isEqualTo("value_" + valueIndex);
+          }
+          assertThat(reader.read()).isNull();
+        }
+        if (direct && dictionaryEnabled) {
+          ParquetReadOptions options = ParquetReadOptions.builder()
+              .withAllocator(allocator)
+              .withCodecFactory(CodecFactory.createDirectCodecFactory(
+                  conf, codecAllocator, ParquetProperties.DEFAULT_PAGE_SIZE))
+              .build();
+          try (ParquetFileReader reader =
+                  ParquetFileReader.open(HadoopInputFile.fromPath(path, conf), options);
+              PageReadStore pages = reader.readNextRowGroup()) {
+            DictionaryPage values =
+                pages.getPageReader(schema.getColumns().get(1)).readDictionaryPage();
+            assertThat(values).isNotNull();
+            byte[] expected = values.getBytes().toByteArray();
+            pages.getPageReader(schema.getColumns().get(0)).readDictionaryPage();
+            assertThat(values.getBytes().toByteArray()).isEqualTo(expected);
+          }
+        }
+      }
+    }
   }
 
   @ParameterizedTest
