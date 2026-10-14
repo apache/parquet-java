@@ -21,7 +21,7 @@
 
 **Status:** Experimental developer tooling. This Dockerfile is not officially supported.
 
-This image provides the Java 17, Maven 3.9.8, and Thrift 0.24.0 toolchain used to build Parquet-Java. It deliberately does not copy project sources into the image: mount the checkout you are actively editing at `/workspace`.
+This image provides the Java 17, Maven 3.9.8, and Thrift 0.25.0 toolchain used to build Parquet-Java. It deliberately does not copy project sources into the image: mount the checkout you are actively editing at `/workspace`.
 
 ## Build the image
 

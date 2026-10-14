@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.zip.CRC32;
@@ -134,7 +135,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private final List<List<OffsetIndex>> offsetIndexes = new ArrayList<>();
 
   // The Bloom filters
-  private final List<Map<String, BloomFilter>> bloomFilters = new ArrayList<>();
+  private final List<Map<ColumnPath, BloomFilter>> bloomFilters = new ArrayList<>();
 
   // The file encryptor
   private final InternalFileEncryptor fileEncryptor;
@@ -147,7 +148,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private List<OffsetIndex> currentOffsetIndexes;
 
   // The Bloom filter for the actual block
-  private Map<String, BloomFilter> currentBloomFilters;
+  private Map<ColumnPath, BloomFilter> currentBloomFilters;
 
   // row group data set at the start of a row group
   private long currentRecordCount; // set in startBlock
@@ -344,7 +345,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private <T> T withAbortOnFailure(IOCallable<T> action) throws IOException {
     try {
       return action.call();
-    } catch (IOException e) {
+    } catch (Throwable e) {
       aborted = true;
       throw e;
     }
@@ -358,7 +359,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private void withAbortOnFailure(IORunnable action) throws IOException {
     try {
       action.run();
-    } catch (IOException e) {
+    } catch (Throwable e) {
       aborted = true;
       throw e;
     }
@@ -1074,10 +1075,49 @@ public class ParquetFileWriter implements AutoCloseable {
   /**
    * Add a Bloom filter that will be written out.
    *
-   * @param column      the column name
+   * <p>The string is matched against the dot-separated form of the columns in the writer schema. If more than one
+   * component path has the same string form, callers must use {@link #addBloomFilterForPath(ColumnPath, BloomFilter)}
+   * to identify the intended column.
+   *
+   * @param column      the dot-separated column path
+   * @param bloomFilter the bloom filter of column values
+   * @throws IllegalArgumentException if no schema column matches the string or if more than one component path has the
+   *     same string form
+   * @deprecated use {@link #addBloomFilterForPath(ColumnPath, BloomFilter)} to preserve component boundaries
+   */
+  @Deprecated
+  public void addBloomFilter(String column, BloomFilter bloomFilter) {
+    Objects.requireNonNull(column, "column cannot be null");
+
+    // Dot strings are display names, not lossless identifiers: ["a.b"] and ["a", "b"] both render
+    // as "a.b". Resolve against the schema so an unambiguous legacy name still works, and reject
+    // collisions instead of attaching a filter to the wrong column.
+    ColumnPath resolvedPath = null;
+    for (ColumnDescriptor descriptor : schema.getColumns()) {
+      ColumnPath candidate = ColumnPath.get(descriptor.getPath());
+      if (candidate.toDotString().equals(column)) {
+        if (resolvedPath != null) {
+          throw new IllegalArgumentException("Ambiguous column path '" + column
+              + "'; use addBloomFilterForPath(ColumnPath, BloomFilter)");
+        }
+        resolvedPath = candidate;
+      }
+    }
+
+    if (resolvedPath == null) {
+      throw new IllegalArgumentException(
+          "Unknown column path '" + column + "'; use addBloomFilterForPath(ColumnPath, BloomFilter)");
+    }
+    addBloomFilterForPath(resolvedPath, bloomFilter);
+  }
+
+  /**
+   * Add a Bloom filter that will be written out.
+   *
+   * @param column      the component-based column path
    * @param bloomFilter the bloom filter of column values
    */
-  public void addBloomFilter(String column, BloomFilter bloomFilter) {
+  public void addBloomFilterForPath(ColumnPath column, BloomFilter bloomFilter) {
     currentBloomFilters.put(column, bloomFilter);
   }
 
@@ -1531,7 +1571,7 @@ public class ParquetFileWriter implements AutoCloseable {
           }
         }
         if (isWriteBloomFilter) {
-          currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+          currentBloomFilters.put(ColumnPath.get(descriptor.getPath()), bloomFilter);
         } else {
           LOG.info(
               "No need to write bloom filter because column {} data pages are all encoded as dictionary.",
@@ -1813,7 +1853,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
       copy(from, out, start, length);
 
-      currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+      currentBloomFilters.put(ColumnPath.get(descriptor.getPath()), bloomFilter);
       currentColumnIndexes.add(columnIndex);
       currentOffsetIndexes.add(effectiveOffsetIndex);
 
@@ -1872,8 +1912,10 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
-    withAbortOnFailure(() -> {
-      try {
+    // withAbortOnFailure marks the writer aborted on any throwable before the outer finally runs
+    // close(), so an incomplete file is never flushed if finalizing the file fails.
+    try {
+      withAbortOnFailure(() -> {
         state = state.end();
         serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
         serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
@@ -1882,10 +1924,10 @@ public class ParquetFileWriter implements AutoCloseable {
         this.footer =
             new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
         serializeFooter(footer, out, fileEncryptor, metadataConverter);
-      } finally {
-        close();
-      }
-    });
+      });
+    } finally {
+      close();
+    }
   }
 
   /* Mark the writer as aborted to avoid flushing incomplete data. */
@@ -2036,7 +2078,7 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   private static void serializeBloomFilters(
-      List<Map<String, BloomFilter>> bloomFilters,
+      List<Map<ColumnPath, BloomFilter>> bloomFilters,
       List<BlockMetaData> blocks,
       PositionOutputStream out,
       InternalFileEncryptor fileEncryptor)
@@ -2045,11 +2087,11 @@ public class ParquetFileWriter implements AutoCloseable {
     for (int bIndex = 0, bSize = blocks.size(); bIndex < bSize; ++bIndex) {
       BlockMetaData block = blocks.get(bIndex);
       List<ColumnChunkMetaData> columns = block.getColumns();
-      Map<String, BloomFilter> blockBloomFilters = bloomFilters.get(bIndex);
+      Map<ColumnPath, BloomFilter> blockBloomFilters = bloomFilters.get(bIndex);
       if (blockBloomFilters.isEmpty()) continue;
       for (int cIndex = 0, cSize = columns.size(); cIndex < cSize; ++cIndex) {
         ColumnChunkMetaData column = columns.get(cIndex);
-        BloomFilter bloomFilter = blockBloomFilters.get(column.getPath().toDotString());
+        BloomFilter bloomFilter = blockBloomFilters.get(column.getPath());
         if (bloomFilter == null) {
           continue;
         }
