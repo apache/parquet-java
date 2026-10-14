@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -1742,21 +1743,21 @@ public class ParquetFileWriter implements AutoCloseable {
     withAbortOnFailure(() -> {
       startBlock(rowGroup.getRowCount());
 
-      Map<String, ColumnChunkMetaData> columnsToCopy = new HashMap<String, ColumnChunkMetaData>();
+      Map<ColumnPath, ColumnChunkMetaData> columnsToCopy = new HashMap<ColumnPath, ColumnChunkMetaData>();
       for (ColumnChunkMetaData chunk : rowGroup.getColumns()) {
-        columnsToCopy.put(chunk.getPath().toDotString(), chunk);
+        columnsToCopy.put(chunk.getPath(), chunk);
       }
 
       List<ColumnChunkMetaData> columnsInOrder = new ArrayList<ColumnChunkMetaData>();
 
       for (ColumnDescriptor descriptor : schema.getColumns()) {
-        String path = ColumnPath.get(descriptor.getPath()).toDotString();
+        ColumnPath path = ColumnPath.get(descriptor.getPath());
         ColumnChunkMetaData chunk = columnsToCopy.remove(path);
         if (chunk != null) {
           columnsInOrder.add(chunk);
         } else {
-          throw new IllegalArgumentException(
-              String.format("Missing column '%s', cannot copy row group: %s", path, rowGroup));
+          throw new IllegalArgumentException(String.format(
+              "Missing column '%s', cannot copy row group: %s", path.toDotString(), rowGroup));
         }
       }
 
@@ -1764,7 +1765,9 @@ public class ParquetFileWriter implements AutoCloseable {
       if (!dropColumns && !columnsToCopy.isEmpty()) {
         throw new IllegalArgumentException(String.format(
             "Columns cannot be copied (missing from target schema): %s",
-            String.join(", ", columnsToCopy.keySet())));
+            columnsToCopy.keySet().stream()
+                .map(ColumnPath::toDotString)
+                .collect(Collectors.joining(", "))));
       }
 
       // copy the data for all chunks
