@@ -52,12 +52,14 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -241,6 +243,48 @@ public class TestColumnIO {
       };
       validateGroups(groups, expected);
     }
+  }
+
+  @Test
+  public void testRejectsProjectionWithinFileGroup() {
+    GroupType fileGroup = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .named("file");
+    GroupType projectedFileGroup = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .named("file");
+    MessageType fileSchema = new MessageType("schema", fileGroup);
+    MessageType requestedSchema = new MessageType("schema", projectedFileGroup);
+
+    assertThatThrownBy(() -> new ColumnIOFactory().getColumnIO(requestedSchema, fileSchema))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "The requested schema cannot project fields within FILE group 'file': missing field 'uri'");
+  }
+
+  @Test
+  public void testAcceptsCompleteFileGroup() {
+    GroupType fileGroup = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .named("file");
+    MessageType schema = new MessageType("schema", fileGroup);
+
+    assertThat(new ColumnIOFactory().getColumnIO(schema, schema)).isNotNull();
   }
 
   private void validateGroups(List<Group> groups1, Object[][] e1) {
