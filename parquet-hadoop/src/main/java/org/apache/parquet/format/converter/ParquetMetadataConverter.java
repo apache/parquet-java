@@ -357,6 +357,11 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getLogicalTypeAnnotation() != null) {
+          if (groupType.getLogicalTypeAnnotation()
+              instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+            ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) groupType.getLogicalTypeAnnotation())
+                .validate(groupType);
+          }
           element.setConverted_type(convertToConvertedType(groupType.getLogicalTypeAnnotation()));
           element.setLogicalType(convertToLogicalType(groupType.getLogicalTypeAnnotation()));
         }
@@ -2134,9 +2139,11 @@ public class ParquetMetadataConverter {
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders);
       }
 
+      boolean fileLogicalType = false;
       if (schemaElement.isSetLogicalType()) {
         LogicalTypeAnnotation logicalTypeAnnotation = getLogicalTypeAnnotation(schemaElement.logicalType);
         if (logicalTypeAnnotation != null) {
+          fileLogicalType = logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation;
           childBuilder.as(logicalTypeAnnotation);
         }
       }
@@ -2161,7 +2168,15 @@ public class ParquetMetadataConverter {
         childBuilder.id(schemaElement.field_id);
       }
 
-      childBuilder.named(schemaElement.name);
+      try {
+        childBuilder.named(schemaElement.name);
+      } catch (IllegalArgumentException e) {
+        if (!fileLogicalType) {
+          throw e;
+        }
+        LOG.warn("Dropping malformed FILE logical type annotation on group {}", schemaElement.name, e);
+        childBuilder.as((LogicalTypeAnnotation) null).named(schemaElement.name);
+      }
     }
   }
 

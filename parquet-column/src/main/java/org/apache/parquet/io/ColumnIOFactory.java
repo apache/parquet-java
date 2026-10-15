@@ -21,7 +21,6 @@ package org.apache.parquet.io;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -65,19 +64,9 @@ public class ColumnIOFactory {
       if (currentRequestedType.isPrimitive()) {
         incompatibleSchema(groupType, currentRequestedType);
       }
-      GroupType requestedGroupType = currentRequestedType.asGroupType();
-      if (groupType.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
-        for (Type field : groupType.getFields()) {
-          if (!requestedGroupType.containsField(field.getName())) {
-            throw new ParquetDecodingException(
-                "The requested schema cannot project fields within FILE group '" + groupType.getName()
-                    + "': missing field '" + field.getName() + "'");
-          }
-        }
-      }
       GroupColumnIO newIO = new GroupColumnIO(groupType, current, currentRequestedIndex);
       current.add(newIO);
-      visitChildren(newIO, groupType, requestedGroupType);
+      visitChildren(newIO, groupType, currentRequestedType.asGroupType());
     }
 
     private void visitChildren(GroupColumnIO newIO, GroupType groupType, GroupType requestedGroupType) {

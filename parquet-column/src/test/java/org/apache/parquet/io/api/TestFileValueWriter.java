@@ -139,6 +139,18 @@ public class TestFileValueWriter {
   }
 
   @Test
+  public void testRejectsSizeWithoutUri() {
+    FileValue value = FileValue.builder()
+        .withSize(2)
+        .withInline(Binary.fromString("bytes"))
+        .build();
+
+    assertThatThrownBy(() -> FileValueWriter.write(noopConsumer(), ALL_FIELDS_SCHEMA, value))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("FILE value field 'size' may only be set together with 'uri'");
+  }
+
+  @Test
   public void testRejectsNegativeOffsetAndSize() {
     FileValue negativeOffset =
         FileValue.builder().withUri("file").withOffset(-1).withSize(1).build();

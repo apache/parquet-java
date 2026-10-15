@@ -22,21 +22,39 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.Type;
 
 /** Converters for assembling values represented by a Parquet {@code FILE}-annotated group. */
 public final class FileConverters {
   private FileConverters() {}
 
   /**
-   * Creates a converter for a FILE group.
+   * Creates a converter for a possibly projected FILE group.
    *
-   * <p>The consumer receives {@code null} when an invalid FILE reference is encountered, as
-   * permitted by the FILE logical-type specification.
+   * <p>FILE values are atomic and cannot be projected by child field. The projected schema may
+   * contain fields absent from this particular file for schema-evolution purposes, but it must
+   * contain every FILE field stored in the file schema. The consumer receives {@code null} when an
+   * invalid FILE reference is encountered, as permitted by the FILE logical-type specification.
+   *
+   * @param schema schema presented to the converter
+   * @param fileSchema FILE group stored in the file
+   * @param consumer consumer for converted values
+   * @return a converter for the complete FILE value
+   * @throws IllegalArgumentException if the projected schema omits a stored FILE field
    */
-  public static GroupConverter newFileConverter(GroupType schema, Consumer<FileValue> consumer) {
+  public static GroupConverter newFileConverter(
+      GroupType schema, GroupType fileSchema, Consumer<FileValue> consumer) {
     Objects.requireNonNull(schema, "schema cannot be null");
+    Objects.requireNonNull(fileSchema, "fileSchema cannot be null");
     Objects.requireNonNull(consumer, "consumer cannot be null");
     FileValueValidator.validateSchema(schema);
+    FileValueValidator.validateSchema(fileSchema);
+    for (Type field : fileSchema.getFields()) {
+      if (!schema.containsField(field.getName())) {
+        throw new IllegalArgumentException("FILE group '" + schema.getName()
+            + "' cannot project stored field '" + field.getName() + "'");
+      }
+    }
     return new FileGroupConverter(schema, consumer);
   }
 

@@ -846,4 +846,47 @@ public class TestTypeBuildersWithLogicalTypes {
             .named("file_inline_wrong_type"))
         .isInstanceOf(IllegalArgumentException.class);
   }
+
+  @Test
+  public void testFileLogicalTypeRejectsAnnotatedOffset() {
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(INT64)
+            .as(timestampType(true, MICROS))
+            .named("offset")
+            .named("file_with_annotated_offset"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "FILE type field 'offset' must be an unannotated INT64 in group 'file_with_annotated_offset'");
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsAnnotatedInline() {
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .as(stringType())
+            .named("inline")
+            .named("file_with_annotated_inline"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "FILE type field 'inline' must be an unannotated BYTE_ARRAY (BINARY) in group "
+                + "'file_with_annotated_inline'");
+  }
+
+  @Test
+  public void testFileLogicalTypeRejectsDuplicateFields() {
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .optional(BINARY)
+            .as(stringType())
+            .named("uri")
+            .optional(BINARY)
+            .as(stringType())
+            .named("uri")
+            .named("file_with_duplicate_uri"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("FILE type group 'file_with_duplicate_uri' contains duplicate field 'uri'");
+  }
+
 }

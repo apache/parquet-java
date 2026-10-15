@@ -246,7 +246,7 @@ public class TestColumnIO {
   }
 
   @Test
-  public void testRejectsProjectionWithinFileGroup() {
+  public void testColumnIOAllowsProjectionWithinFileGroup() {
     GroupType fileGroup = Types.optionalGroup()
         .as(LogicalTypeAnnotation.fileType())
         .optional(BINARY)
@@ -262,28 +262,12 @@ public class TestColumnIO {
         .as(LogicalTypeAnnotation.stringType())
         .named("content_type")
         .named("file");
-    MessageType fileSchema = new MessageType("schema", fileGroup);
-    MessageType requestedSchema = new MessageType("schema", projectedFileGroup);
 
-    assertThatThrownBy(() -> new ColumnIOFactory().getColumnIO(requestedSchema, fileSchema))
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("The requested schema cannot project fields within FILE group 'file': missing field 'uri'");
-  }
+    MessageColumnIO columnIO = new ColumnIOFactory()
+        .getColumnIO(
+            new MessageType("schema", projectedFileGroup), new MessageType("schema", fileGroup));
 
-  @Test
-  public void testAcceptsCompleteFileGroup() {
-    GroupType fileGroup = Types.optionalGroup()
-        .as(LogicalTypeAnnotation.fileType())
-        .optional(BINARY)
-        .as(LogicalTypeAnnotation.stringType())
-        .named("uri")
-        .optional(BINARY)
-        .as(LogicalTypeAnnotation.stringType())
-        .named("content_type")
-        .named("file");
-    MessageType schema = new MessageType("schema", fileGroup);
-
-    assertThat(new ColumnIOFactory().getColumnIO(schema, schema)).isNotNull();
+    assertThat(columnIO.getLeaves()).hasSize(1);
   }
 
   private void validateGroups(List<Group> groups1, Object[][] e1) {

@@ -2444,6 +2444,45 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testMalformedFileLogicalTypeIsDroppedOnRead() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    MessageType validSchema = Types.buildMessage()
+        .requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .named("f")
+        .named("example");
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(validSchema);
+    parquetSchema.get(2).setLogicalType(null).setConverted_type(null);
+
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+
+    GroupType fileGroup = schema.getType("f").asGroupType();
+    assertThat(fileGroup.getLogicalTypeAnnotation()).isNull();
+    assertThat(fileGroup.getType("uri").asPrimitiveType().getPrimitiveTypeName())
+        .isEqualTo(PrimitiveTypeName.BINARY);
+  }
+
+  @Test
+  public void testInvalidFileLogicalTypeCreatedWithNewFieldsCannotBeSerialized() {
+    GroupType validFile = Types.requiredGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .named("f");
+    GroupType invalidFile = validFile.withNewFields(
+        Types.optional(PrimitiveTypeName.INT32).named("uri"));
+    MessageType schema = new MessageType("example", invalidFile);
+
+    assertThatThrownBy(() -> new ParquetMetadataConverter().toParquetSchema(schema))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("FILE type field 'uri' must be a STRING (BINARY annotated as STRING) in group 'f'");
+  }
+
+  @Test
   public void testV2StatsDoNotTriggerCorruptStatisticsCheck() {
     // Regression test: when V2 stats (min_value/max_value) are present,
     // shouldIgnoreStatistics should NOT be evaluated. This ensures the
