@@ -33,10 +33,8 @@ import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.io.InputFile;
 import org.slf4j.Logger;
 
 /**
@@ -83,7 +81,6 @@ public class ShowColumnIndexCommand extends BaseCommand {
     Preconditions.checkArgument(files != null && files.size() >= 1, "A Parquet file is required.");
     Preconditions.checkArgument(files.size() == 1, "Cannot process multiple Parquet files.");
 
-    InputFile in = HadoopInputFile.fromPath(qualifiedPath(files.get(0)), getConf());
     if (!showColumnIndex && !showOffsetIndex) {
       showColumnIndex = true;
       showOffsetIndex = true;
@@ -94,7 +91,7 @@ public class ShowColumnIndexCommand extends BaseCommand {
       rowGroupIndexSet.addAll(rowGroupIndexes);
     }
 
-    try (ParquetFileReader reader = ParquetFileReader.open(in)) {
+    try (ParquetFileReader reader = createParquetFileReader(files.get(0))) {
       boolean firstBlock = true;
       int rowGroupIndex = 0;
       for (BlockMetaData block : reader.getFooter().getBlocks()) {
