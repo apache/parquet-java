@@ -51,6 +51,16 @@ public class BytesUtils {
   }
 
   /**
+   * give the number of bits needed to encode a long given the max value
+   *
+   * @param bound max long that we want to encode
+   * @return the number of bits required
+   */
+  public static int getWidthFromMaxLong(long bound) {
+    return 64 - Long.numberOfLeadingZeros(bound);
+  }
+
+  /**
    * reads an int in little endian at the given position
    *
    * @param in     a byte buffer
