@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
@@ -52,6 +54,12 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   // will flush even if size bellow the threshold by this much to facilitate page alignment
   private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
 
+  // Content defined chunking continues across the row groups of a file, so a store needs the file's chunkers.
+  private static final String CHUNKERS_REQUIRED =
+      "Content defined chunking needs the chunkers of the file: make every column write store of the file "
+          + "with ParquetProperties.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore, chunkers) "
+          + "and the same ContentDefinedChunkers";
+
   private final Map<ColumnDescriptor, ColumnWriterBase> columns;
   private final ParquetProperties props;
   private final long thresholdTolerance;
@@ -62,6 +70,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
   ColumnWriteStoreBase(final PageWriteStore pageWriteStore, final ParquetProperties props) {
+    Preconditions.checkState(!props.isContentDefinedChunkingEnabled(), CHUNKERS_REQUIRED);
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
 
@@ -83,6 +92,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   }
 
   ColumnWriteStoreBase(MessageType schema, PageWriteStore pageWriteStore, ParquetProperties props) {
+    Preconditions.checkState(!props.isContentDefinedChunkingEnabled(), CHUNKERS_REQUIRED);
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
@@ -108,6 +118,16 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       PageWriteStore pageWriteStore,
       BloomFilterWriteStore bloomFilterWriteStore,
       ParquetProperties props) {
+    this(schema, pageWriteStore, bloomFilterWriteStore, props, null);
+  }
+
+  ColumnWriteStoreBase(
+      MessageType schema,
+      PageWriteStore pageWriteStore,
+      BloomFilterWriteStore bloomFilterWriteStore,
+      ParquetProperties props,
+      ContentDefinedChunkers chunkers) {
+    Preconditions.checkState(chunkers != null || !props.isContentDefinedChunkingEnabled(), CHUNKERS_REQUIRED);
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
@@ -124,12 +144,20 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
 
-    columnWriterProvider = new ColumnWriterProvider() {
-      @Override
-      public ColumnWriter getColumnWriter(ColumnDescriptor path) {
-        return columns.get(path);
-      }
-    };
+    if (props.isContentDefinedChunkingEnabled()) {
+      CdcOptions options = props.getContentDefinedChunkingOptions();
+      Map<ColumnDescriptor, ColumnWriter> chunkingColumns = new TreeMap<>();
+      columns.forEach((path, column) -> chunkingColumns.put(
+          path, new ChunkingColumnWriter(column, chunkers.chunker(path, options), props)));
+      columnWriterProvider = chunkingColumns::get;
+    } else {
+      columnWriterProvider = new ColumnWriterProvider() {
+        @Override
+        public ColumnWriter getColumnWriter(ColumnDescriptor path) {
+          return columns.get(path);
+        }
+      };
+    }
   }
 
   private ColumnWriterBase createColumnWriterBase(
@@ -224,7 +252,12 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   public void endRecord() {
     ++rowCount;
     if (rowCount >= rowCountForNextSizeCheck) {
-      sizeCheck();
+      if (props.isContentDefinedChunkingEnabled()) {
+        // ChunkingColumnWriter applies the page limits; this schedule only flushes cached nulls.
+        rowCountForNextSizeCheck = rowCount + props.getMaxRowCountForPageSizeCheck();
+      } else {
+        sizeCheck();
+      }
     }
   }
 

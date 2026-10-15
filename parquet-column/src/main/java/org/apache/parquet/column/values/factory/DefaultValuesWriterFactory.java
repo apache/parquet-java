@@ -110,8 +110,12 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
       Encoding dataPageEncoding,
       ValuesWriter writerToFallBackTo) {
     if (parquetProperties.isDictionaryEnabled(path)) {
-      return FallbackValuesWriter.of(
-          dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding), writerToFallBackTo);
+      // Under content defined chunking an edit in the first page must not change the encoding of
+      // the whole column chunk: fall back on the dictionary size alone, as Arrow C++ and arrow-rs do.
+      return new FallbackValuesWriter<>(
+          dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding),
+          writerToFallBackTo,
+          !parquetProperties.isContentDefinedChunkingEnabled());
     } else {
       return writerToFallBackTo;
     }

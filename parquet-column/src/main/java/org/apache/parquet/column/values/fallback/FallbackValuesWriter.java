@@ -62,11 +62,27 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
    */
   private boolean firstPage = true;
 
+  /**
+   * Whether the first page decides between the initial encoding and the fallback. Without it the
+   * initial encoding only falls back when {@link RequiresFallback#shouldFallBack()} says so.
+   */
+  private final boolean judgeFirstPage;
+
   public FallbackValuesWriter(I initialWriter, F fallBackWriter) {
+    this(initialWriter, fallBackWriter, true);
+  }
+
+  /**
+   * @param initialWriter the writer to start with
+   * @param fallBackWriter the writer to fall back to
+   * @param judgeFirstPage whether the first page decides between the two
+   */
+  public FallbackValuesWriter(I initialWriter, F fallBackWriter, boolean judgeFirstPage) {
     super();
     this.initialWriter = initialWriter;
     this.fallBackWriter = fallBackWriter;
     this.currentWriter = initialWriter;
+    this.judgeFirstPage = judgeFirstPage;
   }
 
   @Override
@@ -79,7 +95,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public BytesInput getBytes() {
-    if (!fellBackAlready && firstPage) {
+    if (judgeFirstPage && !fellBackAlready && firstPage) {
       // we use the first page to decide if we're going to use this encoding
       BytesInput bytes = initialWriter.getBytes();
       if (!initialWriter.isCompressionSatisfying(rawDataByteSize, bytes.size())) {

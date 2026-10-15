@@ -29,6 +29,7 @@ import java.util.function.Function;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.impl.ContentDefinedChunkers;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.InternalFileEncryptor;
@@ -64,6 +65,7 @@ class InternalParquetRecordWriter<T> {
   private long lastRowGroupEndPos = 0;
 
   private ColumnWriteStore columnStore;
+  private final ContentDefinedChunkers contentDefinedChunkers = new ContentDefinedChunkers();
   private ColumnChunkPageWriteStore pageStore;
   private BloomFilterWriteStore bloomFilterWriteStore;
   private RecordConsumer recordConsumer;
@@ -121,7 +123,7 @@ class InternalParquetRecordWriter<T> {
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 
-    columnStore = props.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore);
+    columnStore = props.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore, contentDefinedChunkers);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
     writeSupport.prepareForWrite(recordConsumer);

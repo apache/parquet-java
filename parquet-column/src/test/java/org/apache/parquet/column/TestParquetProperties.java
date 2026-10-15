@@ -31,6 +31,12 @@ import org.junit.jupiter.api.Test;
 
 public class TestParquetProperties {
 
+  private static final CdcOptions CHUNKING = CdcOptions.builder()
+      .withMinChunkSize(4 * 1024)
+      .withMaxChunkSize(16 * 1024)
+      .withNormLevel(-1)
+      .build();
+
   private static final MessageType SCHEMA = MessageTypeParser.parseMessageType(
       "message test { required binary col_a; required int32 col_b; required double col_c; }");
 
@@ -137,5 +143,44 @@ public class TestParquetProperties {
     assertThat(copy.getColumnCodec(colB)).isEqualTo(SNAPPY);
     assertThat(copy.getColumnCompressionLevel(colB)).isNull();
     assertThat(copy.getColumnCodec(colC)).isNull();
+  }
+
+  @Test
+  public void contentDefinedChunking_byDefault_isDisabled() {
+    assertThat(ParquetProperties.builder().build().isContentDefinedChunkingEnabled())
+        .isFalse();
+  }
+
+  @Test
+  public void withContentDefinedChunking_nullOptions_disablesChunking() {
+    ParquetProperties disabled = ParquetProperties.builder()
+        .withContentDefinedChunking(CHUNKING)
+        .withContentDefinedChunking(null)
+        .build();
+
+    assertThat(disabled.isContentDefinedChunkingEnabled()).isFalse();
+    assertThat(disabled.getContentDefinedChunkingOptions()).isNull();
+  }
+
+  @Test
+  public void withContentDefinedChunking_options_enablesChunkingAndSurvivesCopy() {
+    ParquetProperties original =
+        ParquetProperties.builder().withContentDefinedChunking(CHUNKING).build();
+    ParquetProperties copy = ParquetProperties.copy(original).build();
+
+    assertThat(copy.isContentDefinedChunkingEnabled()).isTrue();
+    assertThat(copy.getContentDefinedChunkingOptions()).isSameAs(CHUNKING);
+  }
+
+  @Test
+  public void cdcOptions_default_matchesArrow() {
+    assertThat(CdcOptions.DEFAULT)
+        .asString()
+        .isEqualTo("CdcOptions{minChunkSize=262144, maxChunkSize=1048576, normLevel=0}");
+  }
+
+  @Test
+  public void cdcOptions_toString_namesEverySetting() {
+    assertThat(CHUNKING).asString().isEqualTo("CdcOptions{minChunkSize=4096, maxChunkSize=16384, normLevel=-1}");
   }
 }

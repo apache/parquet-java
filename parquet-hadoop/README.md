@@ -284,6 +284,34 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 ---
 
+**Property:** `parquet.page.content-defined-chunking.enabled`  
+**Description:** EXPERIMENTAL: Whether data pages also end at boundaries derived from a rolling hash of the
+column's values, so that files sharing a run of values share byte-identical pages a content addressable storage
+system can deduplicate, as Arrow C++ and arrow-rs write them. The files need no reader support. A dictionary then
+falls back to plain encoding only when it outgrows `parquet.dictionary.page.size`.  
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.min.size`  
+**Description:** EXPERIMENTAL: The minimum content defined chunk size in bytes.  
+**Default value:** `262144` (256 KiB)
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.max.size`  
+**Description:** EXPERIMENTAL: The maximum content defined chunk size in bytes.  
+**Default value:** `1048576` (1 MiB)
+
+---
+
+**Property:** `parquet.page.content-defined-chunking.norm.level`  
+**Description:** EXPERIMENTAL: The normalization level of the rolling hash mask. Raising it makes chunk sizes
+more uniform at the cost of more small pages.  
+**Default value:** `0`
+
+---
+
 **Property:** `parquet.page.write-checksum.enabled`  
 **Description:** Whether to write out page level checksums.  
 **Default value:** `true`
