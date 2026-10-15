@@ -29,12 +29,10 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import org.apache.avro.Schema;
-import org.apache.avro.SchemaParseException;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Expressions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
-import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Print the first N records from a file")
@@ -63,14 +61,10 @@ public class CatCommand extends BaseCommand {
     Preconditions.checkArgument(sourceFiles != null && !sourceFiles.isEmpty(), "Missing file name");
 
     for (String source : sourceFiles) {
-      try {
-        runWithAvroSchema(source);
-      } catch (SchemaParseException e) {
-        console.debug(
-            "Avro schema conversion failed for {}, falling back to Group reader: {}",
-            source,
-            e.getMessage());
+      if (isParquetFile(source)) {
         runWithGroupReader(source);
+      } else {
+        runWithAvroSchema(source);
       }
     }
 
@@ -107,9 +101,8 @@ public class CatCommand extends BaseCommand {
   }
 
   private void runWithGroupReader(String source) throws IOException {
-    ParquetReader<Group> reader = ParquetReader.<Group>builder(new GroupReadSupport(), qualifiedPath(source))
-        .withConf(getConf())
-        .build();
+    List<String> projectedColumns = uniqueColumns(columns);
+    ParquetReader<Group> reader = openParquetGroupReader(source, projectedColumns);
 
     boolean threw = true;
     long count = 0;
@@ -119,24 +112,10 @@ public class CatCommand extends BaseCommand {
           break;
         }
 
-        if (columns == null) {
+        if (projectedColumns == null || projectedColumns.isEmpty() || projectedColumns.size() > 1) {
           console.info(record.toString());
         } else {
-          StringBuilder sb = new StringBuilder();
-          for (int i = 0; i < columns.size(); i++) {
-            String columnName = columns.get(i);
-            try {
-              Object value =
-                  record.getValueToString(record.getType().getFieldIndex(columnName), 0);
-              if (i > 0) sb.append(", ");
-              sb.append(columnName).append(": ").append(value);
-            } catch (Exception e) {
-              console.warn("Column '{}' not found in file {}", columnName, source);
-            }
-          }
-          if (sb.length() > 0) {
-            console.info(sb.toString());
-          }
+          console.info(selectGroupValue(record, projectedColumns.get(0)));
         }
         count += 1;
       }
@@ -146,6 +125,15 @@ public class CatCommand extends BaseCommand {
     } finally {
       Closeables.close(reader, threw);
     }
+  }
+
+  private String selectGroupValue(Group record, String column) {
+    String[] path = column.split("\\.");
+    Group group = record;
+    for (int i = 0; i < path.length - 1; i++) {
+      group = group.getGroup(group.getType().getFieldIndex(path[i]), 0);
+    }
+    return group.getValueToString(group.getType().getFieldIndex(path[path.length - 1]), 0);
   }
 
   @Override
