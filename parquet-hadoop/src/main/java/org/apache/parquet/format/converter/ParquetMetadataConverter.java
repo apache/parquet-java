@@ -362,6 +362,11 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getLogicalTypeAnnotation() != null) {
+          if (groupType.getLogicalTypeAnnotation()
+              instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+            ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) groupType.getLogicalTypeAnnotation())
+                .validate(groupType);
+          }
           element.setConverted_type(convertToConvertedType(groupType.getLogicalTypeAnnotation()));
           element.setLogicalType(convertToLogicalType(groupType.getLogicalTypeAnnotation()));
         }
@@ -604,6 +609,11 @@ public class ParquetMetadataConverter {
       }
       geographyType.setAlgorithm(fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm()));
       return of(LogicalType.GEOGRAPHY(geographyType));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.FileLogicalTypeAnnotation fileLogicalType) {
+      return of(LogicalTypes.FILE);
     }
   }
 
@@ -1430,9 +1440,7 @@ public class ParquetMetadataConverter {
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
       case FILE:
-        // Present in the format but not mapped to a LogicalTypeAnnotation yet. Ignore it to
-        // preserve the physical type, as an unrecognised logical type would be.
-        return null;
+        return LogicalTypeAnnotation.fileType();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
@@ -2154,9 +2162,11 @@ public class ParquetMetadataConverter {
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders);
       }
 
+      boolean fileLogicalType = false;
       if (schemaElement.isSetLogicalType()) {
         LogicalTypeAnnotation logicalTypeAnnotation = getLogicalTypeAnnotation(schemaElement.logicalType);
         if (logicalTypeAnnotation != null) {
+          fileLogicalType = logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation;
           childBuilder.as(logicalTypeAnnotation);
         }
       }
@@ -2181,7 +2191,15 @@ public class ParquetMetadataConverter {
         childBuilder.id(schemaElement.field_id);
       }
 
-      childBuilder.named(schemaElement.name);
+      try {
+        childBuilder.named(schemaElement.name);
+      } catch (IllegalArgumentException e) {
+        if (!fileLogicalType) {
+          throw e;
+        }
+        LOG.warn("Dropping malformed FILE logical type annotation on group {}", schemaElement.name, e);
+        childBuilder.as((LogicalTypeAnnotation) null).named(schemaElement.name);
+      }
     }
   }
 
