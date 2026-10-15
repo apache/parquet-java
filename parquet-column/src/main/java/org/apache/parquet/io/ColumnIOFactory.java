@@ -66,12 +66,12 @@ public class ColumnIOFactory {
         incompatibleSchema(groupType, currentRequestedType);
       }
       GroupType requestedGroupType = currentRequestedType.asGroupType();
-      if (groupType.getLogicalTypeAnnotation()
-          instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+      if (groupType.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
         for (Type field : groupType.getFields()) {
           if (!requestedGroupType.containsField(field.getName())) {
-            throw new ParquetDecodingException("The requested schema cannot project fields within FILE group '"
-                + groupType.getName() + "': missing field '" + field.getName() + "'");
+            throw new ParquetDecodingException(
+                "The requested schema cannot project fields within FILE group '" + groupType.getName()
+                    + "': missing field '" + field.getName() + "'");
           }
         }
       }

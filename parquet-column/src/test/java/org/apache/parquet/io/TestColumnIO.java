@@ -267,8 +267,7 @@ public class TestColumnIO {
 
     assertThatThrownBy(() -> new ColumnIOFactory().getColumnIO(requestedSchema, fileSchema))
         .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage(
-            "The requested schema cannot project fields within FILE group 'file': missing field 'uri'");
+        .hasMessage("The requested schema cannot project fields within FILE group 'file': missing field 'uri'");
   }
 
   @Test
