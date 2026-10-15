@@ -203,7 +203,7 @@ public class TestTypeBuildersWithLogicalTypes {
     for (final PrimitiveTypeName type : unsupported) {
       assertThatThrownBy(() -> Types.required(type).as(decimalType(2, 9)).named("d"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage("DECIMAL can only annotate INT32, INT64, BINARY, and FIXED");
+          .hasMessage("DECIMAL(9,2) can only annotate [INT64, INT32, BINARY, FIXED_LEN_BYTE_ARRAY]");
     }
   }
 
@@ -234,15 +234,15 @@ public class TestTypeBuildersWithLogicalTypes {
       PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT};
       for (final PrimitiveTypeName type : nonBinary) {
         String expectedMessage = logicalType.equals(float16Type())
-            ? "FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)"
-            : logicalType + " can only annotate BINARY";
+            ? "FLOAT16 can only annotate [FIXED_LEN_BYTE_ARRAY(2)]"
+            : logicalType + " can only annotate [BINARY]";
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage(expectedMessage);
       }
       String fixedMessage = logicalType.equals(float16Type())
-          ? "FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)"
-          : logicalType + " can only annotate BINARY";
+          ? "FLOAT16 can only annotate [FIXED_LEN_BYTE_ARRAY(2)]"
+          : logicalType + " can only annotate [BINARY]";
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
@@ -278,14 +278,14 @@ public class TestTypeBuildersWithLogicalTypes {
       for (final PrimitiveTypeName type : nonInt32) {
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage(logicalType + " can only annotate INT32");
+            .hasMessage(logicalType + " can only annotate [INT32]");
       }
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(logicalType + " can only annotate INT32");
+          .hasMessage(logicalType + " can only annotate [INT32]");
     }
   }
 
@@ -294,9 +294,6 @@ public class TestTypeBuildersWithLogicalTypes {
     LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
       timeType(true, MICROS), timeType(false, MICROS),
       timeType(true, NANOS), timeType(false, NANOS),
-      timestampType(true, MILLIS), timestampType(false, MILLIS),
-      timestampType(true, MICROS), timestampType(false, MICROS),
-      timestampType(true, NANOS), timestampType(false, NANOS),
       intType(64, true), intType(64, false)
     };
     for (LogicalTypeAnnotation logicalType : types) {
@@ -311,9 +308,6 @@ public class TestTypeBuildersWithLogicalTypes {
     LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
       timeType(true, MICROS), timeType(false, MICROS),
       timeType(true, NANOS), timeType(false, NANOS),
-      timestampType(true, MILLIS), timestampType(false, MILLIS),
-      timestampType(true, MICROS), timestampType(false, MICROS),
-      timestampType(true, NANOS), timestampType(false, NANOS),
       intType(64, true), intType(64, false)
     };
     for (final LogicalTypeAnnotation logicalType : types) {
@@ -321,14 +315,58 @@ public class TestTypeBuildersWithLogicalTypes {
       for (final PrimitiveTypeName type : nonInt64) {
         assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage(logicalType + " can only annotate INT64");
+            .hasMessage(logicalType + " can only annotate [INT64]");
       }
       assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
               .length(1)
               .as(logicalType)
               .named("col"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage(logicalType + " can only annotate INT64");
+          .hasMessage(logicalType + " can only annotate [INT64]");
+    }
+  }
+
+  @Test
+  public void testTimestampAnnotations() {
+    LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
+      timestampType(true, MILLIS), timestampType(false, MILLIS),
+      timestampType(true, MICROS), timestampType(false, MICROS),
+      timestampType(true, NANOS), timestampType(false, NANOS)
+    };
+    for (LogicalTypeAnnotation logicalType : types) {
+      PrimitiveType expectedInt64 = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
+      assertThat(Types.required(INT64).as(logicalType).named("col")).isEqualTo(expectedInt64);
+
+      PrimitiveType expectedFlba12 =
+          new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 12, "col", logicalType, null);
+      assertThat(Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(12)
+              .as(logicalType)
+              .named("col"))
+          .isEqualTo(expectedFlba12);
+    }
+  }
+
+  @Test
+  public void testTimestampAnnotationsRejectInvalidTypes() {
+    LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {
+      timestampType(true, MILLIS), timestampType(false, MILLIS),
+      timestampType(true, MICROS), timestampType(false, MICROS),
+      timestampType(true, NANOS), timestampType(false, NANOS)
+    };
+    for (LogicalTypeAnnotation logicalType : types) {
+      PrimitiveTypeName[] invalidTypes = new PrimitiveTypeName[] {BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY};
+      for (PrimitiveTypeName type : invalidTypes) {
+        assertThatThrownBy(() -> Types.required(type).as(logicalType).named("col"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(logicalType + " can only annotate [INT64, FIXED_LEN_BYTE_ARRAY(12)]");
+      }
+      assertThatThrownBy(() -> Types.required(FIXED_LEN_BYTE_ARRAY)
+              .length(1)
+              .as(logicalType)
+              .named("col"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage(logicalType + " can only annotate [INT64, FIXED_LEN_BYTE_ARRAY(12)]");
     }
   }
 
@@ -340,7 +378,7 @@ public class TestTypeBuildersWithLogicalTypes {
               .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
               .named("interval"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
+          .hasMessage("INTERVAL can only annotate [FIXED_LEN_BYTE_ARRAY(12)]");
     }
   }
 
@@ -351,7 +389,7 @@ public class TestTypeBuildersWithLogicalTypes {
             .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
             .named("interval"))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
+        .hasMessage("INTERVAL can only annotate [FIXED_LEN_BYTE_ARRAY(12)]");
   }
 
   @Test
@@ -462,13 +500,13 @@ public class TestTypeBuildersWithLogicalTypes {
             .named("uuid_field")
             .toString())
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("UUID can only annotate FIXED_LEN_BYTE_ARRAY(16)");
+        .hasMessage("UUID can only annotate [FIXED_LEN_BYTE_ARRAY(16)]");
     assertThatThrownBy(() -> Types.required(BINARY)
             .as(uuidType())
             .named("uuid_field")
             .toString())
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("UUID can only annotate FIXED_LEN_BYTE_ARRAY(16)");
+        .hasMessage("UUID can only annotate [FIXED_LEN_BYTE_ARRAY(16)]");
   }
 
   @Test
@@ -486,13 +524,13 @@ public class TestTypeBuildersWithLogicalTypes {
             .named("float16_field")
             .toString())
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)");
+        .hasMessage("FLOAT16 can only annotate [FIXED_LEN_BYTE_ARRAY(2)]");
     assertThatThrownBy(() -> Types.required(BINARY)
             .as(float16Type())
             .named("float16_field")
             .toString())
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("FLOAT16 can only annotate FIXED_LEN_BYTE_ARRAY(2)");
+        .hasMessage("FLOAT16 can only annotate [FIXED_LEN_BYTE_ARRAY(2)]");
   }
 
   @Test

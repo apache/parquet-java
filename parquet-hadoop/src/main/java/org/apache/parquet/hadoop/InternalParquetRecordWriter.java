@@ -144,9 +144,9 @@ class InternalParquetRecordWriter<T> {
         finalMetadata.putAll(finalWriteContext.getExtraMetaData());
         parquetFileWriter.end(finalMetadata);
         lastRowGroupEndPos = parquetFileWriter.getPos();
-      } catch (Exception e) {
+      } catch (Throwable t) {
         parquetFileWriter.abort();
-        throw e;
+        throw t;
       } finally {
         AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore, parquetFileWriter);
         closed = true;

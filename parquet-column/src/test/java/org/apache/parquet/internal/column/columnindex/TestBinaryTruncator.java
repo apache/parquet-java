@@ -36,6 +36,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Random;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
@@ -88,7 +90,29 @@ public class TestBinaryTruncator {
     testTruncator(
         Types.required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("test_fixed_interval"), false);
     testTruncator(Types.required(BINARY).as(DECIMAL).precision(10).scale(2).named("test_binary_decimal"), false);
-    testTruncator(Types.required(INT96).named("test_int96"), false);
+  }
+
+  @Test
+  public void testInt96() {
+    // INT96 has a fixed 12-byte width and a chronological comparator (so it is excluded from the
+    // variable-length checks above, like FLOAT16). Its truncator is a no-op: verify it returns the
+    // value unchanged regardless of the requested length.
+    BinaryTruncator int96Truncator =
+        BinaryTruncator.getTruncator(Types.required(INT96).named("test_int96"));
+    Binary int96Value = Binary.fromConstantByteArray(new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4});
+    assertThat(int96Truncator.truncateMin(int96Value, 4)).isSameAs(int96Value);
+    assertThat(int96Truncator.truncateMax(int96Value, 4)).isSameAs(int96Value);
+  }
+
+  @Test
+  public void testFlba12Timestamp() {
+    BinaryTruncator truncator = BinaryTruncator.getTruncator(Types.required(FIXED_LEN_BYTE_ARRAY)
+        .length(12)
+        .as(LogicalTypeAnnotation.timestampType(true, TimeUnit.NANOS))
+        .named("test_fixed_timestamp"));
+    Binary value = Binary.fromConstantByteArray(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
+    assertThat(truncator.truncateMin(value, 4)).isSameAs(value);
+    assertThat(truncator.truncateMax(value, 4)).isSameAs(value);
   }
 
   @Test
