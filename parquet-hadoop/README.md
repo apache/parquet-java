@@ -403,6 +403,17 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 **Description:** The number of threads will be spawned to compress in parallel. More workers improve speed, but also increase memory usage. When it is 0, it works as single-threaded mode.  
 **Default value:** `0`
 
+## Class: ParquetReadOptions
+
+**Property:** `parquet.read.allocation.size`
+
+**Description:** Size in bytes used to split planned column-chunk ranges into read buffers.
+For vectored IO, this limits the length of each range requested from the filesystem.
+Filesystems may merge or align ranges for checksums and allocate larger buffers.
+This setting does not limit other allocations, such as footer reads or decoding, or total memory use.
+
+**Default value:** `8388608` (8 MiB)
+
 ## Class: HadoopReadOptions
 
 **Property:** `parquet.crypto.factory.class`  
@@ -544,6 +555,26 @@ If `false`, key material is stored in separate new files, created in the same fo
 If `true` then an attempt will be made to dynamically load the relevant classes; 
 if not found then the library will use the classic non-vectored reads: it is safe to enable this option on older releases.  
 **Default value:** `true`
+
+---
+
+**JVM system property:** `parquet.hadoop.vectored.io.threads`
+
+**Description:** Maximum number of shared vectored-read workers. Set a positive integer
+with `-Dparquet.hadoop.vectored.io.threads=N` before the first vectored read; this is
+read once per JVM, not from the Hadoop configuration. Invalid values fail initialization.
+All readers share this limit. Waiting for a worker, submitting the read, and waiting
+for its results share the same 300-second deadline. If admission times out, the read
+fails before submitting filesystem work and the reader retains its stream.
+
+A worker remains occupied until submission returns, the caller transfers or abandons
+the buffers, and any failure cleanup closes the stream. A backend that ignores
+interruption therefore retains capacity; repeated timeouts cannot create workers
+beyond the configured limit. If all workers are blocked, further vectored reads time
+out waiting for capacity. Idle workers expire after 60 seconds. This limit does not
+bound threads created by the filesystem or total buffer memory.
+
+**Default value:** `64`
 
 ---
 

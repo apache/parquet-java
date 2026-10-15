@@ -211,6 +211,14 @@ public class ParquetReadOptions {
     return allocator;
   }
 
+  /**
+   * Returns the size in bytes used to split planned column-chunk ranges into read buffers.
+   * For vectored IO, this bounds each requested range length; filesystems may merge or
+   * checksum-align ranges and allocate larger buffers. This does not limit other allocations,
+   * such as footer reads or decoding, or total memory use.
+   *
+   * @return the configured read allocation size in bytes
+   */
   public int getMaxAllocationSize() {
     return maxAllocationSize;
   }
@@ -405,6 +413,12 @@ public class ParquetReadOptions {
       return this;
     }
 
+    /**
+     * Sets the read allocation size described by {@link ParquetReadOptions#getMaxAllocationSize()}.
+     *
+     * @param allocationSizeInBytes the maximum column-chunk read buffer or requested vectored range size in bytes
+     * @return this builder
+     */
     public Builder withMaxAllocationInBytes(int allocationSizeInBytes) {
       this.maxAllocationSize = allocationSizeInBytes;
       return this;
