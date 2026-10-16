@@ -23,11 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
+import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.Test;
 
 class ReadCliTest extends CliTestBase {
 
-  private Path input;
+  private java.nio.file.Path input;
 
   @BeforeEach
   void createInput() throws IOException {
@@ -85,7 +85,7 @@ class ReadCliTest extends CliTestBase {
 
   @Test
   void scanCountsRecordsAcrossInputFiles() throws Exception {
-    Path second = writeRecords("second input.parquet", 100, 3);
+    java.nio.file.Path second = writeRecords("second input.parquet", 100, 3);
 
     CliResult result = cli("scan", input.toString(), second.toString());
 
@@ -105,8 +105,8 @@ class ReadCliTest extends CliTestBase {
     assertThat(result.output()).contains("Cannot find field", "missing_field");
   }
 
-  private Path writeRecords(String name, int firstId, int count) throws IOException {
-    Path path = getTempFolder().toPath().resolve(name);
+  private java.nio.file.Path writeRecords(String name, int firstId, int count) throws IOException {
+    java.nio.file.Path path = getTempFolder().toPath().resolve(name);
     MessageType schema = Types.buildMessage()
         .required(PrimitiveTypeName.INT32)
         .named("id")
@@ -117,7 +117,7 @@ class ReadCliTest extends CliTestBase {
         .named("unused")
         .named("record");
     SimpleGroupFactory groups = new SimpleGroupFactory(schema);
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new org.apache.hadoop.fs.Path(path.toUri()))
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(path.toUri()))
         .withType(schema)
         .build()) {
       for (int i = firstId; i < firstId + count; i++) {
