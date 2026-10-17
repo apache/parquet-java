@@ -342,16 +342,29 @@ public class AlpValuesEndToEndTest {
         .putInt(offsetArrayStart + Integer.BYTES, firstOffset);
     assertThatThrownBy(() -> readAllDoubles(nonIncreasing, values.length))
         .isInstanceOf(ParquetDecodingException.class)
-        .hasMessageContaining("ALP vector offsets must increase");
+        .hasMessageContaining("ALP vector 0 at offset " + firstOffset + " spans 0 bytes, fewer than");
 
-    // An offset past the end of the page body must be rejected, not read out of bounds.
+    // An offset past the end of the page body must be rejected, not read out of bounds. The
+    // trailing end-of-data entry means the vector before it is then too long or the one after it
+    // runs backwards; here vector 0 claims more bytes than any vector can occupy.
     byte[] pastEnd = valid.clone();
     ByteBuffer.wrap(pastEnd)
         .order(ByteOrder.LITTLE_ENDIAN)
         .putInt(offsetArrayStart + Integer.BYTES, valid.length * 4);
     assertThatThrownBy(() -> readAllDoubles(pastEnd, values.length))
         .isInstanceOf(ParquetDecodingException.class)
-        .hasMessageContaining("ALP vector 1 offset");
+        .hasMessageContaining("ALP vector 0 at offset " + firstOffset + " spans")
+        .hasMessageContaining("more than the");
+
+    // Pointing the last vector just past the end of the data leaves it negative room: the
+    // trailing entry turns this into a span check instead of an out-of-bounds read.
+    byte[] lastPastEnd = valid.clone();
+    int lastEntry = offsetArrayStart + 3 * Integer.BYTES;
+    int dataEnd = valid.length - offsetArrayStart;
+    ByteBuffer.wrap(lastPastEnd).order(ByteOrder.LITTLE_ENDIAN).putInt(lastEntry, dataEnd + 1);
+    assertThatThrownBy(() -> readAllDoubles(lastPastEnd, values.length))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP vector 3 at offset " + (dataEnd + 1) + " spans -1 bytes");
 
     // Sanity: the untouched page still decodes, so the checks above are not rejecting everything.
     assertThat(secondOffset).isGreaterThan(firstOffset);
@@ -419,6 +432,56 @@ public class AlpValuesEndToEndTest {
       }
     }
     assertThat(shapes).isEqualTo(84);
+  }
+
+  /** The float counterpart of the sweep above: the span bound is computed per value type. */
+  @Test
+  public void testFloatSpanBoundAcceptsEveryLegitimatePageShape() throws Exception {
+    Random rnd = new Random(42);
+    int shapes = 0;
+    for (int perVector : new int[] {8, 16, 1024, 4096}) {
+      for (int count :
+          new int[] {1, 2, perVector - 1, perVector, perVector + 1, 2 * perVector + 1, 5 * perVector + 3}) {
+        for (int profile = 0; profile < 3; profile++) {
+          float[] values = new float[count];
+          for (int i = 0; i < count; i++) {
+            if (profile == 0) {
+              values[i] = i / 8.0f;
+            } else if (profile == 1) {
+              values[i] = (i % 2 == 0) ? 2e9f : -2e9f;
+            } else {
+              values[i] = Float.intBitsToFloat(rnd.nextInt());
+            }
+          }
+          assertFloatsRoundTripExactly(values, perVector, profile);
+          shapes++;
+        }
+      }
+    }
+    assertThat(shapes).isEqualTo(84);
+  }
+
+  private void assertFloatsRoundTripExactly(float[] values, int perVector, int profile) throws Exception {
+    AlpValuesWriter.FloatAlpValuesWriter writer =
+        new AlpValuesWriter.FloatAlpValuesWriter(1 << 22, 1 << 22, new DirectByteBufferAllocator(), perVector);
+    byte[] page;
+    try {
+      for (float v : values) {
+        writer.writeFloat(v);
+      }
+      page = writer.getBytes().toByteArray();
+    } finally {
+      writer.reset();
+      writer.close();
+    }
+
+    AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+    reader.initFromPage(values.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    for (int i = 0; i < values.length; i++) {
+      assertThat(Float.floatToRawIntBits(reader.readFloat()))
+          .as("perVector=%s count=%s profile=%s index=%s", perVector, values.length, profile, i)
+          .isEqualTo(Float.floatToRawIntBits(values[i]));
+    }
   }
 
   private void assertDoublesRoundTripExactly(double[] values, int perVector, int profile) throws Exception {

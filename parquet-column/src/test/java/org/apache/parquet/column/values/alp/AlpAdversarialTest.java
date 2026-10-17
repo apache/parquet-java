@@ -275,7 +275,7 @@ public class AlpAdversarialTest {
   @Test
   public void rejectsPackedValuesRunningPastVectorEnd() throws Exception {
     // 16 vectors, so the inflated packed body stays inside the page and crosses into the vectors
-    // that follow rather than simply running off the end, which the buffer bounds would catch.
+    // that follow; the last-vector case, which would run off the end of the page, is below.
     byte[] page = validDoublePage(256, 16);
     int v0 = firstVectorOffset(page);
     // bitWidth lives after ALP_INFO(4) + frameOfReference(8). 64 is the maximum legal width, so it
@@ -286,6 +286,23 @@ public class AlpAdversarialTest {
     assertThatThrownBy(reader::readDouble)
         .isInstanceOf(ParquetDecodingException.class)
         .hasMessageContaining("packed values end at");
+  }
+
+  /**
+   * The same forged bit width on the last vector would read past the end of the page. It must be
+   * rejected as a decoding error before unpacking, not surface as an IndexOutOfBoundsException.
+   */
+  @Test
+  public void rejectsPackedValuesRunningPastEndOfLastVector() throws Exception {
+    byte[] page = validDoublePage(20, 8); // 3 vectors, the last holding 4 values
+    int lastOffset = ByteBuffer.wrap(page).order(ByteOrder.LITTLE_ENDIAN).getInt(7 + 2 * Integer.BYTES);
+    page[7 + lastOffset + 12] = (byte) 64;
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(20, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    reader.skip(16);
+    assertThatThrownBy(reader::readDouble)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP vector 2 packed values end at");
   }
 
   /**
@@ -321,6 +338,40 @@ public class AlpAdversarialTest {
     assertThatThrownBy(() -> AlpValuesReader.readExceptionPositions(data, 0, 2, 16, positions))
         .isInstanceOf(ParquetDecodingException.class)
         .hasMessageContaining("ALP exception position 16 out of bounds for vectorSize 16");
+  }
+
+  /** Each vector must span at least its fixed headers, the last one included via the end entry. */
+  @Test
+  public void rejectsVectorShorterThanItsHeaders() {
+    // offset array of 2 entries (8 bytes), then vectors at 8 and 30, data ending at 40.
+    assertThatThrownBy(() -> AlpValuesReader.validateVectorOffsets(new int[] {8, 30, 40}, 17, 1000))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP vector 1 at offset 30 spans 10 bytes, fewer than the 17");
+  }
+
+  /** No vector can be longer than every value packed at full width and also stored as an exception. */
+  @Test
+  public void rejectsVectorLongerThanAnyVectorCanBe() {
+    int max = AlpValuesReader.maxVectorBytes(16, 17, Double.BYTES);
+    assertThat(max).isEqualTo(17 + 16 * 8 + 16 * (2 + 8));
+    AlpValuesReader.validateVectorOffsets(new int[] {8, 8 + max, 8 + max + 17}, 17, max);
+    assertThatThrownBy(() -> AlpValuesReader.validateVectorOffsets(new int[] {8, 9 + max, 9 + max + 17}, 17, max))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("ALP vector 0 at offset 8 spans " + (max + 1) + " bytes, more than the " + max);
+  }
+
+  /** The end entry makes every in-range index valid, and anything else is a caller error. */
+  @Test
+  public void vectorEndPositionRejectsOutOfRangeIndex() throws Exception {
+    byte[] page = validDoublePage(32, 16);
+    AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+    reader.initFromPage(32, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+    assertThat(reader.getVectorEndPosition(1)).isEqualTo(page.length - 7 - 2 * Integer.BYTES);
+    for (int bad : new int[] {-1, 2, Integer.MAX_VALUE}) {
+      assertThatThrownBy(() -> reader.getVectorEndPosition(bad))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("out of range for 2 vectors");
+    }
   }
 
   /** The last vector is partial whenever the value count is not a whole number of vectors. */

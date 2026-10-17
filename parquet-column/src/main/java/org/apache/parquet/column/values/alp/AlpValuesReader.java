@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 
@@ -54,8 +55,12 @@ abstract class AlpValuesReader extends ValuesReader {
   protected int pageValueIndex;
   protected int currentVectorIndex;
 
+  // One entry per vector plus a trailing entry for the end of the vector data, so the entry after
+  // any vector's offset is always where that vector ends.
   protected int[] vectorOffsets;
   protected ByteBuffer vectorsData;
+  // Captured once when the page is sliced, so nothing later depends on the buffer's position/limit.
+  protected int vectorDataSize;
   protected int offsetArraySize;
 
   // Scratch buffer for exception positions within a vector; shared by both readers (int[] in each).
@@ -86,7 +91,11 @@ abstract class AlpValuesReader extends ValuesReader {
     int minVectorBytes = ALP_INFO_SIZE + forInfoSize();
     readOffsetArray(stream, minVectorBytes);
     sliceVectorData(stream);
-    validateVectorOffsets(minVectorBytes);
+    // The trailing entry is filled here rather than in readOffsetArray because the vector data
+    // size is only known once the data has been sliced.
+    vectorOffsets[numVectors] = offsetArraySize + vectorDataSize;
+    validateVectorOffsets(
+        vectorOffsets, minVectorBytes, maxVectorBytes(valuesPerVector, minVectorBytes, exceptionValueSize()));
 
     allocateDecodedBuffer(valuesPerVector);
     this.excPositionsBuffer = new int[valuesPerVector];
@@ -134,7 +143,10 @@ abstract class AlpValuesReader extends ValuesReader {
     this.currentVectorIndex = -1;
   }
 
-  /** Reads the offset array, one entry per vector, after bounding the vector count. */
+  /**
+   * Reads the offset array, one entry per vector, after bounding the vector count and checking the
+   * first offset. Leaves room for the trailing end-of-data entry, which the caller fills in.
+   */
   private void readOffsetArray(ByteBufferInputStream stream, int minVectorBytes) throws IOException {
     // Bound the vector count against the bytes actually present before allocating anything.
     // numElements is only capped by valuesCount, which a forged page can set as high as
@@ -154,8 +166,20 @@ abstract class AlpValuesReader extends ValuesReader {
 
     this.offsetArraySize = numVectors * Integer.BYTES;
     ByteBuffer offsetBuf = stream.slice(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
-    this.vectorOffsets = new int[numVectors];
-    for (int v = 0; v < numVectors; v++) {
+    if (numVectors == 0) {
+      this.vectorOffsets = new int[1];
+      return;
+    }
+    // Offsets are measured from the start of the offset array, so the first vector must begin
+    // exactly where the array ends. Check that before allocating and decoding the rest.
+    int firstOffset = offsetBuf.getInt();
+    if (firstOffset != offsetArraySize) {
+      throw new ParquetDecodingException(
+          "ALP first vector offset " + firstOffset + " must equal the offset array size " + offsetArraySize);
+    }
+    this.vectorOffsets = new int[numVectors + 1];
+    vectorOffsets[0] = firstOffset;
+    for (int v = 1; v < numVectors; v++) {
       vectorOffsets[v] = offsetBuf.getInt();
     }
   }
@@ -165,48 +189,56 @@ abstract class AlpValuesReader extends ValuesReader {
    * absolute {@code get(pos)} reads.
    */
   private void sliceVectorData(ByteBufferInputStream stream) throws IOException {
-    int remainingBytes = (int) stream.available();
-    ByteBuffer rawSlice = stream.slice(remainingBytes);
+    this.vectorDataSize = (int) stream.available();
+    ByteBuffer rawSlice = stream.slice(vectorDataSize);
     this.vectorsData = rawSlice.slice().order(ByteOrder.LITTLE_ENDIAN);
   }
 
   /**
-   * Validates the offset array against the page body before any vector is decoded. Offsets are
-   * relative to the start of the compression body (the offset array itself), so the first vector
-   * must begin exactly where the offset array ends, offsets must increase by at least one vector's
-   * fixed headers, and every vector must start early enough to fit those headers. Without this a
-   * forged offset can point into another vector and silently decode the wrong values.
+   * Validates the offset array before any vector is decoded. {@code vectorOffsets} holds one entry
+   * per vector followed by the end of the vector data, all measured from the start of the offset
+   * array. The first entry is checked when the array is read, so this starts at entry 1: each
+   * vector, including the last, must span at least its fixed headers and no more than
+   * {@code maxVectorBytes}. Without this a forged offset can point into another vector and
+   * silently decode the wrong values.
    */
-  private void validateVectorOffsets(int minVectorBytes) {
-    int bodyLimit = offsetArraySize + vectorsData.limit();
-    for (int v = 0; v < numVectors; v++) {
-      int offset = vectorOffsets[v];
-      if (v == 0) {
-        if (offset != offsetArraySize) {
-          throw new ParquetDecodingException("ALP first vector offset " + offset
-              + " must equal the offset array size " + offsetArraySize);
-        }
-      } else if ((long) offset - vectorOffsets[v - 1] < minVectorBytes) {
-        throw new ParquetDecodingException("ALP vector offsets must increase by at least "
-            + minVectorBytes + " bytes, but vector " + v + " starts at " + offset + " after vector "
-            + (v - 1) + " at " + vectorOffsets[v - 1]);
+  static void validateVectorOffsets(int[] vectorOffsets, int minVectorBytes, int maxVectorBytes) {
+    int numVectors = vectorOffsets.length - 1;
+    for (int v = 1; v <= numVectors; v++) {
+      long span = (long) vectorOffsets[v] - vectorOffsets[v - 1];
+      if (span < minVectorBytes) {
+        throw new ParquetDecodingException("ALP vector " + (v - 1) + " at offset " + vectorOffsets[v - 1]
+            + " spans " + span + " bytes, fewer than the " + minVectorBytes + " its headers need");
       }
-      if (offset > bodyLimit - minVectorBytes) {
-        throw new ParquetDecodingException("ALP vector " + v + " offset " + offset
-            + " leaves no room for its headers before the end of the page body at " + bodyLimit);
+      if (span > maxVectorBytes) {
+        throw new ParquetDecodingException("ALP vector " + (v - 1) + " at offset " + vectorOffsets[v - 1]
+            + " spans " + span + " bytes, more than the " + maxVectorBytes + " any vector can occupy");
       }
     }
   }
 
   /**
-   * The position just past the last byte vector {@code vectorIndex} may read, derived from the
-   * next vector's offset (or the end of the body for the final vector).
+   * The most bytes one vector can occupy: its fixed headers, every value bit-packed at the full
+   * width of the type, and every value also stored as an exception. Vector sizes are multiples of
+   * the 8-value packing group, so the packed section needs no padding allowance.
    */
-  private int getVectorEndPosition(int vectorIndex) {
-    if (!isLast(vectorIndex, numVectors)) {
-      return vectorOffsets[vectorIndex + 1] - offsetArraySize;
+  static int maxVectorBytes(int valuesPerVector, int minVectorBytes, int valueSize) {
+    int packed = valuesPerVector * valueSize;
+    int exceptions = valuesPerVector * (Short.BYTES + valueSize);
+    return minVectorBytes + packed + exceptions;
+  }
+
+  /**
+   * The position in the vector data just past the last byte vector {@code vectorIndex} may read,
+   * taken from the next entry of the offset array; the trailing entry makes this valid for the last
+   * vector too.
+   */
+  int getVectorEndPosition(int vectorIndex) {
+    if (vectorIndex < 0 || vectorIndex >= numVectors) {
+      throw new IllegalArgumentException(
+          "ALP vector index " + vectorIndex + " is out of range for " + numVectors + " vectors");
     }
-    return vectorsData.limit();
+    return vectorOffsets[vectorIndex + 1] - offsetArraySize;
   }
 
   // Offsets in the page are relative to the compression body (after header),
@@ -278,14 +310,15 @@ abstract class AlpValuesReader extends ValuesReader {
     // Vector header, part two: ForInfo, whose width depends on the value type.
     pos = readForInfo(pos, vectorIndex, forInfo);
 
-    // Data section, part one: PackedValues.
-    pos = decodePackedValues(pos, vectorSize, exponent, factor, forInfo);
-    // The packed values' width comes from this vector's own ForInfo, so confirm they did not run
-    // past where the next vector begins; otherwise this vector would decode another one's bytes.
-    if (pos > vectorEnd) {
-      throw new ParquetDecodingException("ALP vector " + vectorIndex + " packed values end at " + pos
-          + ", past the start of the next vector at " + vectorEnd);
+    // Data section, part one: PackedValues. Their width comes from this vector's own ForInfo, so
+    // confirm they fit before unpacking; otherwise this vector would decode the next one's bytes,
+    // or for the last vector read past the end of the page.
+    int packedEnd = pos + BytesUtils.paddedByteCountFromBits(vectorSize * forInfo.bitWidth);
+    if (packedEnd > vectorEnd) {
+      throw new ParquetDecodingException("ALP vector " + vectorIndex + " packed values end at " + packedEnd
+          + ", past the end of the vector at " + vectorEnd);
     }
+    pos = decodePackedValues(pos, vectorSize, exponent, factor, forInfo);
 
     // Data section, parts two and three: ExceptionPositions then ExceptionValues.
     if (numExceptions > 0) {
@@ -362,9 +395,4 @@ abstract class AlpValuesReader extends ValuesReader {
    * decoded values.
    */
   protected abstract void applyExceptions(int pos, int numExceptions, int vectorSize);
-
-  /**
-   * Reads {@code numExceptions} original values starting at {@code pos} and writes them into the
-   * decoded buffer at the positions previously read into {@link #excPositionsBuffer}.
-   */
 }
