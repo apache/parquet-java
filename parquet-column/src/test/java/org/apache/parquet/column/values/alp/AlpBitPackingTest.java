@@ -149,7 +149,9 @@ public class AlpBitPackingTest {
     int exponent = 2;
     int factor = 0;
 
-    assertThat(AlpCodec.isFloatException(value, exponent, factor)).isFalse();
+    AlpCodec.EncodeResult result = new AlpCodec.EncodeResult();
+    AlpCodec.tryEncodeFloat(value, exponent, factor, result);
+    assertThat(result.isException).isFalse();
     int encoded = AlpCodec.encodeFloat(value, exponent, factor);
     float decoded = AlpCodec.decodeFloat(encoded, exponent, factor);
     assertThat(Float.floatToRawIntBits(decoded)).isEqualTo(Float.floatToRawIntBits(value));
@@ -175,7 +177,7 @@ public class AlpBitPackingTest {
 
       assertThat(compressionMode).isEqualTo(AlpConstants.ALP_COMPRESSION_MODE);
       assertThat(integerEncoding).isEqualTo(AlpConstants.ALP_INTEGER_ENCODING_FOR);
-      assertThat(logVectorSize).isEqualTo(AlpConstants.DEFAULT_VECTOR_SIZE_LOG);
+      assertThat(logVectorSize).isEqualTo(10);
       assertThat(numElements).isEqualTo(2);
 
       // Verify offset array follows header (1 vector = 1 offset entry)

@@ -180,7 +180,7 @@ abstract class AlpValuesReader extends ValuesReader {
 
   /**
    * Slices the remaining page bytes into a view positioned at 0, so the decode path can use
-   * absolute {@code get(pos)} reads, and returns their size.
+   * absolute {@code get(pos)} reads.
    */
   private int sliceVectorData(ByteBufferInputStream stream) throws IOException {
     int vectorDataSize = (int) stream.available();

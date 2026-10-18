@@ -37,10 +37,6 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
   private final int[] unpackPadBuf = new int[PACK_GROUP_SIZE];
   private final byte[] unpackByteBuf = new byte[Integer.SIZE]; // 8 values x 32 bits = 32 bytes
 
-  public AlpValuesReaderForFloat() {
-    super();
-  }
-
   @Override
   protected void ensureDecodedCapacity(int capacity) {
     if (decodedValues == null || decodedValues.length < capacity) {

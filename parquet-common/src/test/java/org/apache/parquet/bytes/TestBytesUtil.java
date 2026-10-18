@@ -102,7 +102,6 @@ public class TestBytesUtil {
       assertThat(readUnsignedShortLittleEndian(buf, 8))
           .as("order=%s", order)
           .isEqualTo(0x1234);
-      // An odd offset straddles two of the values above
       assertThat(readUnsignedShortLittleEndian(buf, 3))
           .as("order=%s", order)
           .isEqualTo(0x007f);

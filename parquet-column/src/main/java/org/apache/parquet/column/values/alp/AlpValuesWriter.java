@@ -177,9 +177,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int excIdx = 0;
 
-      // Encode every value exactly once, recording which ones are exceptions as we go. Calling
-      // isFloatException and then encodeFloat would encode each value twice, because the exception
-      // check has to encode the value in order to test the round trip.
       int placeholder = 0;
       boolean havePlaceholder = false;
       for (int i = 0; i < vectorSize; i++) {
@@ -478,9 +475,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int excIdx = 0;
 
-      // Encode every value exactly once, recording which ones are exceptions as we go. Calling
-      // isDoubleException and then encodeDouble would encode each value twice, because the exception
-      // check has to encode the value in order to test the round trip.
       long placeholder = 0;
       boolean havePlaceholder = false;
       for (int i = 0; i < vectorSize; i++) {

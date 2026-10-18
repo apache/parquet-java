@@ -37,7 +37,7 @@ public class AlpCodecTest {
     for (float value : testValues) {
       for (int exponent = 0; exponent <= AlpConstants.FLOAT_MAX_EXPONENT; exponent++) {
         for (int factor = 0; factor <= exponent; factor++) {
-          if (!AlpCodec.isFloatException(value, exponent, factor)) {
+          if (!isException(value, exponent, factor)) {
             int encoded = AlpCodec.encodeFloat(value, exponent, factor);
             float decoded = AlpCodec.decodeFloat(encoded, exponent, factor);
             assertThat(Float.floatToRawIntBits(decoded))
@@ -118,7 +118,7 @@ public class AlpCodecTest {
     for (double value : testValues) {
       for (int exponent = 0; exponent <= Math.min(AlpConstants.DOUBLE_MAX_EXPONENT, 10); exponent++) {
         for (int factor = 0; factor <= exponent; factor++) {
-          if (!AlpCodec.isDoubleException(value, exponent, factor)) {
+          if (!isException(value, exponent, factor)) {
             long encoded = AlpCodec.encodeDouble(value, exponent, factor);
             double decoded = AlpCodec.decodeDouble(encoded, exponent, factor);
             assertThat(Double.doubleToRawLongBits(decoded))
@@ -201,7 +201,7 @@ public class AlpCodecTest {
     for (double value : testValues) {
       for (int e = 0; e <= 10; e++) {
         for (int f = 0; f <= e; f++) {
-          if (!AlpCodec.isDoubleException(value, e, f)) {
+          if (!isException(value, e, f)) {
             long encoded = AlpCodec.encodeDouble(value, e, f);
             double decoded = AlpCodec.decodeDouble(encoded, e, f);
             assertThat(Double.doubleToRawLongBits(decoded))
@@ -225,7 +225,7 @@ public class AlpCodecTest {
     assertThat(params.factor).isBetween(0, params.exponent);
 
     for (float v : values) {
-      if (!AlpCodec.isFloatException(v, params.exponent, params.factor)) {
+      if (!isException(v, params.exponent, params.factor)) {
         int encoded = AlpCodec.encodeFloat(v, params.exponent, params.factor);
         float decoded = AlpCodec.decodeFloat(encoded, params.exponent, params.factor);
         assertThat(Float.floatToRawIntBits(decoded)).isEqualTo(Float.floatToRawIntBits(v));
@@ -252,7 +252,7 @@ public class AlpCodecTest {
     assertThat(params.factor).isBetween(0, params.exponent);
 
     for (double v : values) {
-      if (!AlpCodec.isDoubleException(v, params.exponent, params.factor)) {
+      if (!isException(v, params.exponent, params.factor)) {
         long encoded = AlpCodec.encodeDouble(v, params.exponent, params.factor);
         double decoded = AlpCodec.decodeDouble(encoded, params.exponent, params.factor);
         assertThat(Double.doubleToRawLongBits(decoded)).isEqualTo(Double.doubleToRawLongBits(v));
@@ -387,9 +387,6 @@ public class AlpCodecTest {
       for (int e = 0; e <= AlpConstants.FLOAT_MAX_EXPONENT; e++) {
         for (int f = 0; f <= e; f++) {
           AlpCodec.tryEncodeFloat(value, e, f, result);
-          assertThat(result.isException)
-              .as("float exception flag for %s at e=%s f=%s", value, e, f)
-              .isEqualTo(AlpCodec.isFloatException(value, e, f));
           if (!result.isException) {
             assertThat((int) result.encoded)
                 .as("float encoding for %s at e=%s f=%s", value, e, f)
@@ -420,9 +417,6 @@ public class AlpCodecTest {
       for (int e = 0; e <= AlpConstants.DOUBLE_MAX_EXPONENT; e++) {
         for (int f = 0; f <= e; f++) {
           AlpCodec.tryEncodeDouble(value, e, f, result);
-          assertThat(result.isException)
-              .as("double exception flag for %s at e=%s f=%s", value, e, f)
-              .isEqualTo(AlpCodec.isDoubleException(value, e, f));
           if (!result.isException) {
             assertThat(result.encoded)
                 .as("double encoding for %s at e=%s f=%s", value, e, f)
@@ -431,5 +425,31 @@ public class AlpCodecTest {
         }
       }
     }
+  }
+
+  /** ±2^63 and ±2^31 round-trip through the cast to long or int, so only the limits reject them. */
+  @Test
+  public void testEncodingLimitsDecideExceptions() {
+    assertThat(isException(Math.scalb(1.0, 62), 0, 0)).isFalse();
+    assertThat(isException(-Math.scalb(1.0, 62), 0, 0)).isFalse();
+    assertThat(isException(Math.scalb(1.0, 63), 0, 0)).isTrue();
+    assertThat(isException(-Math.scalb(1.0, 63), 0, 0)).isTrue();
+
+    assertThat(isException(Math.scalb(1.0f, 30), 0, 0)).isFalse();
+    assertThat(isException(-Math.scalb(1.0f, 30), 0, 0)).isFalse();
+    assertThat(isException(Math.scalb(1.0f, 31), 0, 0)).isTrue();
+    assertThat(isException(-Math.scalb(1.0f, 31), 0, 0)).isTrue();
+  }
+
+  private static boolean isException(float value, int exponent, int factor) {
+    AlpCodec.EncodeResult result = new AlpCodec.EncodeResult();
+    AlpCodec.tryEncodeFloat(value, exponent, factor, result);
+    return result.isException;
+  }
+
+  private static boolean isException(double value, int exponent, int factor) {
+    AlpCodec.EncodeResult result = new AlpCodec.EncodeResult();
+    AlpCodec.tryEncodeDouble(value, exponent, factor, result);
+    return result.isException;
   }
 }

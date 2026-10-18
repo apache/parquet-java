@@ -24,51 +24,21 @@ import static org.apache.parquet.column.values.alp.AlpConstants.FLOAT_MAX_EXPONE
 import org.apache.parquet.bytes.BytesUtils;
 
 /**
- * Core ALP (Adaptive Lossless floating-Point) encoding and decoding logic.
- *
- * <p>ALP works by converting floating-point values to integers using decimal scaling,
- * then applying Frame of Reference encoding and bit-packing.
- * Values that cannot be losslessly converted are stored as exceptions.
- *
- * <p>Encoding formula: encoded = fastRound(value * POW10[e] * POW10_NEGATIVE[f])
- * <p>Decoding formula: value = encoded * POW10[f] * POW10_NEGATIVE[e]
- *
- * <p>The order of operations is critical for IEEE 754 correctness. Both formulas must
- * be evaluated as single expressions — storing the intermediate multiplication result
- * in a variable before the second multiply changes IEEE 754 rounding and produces extra
- * exceptions. Likewise, scaling uses multiply-by-reciprocal (via POW10_NEGATIVE) rather than
- * division: this reproduces the exact IEEE 754 rounding of the ALP reference algorithm, so the
- * encoded integers — and therefore which values become exceptions and the resulting bytes — are
- * identical across implementations. It is about cross-implementation determinism, not any one
- * language.
- *
- * <p>Exception conditions:
- * <ul>
- *   <li>NaN values</li>
- *   <li>Infinity values</li>
- *   <li>Negative zero (-0.0)</li>
- *   <li>Out of integer range</li>
- *   <li>Round-trip failure (decode(encode(v)) != v)</li>
- * </ul>
+ * Encoding multiplies by 10^e and then by the reciprocal of 10^f; decoding multiplies by 10^f and then
+ * by the reciprocal of 10^e. Reordering or dividing rounds differently, which changes which values
+ * become exceptions, so the bytes would no longer match other implementations.
  */
 final class AlpCodec {
 
-  // Magic numbers for the fast-rounding trick (see ALP paper, Section 3.2)
   static final float MAGIC_FLOAT = 12_582_912.0f; // 2^22 + 2^23
   static final double MAGIC_DOUBLE = 6_755_399_441_055_744.0; // 2^51 + 2^52
 
-  // POWERS_OF_TEN: positive powers used for scaling up during encode/decode.
-  // Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f])
-  // Decode: encoded * POW10[f] * POW10_NEGATIVE[e]
   static final float[] FLOAT_POW10 = {1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f};
 
   static final double[] DOUBLE_POW10 = {
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18
   };
 
-  // NEGATIVE_POWERS_OF_TEN: reciprocals used for scaling down (multiply-by-reciprocal).
-  // Multiplying by a precomputed reciprocal instead of dividing keeps the rounding bit-for-bit
-  // identical to the ALP reference implementation, so encoded values interop across implementations.
   static final float[] FLOAT_POW10_NEGATIVE = {
     1e0f, 1e-1f, 1e-2f, 1e-3f, 1e-4f, 1e-5f, 1e-6f, 1e-7f, 1e-8f, 1e-9f, 1e-10f
   };
@@ -81,8 +51,10 @@ final class AlpCodec {
   static final int FLOAT_NEGATIVE_ZERO_BITS = 0x80000000;
   static final long DOUBLE_NEGATIVE_ZERO_BITS = 0x8000000000000000L;
 
-  private static final double ENCODING_UPPER_LIMIT = 9223372036854774784.0;
-  private static final double ENCODING_LOWER_LIMIT = -9223372036854774784.0;
+  // Beyond these a value could still round-trip through the cast to long or int, so the limits, which
+  // match other implementations, are what make it an exception.
+  private static final double DOUBLE_ENCODING_UPPER_LIMIT = 9223372036854774784.0;
+  private static final double DOUBLE_ENCODING_LOWER_LIMIT = -9223372036854774784.0;
   private static final float FLOAT_ENCODING_UPPER_LIMIT = 2147483520.0f;
   private static final float FLOAT_ENCODING_LOWER_LIMIT = -2147483520.0f;
 
@@ -101,16 +73,7 @@ final class AlpCodec {
     return Float.floatToRawIntBits(value) == FLOAT_NEGATIVE_ZERO_BITS;
   }
 
-  /**
-   * Encodes {@code value} and reports whether it is an exception, doing the scaling and rounding
-   * once and leaving the outcome in {@code out}.
-   *
-   * <p>Callers that need both the flag and the encoded value should use this rather than
-   * {@link #isFloatException} followed by {@link #encodeFloat}: the exception check has to encode
-   * the value to test the round trip, so the pair encodes twice. The scaled intermediate is reused
-   * here too, so the two multiplies are also only done once. The expression and its order match
-   * {@link #encodeFloat} exactly, which matters for cross-implementation bit compatibility.
-   */
+  /** Must use the same expression, in the same order, as {@link #encodeFloat}. */
   static void tryEncodeFloat(float value, int exponent, int factor, EncodeResult out) {
     if (isIntrinsicFloatException(value)) {
       out.isException = true;
@@ -130,16 +93,6 @@ final class AlpCodec {
     }
     out.encoded = encoded;
     out.isException = false;
-  }
-
-  /**
-   * Full exception check for a given (exponent, factor): intrinsic cases plus round-trip failure.
-   * Prefer {@link #tryEncodeFloat} when the encoded value is wanted as well.
-   */
-  static boolean isFloatException(float value, int exponent, int factor) {
-    EncodeResult result = new EncodeResult();
-    tryEncodeFloat(value, exponent, factor, result);
-    return result.isException;
   }
 
   /** Round float to nearest integer using magic-number trick with sign branching. */
@@ -170,10 +123,7 @@ final class AlpCodec {
     return Double.doubleToRawLongBits(value) == DOUBLE_NEGATIVE_ZERO_BITS;
   }
 
-  /**
-   * Encodes {@code value} and reports whether it is an exception, doing the scaling and rounding
-   * once and leaving the outcome in {@code out}. See {@link #tryEncodeFloat} for why this exists.
-   */
+  /** Must use the same expression, in the same order, as {@link #encodeDouble}. */
   static void tryEncodeDouble(double value, int exponent, int factor, EncodeResult out) {
     if (isIntrinsicDoubleException(value)) {
       out.isException = true;
@@ -181,7 +131,7 @@ final class AlpCodec {
     }
     // Check before rounding: overflow or non-finite after scaling
     double scaled = value * DOUBLE_POW10[exponent] * DOUBLE_POW10_NEGATIVE[factor];
-    if (!Double.isFinite(scaled) || scaled > ENCODING_UPPER_LIMIT || scaled < ENCODING_LOWER_LIMIT) {
+    if (!Double.isFinite(scaled) || scaled > DOUBLE_ENCODING_UPPER_LIMIT || scaled < DOUBLE_ENCODING_LOWER_LIMIT) {
       out.isException = true;
       return;
     }
@@ -193,16 +143,6 @@ final class AlpCodec {
     }
     out.encoded = encoded;
     out.isException = false;
-  }
-
-  /**
-   * Full exception check for a given (exponent, factor): intrinsic cases plus round-trip failure.
-   * Prefer {@link #tryEncodeDouble} when the encoded value is wanted as well.
-   */
-  static boolean isDoubleException(double value, int exponent, int factor) {
-    EncodeResult result = new EncodeResult();
-    tryEncodeDouble(value, exponent, factor, result);
-    return result.isException;
   }
 
   /** Round double to nearest integer using magic-number trick with sign branching. */
@@ -235,7 +175,7 @@ final class AlpCodec {
     boolean isException;
   }
 
-  public static class EncodingParams {
+  static final class EncodingParams {
     final int exponent;
     final int factor;
     final int numExceptions;

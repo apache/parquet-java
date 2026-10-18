@@ -37,10 +37,6 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
   private final long[] unpackPadBuf = new long[PACK_GROUP_SIZE];
   private final byte[] unpackByteBuf = new byte[Long.SIZE]; // 8 values x 64 bits = 64 bytes
 
-  public AlpValuesReaderForDouble() {
-    super();
-  }
-
   @Override
   protected void ensureDecodedCapacity(int capacity) {
     if (decodedValues == null || decodedValues.length < capacity) {

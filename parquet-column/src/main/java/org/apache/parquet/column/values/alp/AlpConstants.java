@@ -33,13 +33,11 @@ final class AlpConstants {
   static final int ALP_HEADER_SIZE = 7;
 
   static final int DEFAULT_VECTOR_SIZE = 1024;
-  static final int DEFAULT_VECTOR_SIZE_LOG = 10;
 
   // BytePacker packs/unpacks 8 values at a time (pack8Values/unpack8Values).
   static final int PACK_GROUP_SIZE = 8;
 
-  // Capped at 15 (vectorSize=32768) because num_exceptions is uint16,
-  // so vectorSize must not exceed 65535 to avoid overflow when all values are exceptions.
+  // At 2^15, a vector of all exceptions still fits num_exceptions, a uint16.
   static final int MAX_LOG_VECTOR_SIZE = 15;
   static final int MIN_LOG_VECTOR_SIZE = 3;
 
@@ -52,7 +50,7 @@ final class AlpConstants {
   static final int DOUBLE_FOR_INFO_SIZE = 9; // frame_of_reference(8) + bit_width(1)
 
   /** Validates vector size: must be a power of 2 in [2^MIN_LOG .. 2^MAX_LOG]. */
-  static int validateVectorSize(int vectorSize) {
+  static void validateVectorSize(int vectorSize) {
     Preconditions.checkArgument(
         vectorSize > 0 && Integer.bitCount(vectorSize) == 1,
         "Vector size must be a power of 2, got: %s",
@@ -65,6 +63,5 @@ final class AlpConstants {
         MAX_LOG_VECTOR_SIZE,
         logSize,
         vectorSize);
-    return vectorSize;
   }
 }

@@ -2500,7 +2500,7 @@ public class AlpValuesEndToEndTest {
   /**
    * Values near the encoding limits that test the overflow check.
    * The old code used Long.MAX_VALUE (which rounds to 2^63 as double),
-   * the fix uses ENCODING_UPPER_LIMIT = 9223372036854774784.0.
+   * the fix uses DOUBLE_ENCODING_UPPER_LIMIT = 9223372036854774784.0.
    */
   @Test
   public void testDoubleNearOverflowBoundary() throws Exception {
