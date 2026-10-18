@@ -29,12 +29,7 @@ import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
 
-/**
- * ALP values reader for FLOAT type with lazy per-vector decoding.
- *
- * <p>Reads ALP-encoded float values from the interleaved page layout.
- * Each vector is decoded on first access using BytePacker-based unpacking.
- */
+/** ALP values reader for FLOAT type with lazy per-vector decoding. */
 public class AlpValuesReaderForFloat extends AlpValuesReader {
 
   private float[] decodedValues;

@@ -36,11 +36,11 @@ import org.apache.parquet.io.ParquetDecodingException;
 /**
  * Abstract base class for ALP values readers with lazy per-vector decoding.
  *
- * <p>Reads ALP-encoded values from the interleaved page layout:
+ * <p>Page layout:
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 7 bytes │ 4B × numVectors      │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B × numVectors      │              │              │     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *
@@ -240,8 +240,11 @@ abstract class AlpValuesReader extends ValuesReader {
     return vectorOffsets[vectorIndex + 1] - offsetArraySize();
   }
 
-  // Offsets in the page are relative to the compression body (after header),
-  // but vectorsData starts after the offset array, so adjust.
+  /**
+   * The position of vector {@code vectorIndex} in the vector data. This is not an offset as the spec
+   * defines one: those are measured from the start of the offset array, which precedes the vector
+   * data.
+   */
   protected int getVectorDataPosition(int vectorIndex) {
     return vectorOffsets[vectorIndex] - offsetArraySize();
   }

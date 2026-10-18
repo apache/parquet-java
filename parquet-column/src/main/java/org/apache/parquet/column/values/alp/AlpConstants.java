@@ -20,17 +20,7 @@ package org.apache.parquet.column.values.alp;
 
 import org.apache.parquet.Preconditions;
 
-/**
- * Constants for the ALP (Adaptive Lossless floating-Point) encoding.
- *
- * <p>ALP encoding converts floating-point values to integers using decimal scaling,
- * then applies Frame of Reference encoding and bit-packing.
- * Values that cannot be losslessly converted are stored as exceptions.
- *
- * <p>Based on the paper: "ALP: Adaptive Lossless floating-Point Compression" (SIGMOD 2024)
- *
- * @see <a href="https://dl.acm.org/doi/10.1145/3626717">ALP Paper</a>
- */
+/** Constants for the ALP (Adaptive Lossless floating-Point) encoding. */
 final class AlpConstants {
 
   private AlpConstants() {

@@ -47,25 +47,21 @@ import org.apache.parquet.column.values.bitpacking.Packer;
 /**
  * ALP (Adaptive Lossless floating-Point) values writer.
  *
- * <p>ALP encoding converts floating-point values to integers using decimal scaling,
- * then applies Frame of Reference encoding and bit-packing.
- * Values that cannot be losslessly converted are stored as exceptions.
- *
  * <p>Writing is incremental: values are buffered in a fixed-size vector buffer,
  * and each full vector is encoded and flushed to the output stream immediately.
  * On {@link #getBytes()}, any remaining partial vector is flushed, and the
  * final page bytes are assembled.
  *
- * <p>Interleaved Page Layout:
+ * <p>Page layout:
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 7 bytes │ 4B × numVectors      │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B × numVectors      │              │              │     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *
- * <p>Each vector contains interleaved:
- * AlpInfo(4B) + ForInfo(5B/9B) + PackedValues + ExceptionPositions + ExceptionValues
+ * <p>Each vector holds AlpInfo(4B) + ForInfo(5B/9B) + PackedValues + ExceptionPositions +
+ * ExceptionValues.
  */
 public abstract class AlpValuesWriter extends ValuesWriter {
 

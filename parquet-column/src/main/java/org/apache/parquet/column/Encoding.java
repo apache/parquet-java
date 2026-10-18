@@ -151,8 +151,9 @@ public enum Encoding {
 
   /**
    * ALP (Adaptive Lossless floating-Point) encoding for FLOAT and DOUBLE types.
-   * Works by converting floating-point values to integers using decimal scaling,
-   * then applying Frame of Reference (FOR) encoding and bit-packing.
+   *
+   * @see <a href="https://parquet.apache.org/docs/file-format/data-pages/alpencoding/">ALP specification</a>
+   * @see <a href="https://parquet.apache.org/blog/2026/09/22/alp-adaptive-lossless-floating-point-encoding-in-apache-parquet/">ALP blog post</a>
    */
   ALP {
     @Override

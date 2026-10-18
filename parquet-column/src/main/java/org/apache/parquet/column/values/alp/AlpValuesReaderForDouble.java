@@ -29,12 +29,7 @@ import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
 
-/**
- * ALP values reader for DOUBLE type with lazy per-vector decoding.
- *
- * <p>Reads ALP-encoded double values from the interleaved page layout.
- * Each vector is decoded on first access using BytePackerForLong-based unpacking.
- */
+/** ALP values reader for DOUBLE type with lazy per-vector decoding. */
 public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   private double[] decodedValues;
