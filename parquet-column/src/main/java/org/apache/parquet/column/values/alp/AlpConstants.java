@@ -64,7 +64,7 @@ final class AlpConstants {
   /** Validates vector size: must be a power of 2 in [2^MIN_LOG .. 2^MAX_LOG]. */
   static int validateVectorSize(int vectorSize) {
     Preconditions.checkArgument(
-        vectorSize > 0 && (vectorSize & (vectorSize - 1)) == 0,
+        vectorSize > 0 && Integer.bitCount(vectorSize) == 1,
         "Vector size must be a power of 2, got: %s",
         vectorSize);
     int logSize = Integer.numberOfTrailingZeros(vectorSize);

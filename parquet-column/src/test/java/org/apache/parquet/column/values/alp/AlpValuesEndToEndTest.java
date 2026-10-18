@@ -508,6 +508,75 @@ public class AlpValuesEndToEndTest {
   }
 
   /**
+   * A reader keeps its decode buffers across pages when they fit and grows them when they don't.
+   * Exceptions move between pages, so state left over from the previous page would read back wrong.
+   */
+  @Test
+  public void testReaderReusesBuffersAcrossPages() throws Exception {
+    AlpValuesReaderForDouble doubleReader = new AlpValuesReaderForDouble();
+    AlpValuesReaderForFloat floatReader = new AlpValuesReaderForFloat();
+    int[] previousDoubleBuffer = null;
+    int[] previousFloatBuffer = null;
+    int largestVectorSize = 0;
+    int page = 0;
+    for (int perVector : new int[] {1024, 1024, 16, 4096}) {
+      int count = 3 * perVector + 5;
+      double[] doubles = new double[count];
+      float[] floats = new float[count];
+      for (int i = 0; i < count; i++) {
+        // Dense enough that a 4096-value vector holds more exceptions than a 1024-entry buffer.
+        boolean exception = (i + page) % 3 == 0;
+        doubles[i] = exception ? Double.NaN : (i + page) / 100.0;
+        floats[i] = exception ? Float.NaN : (i + page) / 100.0f;
+      }
+
+      AlpValuesWriter.DoubleAlpValuesWriter doubleWriter = new AlpValuesWriter.DoubleAlpValuesWriter(
+          1 << 20, 1 << 20, new DirectByteBufferAllocator(), perVector);
+      AlpValuesWriter.FloatAlpValuesWriter floatWriter = new AlpValuesWriter.FloatAlpValuesWriter(
+          1 << 20, 1 << 20, new DirectByteBufferAllocator(), perVector);
+      byte[] doublePage;
+      byte[] floatPage;
+      try {
+        for (int i = 0; i < count; i++) {
+          doubleWriter.writeDouble(doubles[i]);
+          floatWriter.writeFloat(floats[i]);
+        }
+        doublePage = doubleWriter.getBytes().toByteArray();
+        floatPage = floatWriter.getBytes().toByteArray();
+      } finally {
+        doubleWriter.reset();
+        doubleWriter.close();
+        floatWriter.reset();
+        floatWriter.close();
+      }
+
+      doubleReader.initFromPage(count, ByteBufferInputStream.wrap(ByteBuffer.wrap(doublePage)));
+      floatReader.initFromPage(count, ByteBufferInputStream.wrap(ByteBuffer.wrap(floatPage)));
+      for (int i = 0; i < count; i++) {
+        assertThat(Double.doubleToRawLongBits(doubleReader.readDouble()))
+            .as("double page=%s index=%s", page, i)
+            .isEqualTo(Double.doubleToRawLongBits(doubles[i]));
+        assertThat(Float.floatToRawIntBits(floatReader.readFloat()))
+            .as("float page=%s index=%s", page, i)
+            .isEqualTo(Float.floatToRawIntBits(floats[i]));
+      }
+
+      if (page > 0 && perVector <= largestVectorSize) {
+        assertThat(doubleReader.excPositionsBuffer).isSameAs(previousDoubleBuffer);
+        assertThat(floatReader.excPositionsBuffer).isSameAs(previousFloatBuffer);
+      } else if (page > 0) {
+        assertThat(doubleReader.excPositionsBuffer).isNotSameAs(previousDoubleBuffer);
+        assertThat(doubleReader.excPositionsBuffer).hasSizeGreaterThanOrEqualTo(perVector);
+        assertThat(floatReader.excPositionsBuffer).isNotSameAs(previousFloatBuffer);
+      }
+      previousDoubleBuffer = doubleReader.excPositionsBuffer;
+      previousFloatBuffer = floatReader.excPositionsBuffer;
+      largestVectorSize = Math.max(largestVectorSize, perVector);
+      page++;
+    }
+  }
+
+  /**
    * The reader must not assume the page buffer starts at position 0. Wrapping the same page behind
    * some leading bytes exercises the paths where an absolute {@code get(index)} would silently read
    * the wrong bytes, which is how a page arrives from a real column reader.
@@ -2354,6 +2423,18 @@ public class AlpValuesEndToEndTest {
             new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator(), 65536))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Vector size log2 must be between");
+  }
+
+  /** Integer.MIN_VALUE has a single bit set, so only the positivity check rejects it. */
+  @Test
+  public void testNonPowerOfTwoVectorSizeRejected() {
+    for (int vectorSize : new int[] {0, 3, 1000, 1025, -1024, Integer.MIN_VALUE}) {
+      assertThatThrownBy(() -> new AlpConfig(vectorSize))
+          .as("vectorSize=%s", vectorSize)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Vector size must be a power of 2");
+    }
+    assertThat(new AlpConfig(1024).getVectorSize()).isEqualTo(1024);
   }
 
   /**

@@ -40,17 +40,18 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
   private float[] decodedValues;
   private int[] deltasBuffer;
   private final int[] unpackPadBuf = new int[PACK_GROUP_SIZE];
-  private byte[] unpackByteBuf;
+  private final byte[] unpackByteBuf = new byte[Integer.SIZE]; // 8 values x 32 bits = 32 bytes
 
   public AlpValuesReaderForFloat() {
     super();
   }
 
   @Override
-  protected void allocateDecodedBuffer(int capacity) {
-    this.decodedValues = new float[capacity];
-    this.deltasBuffer = new int[capacity];
-    this.unpackByteBuf = new byte[Integer.SIZE]; // max bit width for int = 32 bytes
+  protected void ensureDecodedCapacity(int capacity) {
+    if (decodedValues == null || decodedValues.length < capacity) {
+      this.decodedValues = new float[capacity];
+      this.deltasBuffer = new int[capacity];
+    }
   }
 
   @Override

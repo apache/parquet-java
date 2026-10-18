@@ -40,17 +40,18 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
   private double[] decodedValues;
   private long[] deltasBuffer;
   private final long[] unpackPadBuf = new long[PACK_GROUP_SIZE];
-  private byte[] unpackByteBuf;
+  private final byte[] unpackByteBuf = new byte[Long.SIZE]; // 8 values x 64 bits = 64 bytes
 
   public AlpValuesReaderForDouble() {
     super();
   }
 
   @Override
-  protected void allocateDecodedBuffer(int capacity) {
-    this.decodedValues = new double[capacity];
-    this.deltasBuffer = new long[capacity];
-    this.unpackByteBuf = new byte[Long.SIZE]; // max bit width for long = 64 bytes
+  protected void ensureDecodedCapacity(int capacity) {
+    if (decodedValues == null || decodedValues.length < capacity) {
+      this.decodedValues = new double[capacity];
+      this.deltasBuffer = new long[capacity];
+    }
   }
 
   @Override

@@ -49,19 +49,18 @@ import org.apache.parquet.io.ParquetDecodingException;
  */
 abstract class AlpValuesReader extends ValuesReader {
 
+  private static final int BEFORE_FIRST_VECTOR = -1;
+
   protected int valuesPerVector;
-  protected int totalValueCount;
+  protected int totalValueCount = 0;
   protected int numVectors;
-  protected int pageValueIndex;
-  protected int currentVectorIndex;
+  protected int pageValueIndex = 0;
+  protected int currentVectorIndex = BEFORE_FIRST_VECTOR;
 
   // One entry per vector plus a trailing entry for the end of the vector data, so the entry after
   // any vector's offset is always where that vector ends.
   protected int[] vectorOffsets;
   protected ByteBuffer vectorsData;
-  // Captured once when the page is sliced, so nothing later depends on the buffer's position/limit.
-  protected int vectorDataSize;
-  protected int offsetArraySize;
 
   // Scratch buffer for exception positions within a vector; shared by both readers (int[] in each).
   protected int[] excPositionsBuffer;
@@ -78,27 +77,23 @@ abstract class AlpValuesReader extends ValuesReader {
     int bitWidth;
   }
 
-  AlpValuesReader() {
-    this.pageValueIndex = 0;
-    this.totalValueCount = 0;
-    this.currentVectorIndex = -1;
-  }
-
   @Override
   public void initFromPage(int valuesCount, ByteBufferInputStream stream)
       throws ParquetDecodingException, IOException {
     readPageHeader(stream, valuesCount);
     int minVectorBytes = ALP_INFO_SIZE + forInfoSize();
     readOffsetArray(stream, minVectorBytes);
-    sliceVectorData(stream);
+    int vectorDataSize = sliceVectorData(stream);
     // The trailing entry is filled here rather than in readOffsetArray because the vector data
     // size is only known once the data has been sliced.
-    vectorOffsets[numVectors] = offsetArraySize + vectorDataSize;
+    vectorOffsets[numVectors] = offsetArraySize() + vectorDataSize;
     validateVectorOffsets(
         vectorOffsets, minVectorBytes, maxVectorBytes(valuesPerVector, minVectorBytes, exceptionValueSize()));
 
-    allocateDecodedBuffer(valuesPerVector);
-    this.excPositionsBuffer = new int[valuesPerVector];
+    ensureDecodedCapacity(valuesPerVector);
+    if (excPositionsBuffer == null || excPositionsBuffer.length < valuesPerVector) {
+      this.excPositionsBuffer = new int[valuesPerVector];
+    }
   }
 
   /**
@@ -140,7 +135,7 @@ abstract class AlpValuesReader extends ValuesReader {
     this.valuesPerVector = 1 << logVectorSize;
     this.totalValueCount = numElements;
     this.pageValueIndex = 0;
-    this.currentVectorIndex = -1;
+    this.currentVectorIndex = BEFORE_FIRST_VECTOR;
   }
 
   /**
@@ -154,17 +149,16 @@ abstract class AlpValuesReader extends ValuesReader {
     // without overflow a large count would drive a huge int[] and a huge stream.slice allocation.
     // Every vector costs a 4-byte offset entry plus at least its ALP and FOR headers, which gives
     // a hard ceiling on how many vectors the remaining bytes can possibly describe.
-    long bodyBytes = stream.available();
-    long numVectorsLong = ((long) totalValueCount + valuesPerVector - 1) / valuesPerVector;
-    long minBodyBytes = numVectorsLong * (Integer.BYTES + minVectorBytes);
-    if (minBodyBytes > bodyBytes) {
+    long remainingBytes = stream.available();
+    this.numVectors = Math.toIntExact(((long) totalValueCount + valuesPerVector - 1) / valuesPerVector);
+    long minRemainingBytes = (long) numVectors * (Integer.BYTES + minVectorBytes);
+    if (minRemainingBytes > remainingBytes) {
       throw new ParquetDecodingException("ALP header element count " + totalValueCount
-          + " requires at least " + minBodyBytes + " bytes but only " + bodyBytes
+          + " requires at least " + minRemainingBytes + " bytes but only " + remainingBytes
           + " remain in the page");
     }
-    this.numVectors = (int) numVectorsLong;
 
-    this.offsetArraySize = numVectors * Integer.BYTES;
+    int offsetArraySize = offsetArraySize();
     ByteBuffer offsetBuf = stream.slice(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
     if (numVectors == 0) {
       this.vectorOffsets = new int[1];
@@ -186,12 +180,17 @@ abstract class AlpValuesReader extends ValuesReader {
 
   /**
    * Slices the remaining page bytes into a view positioned at 0, so the decode path can use
-   * absolute {@code get(pos)} reads.
+   * absolute {@code get(pos)} reads, and returns their size.
    */
-  private void sliceVectorData(ByteBufferInputStream stream) throws IOException {
-    this.vectorDataSize = (int) stream.available();
+  private int sliceVectorData(ByteBufferInputStream stream) throws IOException {
+    int vectorDataSize = (int) stream.available();
     ByteBuffer rawSlice = stream.slice(vectorDataSize);
     this.vectorsData = rawSlice.slice().order(ByteOrder.LITTLE_ENDIAN);
+    return vectorDataSize;
+  }
+
+  private int offsetArraySize() {
+    return numVectors * Integer.BYTES;
   }
 
   /**
@@ -238,13 +237,13 @@ abstract class AlpValuesReader extends ValuesReader {
       throw new IllegalArgumentException(
           "ALP vector index " + vectorIndex + " is out of range for " + numVectors + " vectors");
     }
-    return vectorOffsets[vectorIndex + 1] - offsetArraySize;
+    return vectorOffsets[vectorIndex + 1] - offsetArraySize();
   }
 
   // Offsets in the page are relative to the compression body (after header),
   // but vectorsData starts after the offset array, so adjust.
   protected int getVectorDataPosition(int vectorIndex) {
-    return vectorOffsets[vectorIndex] - offsetArraySize;
+    return vectorOffsets[vectorIndex] - offsetArraySize();
   }
 
   /** Whether {@code vectorIndex} is the last vector in the page. */
@@ -365,7 +364,8 @@ abstract class AlpValuesReader extends ValuesReader {
     return pos;
   }
 
-  protected abstract void allocateDecodedBuffer(int capacity);
+  /** Grows the decode buffers to hold {@code capacity} values, keeping them if they already do. */
+  protected abstract void ensureDecodedCapacity(int capacity);
 
   /** The maximum exponent for this value type (used to validate the header). */
   protected abstract int maxExponent();
