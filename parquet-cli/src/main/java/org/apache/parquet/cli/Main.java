@@ -242,8 +242,45 @@ public class Main extends Configured implements Tool {
     // use Log4j for any libraries using commons-logging
     LogFactory.getFactory()
         .setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.Log4JLogger");
-    int rc = ToolRunner.run(new Configuration(), new Main(console), args);
+    int rc = new Main(console).runWithHadoopOptions(args);
     System.exit(rc);
+  }
+
+  int runWithHadoopOptions(String... args) throws Exception {
+    // Hadoop also accepts --conf, but interprets its value as an XML resource.
+    // Only normalize a property option while Hadoop is still parsing its prefix;
+    // command arguments and option values must be left untouched.
+    String[] normalized = args.clone();
+    Set<String> hadoopValueOptions = ImmutableSet.of(
+        "-conf",
+        "-fs",
+        "--fs",
+        "-jt",
+        "--jt",
+        "-files",
+        "--files",
+        "-libjars",
+        "--libjars",
+        "-archives",
+        "--archives",
+        "-tokenCacheFile",
+        "--tokenCacheFile");
+    for (int i = 0; i < normalized.length; i++) {
+      String arg = normalized[i];
+      if ("--conf".equals(arg)) {
+        normalized[i] = "--property";
+        break;
+      }
+      String option = arg.contains("=") ? arg.substring(0, arg.indexOf('=')) : arg;
+      if ("-D".equals(arg) || "--D".equals(arg) || hadoopValueOptions.contains(arg)) {
+        i++; // The next token belongs to this Hadoop option, even if it looks like --conf.
+      } else if (arg.startsWith("-D") || arg.startsWith("--D") || hadoopValueOptions.contains(option)) {
+        // Hadoop also accepts -Dkey=value and -option=value.
+      } else {
+        break; // Hadoop stops at the first command or unrecognized option.
+      }
+    }
+    return ToolRunner.run(new Configuration(), this, normalized);
   }
 
   private boolean isXmlConfigFile(String filePath) {
