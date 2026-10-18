@@ -77,7 +77,7 @@ public class AlpCodecTest {
   public void testFloatEncoding() {
     assertThat(AlpCodec.encodeFloat(1.23f, 2, 0)).isEqualTo(123);
     assertThat(AlpCodec.encodeFloat(12.3f, 2, 1)).isEqualTo(123);
-    assertThat(AlpCodec.encodeFloat(0.0f, 5, 0)).isEqualTo(0);
+    assertThat(AlpCodec.encodeFloat(0.0f, 5, 0)).isZero();
   }
 
   @Test
@@ -94,7 +94,7 @@ public class AlpCodecTest {
     assertThat(AlpCodec.encodeFloat(5.6f, 0, 0)).isEqualTo(6);
     assertThat(AlpCodec.encodeFloat(-5.4f, 0, 0)).isEqualTo(-5);
     assertThat(AlpCodec.encodeFloat(-5.6f, 0, 0)).isEqualTo(-6);
-    assertThat(AlpCodec.encodeFloat(0.0f, 0, 0)).isEqualTo(0);
+    assertThat(AlpCodec.encodeFloat(0.0f, 0, 0)).isZero();
   }
 
   @Test
@@ -158,7 +158,7 @@ public class AlpCodecTest {
   public void testDoubleEncoding() {
     assertThat(AlpCodec.encodeDouble(1.23, 2, 0)).isEqualTo(123L);
     assertThat(AlpCodec.encodeDouble(12.3, 2, 1)).isEqualTo(123L);
-    assertThat(AlpCodec.encodeDouble(0.0, 5, 0)).isEqualTo(0L);
+    assertThat(AlpCodec.encodeDouble(0.0, 5, 0)).isZero();
   }
 
   @Test
@@ -175,7 +175,7 @@ public class AlpCodecTest {
     assertThat(AlpCodec.encodeDouble(5.6, 0, 0)).isEqualTo(6L);
     assertThat(AlpCodec.encodeDouble(-5.4, 0, 0)).isEqualTo(-5L);
     assertThat(AlpCodec.encodeDouble(-5.6, 0, 0)).isEqualTo(-6L);
-    assertThat(AlpCodec.encodeDouble(0.0, 0, 0)).isEqualTo(0L);
+    assertThat(AlpCodec.encodeDouble(0.0, 0, 0)).isZero();
   }
 
   @Test
@@ -221,9 +221,8 @@ public class AlpCodecTest {
     AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length);
 
     assertThat(params).isNotNull();
-    assertThat(params.exponent >= 0 && params.exponent <= AlpConstants.FLOAT_MAX_EXPONENT)
-        .isTrue();
-    assertThat(params.factor >= 0 && params.factor <= params.exponent).isTrue();
+    assertThat(params.exponent).isBetween(0, AlpConstants.FLOAT_MAX_EXPONENT);
+    assertThat(params.factor).isBetween(0, params.exponent);
 
     for (float v : values) {
       if (!AlpCodec.isFloatException(v, params.exponent, params.factor)) {
@@ -249,9 +248,8 @@ public class AlpCodecTest {
     AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, 0, values.length);
 
     assertThat(params).isNotNull();
-    assertThat(params.exponent >= 0 && params.exponent <= AlpConstants.DOUBLE_MAX_EXPONENT)
-        .isTrue();
-    assertThat(params.factor >= 0 && params.factor <= params.exponent).isTrue();
+    assertThat(params.exponent).isBetween(0, AlpConstants.DOUBLE_MAX_EXPONENT);
+    assertThat(params.factor).isBetween(0, params.exponent);
 
     for (double v : values) {
       if (!AlpCodec.isDoubleException(v, params.exponent, params.factor)) {
@@ -277,7 +275,7 @@ public class AlpCodecTest {
     AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 2, 3);
 
     assertThat(params).isNotNull();
-    assertThat(params.numExceptions).isEqualTo(0);
+    assertThat(params.numExceptions).isZero();
   }
 
   // ========== Preset-Based Parameter Search Tests ==========
@@ -331,9 +329,9 @@ public class AlpCodecTest {
     AlpCodec.EncodingParams presetResult =
         AlpCodec.findBestFloatParamsWithPresets(values, 0, values.length, presets);
 
-    assertThat(presetResult.numExceptions <= fullResult.numExceptions)
+    assertThat(presetResult.numExceptions)
         .as("Preset result should be at least as good as full search")
-        .isTrue();
+        .isLessThanOrEqualTo(fullResult.numExceptions);
   }
 
   @Test
@@ -344,7 +342,7 @@ public class AlpCodecTest {
     // signed range (max - min), the estimator finds the lossless encoding with zero exceptions.
     float[] values = {-3.14f, 2.71f, 100.5f, -50.25f};
     AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length);
-    assertThat(params.numExceptions).isEqualTo(0);
+    assertThat(params.numExceptions).isZero();
   }
 
   @Test
@@ -355,9 +353,9 @@ public class AlpCodecTest {
     float[] values = {-1.0f, 1.0f};
     int[][] presets = {{0, 0}, {1, 0}}; // e=0,f=0 has the smallest signed FOR span
     AlpCodec.EncodingParams params = AlpCodec.findBestFloatParamsWithPresets(values, 0, values.length, presets);
-    assertThat(params.exponent).isEqualTo(0);
-    assertThat(params.factor).isEqualTo(0);
-    assertThat(params.numExceptions).isEqualTo(0);
+    assertThat(params.exponent).isZero();
+    assertThat(params.factor).isZero();
+    assertThat(params.numExceptions).isZero();
   }
 
   /**

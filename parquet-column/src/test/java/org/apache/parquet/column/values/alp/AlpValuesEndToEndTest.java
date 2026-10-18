@@ -700,12 +700,12 @@ public class AlpValuesEndToEndTest {
     } finally {
       writer.close();
     }
-    assertThat(alloc.peakOutstanding.get() > 0)
+    assertThat(alloc.peakOutstanding.get())
         .as("Writer should have allocated buffers during the run")
-        .isTrue();
+        .isPositive();
     assertThat(alloc.outstanding.get())
         .as("Writer leaked allocator buffers: " + alloc.outstanding.get() + " outstanding after close")
-        .isEqualTo(0);
+        .isZero();
   }
 
   @Test
@@ -1248,7 +1248,7 @@ public class AlpValuesEndToEndTest {
       writer.writeFloat(1.0f);
       writer.writeFloat(2.0f);
       writer.reset();
-      assertThat(writer.getBufferedSize()).isEqualTo(0);
+      assertThat(writer.getBufferedSize()).isZero();
 
       float[] values = {3.0f, 4.0f, 5.0f};
       for (float v : values) {
@@ -1516,7 +1516,7 @@ public class AlpValuesEndToEndTest {
       writer.writeDouble(1.0);
       writer.writeDouble(2.0);
       writer.reset();
-      assertThat(writer.getBufferedSize()).isEqualTo(0);
+      assertThat(writer.getBufferedSize()).isZero();
 
       double[] values = {3.0, 4.0, 5.0};
       for (double v : values) {
@@ -1638,8 +1638,8 @@ public class AlpValuesEndToEndTest {
       java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
 
       // Header (7 bytes)
-      assertThat(buf.get() & 0xFF).as("compression_mode").isEqualTo(0);
-      assertThat(buf.get() & 0xFF).as("integer_encoding").isEqualTo(0);
+      assertThat(buf.get() & 0xFF).as("compression_mode").isZero();
+      assertThat(buf.get() & 0xFF).as("integer_encoding").isZero();
       assertThat(buf.get() & 0xFF).as("log_vector_size").isEqualTo(3); // log2(8)=3
       assertThat(buf.getInt()).as("num_elements").isEqualTo(10);
 
@@ -1653,12 +1653,12 @@ public class AlpValuesEndToEndTest {
       int v0Exp = buf.get() & 0xFF;
       int v0Fac = buf.get() & 0xFF;
       int v0Exc = buf.getShort() & 0xFFFF;
-      assertThat(v0Exc).as("v0 exceptions").isEqualTo(0);
+      assertThat(v0Exc).as("v0 exceptions").isZero();
 
       // ForInfo (5 bytes)
       int v0For = buf.getInt();
       int v0Bw = buf.get() & 0xFF;
-      assertThat(v0Bw).as("v0 bitWidth").isEqualTo(0);
+      assertThat(v0Bw).as("v0 bitWidth").isZero();
       // No packed bytes (bitWidth=0)
       // No exceptions
 
@@ -1671,10 +1671,10 @@ public class AlpValuesEndToEndTest {
       assertThat(v1Exp).as("same exponent both vectors").isEqualTo(v0Exp);
       assertThat(v1Fac).as("same factor both vectors").isEqualTo(v0Fac);
       int v1Exc = buf.getShort() & 0xFFFF;
-      assertThat(v1Exc).as("v1 exceptions").isEqualTo(0);
+      assertThat(v1Exc).as("v1 exceptions").isZero();
       int v1For = buf.getInt();
       int v1Bw = buf.get() & 0xFF;
-      assertThat(v1Bw).as("v1 bitWidth").isEqualTo(0);
+      assertThat(v1Bw).as("v1 bitWidth").isZero();
 
       // Should have consumed all bytes
       assertThat(buf.position()).as("all bytes consumed").isEqualTo(bytes.length);
@@ -2010,8 +2010,8 @@ public class AlpValuesEndToEndTest {
       ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
 
       // Header (7 bytes)
-      assertThat(buf.get() & 0xFF).isEqualTo(0); // compression_mode
-      assertThat(buf.get() & 0xFF).isEqualTo(0); // integer_encoding
+      assertThat(buf.get() & 0xFF).isZero(); // compression_mode
+      assertThat(buf.get() & 0xFF).isZero(); // integer_encoding
       assertThat(buf.get() & 0xFF).isEqualTo(3); // log2(8) = 3
       assertThat(buf.getInt()).isEqualTo(3); // num_elements
 
@@ -2023,7 +2023,7 @@ public class AlpValuesEndToEndTest {
       int exp = buf.get() & 0xFF;
       int fac = buf.get() & 0xFF;
       int numExc = buf.getShort() & 0xFFFF;
-      assertThat(numExc).isEqualTo(0);
+      assertThat(numExc).isZero();
 
       // ForInfo
       int forRef = buf.getInt();
@@ -2430,7 +2430,6 @@ public class AlpValuesEndToEndTest {
   public void testNonPowerOfTwoVectorSizeRejected() {
     for (int vectorSize : new int[] {0, 3, 1000, 1025, -1024, Integer.MIN_VALUE}) {
       assertThatThrownBy(() -> new AlpConfig(vectorSize))
-          .as("vectorSize=%s", vectorSize)
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Vector size must be a power of 2");
     }
@@ -2621,7 +2620,7 @@ public class AlpValuesEndToEndTest {
     // -5.0f * 10 = -50
     assertThat(AlpCodec.encodeFloat(-5.0f, 1, 0)).isEqualTo(-50);
     // 0.0f * anything = 0
-    assertThat(AlpCodec.encodeFloat(0.0f, 5, 0)).isEqualTo(0);
+    assertThat(AlpCodec.encodeFloat(0.0f, 5, 0)).isZero();
     // 42.0f * 1 = 42
     assertThat(AlpCodec.encodeFloat(42.0f, 0, 0)).isEqualTo(42);
     // 1.5f * 10 = 15
@@ -2631,7 +2630,7 @@ public class AlpValuesEndToEndTest {
     assertThat(AlpCodec.encodeDouble(1.23, 2, 0)).isEqualTo(123L);
     assertThat(AlpCodec.encodeDouble(19.99, 2, 0)).isEqualTo(1999L);
     assertThat(AlpCodec.encodeDouble(-5.0, 1, 0)).isEqualTo(-50L);
-    assertThat(AlpCodec.encodeDouble(0.0, 5, 0)).isEqualTo(0L);
+    assertThat(AlpCodec.encodeDouble(0.0, 5, 0)).isZero();
     assertThat(AlpCodec.encodeDouble(42.0, 0, 0)).isEqualTo(42L);
   }
 }

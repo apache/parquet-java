@@ -231,7 +231,7 @@ public class TestParquetProperties {
 
   @Test
   public void toString_showsAlpOffWhenNotConfigured() {
-    assertThat(ParquetProperties.builder().build().toString()).contains("ALP: off");
+    assertThat(ParquetProperties.builder().build()).asString().contains("ALP: off");
   }
 
   @Test
@@ -249,16 +249,17 @@ public class TestParquetProperties {
 
   @Test
   public void toString_neverRendersAlpAsNull() {
-    assertThat(ParquetProperties.builder().build().toString()).doesNotContain("ALP: null");
-    assertThat(ParquetProperties.builder().withAlp().build().toString()).doesNotContain("ALP: null");
-    assertThat(ParquetProperties.builder().withAlp("col_c").build().toString())
+    assertThat(ParquetProperties.builder().build()).asString().doesNotContain("ALP: null");
+    assertThat(ParquetProperties.builder().withAlp().build()).asString().doesNotContain("ALP: null");
+    assertThat(ParquetProperties.builder().withAlp("col_c").build())
+        .asString()
         .doesNotContain("ALP: null");
     assertThat(ParquetProperties.builder()
             .withAlp()
             .withoutAlp()
             .withAlp("col_c")
-            .build()
-            .toString())
+            .build())
+        .asString()
         .doesNotContain("ALP: null");
   }
 

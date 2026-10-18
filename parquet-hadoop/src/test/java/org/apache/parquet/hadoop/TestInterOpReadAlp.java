@@ -126,7 +126,7 @@ public class TestInterOpReadAlp {
   @Test
   public void testAlpColumnsMatchPlainColumns() throws IOException {
     List<Group> rows = readAllRows(getExtendedFile());
-    assertThat(rows.size()).as("row count").isEqualTo(EXTENDED_ROWS);
+    assertThat(rows).as("row count").hasSize(EXTENDED_ROWS);
 
     for (Map.Entry<String, String> entry : ALP_TO_PLAIN.entrySet()) {
       String alpCol = entry.getKey();
@@ -156,7 +156,7 @@ public class TestInterOpReadAlp {
   public void testAlpColumnsAreAlpEncoded() throws IOException {
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(getExtendedFile()))) {
       ParquetMetadata footer = reader.getFooter();
-      assertThat(footer.getBlocks().size()).as("row groups").isEqualTo(EXTENDED_ROW_GROUPS);
+      assertThat(footer.getBlocks()).as("row groups").hasSize(EXTENDED_ROW_GROUPS);
       int alpChunks = 0;
       for (org.apache.parquet.hadoop.metadata.BlockMetaData block : footer.getBlocks()) {
         for (org.apache.parquet.hadoop.metadata.ColumnChunkMetaData chunk : block.getColumns()) {
@@ -246,7 +246,7 @@ public class TestInterOpReadAlp {
     }
 
     List<Group> rows = readAllRows(outPath);
-    assertThat(rows.size()).as("Row count mismatch for " + version).isEqualTo(DOUBLE_VALUES.length);
+    assertThat(rows).as("Row count mismatch for " + version).hasSameSizeAs(DOUBLE_VALUES);
     for (int i = 0; i < DOUBLE_VALUES.length; i++) {
       assertThat(rows.get(i).getDouble("double_col", 0))
           .as("double_col mismatch at row " + i + " for " + version)
@@ -308,7 +308,7 @@ public class TestInterOpReadAlp {
     }
 
     List<Group> rows = readAllRows(outPath);
-    assertThat(rows.size()).as("Row count mismatch at vectorSize=4096").isEqualTo(rowCount);
+    assertThat(rows).as("Row count mismatch at vectorSize=4096").hasSize(rowCount);
     for (int i = 0; i < rowCount; i++) {
       assertThat(rows.get(i).getDouble("double_col", 0))
           .as("double_col mismatch at row " + i)
@@ -366,7 +366,7 @@ public class TestInterOpReadAlp {
 
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(outPath))) {
       ParquetMetadata footer = reader.getFooter();
-      assertThat(footer.getBlocks().size()).as("expected one row group").isEqualTo(1);
+      assertThat(footer.getBlocks()).as("expected one row group").hasSize(1);
       org.apache.parquet.hadoop.metadata.BlockMetaData block =
           footer.getBlocks().get(0);
 
@@ -377,12 +377,12 @@ public class TestInterOpReadAlp {
         if (path.equals("double_col")) doubleChunk = c;
         if (path.equals("float_col")) floatChunk = c;
       }
-      assertThat(doubleChunk.getEncodings().contains(Encoding.ALP))
+      assertThat(doubleChunk.getEncodings())
           .as("double_col must be ALP-encoded")
-          .isTrue();
-      assertThat(floatChunk.getEncodings().contains(Encoding.ALP))
+          .contains(Encoding.ALP);
+      assertThat(floatChunk.getEncodings())
           .as("float_col must be ALP-encoded")
-          .isTrue();
+          .contains(Encoding.ALP);
 
       org.apache.parquet.column.statistics.Statistics<?> dStats = doubleChunk.getStatistics();
       org.apache.parquet.column.statistics.Statistics<?> fStats = floatChunk.getStatistics();
@@ -408,8 +408,8 @@ public class TestInterOpReadAlp {
       assertThat(Float.floatToRawIntBits((Float) fStats.genericGetMax()))
           .as("float max mismatch")
           .isEqualTo(Float.floatToRawIntBits(expectedFloatMax));
-      assertThat(dStats.getNumNulls()).as("double null count must be 0").isEqualTo(0L);
-      assertThat(fStats.getNumNulls()).as("float null count must be 0").isEqualTo(0L);
+      assertThat(dStats.getNumNulls()).as("double null count must be 0").isZero();
+      assertThat(fStats.getNumNulls()).as("float null count must be 0").isZero();
     }
   }
 
@@ -466,7 +466,7 @@ public class TestInterOpReadAlp {
       }
     }
     List<Group> rows = readAllRows(outPath);
-    assertThat(rows.size()).isEqualTo(n);
+    assertThat(rows).hasSize(n);
     for (int i = 0; i < n; i++) {
       assertThat(Double.doubleToRawLongBits(rows.get(i).getDouble("d", 0)))
           .as("d mismatch at " + i)
@@ -510,7 +510,7 @@ public class TestInterOpReadAlp {
         }
       }
       List<Group> rows = readAllRows(outPath);
-      assertThat(rows.size()).as("row count for " + codec).isEqualTo(n);
+      assertThat(rows).as("row count for " + codec).hasSize(n);
       for (int i = 0; i < n; i++) {
         assertThat(Double.doubleToRawLongBits(rows.get(i).getDouble("d", 0)))
             .as("d mismatch " + codec + " row " + i)
@@ -551,11 +551,11 @@ public class TestInterOpReadAlp {
     }
     // Values also round-trip (with NaN payload preserved and nulls in the right places).
     List<Group> rows = readAllRows(outPath);
-    assertThat(rows.size()).isEqualTo(vals.length);
+    assertThat(rows).hasSameSizeAs(vals);
     for (int i = 0; i < vals.length; i++) {
       int rep = rows.get(i).getFieldRepetitionCount("d");
       if (vals[i] == null) {
-        assertThat(rep).as("row " + i + " should be null").isEqualTo(0);
+        assertThat(rep).as("row " + i + " should be null").isZero();
       } else {
         assertThat(rep).as("row " + i + " should be present").isEqualTo(1);
         assertThat(Double.doubleToRawLongBits(rows.get(i).getDouble("d", 0)))
@@ -629,9 +629,7 @@ public class TestInterOpReadAlp {
       }
     }
     assertThat(total).as("row count").isEqualTo(n);
-    assertThat(rowGroups >= 2)
-        .as("expected multiple row groups, got " + rowGroups)
-        .isTrue();
+    assertThat(rowGroups).as("expected multiple row groups").isGreaterThanOrEqualTo(2);
   }
 
   @Test
@@ -669,7 +667,7 @@ public class TestInterOpReadAlp {
       }
     }
     List<Group> rows = readAllRows(outPath);
-    assertThat(rows.size()).isEqualTo(nRows);
+    assertThat(rows).hasSize(nRows);
     for (int r = 0; r < nRows; r++) {
       Group g = rows.get(r);
       int k = g.getFieldRepetitionCount("vals");

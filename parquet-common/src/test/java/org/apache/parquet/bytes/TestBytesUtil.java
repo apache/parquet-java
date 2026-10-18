@@ -54,7 +54,7 @@ public class TestBytesUtil {
 
   @Test
   public void testWidthLong() {
-    assertThat(getWidthFromMaxLong(0L)).isEqualTo(0);
+    assertThat(getWidthFromMaxLong(0L)).isZero();
     assertThat(getWidthFromMaxLong(1L)).isEqualTo(1);
     assertThat(getWidthFromMaxLong(2L)).isEqualTo(2);
     assertThat(getWidthFromMaxLong(3L)).isEqualTo(2);
@@ -73,7 +73,7 @@ public class TestBytesUtil {
   @Test
   public void testReadUnsignedByte() {
     ByteBuffer buf = ByteBuffer.wrap(new byte[] {0, 0x7f, (byte) 0x80, (byte) 0xff});
-    assertThat(readUnsignedByte(buf, 0)).isEqualTo(0);
+    assertThat(readUnsignedByte(buf, 0)).isZero();
     assertThat(readUnsignedByte(buf, 1)).isEqualTo(127);
     assertThat(readUnsignedByte(buf, 2)).isEqualTo(128);
     assertThat(readUnsignedByte(buf, 3)).isEqualTo(255);
@@ -89,7 +89,7 @@ public class TestBytesUtil {
       ByteBuffer buf = ByteBuffer.wrap(bytes).order(order);
       assertThat(readUnsignedShortLittleEndian(buf, 0))
           .as("order=%s", order)
-          .isEqualTo(0);
+          .isZero();
       assertThat(readUnsignedShortLittleEndian(buf, 2))
           .as("order=%s", order)
           .isEqualTo(32767);
