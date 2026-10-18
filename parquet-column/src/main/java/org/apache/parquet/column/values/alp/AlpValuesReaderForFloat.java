@@ -88,7 +88,7 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
   @Override
   protected int readForInfo(int pos, int vectorIndex, ForInfo out) {
     out.base = vectorsData.getInt(pos);
-    out.bitWidth = vectorsData.get(pos + Integer.BYTES) & 0xFF;
+    out.bitWidth = BytesUtils.readUnsignedByte(vectorsData, pos + Integer.BYTES);
     if (out.bitWidth > Integer.SIZE) {
       throw new ParquetDecodingException(
           "Invalid ALP float bitWidth " + out.bitWidth + " > 32 in vector " + vectorIndex);

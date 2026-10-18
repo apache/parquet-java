@@ -300,9 +300,9 @@ abstract class AlpValuesReader extends ValuesReader {
     int pos = getVectorDataPosition(vectorIndex);
 
     // Vector header, part one: AlpInfo, which is the same for both value types.
-    int exponent = vectorsData.get(pos) & 0xFF;
-    int factor = vectorsData.get(pos + 1) & 0xFF;
-    int numExceptions = vectorsData.getShort(pos + 2) & 0xFFFF;
+    int exponent = BytesUtils.readUnsignedByte(vectorsData, pos);
+    int factor = BytesUtils.readUnsignedByte(vectorsData, pos + 1);
+    int numExceptions = BytesUtils.readUnsignedShortLittleEndian(vectorsData, pos + 2);
     pos += ALP_INFO_SIZE;
     validateAlpInfo(vectorIndex, exponent, factor, numExceptions, vectorSize);
 
@@ -354,7 +354,7 @@ abstract class AlpValuesReader extends ValuesReader {
    */
   static int readExceptionPositions(ByteBuffer data, int pos, int numExceptions, int vectorSize, int[] positionsOut) {
     for (int e = 0; e < numExceptions; e++) {
-      positionsOut[e] = data.getShort(pos) & 0xFFFF;
+      positionsOut[e] = BytesUtils.readUnsignedShortLittleEndian(data, pos);
       if (positionsOut[e] >= vectorSize) {
         throw new ParquetDecodingException(
             "ALP exception position " + positionsOut[e] + " out of bounds for vectorSize " + vectorSize);

@@ -77,6 +77,29 @@ public class BytesUtils {
   }
 
   /**
+   * reads an unsigned byte at the given position
+   *
+   * @param in     a byte buffer
+   * @param offset an offset into the byte buffer
+   * @return the byte at position offset, from 0 to 255
+   */
+  public static int readUnsignedByte(ByteBuffer in, int offset) {
+    return in.get(offset) & 0xff;
+  }
+
+  /**
+   * reads an unsigned short in little endian at the given position, regardless of the buffer's byte
+   * order
+   *
+   * @param in     a byte buffer
+   * @param offset an offset into the byte buffer
+   * @return the short at position offset read using little endian byte order, from 0 to 65535
+   */
+  public static int readUnsignedShortLittleEndian(ByteBuffer in, int offset) {
+    return (in.get(offset) & 0xff) | ((in.get(offset + 1) & 0xff) << 8);
+  }
+
+  /**
    * reads an int in little endian at the given position
    *
    * @param in     a byte array

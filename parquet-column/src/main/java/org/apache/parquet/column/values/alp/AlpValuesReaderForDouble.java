@@ -88,7 +88,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
   @Override
   protected int readForInfo(int pos, int vectorIndex, ForInfo out) {
     out.base = vectorsData.getLong(pos);
-    out.bitWidth = vectorsData.get(pos + Long.BYTES) & 0xFF;
+    out.bitWidth = BytesUtils.readUnsignedByte(vectorsData, pos + Long.BYTES);
     if (out.bitWidth > Long.SIZE) {
       throw new ParquetDecodingException(
           "Invalid ALP double bitWidth " + out.bitWidth + " > 64 in vector " + vectorIndex);
