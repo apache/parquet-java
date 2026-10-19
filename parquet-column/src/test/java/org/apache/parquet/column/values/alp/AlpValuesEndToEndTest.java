@@ -2481,7 +2481,8 @@ public class AlpValuesEndToEndTest {
     }
 
     // Verify the best params actually have f > 0 or f == 0 with low exceptions
-    AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, 0, values.length);
+    AlpCodec.EncodingParams params =
+        AlpCodec.findBestDoubleParams(values, 0, values.length, AlpCodec.ALL_VALID_DOUBLE_PAIRS);
     // Regardless of the chosen f, the roundtrip must be lossless
     roundTripDouble(values);
   }

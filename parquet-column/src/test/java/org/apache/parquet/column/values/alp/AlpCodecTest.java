@@ -218,7 +218,8 @@ public class AlpCodecTest {
   @Test
   public void testFindBestFloatParams() {
     float[] values = {1.23f, 4.56f, 7.89f, 10.11f, 12.13f};
-    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length);
+    AlpCodec.EncodingParams params =
+        AlpCodec.findBestFloatParams(values, 0, values.length, AlpCodec.ALL_VALID_FLOAT_PAIRS);
 
     assertThat(params).isNotNull();
     assertThat(params.exponent).isBetween(0, AlpConstants.FLOAT_MAX_EXPONENT);
@@ -236,7 +237,8 @@ public class AlpCodecTest {
   @Test
   public void testFindBestFloatParamsWithAllExceptions() {
     float[] values = {Float.NaN, Float.NaN, Float.NaN};
-    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length);
+    AlpCodec.EncodingParams params =
+        AlpCodec.findBestFloatParams(values, 0, values.length, AlpCodec.ALL_VALID_FLOAT_PAIRS);
 
     assertThat(params).isNotNull();
     assertThat(params.numExceptions).isEqualTo(values.length);
@@ -245,7 +247,8 @@ public class AlpCodecTest {
   @Test
   public void testFindBestDoubleParams() {
     double[] values = {1.23, 4.56, 7.89, 10.11, 12.13};
-    AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, 0, values.length);
+    AlpCodec.EncodingParams params =
+        AlpCodec.findBestDoubleParams(values, 0, values.length, AlpCodec.ALL_VALID_DOUBLE_PAIRS);
 
     assertThat(params).isNotNull();
     assertThat(params.exponent).isBetween(0, AlpConstants.DOUBLE_MAX_EXPONENT);
@@ -263,7 +266,8 @@ public class AlpCodecTest {
   @Test
   public void testFindBestDoubleParamsWithAllExceptions() {
     double[] values = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
-    AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, 0, values.length);
+    AlpCodec.EncodingParams params =
+        AlpCodec.findBestDoubleParams(values, 0, values.length, AlpCodec.ALL_VALID_DOUBLE_PAIRS);
 
     assertThat(params).isNotNull();
     assertThat(params.numExceptions).isEqualTo(values.length);
@@ -272,7 +276,7 @@ public class AlpCodecTest {
   @Test
   public void testFindBestParamsWithOffset() {
     float[] values = {Float.NaN, Float.NaN, 1.23f, 4.56f, 7.89f, Float.NaN};
-    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 2, 3);
+    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 2, 3, AlpCodec.ALL_VALID_FLOAT_PAIRS);
 
     assertThat(params).isNotNull();
     assertThat(params.numExceptions).isZero();
@@ -281,10 +285,10 @@ public class AlpCodecTest {
   // ========== Preset-Based Parameter Search Tests ==========
 
   @Test
-  public void testFindBestFloatParamsWithPresets() {
+  public void testFindBestFloatParamsOverPresets() {
     float[] values = {1.23f, 4.56f, 7.89f, 10.11f, 12.13f};
     int[][] presets = {{2, 0}, {3, 0}, {4, 1}};
-    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParamsWithPresets(values, 0, values.length, presets);
+    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length, presets);
 
     assertThat(params).isNotNull();
     // Should select one of the preset combinations
@@ -301,10 +305,10 @@ public class AlpCodecTest {
   }
 
   @Test
-  public void testFindBestDoubleParamsWithPresets() {
+  public void testFindBestDoubleParamsOverPresets() {
     double[] values = {1.23, 4.56, 7.89, 10.11, 12.13};
     int[][] presets = {{2, 0}, {3, 0}, {4, 1}};
-    AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParamsWithPresets(values, 0, values.length, presets);
+    AlpCodec.EncodingParams params = AlpCodec.findBestDoubleParams(values, 0, values.length, presets);
 
     assertThat(params).isNotNull();
     boolean foundMatch = false;
@@ -322,12 +326,12 @@ public class AlpCodecTest {
   @Test
   public void testPresetsProduceSameResultAsFullSearch() {
     float[] values = {1.23f, 4.56f, 7.89f};
-    AlpCodec.EncodingParams fullResult = AlpCodec.findBestFloatParams(values, 0, values.length);
+    AlpCodec.EncodingParams fullResult =
+        AlpCodec.findBestFloatParams(values, 0, values.length, AlpCodec.ALL_VALID_FLOAT_PAIRS);
 
     // Include the best params in presets
     int[][] presets = {{fullResult.exponent, fullResult.factor}, {0, 0}, {1, 0}};
-    AlpCodec.EncodingParams presetResult =
-        AlpCodec.findBestFloatParamsWithPresets(values, 0, values.length, presets);
+    AlpCodec.EncodingParams presetResult = AlpCodec.findBestFloatParams(values, 0, values.length, presets);
 
     assertThat(presetResult.numExceptions)
         .as("Preset result should be at least as good as full search")
@@ -341,18 +345,19 @@ public class AlpCodecTest {
     // 64-bit width, making it prefer combos that turn values into exceptions. With the correct
     // signed range (max - min), the estimator finds the lossless encoding with zero exceptions.
     float[] values = {-3.14f, 2.71f, 100.5f, -50.25f};
-    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length);
+    AlpCodec.EncodingParams params =
+        AlpCodec.findBestFloatParams(values, 0, values.length, AlpCodec.ALL_VALID_FLOAT_PAIRS);
     assertThat(params.numExceptions).isZero();
   }
 
   @Test
-  public void findBestFloatParamsWithPresetsMixedSignUsesSignedDeltaRange() {
+  public void findBestFloatParamsOverPresetsMixedSignUsesSignedDeltaRange() {
     // Restricting to two presets removes the equivalent-scaling ties, so the chosen exponent is
     // deterministic: e=0,f=0 has the smallest signed FOR span and wins. A buggy unsigned estimator
     // would rate both presets at 64 bits, tie, and pick the higher exponent (e=1) instead.
     float[] values = {-1.0f, 1.0f};
     int[][] presets = {{0, 0}, {1, 0}}; // e=0,f=0 has the smallest signed FOR span
-    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParamsWithPresets(values, 0, values.length, presets);
+    AlpCodec.EncodingParams params = AlpCodec.findBestFloatParams(values, 0, values.length, presets);
     assertThat(params.exponent).isZero();
     assertThat(params.factor).isZero();
     assertThat(params.numExceptions).isZero();

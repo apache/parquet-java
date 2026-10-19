@@ -191,11 +191,10 @@ final class AlpCodec {
   private static final int E = 0;
   private static final int F = 1;
 
-  // All valid (exponent, factor) pairs for the full search, precomputed in nested-loop order
-  // (e ascending, then f ascending) so the tie-break and early-exit behave exactly like an inline
-  // double loop. Reused across every vector to avoid per-call allocation.
-  private static final int[][] ALL_VALID_FLOAT_PAIRS = buildAllPairs(FLOAT_MAX_EXPONENT);
-  private static final int[][] ALL_VALID_DOUBLE_PAIRS = buildAllPairs(DOUBLE_MAX_EXPONENT);
+  // Every valid (exponent, factor) pair, e ascending then f ascending. The order decides the early
+  // exit and the fallback when every value is an exception.
+  static final int[][] ALL_VALID_FLOAT_PAIRS = buildAllPairs(FLOAT_MAX_EXPONENT);
+  static final int[][] ALL_VALID_DOUBLE_PAIRS = buildAllPairs(DOUBLE_MAX_EXPONENT);
 
   private static int[][] buildAllPairs(int maxExponent) {
     int count = (maxExponent + 1) * (maxExponent + 2) / 2;
@@ -209,16 +208,6 @@ final class AlpCodec {
     return pairs;
   }
 
-  /** Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size. */
-  static EncodingParams findBestFloatParams(float[] values, int offset, int length) {
-    return pickBestFloat(values, offset, length, ALL_VALID_FLOAT_PAIRS);
-  }
-
-  /** Same as findBestFloatParams but only tries the cached preset combos. */
-  static EncodingParams findBestFloatParamsWithPresets(float[] values, int offset, int length, int[][] presets) {
-    return pickBestFloat(values, offset, length, presets);
-  }
-
   /**
    * Scores each (exponent, factor) pair by estimated compressed size and returns the best.
    *
@@ -230,7 +219,7 @@ final class AlpCodec {
    * pairs} order) that encodes every value into a single FOR value with zero exceptions wins
    * outright. When no pair yields any non-exception values, {@code pairs[0]} is returned.
    */
-  private static EncodingParams pickBestFloat(float[] values, int offset, int length, int[][] pairs) {
+  static EncodingParams findBestFloatParams(float[] values, int offset, int length, int[][] pairs) {
     int bestExponent = pairs[0][E];
     int bestFactor = pairs[0][F];
     int bestExceptions = length;
@@ -277,18 +266,8 @@ final class AlpCodec {
     return new EncodingParams(bestExponent, bestFactor, bestExceptions);
   }
 
-  /** Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size. */
-  static EncodingParams findBestDoubleParams(double[] values, int offset, int length) {
-    return pickBestDouble(values, offset, length, ALL_VALID_DOUBLE_PAIRS);
-  }
-
-  /** Same as findBestDoubleParams but only tries the cached preset combos. */
-  static EncodingParams findBestDoubleParamsWithPresets(double[] values, int offset, int length, int[][] presets) {
-    return pickBestDouble(values, offset, length, presets);
-  }
-
-  /** Double counterpart to {@link #pickBestFloat}; see it for the scoring and tie-break rules. */
-  private static EncodingParams pickBestDouble(double[] values, int offset, int length, int[][] pairs) {
+  /** Double counterpart to {@link #findBestFloatParams}; see it for the scoring and tie-break rules. */
+  static EncodingParams findBestDoubleParams(double[] values, int offset, int length, int[][] pairs) {
     int bestExponent = pairs[0][E];
     int bestFactor = pairs[0][F];
     int bestExceptions = length;

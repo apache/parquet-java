@@ -136,7 +136,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
   private AlpCodec.EncodingParams chooseParams(int vectorSize) {
     AlpCodec.EncodingParams params;
     if (presets == null) {
-      params = findBestParams(vectorSize);
+      params = findBestParams(vectorSize, allPairs());
       if (vectorsProcessed % sampleJump == 0 && sampledParams.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
         sampledParams.add(new int[] {params.exponent, params.factor});
       }
@@ -145,7 +145,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         sampledParams.clear();
       }
     } else {
-      params = findBestParamsWithPresets(vectorSize, presets);
+      params = findBestParams(vectorSize, presets);
     }
     vectorsProcessed++;
     return params;
@@ -242,9 +242,10 @@ public abstract class AlpValuesWriter extends ValuesWriter {
   /** A rough size for a value not yet encoded; the exact size is known once its vector is. */
   protected abstract int estimatedBytesPerBufferedValue();
 
-  protected abstract AlpCodec.EncodingParams findBestParams(int vectorSize);
+  /** Every valid (exponent, factor) pair for this type, searched until the presets are built. */
+  protected abstract int[][] allPairs();
 
-  protected abstract AlpCodec.EncodingParams findBestParamsWithPresets(int vectorSize, int[][] presets);
+  protected abstract AlpCodec.EncodingParams findBestParams(int vectorSize, int[][] pairs);
 
   /**
    * Encodes the buffered values, recording exceptions in {@code exceptionPositions} and the
@@ -298,13 +299,13 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     @Override
-    protected AlpCodec.EncodingParams findBestParams(int vectorSize) {
-      return AlpCodec.findBestFloatParams(vectorBuffer, 0, vectorSize);
+    protected int[][] allPairs() {
+      return AlpCodec.ALL_VALID_FLOAT_PAIRS;
     }
 
     @Override
-    protected AlpCodec.EncodingParams findBestParamsWithPresets(int vectorSize, int[][] presets) {
-      return AlpCodec.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorSize, presets);
+    protected AlpCodec.EncodingParams findBestParams(int vectorSize, int[][] pairs) {
+      return AlpCodec.findBestFloatParams(vectorBuffer, 0, vectorSize, pairs);
     }
 
     @Override
@@ -459,13 +460,13 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     @Override
-    protected AlpCodec.EncodingParams findBestParams(int vectorSize) {
-      return AlpCodec.findBestDoubleParams(vectorBuffer, 0, vectorSize);
+    protected int[][] allPairs() {
+      return AlpCodec.ALL_VALID_DOUBLE_PAIRS;
     }
 
     @Override
-    protected AlpCodec.EncodingParams findBestParamsWithPresets(int vectorSize, int[][] presets) {
-      return AlpCodec.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorSize, presets);
+    protected AlpCodec.EncodingParams findBestParams(int vectorSize, int[][] pairs) {
+      return AlpCodec.findBestDoubleParams(vectorBuffer, 0, vectorSize, pairs);
     }
 
     @Override
