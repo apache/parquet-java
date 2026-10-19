@@ -317,6 +317,18 @@ public class ParquetReader<T> implements Closeable {
       return this;
     }
 
+    /**
+     * Sets the caller-owned executor for vectored reads.
+     *
+     * @param executor the executor shared by readers, or {@code null} to use the shared default
+     * @return this builder
+     * @see ParquetReadOptions.Builder#withVectoredReadExecutor(VectoredReadExecutor)
+     */
+    public Builder<T> withVectoredReadExecutor(VectoredReadExecutor executor) {
+      optionsBuilder.withVectoredReadExecutor(executor);
+      return this;
+    }
+
     public Builder<T> useSignedStringMinMax(boolean useSignedStringMinMax) {
       optionsBuilder.useSignedStringMinMax(useSignedStringMinMax);
       return this;

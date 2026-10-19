@@ -46,6 +46,7 @@ import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetMetricsCallback;
+import org.apache.parquet.hadoop.VectoredReadExecutor;
 import org.apache.parquet.hadoop.util.HadoopCodecs;
 
 // Internal use only
@@ -80,6 +81,7 @@ public class ParquetReadOptions {
   private final FileDecryptionProperties fileDecryptionProperties;
   private final ParquetConfiguration conf;
   private final ParquetMetricsCallback metricsCallback;
+  private final VectoredReadExecutor vectoredReadExecutor;
 
   ParquetReadOptions(
       boolean useSignedStringMinMax,
@@ -139,6 +141,48 @@ public class ParquetReadOptions {
       FileDecryptionProperties fileDecryptionProperties,
       ParquetMetricsCallback metricsCallback,
       ParquetConfiguration conf) {
+    this(
+        useSignedStringMinMax,
+        useStatsFilter,
+        useDictionaryFilter,
+        useRecordFilter,
+        useColumnIndexFilter,
+        usePageChecksumVerification,
+        useBloomFilter,
+        useOffHeapDecryptBuffer,
+        useHadoopVectoredIo,
+        recordFilter,
+        metadataFilter,
+        codecFactory,
+        allocator,
+        maxAllocationSize,
+        properties,
+        fileDecryptionProperties,
+        metricsCallback,
+        conf,
+        null);
+  }
+
+  ParquetReadOptions(
+      boolean useSignedStringMinMax,
+      boolean useStatsFilter,
+      boolean useDictionaryFilter,
+      boolean useRecordFilter,
+      boolean useColumnIndexFilter,
+      boolean usePageChecksumVerification,
+      boolean useBloomFilter,
+      boolean useOffHeapDecryptBuffer,
+      boolean useHadoopVectoredIo,
+      FilterCompat.Filter recordFilter,
+      ParquetMetadataConverter.MetadataFilter metadataFilter,
+      CompressionCodecFactory codecFactory,
+      ByteBufferAllocator allocator,
+      int maxAllocationSize,
+      Map<String, String> properties,
+      FileDecryptionProperties fileDecryptionProperties,
+      ParquetMetricsCallback metricsCallback,
+      ParquetConfiguration conf,
+      VectoredReadExecutor vectoredReadExecutor) {
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.useStatsFilter = useStatsFilter;
     this.useDictionaryFilter = useDictionaryFilter;
@@ -157,6 +201,7 @@ public class ParquetReadOptions {
     this.fileDecryptionProperties = fileDecryptionProperties;
     this.metricsCallback = metricsCallback;
     this.conf = conf;
+    this.vectoredReadExecutor = vectoredReadExecutor;
   }
 
   public boolean useSignedStringMinMax() {
@@ -193,6 +238,15 @@ public class ParquetReadOptions {
 
   public boolean useHadoopVectoredIo() {
     return useHadoopVectoredIo;
+  }
+
+  /**
+   * Returns the caller-supplied vectored-read executor, or {@code null} to use the shared default.
+   *
+   * @return the caller-supplied executor, or {@code null}
+   */
+  public VectoredReadExecutor getVectoredReadExecutor() {
+    return vectoredReadExecutor;
   }
 
   public FilterCompat.Filter getRecordFilter() {
@@ -276,6 +330,7 @@ public class ParquetReadOptions {
     protected FileDecryptionProperties fileDecryptionProperties = null;
     protected ParquetConfiguration conf;
     protected ParquetMetricsCallback metricsCallback;
+    protected VectoredReadExecutor vectoredReadExecutor;
 
     public Builder() {
       this(new HadoopParquetConfiguration());
@@ -343,6 +398,19 @@ public class ParquetReadOptions {
 
     public Builder withUseHadoopVectoredIo(boolean useHadoopVectoredIo) {
       this.useHadoopVectoredIo = useHadoopVectoredIo;
+      return this;
+    }
+
+    /**
+     * Sets the executor used for vectored reads. Share the same {@link VectoredReadExecutor}
+     * across readers which should share an admission limit. The caller owns the underlying
+     * executor; closing or aborting a reader never shuts it down.
+     *
+     * @param executor the caller-supplied executor, or {@code null} to use the shared default
+     * @return this builder
+     */
+    public Builder withVectoredReadExecutor(VectoredReadExecutor executor) {
+      this.vectoredReadExecutor = executor;
       return this;
     }
 
@@ -451,6 +519,7 @@ public class ParquetReadOptions {
       useRecordFilter(options.useRecordFilter);
       withRecordFilter(options.recordFilter);
       withUseHadoopVectoredIo(options.useHadoopVectoredIo);
+      withVectoredReadExecutor(options.vectoredReadExecutor);
       withMetadataFilter(options.metadataFilter);
       withCodecFactory(options.codecFactory);
       withAllocator(options.allocator);
@@ -491,7 +560,8 @@ public class ParquetReadOptions {
           properties,
           fileDecryptionProperties,
           metricsCallback,
-          conf);
+          conf,
+          vectoredReadExecutor);
     }
   }
 }

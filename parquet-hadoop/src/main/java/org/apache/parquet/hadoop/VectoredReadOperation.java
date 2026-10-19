@@ -87,7 +87,7 @@ final class VectoredReadOperation {
     this.stream = stream;
     this.ranges = ranges;
     this.allocator = new VectoredReadBufferAllocator(allocator);
-    this.executor = executor;
+    this.executor = executor != null ? executor : SharedExecutor.INSTANCE;
     this.timeoutNanos = unit.toNanos(timeout);
   }
 

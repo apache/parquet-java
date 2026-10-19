@@ -29,17 +29,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
@@ -305,6 +312,171 @@ class TestParquetFileReaderVectoredOwnership {
     }
   }
 
+  @Test
+  void testCallerExecutorIsSharedByBaseAndHadoopOptionsAndTheirCopies() throws Exception {
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    CountingAllocator delegate = new CountingAllocator();
+    try (TrackingByteBufferAllocator tracking = TrackingByteBufferAllocator.wrap(delegate)) {
+      Thread worker = executor.submit(Thread::currentThread).get(10, TimeUnit.SECONDS);
+      VectoredReadExecutor vectoredExecutor = new VectoredReadExecutor(executor, 1);
+      ParquetReadOptions baseOptions = ParquetReadOptions.builder()
+          .withAllocator(tracking)
+          .withUseHadoopVectoredIo(true)
+          .withMaxAllocationInBytes(MAXIMUM_ALLOCATION)
+          .withVectoredReadExecutor(vectoredExecutor)
+          .build();
+      ParquetReadOptions hadoopOptions = HadoopReadOptions.builder(new Configuration())
+          .withAllocator(tracking)
+          .withUseHadoopVectoredIo(true)
+          .withMaxAllocationInBytes(MAXIMUM_ALLOCATION)
+          .withVectoredReadExecutor(vectoredExecutor)
+          .build();
+      assertThat(hadoopOptions).isInstanceOf(HadoopReadOptions.class);
+      List<ParquetReadOptions> readOptions = Arrays.asList(
+          baseOptions,
+          hadoopOptions,
+          ParquetReadOptions.builder().copy(baseOptions).build(),
+          HadoopReadOptions.builder(new Configuration())
+              .copy(baseOptions)
+              .build(),
+          ParquetReadOptions.builder().copy(hadoopOptions).build(),
+          HadoopReadOptions.builder(new Configuration())
+              .copy(hadoopOptions)
+              .build());
+
+      for (ParquetReadOptions readOption : readOptions) {
+        assertThat(readOption.getVectoredReadExecutor()).isSameAs(vectoredExecutor);
+        OwnedStream stream = new OwnedStream(inputFile.newStream(), ReadMode.ORIGINALS);
+        try (ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, readOption, stream)) {
+          try (PageReadStore pages = reader.readRowGroup(0)) {
+            assertThat(pages.getRowCount()).isEqualTo(ROWS);
+            RecordReader<Group> records = new ColumnIOFactory()
+                .getColumnIO(SCHEMA)
+                .getRecordReader(pages, new GroupRecordConverter(SCHEMA));
+            for (int row = 0; row < ROWS; row++) {
+              Group record = records.read();
+              assertThat(record.getInteger("id", 0)).isEqualTo(row);
+              assertThat(record.getString("padding", 0)).isEqualTo("padding_" + row);
+            }
+          }
+          assertThat(stream.submissionThread).isSameAs(worker);
+          assertThat(stream.vectorCalls).isEqualTo(1);
+        }
+        assertThat(stream.closeCalls.get()).isEqualTo(1);
+        assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+        assertThat(executor.isShutdown()).isFalse();
+      }
+      assertThat(executor.submit(Thread::currentThread).get(10, TimeUnit.SECONDS))
+          .isSameAs(worker);
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
+  @Test
+  void testCallerExecutorRemainsUsableAfterErrorCleanupAndReaderClose() throws Exception {
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    CountingAllocator delegate = new CountingAllocator();
+    try (TrackingByteBufferAllocator tracking = TrackingByteBufferAllocator.wrap(delegate)) {
+      Thread worker = executor.submit(Thread::currentThread).get(10, TimeUnit.SECONDS);
+      ParquetReadOptions readOptions = ParquetReadOptions.builder()
+          .withAllocator(tracking)
+          .withUseHadoopVectoredIo(true)
+          .withMaxAllocationInBytes(MAXIMUM_ALLOCATION)
+          .withVectoredReadExecutor(new VectoredReadExecutor(executor, 1))
+          .build();
+      ErrorWhileDrainingStream stream =
+          new ErrorWhileDrainingStream(inputFile.newStream(), new IOException("injected initial IO failure"));
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, readOptions, stream)) {
+        try {
+          assertThatThrownBy(() -> reader.readRowGroup(0))
+              .isInstanceOf(AssertionError.class)
+              .hasMessage("injected sibling error")
+              .isSameAs(stream.siblingError);
+          assertThat(stream.submissionThread).isSameAs(worker);
+          stream.closeCompleted.get(10, TimeUnit.SECONDS);
+          assertThat(stream.closeThread).isSameAs(worker);
+          assertThat(stream.pendingRead.isDone()).isFalse();
+          assertThat(delegate.releases.get()).isZero();
+        } finally {
+          stream.finishPendingRead();
+        }
+      }
+      assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+      assertThat(executor.isShutdown()).isFalse();
+      assertThat(executor.submit(Thread::currentThread).get(10, TimeUnit.SECONDS))
+          .isSameAs(worker);
+
+      OwnedStream nextStream = new OwnedStream(inputFile.newStream(), ReadMode.ORIGINALS);
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, readOptions, nextStream);
+          PageReadStore pages = reader.readRowGroup(0)) {
+        assertThat(pages.getRowCount()).isEqualTo(ROWS);
+        assertThat(nextStream.submissionThread).isSameAs(worker);
+      }
+      assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+      assertThat(executor.isShutdown()).isFalse();
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
+  @Test
+  void testInlineExecutorRejectionLeavesReaderAndCapacityUsable() throws Exception {
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    CountingAllocator delegate = new CountingAllocator();
+    try (TrackingByteBufferAllocator tracking = TrackingByteBufferAllocator.wrap(delegate)) {
+      Thread worker = executor.submit(Thread::currentThread).get(10, TimeUnit.SECONDS);
+      AtomicBoolean inlineNext = new AtomicBoolean(true);
+      VectoredReadExecutor vectoredExecutor = new VectoredReadExecutor(
+          task -> {
+            if (inlineNext.getAndSet(false)) {
+              task.run();
+            } else {
+              executor.execute(task);
+            }
+          },
+          1);
+      ParquetReadOptions readOptions = ParquetReadOptions.builder()
+          .withAllocator(tracking)
+          .withUseHadoopVectoredIo(true)
+          .withMaxAllocationInBytes(MAXIMUM_ALLOCATION)
+          .withVectoredReadExecutor(vectoredExecutor)
+          .build();
+      OwnedStream stream = new OwnedStream(inputFile.newStream(), ReadMode.ORIGINALS);
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, readOptions, stream)) {
+        // Run on a daemon worker so a regression that deadlocks inline execution fails the bounded wait.
+        FutureTask<Void> rejectedRead = new FutureTask<>(() -> {
+          try (PageReadStore ignored = reader.readRowGroup(0)) {
+            return null;
+          }
+        });
+        Thread readingThread = new Thread(rejectedRead, "parquet-inline-rejection-test");
+        readingThread.setDaemon(true);
+        readingThread.start();
+        assertThatThrownBy(() -> rejectedRead.get(10, TimeUnit.SECONDS))
+            .isInstanceOf(ExecutionException.class)
+            .hasMessageContaining("Vectored read executor must not execute tasks inline")
+            .hasCauseInstanceOf(RejectedExecutionException.class);
+        assertThat(stream.vectorCalls).isZero();
+        assertThat(stream.closeCalls.get()).isZero();
+        assertThat(delegate.allocations.get()).isZero();
+
+        try (PageReadStore pages = reader.readRowGroup(0)) {
+          assertThat(pages.getRowCount()).isEqualTo(ROWS);
+          assertThat(stream.submissionThread).isSameAs(worker);
+        }
+        assertThat(stream.vectorCalls).isEqualTo(1);
+        assertThat(delegate.releases.get()).isEqualTo(delegate.allocations.get());
+      }
+      assertThat(executor.isShutdown()).isFalse();
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
   private static ParquetReadOptions options(ByteBufferAllocator allocator) {
     return ParquetReadOptions.builder()
         .withAllocator(allocator)
@@ -346,6 +518,8 @@ class TestParquetFileReaderVectoredOwnership {
     private final CompletableFuture<Void> closeCompleted = new CompletableFuture<>();
     private ByteBuffer pendingBuffer;
     private int vectorCalls;
+    private Thread submissionThread;
+    private Thread closeThread;
 
     private ErrorWhileDrainingStream(SeekableInputStream delegate, Throwable initialFailure) {
       super(delegate);
@@ -371,6 +545,7 @@ class TestParquetFileReaderVectoredOwnership {
     @Override
     public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) {
       vectorCalls++;
+      submissionThread = Thread.currentThread();
       assertThat(ranges).hasSizeGreaterThanOrEqualTo(3);
       for (int index = 0; index < ranges.size(); index++) {
         ParquetFileRange range = ranges.get(index);
@@ -408,6 +583,7 @@ class TestParquetFileReaderVectoredOwnership {
 
     @Override
     public void close() throws IOException {
+      closeThread = Thread.currentThread();
       try {
         super.close();
       } finally {
@@ -423,6 +599,7 @@ class TestParquetFileReaderVectoredOwnership {
     private final CountDownLatch allowClose = new CountDownLatch(1);
     private final AtomicInteger closeCalls = new AtomicInteger();
     private int vectorCalls;
+    private Thread submissionThread;
     private int rangeCount;
     private int maximumRangeLength;
 
@@ -469,6 +646,7 @@ class TestParquetFileReaderVectoredOwnership {
     @Override
     public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) throws IOException {
       vectorCalls++;
+      submissionThread = Thread.currentThread();
       rangeCount = ranges.size();
       ByteBuffer merged = null;
       if (mode == ReadMode.SLICES) {

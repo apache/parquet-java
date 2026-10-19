@@ -560,10 +560,10 @@ if not found then the library will use the classic non-vectored reads: it is saf
 
 **JVM system property:** `parquet.hadoop.vectored.io.threads`
 
-**Description:** Maximum number of shared vectored-read workers. Set a positive integer
+**Description:** Maximum number of workers in the default shared vectored-read pool. Set a positive integer
 with `-Dparquet.hadoop.vectored.io.threads=N` before the first vectored read; this is
 read once per JVM, not from the Hadoop configuration. Invalid values fail initialization.
-All readers share this limit. Waiting for a worker, submitting the read, and waiting
+Readers without a caller-supplied executor share this limit. Waiting for a worker, submitting the read, and waiting
 for its results share the same 300-second deadline. If admission times out, the read
 fails before submitting filesystem work and the reader retains its stream.
 
@@ -575,6 +575,34 @@ out waiting for capacity. Idle workers expire after 60 seconds. This limit does 
 bound threads created by the filesystem or total buffer memory.
 
 **Default value:** `64`
+
+Applications can supply their own executor through `ParquetReadOptions` (including
+`HadoopReadOptions`) or `ParquetReader.Builder.withVectoredReadExecutor` instead of
+using the default pool:
+
+```java
+ExecutorService ioPool = Executors.newFixedThreadPool(8);
+VectoredReadExecutor vectoredReads = new VectoredReadExecutor(ioPool, 8);
+ParquetReadOptions options = ParquetReadOptions.builder()
+    .withVectoredReadExecutor(vectoredReads)
+    .build();
+```
+
+Reuse the same `VectoredReadExecutor` across readers to share its admission limit.
+Copies of the read options retain that same instance. The limit bounds accepted
+vectored operations, including queued work and failure cleanup, independently of
+other tasks submitted to the underlying executor. A supplied executor bypasses the
+JVM default and its system property; passing `null` restores the default.
+
+The application owns the supplied executor: Parquet never shuts it down, including
+when a reader closes or fails. Its `execute` method must return promptly, run tasks asynchronously, and either accept
+them for execution or reject them with an exception, without silently dropping
+tasks. Inline execution (including `CallerRunsPolicy`) is rejected before filesystem
+submission. Reading threads must not occupy all of the supplied pool's workers
+while waiting for vectored reads on that same pool. After readers finish, use an
+orderly shutdown that drains accepted tasks; `shutdownNow()` or cancelling queued
+tasks can prevent deferred cleanup. Closing a failed reader does not imply that
+an interruption-ignoring backend or its cleanup has finished.
 
 ---
 

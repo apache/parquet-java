@@ -1395,7 +1395,12 @@ public class ParquetFileReader implements Closeable {
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     VectoredReadOperation operation = new VectoredReadOperation(
-        f, ranges, options.getAllocator(), HADOOP_VECTORED_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        f,
+        ranges,
+        options.getAllocator(),
+        options.getVectoredReadExecutor(),
+        HADOOP_VECTORED_READ_TIMEOUT_SECONDS,
+        TimeUnit.SECONDS);
     try {
       // Even a synchronous rejection can follow partial submission. The Hadoop bridge
       // may expose futures for reads which were never scheduled. Once submission is
