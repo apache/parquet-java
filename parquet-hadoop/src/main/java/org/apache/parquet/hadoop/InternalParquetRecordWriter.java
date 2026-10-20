@@ -104,9 +104,8 @@ class InternalParquetRecordWriter<T> {
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
     this.rowGroupOrdinal = 0;
-    this.contentDefinedChunkers = props.isContentDefinedChunkingEnabled()
-        ? ContentDefinedChunker.forColumns(schema, props.getContentDefinedChunkingOptions())
-        : null;
+    this.contentDefinedChunkers =
+        props.isContentDefinedChunkingEnabled() ? ContentDefinedChunker.forColumns(schema, props) : null;
     initStore();
     recordCountForNextMemCheck = props.getMinRowCountForPageSizeCheck();
   }
