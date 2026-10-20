@@ -61,7 +61,8 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
       ColumnDescriptor path,
       PageWriter pageWriter,
       BloomFilterWriter bloomFilterWriter,
+      ContentDefinedChunker chunker,
       ParquetProperties props) {
-    return new ColumnWriterV1(path, pageWriter, bloomFilterWriter, props);
+    return new ColumnWriterV1(path, pageWriter, bloomFilterWriter, chunker, props);
   }
 }

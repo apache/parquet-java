@@ -303,8 +303,8 @@ public class TestContentDefinedChunker {
 
   private static ContentDefinedChunker chunkerFor(CdcOptions options) {
     return new ContentDefinedChunker(
-        options,
-        new ColumnDescriptor(new String[] {"v"}, Types.required(INT64).named("v"), 0, 0));
+        new ColumnDescriptor(new String[] {"v"}, Types.required(INT64).named("v"), 0, 0),
+        unboundedProps(options));
   }
 
   private static ParquetProperties props(WriterVersion version) {

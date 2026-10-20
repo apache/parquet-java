@@ -55,7 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-public class TestChunkingColumnWriter {
+public class TestColumnWriterChunking {
 
   private static final CdcOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
   private static final int EDIT = 50;
@@ -103,7 +103,7 @@ public class TestChunkingColumnWriter {
         + type.name().toLowerCase() + (type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY ? "(8)" : "") + " v; }");
     long[] values = newLongs(60_000, 13);
     ContentDefinedChunker chunker =
-        new ContentDefinedChunker(OPTIONS, schema.getColumns().get(0));
+        new ContentDefinedChunker(schema.getColumns().get(0), unboundedProps(OPTIONS));
     List<Integer> expected = chunkSizes(values.length, i -> roll(chunker, type, values[i]));
 
     assertThat(valueCounts(writePages(
@@ -163,8 +163,9 @@ public class TestChunkingColumnWriter {
         writePages(optional, unboundedProps(options(64, 256, 0)), 4096, (writer, i) -> writer.writeNull(0, 0)));
 
     assertThat(counts.stream().mapToInt(Integer::intValue).sum()).isEqualTo(4096);
-    assertThat(counts.subList(0, counts.size() - 1)).hasSizeGreaterThan(30).allSatisfy(count -> assertThat(count)
-        .isBetween(32, 128));
+    assertThat(counts.subList(0, counts.size() - 1))
+        .hasSizeGreaterThan(30)
+        .allSatisfy(count -> assertThat(count).isBetween(32, 128));
   }
 
   @Test
@@ -178,9 +179,11 @@ public class TestChunkingColumnWriter {
         .build();
     List<DataPage> dictionary = writePages(REQUIRED_BINARY, props, values.length, record);
 
-    assertThat(dictionary).hasSizeGreaterThan(5).allSatisfy(page -> assertThat(
-            ((DataPageV1) page).getValueEncoding().usesDictionary())
-        .isTrue());
+    assertThat(dictionary)
+        .hasSizeGreaterThan(5)
+        .allSatisfy(page -> assertThat(
+                ((DataPageV1) page).getValueEncoding().usesDictionary())
+            .isTrue());
     assertThat(valueCounts(dictionary)).containsExactlyElementsOf(valueCounts(plain));
   }
 
@@ -396,7 +399,7 @@ public class TestChunkingColumnWriter {
     }
 
     List<Binary> pageBytes(long[] seeds) throws IOException {
-      return TestChunkingColumnWriter.pageBytes(writePages(
+      return TestColumnWriterChunking.pageBytes(writePages(
           schema,
           unboundedProps(options(1024, 4096, 0)),
           seeds.length,
