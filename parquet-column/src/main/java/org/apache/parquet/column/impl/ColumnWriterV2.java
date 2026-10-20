@@ -69,6 +69,15 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     super(path, pageWriter, bloomFilterWriter, props);
   }
 
+  ColumnWriterV2(
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      BloomFilterWriter bloomFilterWriter,
+      ContentDefinedChunker chunker,
+      ParquetProperties props) {
+    super(path, pageWriter, bloomFilterWriter, chunker, props);
+  }
+
   @Override
   ValuesWriter createRLWriter(ParquetProperties props, ColumnDescriptor path) {
     return path.getMaxRepetitionLevel() == 0

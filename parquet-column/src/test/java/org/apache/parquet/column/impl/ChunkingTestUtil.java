@@ -105,9 +105,8 @@ public final class ChunkingTestUtil {
       ObjIntConsumer<ColumnWriter> writeRecord,
       int... rowGroupStarts) {
     ColumnDescriptor path = schema.getColumns().get(0);
-    List<ContentDefinedChunker> chunkers = props.isContentDefinedChunkingEnabled()
-        ? ContentDefinedChunker.forColumns(schema, props.getContentDefinedChunkingOptions())
-        : null;
+    List<ContentDefinedChunker> chunkers =
+        props.isContentDefinedChunkingEnabled() ? ContentDefinedChunker.forColumns(schema, props) : null;
     List<DataPage> pages = new ArrayList<>();
     int record = 0;
     for (int end : IntStream.concat(IntStream.of(rowGroupStarts), IntStream.of(rows))
@@ -128,7 +127,7 @@ public final class ChunkingTestUtil {
   }
 
   /**
-   * Value counts per page, as {@code ChunkingColumnWriter} counts them: a boundary closes the page
+   * Value counts per page, as the column writer cuts them: a boundary closes the page
    * before the triplet that triggered it.
    */
   static List<Integer> chunkSizes(int count, IntPredicate roll) {

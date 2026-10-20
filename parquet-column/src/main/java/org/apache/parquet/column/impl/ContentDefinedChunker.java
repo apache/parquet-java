@@ -24,24 +24,30 @@ import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Decides the content defined data page boundaries of one leaf column for a whole file: each
- * triplet is rolled into the hash, and {@link #needNewChunk()} says whether a chunk ends before the
- * next one.
+ * Decides the content defined data page boundaries of one leaf column for a whole file. The column
+ * writer rolls every triplet into the hash and asks {@link #needNewPage} whether a page ends before
+ * it; a no-op chunker, {@link #noop()}, stands in while content defined chunking is disabled.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
  * whose boundaries it must reproduce. Not thread safe.
  */
-public final class ContentDefinedChunker {
+public class ContentDefinedChunker {
+
+  private static final ContentDefinedChunker NOOP = new NoopChunker();
 
   private final long minChunkSize;
   private final long maxChunkSize;
-  private final long mask;
+  private final long rollingHashMask;
   private final int maxDef;
   private final int maxRep;
+  private final long pageSizeThreshold;
+  private final int pageValueCountThreshold;
+  private final int pageRowCountLimit;
 
   private long rollingHash;
   private boolean hasMatched;
@@ -53,21 +59,42 @@ public final class ContentDefinedChunker {
    * every row group's column write store of the file continues.
    *
    * @param schema the schema of the file
-   * @param options the content defined chunking options
+   * @param props the writer properties, with content defined chunking enabled
    * @return the chunkers
    */
-  public static List<ContentDefinedChunker> forColumns(MessageType schema, CdcOptions options) {
+  public static List<ContentDefinedChunker> forColumns(MessageType schema, ParquetProperties props) {
     return schema.getColumns().stream()
-        .map(path -> new ContentDefinedChunker(options, path))
+        .map(path -> new ContentDefinedChunker(path, props))
         .collect(Collectors.toList());
   }
 
-  ContentDefinedChunker(CdcOptions options, ColumnDescriptor path) {
+  /** The chunker of a column without content defined chunking, which never ends a page. */
+  static ContentDefinedChunker noop() {
+    return NOOP;
+  }
+
+  ContentDefinedChunker(ColumnDescriptor path, ParquetProperties props) {
+    CdcOptions options = props.getContentDefinedChunkingOptions();
     this.minChunkSize = options.getMinChunkSize();
     this.maxChunkSize = options.getMaxChunkSize();
-    this.mask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
+    this.rollingHashMask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
     this.maxDef = path.getMaxDefinitionLevel();
     this.maxRep = path.getMaxRepetitionLevel();
+    this.pageSizeThreshold = props.getPageSizeThreshold();
+    this.pageValueCountThreshold = props.getPageValueCountThreshold();
+    this.pageRowCountLimit = props.getPageRowCountLimit();
+  }
+
+  /** Only for {@link NoopChunker}, which uses none of the state. */
+  private ContentDefinedChunker() {
+    this.minChunkSize = 0;
+    this.maxChunkSize = 0;
+    this.rollingHashMask = 0;
+    this.maxDef = 0;
+    this.maxRep = 0;
+    this.pageSizeThreshold = 0;
+    this.pageValueCountThreshold = 0;
+    this.pageRowCountLimit = 0;
   }
 
   /**
@@ -114,60 +141,95 @@ public final class ContentDefinedChunker {
   }
 
   void roll(int value, int repetitionLevel, int definitionLevel) {
-    rollTriplet(value, 4, repetitionLevel, definitionLevel);
+    rollLevels(repetitionLevel, definitionLevel);
+    roll(value, 4);
   }
 
   void roll(long value, int repetitionLevel, int definitionLevel) {
-    rollTriplet(value, 8, repetitionLevel, definitionLevel);
+    rollLevels(repetitionLevel, definitionLevel);
+    roll(value, 8);
   }
 
   void roll(float value, int repetitionLevel, int definitionLevel) {
+    rollLevels(repetitionLevel, definitionLevel);
     // Raw bits: floatToIntBits canonicalizes NaN payloads and would diverge from the references.
-    rollTriplet(Float.floatToRawIntBits(value), 4, repetitionLevel, definitionLevel);
+    roll(Float.floatToRawIntBits(value), 4);
   }
 
   void roll(double value, int repetitionLevel, int definitionLevel) {
-    rollTriplet(Double.doubleToRawLongBits(value), 8, repetitionLevel, definitionLevel);
+    rollLevels(repetitionLevel, definitionLevel);
+    roll(Double.doubleToRawLongBits(value), 8);
   }
 
   void roll(boolean value, int repetitionLevel, int definitionLevel) {
-    // One byte per boolean, not one bit, as the references hash it.
-    rollTriplet(value ? 1 : 0, 1, repetitionLevel, definitionLevel);
-  }
-
-  private void rollTriplet(long bits, int width, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    rollFixedWidth(bits, width);
+    // One byte per boolean, not one bit, as the references hash it.
+    roll(value ? 1 : 0, 1);
   }
 
   void roll(Binary value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    rollBinary(value);
+    roll(value);
   }
 
   /**
-   * Rolls the levels only, even when {@code definitionLevel == maxDef}: an omitted top-level
-   * required field arrives here as {@code (0, 0)} and has no value to hash.
+   * Rolls the triplet of a null, which has no value to hash even when {@code definitionLevel ==
+   * maxDef}, as an omitted top-level required field does.
    */
   void rollNull(int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
   }
 
   /**
-   * Definition level first, and each level as two bytes: the references hash the levels as int16_t
-   * in this order.
+   * The levels of a triplet as two bytes each, definition level first, as the references hash them,
+   * and only those the column has; Arrow C++ does this inline in {@code Calculate}.
    */
   private void rollLevels(int repetitionLevel, int definitionLevel) {
     if (maxDef > 0) {
-      rollFixedWidth(definitionLevel, 2);
+      roll(definitionLevel, 2);
     }
     if (maxRep > 0) {
-      rollFixedWidth(repetitionLevel, 2);
+      roll(repetitionLevel, 2);
     }
   }
 
-  /** The value's bytes without a length prefix, as the references hash them. */
-  private void rollBinary(Binary value) {
+  /**
+   * Whether the page ends before this triplet: at a record start, if a chunk ends there or a page
+   * limit is reached, counted from the page start so that it cuts in the same places after an edit.
+   * Asking consumes a match, so a match inside a record carries over to the next record start. A
+   * boundary on the first value of a page has no page to end.
+   */
+  boolean needNewPage(int repetitionLevel, ColumnWriterBase writer) {
+    if (repetitionLevel != 0) {
+      return false;
+    }
+    boolean chunkBoundary = needNewChunk();
+    return writer.getValueCount() > 0
+        && (chunkBoundary
+            || writer.getPageRowCount() >= pageRowCountLimit
+            || writer.getValueCount() >= pageValueCountThreshold
+            || writer.getCurrentPageBufferedSize() >= pageSizeThreshold);
+  }
+
+  /** Arrow C++ {@code Roll<kByteWidth>}: the {@code byteWidth} low-order bytes, little-endian. */
+  private void roll(long bits, int byteWidth) {
+    chunkSize += byteWidth;
+    if (chunkSize < minChunkSize) {
+      return;
+    }
+    long hash = rollingHash;
+    boolean matched = hasMatched;
+    long[] table = GearHashTable.TABLE[nthRun];
+    for (int i = 0; i < byteWidth; ++i) {
+      hash = (hash << 1) + table[(int) ((bits >>> (8 * i)) & 0xFF)];
+      matched |= (hash & rollingHashMask) == 0;
+    }
+    rollingHash = hash;
+    hasMatched = matched;
+  }
+
+  /** Arrow C++ {@code Roll(const uint8_t*, length)}: the value's bytes without a length prefix. */
+  private void roll(Binary value) {
     chunkSize += value.length();
     if (chunkSize < minChunkSize) {
       return;
@@ -179,36 +241,16 @@ public final class ContentDefinedChunker {
     long[] table = GearHashTable.TABLE[nthRun];
     for (int i = bytes.position(); i < bytes.limit(); ++i) {
       hash = (hash << 1) + table[bytes.get(i) & 0xFF];
-      matched |= (hash & mask) == 0;
+      matched |= (hash & rollingHashMask) == 0;
     }
     rollingHash = hash;
     hasMatched = matched;
   }
 
   /**
-   * The {@code width} low-order bytes of {@code bits}, little-endian. Like the references, this
-   * checks the skip window once per value rather than per byte.
-   */
-  private void rollFixedWidth(long bits, int width) {
-    chunkSize += width;
-    if (chunkSize < minChunkSize) {
-      return;
-    }
-    long hash = rollingHash;
-    boolean matched = hasMatched;
-    long[] table = GearHashTable.TABLE[nthRun];
-    for (int i = 0; i < width; ++i) {
-      hash = (hash << 1) + table[(int) ((bits >>> (8 * i)) & 0xFF)];
-      matched |= (hash & mask) == 0;
-    }
-    rollingHash = hash;
-    hasMatched = matched;
-  }
-
-  /**
-   * A chunk ends after eight matches, each against the next gear hash table, which approximates a
-   * normal chunk size distribution; or at {@code maxChunkSize}. As in the references, neither
-   * resets the rolling hash, and the maximum size cut leaves the run counter alone.
+   * Arrow C++ {@code NeedNewChunk}: a chunk ends after eight matches, each against the next gear
+   * hash table, which approximates a normal chunk size distribution; or at {@code maxChunkSize}.
+   * Neither resets the rolling hash, and the maximum size cut leaves the run counter alone.
    */
   boolean needNewChunk() {
     if (hasMatched) {
@@ -224,5 +266,34 @@ public final class ContentDefinedChunker {
       return true;
     }
     return false;
+  }
+
+  /** The chunker of a column without content defined chunking: it rolls nothing and ends no page. */
+  private static final class NoopChunker extends ContentDefinedChunker {
+    @Override
+    void roll(int value, int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    void roll(long value, int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    void roll(float value, int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    void roll(double value, int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    void roll(boolean value, int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    void roll(Binary value, int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    void rollNull(int repetitionLevel, int definitionLevel) {}
+
+    @Override
+    boolean needNewPage(int repetitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
   }
 }
