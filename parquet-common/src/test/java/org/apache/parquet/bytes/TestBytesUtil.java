@@ -19,8 +19,13 @@
 package org.apache.parquet.bytes;
 
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxLong;
+import static org.apache.parquet.bytes.BytesUtils.readUnsignedByte;
+import static org.apache.parquet.bytes.BytesUtils.readUnsignedShortLittleEndian;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.junit.jupiter.api.Test;
 
 public class TestBytesUtil {
@@ -45,5 +50,61 @@ public class TestBytesUtil {
     assertThat(getWidthFromMaxInt(127)).isEqualTo(7);
     assertThat(getWidthFromMaxInt(128)).isEqualTo(8);
     assertThat(getWidthFromMaxInt(255)).isEqualTo(8);
+  }
+
+  @Test
+  public void testWidthLong() {
+    assertThat(getWidthFromMaxLong(0L)).isZero();
+    assertThat(getWidthFromMaxLong(1L)).isEqualTo(1);
+    assertThat(getWidthFromMaxLong(2L)).isEqualTo(2);
+    assertThat(getWidthFromMaxLong(3L)).isEqualTo(2);
+    assertThat(getWidthFromMaxLong(4L)).isEqualTo(3);
+    assertThat(getWidthFromMaxLong(255L)).isEqualTo(8);
+    assertThat(getWidthFromMaxLong(256L)).isEqualTo(9);
+    assertThat(getWidthFromMaxLong(65535L)).isEqualTo(16);
+    assertThat(getWidthFromMaxLong((long) Integer.MAX_VALUE)).isEqualTo(31);
+    // Beyond the int range, where getWidthFromMaxInt cannot be used
+    assertThat(getWidthFromMaxLong(1L << 32)).isEqualTo(33);
+    assertThat(getWidthFromMaxLong(Long.MAX_VALUE)).isEqualTo(63);
+    // A negative bound has the sign bit set, so it occupies the full 64 bits
+    assertThat(getWidthFromMaxLong(-1L)).isEqualTo(64);
+  }
+
+  @Test
+  public void testReadUnsignedByte() {
+    ByteBuffer buf = ByteBuffer.wrap(new byte[] {0, 0x7f, (byte) 0x80, (byte) 0xff});
+    assertThat(readUnsignedByte(buf, 0)).isZero();
+    assertThat(readUnsignedByte(buf, 1)).isEqualTo(127);
+    assertThat(readUnsignedByte(buf, 2)).isEqualTo(128);
+    assertThat(readUnsignedByte(buf, 3)).isEqualTo(255);
+    // The offset is absolute, so the buffer's position doesn't matter
+    buf.position(3);
+    assertThat(readUnsignedByte(buf, 2)).isEqualTo(128);
+  }
+
+  @Test
+  public void testReadUnsignedShortLittleEndian() {
+    byte[] bytes = {0, 0, (byte) 0xff, 0x7f, 0, (byte) 0x80, (byte) 0xff, (byte) 0xff, 0x34, 0x12};
+    for (ByteOrder order : new ByteOrder[] {ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN}) {
+      ByteBuffer buf = ByteBuffer.wrap(bytes).order(order);
+      assertThat(readUnsignedShortLittleEndian(buf, 0))
+          .as("order=%s", order)
+          .isZero();
+      assertThat(readUnsignedShortLittleEndian(buf, 2))
+          .as("order=%s", order)
+          .isEqualTo(32767);
+      assertThat(readUnsignedShortLittleEndian(buf, 4))
+          .as("order=%s", order)
+          .isEqualTo(32768);
+      assertThat(readUnsignedShortLittleEndian(buf, 6))
+          .as("order=%s", order)
+          .isEqualTo(65535);
+      assertThat(readUnsignedShortLittleEndian(buf, 8))
+          .as("order=%s", order)
+          .isEqualTo(0x1234);
+      assertThat(readUnsignedShortLittleEndian(buf, 3))
+          .as("order=%s", order)
+          .isEqualTo(0x007f);
+    }
   }
 }
