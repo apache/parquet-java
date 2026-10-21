@@ -115,12 +115,6 @@ abstract class ColumnWriterBase implements ColumnWriter {
     }
   }
 
-  private void endPageAtChunkBoundary(int repetitionLevel) {
-    if (chunker.needNewPage(repetitionLevel, this)) {
-      writePage();
-    }
-  }
-
   /**
    * Writes the current null value
    *
@@ -131,8 +125,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     try {
-      chunker.rollNull(repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       collector.writeNull(repetitionLevel, definitionLevel);
@@ -171,8 +166,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(double value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      chunker.roll(value, repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       dataColumn.writeDouble(value);
@@ -195,8 +191,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(float value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      chunker.roll(value, repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       dataColumn.writeFloat(value);
@@ -219,8 +216,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      chunker.roll(value, repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       dataColumn.writeBytes(value);
@@ -243,8 +241,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      chunker.roll(value, repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       dataColumn.writeBoolean(value);
@@ -267,8 +266,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      chunker.roll(value, repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       dataColumn.writeInteger(value);
@@ -291,8 +291,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(long value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      chunker.roll(value, repetitionLevel, definitionLevel);
-      endPageAtChunkBoundary(repetitionLevel);
+      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
+        writePage();
+      }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
       dataColumn.writeLong(value);

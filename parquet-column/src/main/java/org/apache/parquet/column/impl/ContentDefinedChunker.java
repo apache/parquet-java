@@ -30,8 +30,9 @@ import org.apache.parquet.schema.MessageType;
 
 /**
  * Decides the content defined data page boundaries of one leaf column for a whole file. The column
- * writer rolls every triplet into the hash and asks {@link #needNewPage} whether a page ends before
- * it; a no-op chunker, {@link #noop()}, stands in while content defined chunking is disabled.
+ * writer asks {@code needNewPage} before writing each triplet, which this chunker answers by rolling
+ * the triplet into its hash; a no-op chunker, {@link #noop()}, stands in while content defined
+ * chunking is disabled.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
  * whose boundaries it must reproduce. Not thread safe.
@@ -194,12 +195,51 @@ public class ContentDefinedChunker {
   }
 
   /**
-   * Whether the page ends before this triplet: at a record start, if a chunk ends there or a page
-   * limit is reached, counted from the page start so that it cuts in the same places after an edit.
-   * Asking consumes a match, so a match inside a record carries over to the next record start. A
-   * boundary on the first value of a page has no page to end.
+   * Whether the column writer should end its page before this triplet, which it asks before writing
+   * each one; {@code needNewPage(repetitionLevel, definitionLevel, writer)} asks for a null.
    */
-  boolean needNewPage(int repetitionLevel, ColumnWriterBase writer) {
+  boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    roll(value, repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    roll(value, repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    roll(value, repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    roll(value, repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    roll(value, repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    roll(value, repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    rollNull(repetitionLevel, definitionLevel);
+    return pageEndsBefore(repetitionLevel, writer);
+  }
+
+  /**
+   * At a record start, if a chunk ends there or a page limit is reached, counted from the page start
+   * so that it cuts in the same places after an edit. Asking consumes a match, so a match inside a
+   * record carries over to the next record start. A boundary on the first value of a page has no page
+   * to end.
+   */
+  private boolean pageEndsBefore(int repetitionLevel, ColumnWriterBase writer) {
     if (repetitionLevel != 0) {
       return false;
     }
@@ -271,28 +311,37 @@ public class ContentDefinedChunker {
   /** The chunker of a column without content defined chunking: it rolls nothing and ends no page. */
   private static final class NoopChunker extends ContentDefinedChunker {
     @Override
-    void roll(int value, int repetitionLevel, int definitionLevel) {}
+    boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
 
     @Override
-    void roll(long value, int repetitionLevel, int definitionLevel) {}
+    boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
 
     @Override
-    void roll(float value, int repetitionLevel, int definitionLevel) {}
+    boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
 
     @Override
-    void roll(double value, int repetitionLevel, int definitionLevel) {}
+    boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
 
     @Override
-    void roll(boolean value, int repetitionLevel, int definitionLevel) {}
+    boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
 
     @Override
-    void roll(Binary value, int repetitionLevel, int definitionLevel) {}
+    boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+      return false;
+    }
 
     @Override
-    void rollNull(int repetitionLevel, int definitionLevel) {}
-
-    @Override
-    boolean needNewPage(int repetitionLevel, ColumnWriterBase writer) {
+    boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
       return false;
     }
   }
