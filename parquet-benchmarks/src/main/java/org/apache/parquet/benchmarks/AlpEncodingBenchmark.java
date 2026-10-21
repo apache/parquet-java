@@ -95,14 +95,14 @@ public class AlpEncodingBenchmark {
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public byte[] encodeDouble() throws IOException {
-    return encode(
+    return encodeDoubles(
         new AlpValuesWriter.DoubleAlpValuesWriter(INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator()));
   }
 
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public byte[] encodeDoublePlain() throws IOException {
-    return encode(new PlainValuesWriter(INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator()));
+    return encodeDoubles(new PlainValuesWriter(INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator()));
   }
 
   @Benchmark
@@ -118,7 +118,7 @@ public class AlpEncodingBenchmark {
     return encodeFloats(new PlainValuesWriter(INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator()));
   }
 
-  private byte[] encode(ValuesWriter w) throws IOException {
+  private byte[] encodeDoubles(ValuesWriter w) throws IOException {
     for (double v : doubleData) {
       w.writeDouble(v);
     }
