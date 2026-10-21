@@ -336,6 +336,88 @@ public class TestParquetWriter {
   }
 
   @Test
+  public void testBloomFiltersKeepCollidingDotStringPathsDistinct() throws IOException {
+    Map<ColumnPath, BloomFilter> bloomFilters = writeBloomFiltersForCollidingPaths();
+    BloomFilter topLevelBloom = bloomFilters.get(ColumnPath.get("a.b"));
+    BloomFilter nestedBloom = bloomFilters.get(ColumnPath.get("a", "b"));
+    assertThat(topLevelBloom).isNotNull();
+    assertThat(nestedBloom).isNotNull();
+
+    for (int valueId = 0; valueId < 10; valueId++) {
+      long topLevelHash = LongHashFunction.xx(0)
+          .hashBytes(Binary.fromString("top-" + valueId).toByteBuffer());
+      long nestedHash = LongHashFunction.xx(0)
+          .hashBytes(Binary.fromString("nested-" + valueId).toByteBuffer());
+      assertThat(topLevelBloom.findHash(topLevelHash)).isTrue();
+      assertThat(nestedBloom.findHash(nestedHash)).isTrue();
+    }
+  }
+
+  private Map<ColumnPath, BloomFilter> writeBloomFiltersForCollidingPaths() throws IOException {
+    // Parquet identifies columns by path components. These two paths are different:
+    //
+    //   top-level field named "a.b" -> ["a.b"]
+    //   nested field "b" in "a"     -> ["a", "b"]
+    //
+    // Flattening either path with '.' produces the same string, "a.b". When Bloom filters are
+    // stored in a map keyed by that flattened string, the second column overwrites the first
+    // column's filter and both footer entries can be associated with the same filter.
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(stringType())
+        .named("b")
+        .named("a")
+        .named("msg");
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+
+    Path path = newTempPath();
+    // Disable dictionary encoding so the writer emits a Bloom filter for each column. Use
+    // disjoint value prefixes so the test can detect when one column receives the other's filter.
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .withBloomFilterEnabled(true)
+        .build()) {
+      for (int i = 0; i < 100; i++) {
+        int valueId = i % 10;
+        Group group = factory.newGroup().append("a.b", "top-" + valueId);
+        group.addGroup("a").append("b", "nested-" + valueId);
+        writer.write(group);
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      BlockMetaData block = reader.getFooter().getBlocks().get(0);
+      // Locate columns by their component-based ColumnPath. Using toDotString() here would repeat
+      // the bug and make both columns indistinguishable to the test.
+      ColumnChunkMetaData topLevelColumn = block.getColumns().stream()
+          .filter(column -> column.getPath().equals(ColumnPath.get("a.b")))
+          .findFirst()
+          .orElseThrow();
+      ColumnChunkMetaData nestedColumn = block.getColumns().stream()
+          .filter(column -> column.getPath().equals(ColumnPath.get("a", "b")))
+          .findFirst()
+          .orElseThrow();
+      // Different offsets prove that the footer references two separately serialized filters rather
+      // than pointing both columns at whichever filter was inserted last.
+      assertThat(topLevelColumn.getBloomFilterOffset()).isNotEqualTo(nestedColumn.getBloomFilterOffset());
+      BloomFilter topLevelBloom = reader.readBloomFilter(topLevelColumn);
+      BloomFilter nestedBloom = reader.readBloomFilter(nestedColumn);
+      Map<ColumnPath, BloomFilter> bloomFilters = new HashMap<>();
+      bloomFilters.put(ColumnPath.get("a.b"), topLevelBloom);
+      bloomFilters.put(ColumnPath.get("a", "b"), nestedBloom);
+      return bloomFilters;
+    }
+  }
+
+  @Test
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
     int buildBloomFilterCount = 100000;
     double[] testFpps = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
