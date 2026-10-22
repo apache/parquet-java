@@ -108,7 +108,6 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.hadoop.util.wrapped.io.FutureIO;
-import org.apache.parquet.internal.column.VectorUtils;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
@@ -1162,6 +1161,34 @@ public class ParquetFileReader implements Closeable {
     return currentRowGroup;
   }
 
+  private static void checkVectorCounts(ColumnDescriptor path, int numElements, long rows, long values, long nulls) {
+    long declaredNulls = nulls;
+    boolean invalid = rows < 0 || values < 0 || nulls < -1 || nulls > values;
+    if (!invalid && path.getMaxRepetitionLevel() == 1) {
+      if (path.getMaxDefinitionLevel() == 1) {
+        invalid = nulls > 0;
+        nulls = 0;
+      }
+      if (nulls >= 0) {
+        long present = values - nulls;
+        invalid |= nulls > rows || present % numElements != 0 || present / numElements != rows - nulls;
+      } else {
+        long extra = values - rows;
+        invalid |= values < rows
+            || (numElements == 1
+                ? values != rows
+                : extra % (numElements - 1) != 0 || extra / (numElements - 1) > rows);
+      }
+    } else if (!invalid && nulls >= 0) {
+      invalid = (values - nulls) % numElements != 0;
+    }
+    if (invalid) {
+      throw new ParquetDecodingException("Invalid VECTOR counts for " + Arrays.toString(path.getPath())
+          + ": rows=" + rows + ", values=" + values + ", nulls=" + declaredNulls
+          + ", length=" + numElements);
+    }
+  }
+
   private void checkVectorColumnCounts(ColumnChunkMetaData column, long rows) {
     MessageType fileSchema = getFileMetaData().getSchema();
     String[] path = column.getPath().toArray();
@@ -1170,7 +1197,7 @@ public class ParquetFileReader implements Closeable {
     ColumnDescriptor descriptor = fileSchema.getColumnDescription(path);
     org.apache.parquet.column.statistics.Statistics<?> stats = column.getStatistics();
     long nulls = stats != null && stats.isNumNullsSet() ? stats.getNumNulls() : -1;
-    VectorUtils.checkCounts(descriptor, vector.getNumElements(), rows, column.getValueCount(), nulls);
+    checkVectorCounts(descriptor, vector.getNumElements(), rows, column.getValueCount(), nulls);
   }
 
   private ColumnChunkPageReadStore internalReadRowGroup(int blockIndex) throws IOException {
@@ -2236,7 +2263,7 @@ public class ParquetFileReader implements Closeable {
                   + 1;
               org.apache.parquet.column.statistics.Statistics<?> stats = dataPageV1.getStatistics();
               long nulls = stats != null && stats.isNumNullsSet() ? stats.getNumNulls() : -1;
-              VectorUtils.checkCounts(
+              checkVectorCounts(
                   fileDescriptor, vector.getNumElements(), rows, dataPageV1.getValueCount(), nulls);
             }
             pagesInChunk.add(dataPageV1);
@@ -2252,7 +2279,7 @@ public class ParquetFileReader implements Closeable {
                     + dataHeaderV2.getNum_values() + ", nulls=" + dataHeaderV2.getNum_nulls()
                     + ", length=" + vector.getNumElements());
               }
-              VectorUtils.checkCounts(
+              checkVectorCounts(
                   fileDescriptor,
                   vector.getNumElements(),
                   dataHeaderV2.getNum_rows(),

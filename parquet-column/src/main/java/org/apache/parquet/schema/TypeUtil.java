@@ -26,32 +26,19 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 
 public class TypeUtil {
-  public static boolean hasVector(Type type) {
-    if (type.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation) {
-      return true;
-    }
-    if (!type.isPrimitive()) {
-      for (Type child : type.asGroupType().getFields()) {
-        if (hasVector(child)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  public static void checkValidVectorSchema(Type type) {
-    if (type.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation) {
+  public static boolean checkValidVectorSchema(Type type) {
+    boolean found = type.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation;
+    if (found) {
       if (type.isPrimitive()) {
         throw new InvalidSchemaException("Invalid VECTOR schema: " + type);
       }
       checkVector(type.asGroupType());
-    }
-    if (!type.isPrimitive()) {
+    } else if (!type.isPrimitive()) {
       for (Type child : type.asGroupType().getFields()) {
-        checkValidVectorSchema(child);
+        found |= checkValidVectorSchema(child);
       }
     }
+    return found;
   }
 
   private static void checkVector(GroupType vector) {
