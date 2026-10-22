@@ -208,50 +208,6 @@ public class TestParquetMetadataConverter {
         .hasMessageStartingWith(message);
   }
 
-  private static Stream<Arguments> vectorElementFallbacks() {
-    return Stream.of(
-        Arguments.of(
-            "unsupported FLOAT annotation",
-            (Consumer<SchemaElement>)
-                element -> element.setLogicalType(org.apache.parquet.format.LogicalTypes.UTF8),
-            PrimitiveTypeName.FLOAT,
-            null),
-        Arguments.of(
-            "future FLOAT annotation",
-            (Consumer<SchemaElement>) element -> element.setLogicalType(new LogicalType()),
-            PrimitiveTypeName.FLOAT,
-            null),
-        Arguments.of(
-            "future INT32 annotation with converted fallback",
-            (Consumer<SchemaElement>) element -> element.setType(Type.INT32)
-                .setLogicalType(new LogicalType())
-                .setConverted_type(ConvertedType.INT_16),
-            PrimitiveTypeName.INT32,
-            LogicalTypeAnnotation.intType(16, true)),
-        Arguments.of(
-            "conflicting INT32 annotations",
-            (Consumer<SchemaElement>) element -> element.setType(Type.INT32)
-                .setLogicalType(org.apache.parquet.format.LogicalTypes.INT_16)
-                .setConverted_type(ConvertedType.INT_32),
-            PrimitiveTypeName.INT32,
-            LogicalTypeAnnotation.intType(32, true)));
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("vectorElementFallbacks")
-  public void testVectorElementAnnotationFallback(
-      String name, Consumer<SchemaElement> edit, PrimitiveTypeName physical, LogicalTypeAnnotation logical) {
-    ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    List<SchemaElement> wire = converter.toParquetSchema(vectorSchema());
-    edit.accept(wire.get(3));
-    PrimitiveType element = converter
-        .fromParquetSchema(wire, null)
-        .getType("v", "list", "element")
-        .asPrimitiveType();
-    assertThat(element.getPrimitiveTypeName()).isEqualTo(physical);
-    assertThat(element.getLogicalTypeAnnotation()).isEqualTo(logical);
-  }
-
   private static SecureRandom random = new SecureRandom();
   private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
   private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();

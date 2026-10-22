@@ -509,7 +509,7 @@ public class MessageColumnIO extends GroupColumnIO {
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
     RecordConsumer recordWriter = new MessageColumnIORecordConsumer(columns);
     if (DEBUG) recordWriter = new RecordConsumerLoggingWrapper(recordWriter);
-    return validating || TypeUtil.hasVector(getType())
+    return validating || TypeUtil.checkValidVectorSchema(getType())
         ? new ValidatingRecordConsumer(recordWriter, getType())
         : recordWriter;
   }
