@@ -394,6 +394,29 @@ public class ProtoSchemaConverterTest {
   }
 
   @Test
+  public void testProto3ConvertOneOf() {
+    String expectedSchema = JOINER.join(
+        "message TestProto3.OneOfTestMessage {",
+        "  optional int32 first = 1;",
+        "  optional int32 second = 2;",
+        "}");
+
+    testConversion(TestProto3.OneOfTestMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testProto3ConvertOneOfUnwrapped() {
+    String expectedSchema = JOINER.join(
+        "message TestProto3.OneOfTestMessage {",
+        "  optional int32 first = 1;",
+        "  optional int32 second = 2;",
+        "}");
+
+    testConversion(TestProto3.OneOfTestMessage.class, expectedSchema, true, true);
+    testConversion(TestProto3.OneOfTestMessage.class, expectedSchema, false, true);
+  }
+
+  @Test
   public void testProto3ConvertWrappedMessageUnwrapped() throws Exception {
     String expectedSchema = "message TestProto3.WrappedMessage {\n" + "  optional double wrappedDouble = 1;\n"
         + "  optional float wrappedFloat = 2;\n"
@@ -456,7 +479,11 @@ public class ProtoSchemaConverterTest {
         "          optional binary type_url (STRING) = 1;",
         "          optional binary value = 2;",
         "        }",
-        "        optional binary children = 2;",
+        "        optional group children (LIST) = 2 {",
+        "          repeated group list {",
+        "            required binary element;",
+        "          }",
+        "        }",
         "      }",
         "    }",
         "  }",
@@ -486,10 +513,19 @@ public class ProtoSchemaConverterTest {
         "          optional binary string_value (STRING) = 3;",
         "          optional boolean bool_value = 4;",
         "          optional group struct_value = 5 {",
-        "            optional binary fields = 1;",
+        "            optional group fields (MAP) = 1 {",
+        "              repeated group key_value {",
+        "                required binary key (STRING);",
+        "                optional binary value;",
+        "              }",
+        "            }",
         "          }",
         "          optional group list_value = 6 {",
-        "            optional binary values = 1;",
+        "            optional group values (LIST) = 1 {",
+        "              repeated group list {",
+        "                required binary element;",
+        "              }",
+        "            }",
         "          }",
         "        }",
         "      }",
@@ -504,10 +540,19 @@ public class ProtoSchemaConverterTest {
         "          optional binary string_value (STRING) = 3;",
         "          optional boolean bool_value = 4;",
         "          optional group struct_value = 5 {",
-        "            optional binary fields = 1;",
+        "            optional group fields (MAP) = 1 {",
+        "              repeated group key_value {",
+        "                required binary key (STRING);",
+        "                optional binary value;",
+        "              }",
+        "            }",
         "          }",
         "          optional group list_value = 6 {",
-        "            optional binary values = 1;",
+        "            optional group values (LIST) = 1 {",
+        "              repeated group list {",
+        "                required binary element;",
+        "              }",
+        "            }",
         "          }",
         "        }",
         "      }",
@@ -544,7 +589,11 @@ public class ProtoSchemaConverterTest {
         "                optional boolean bool_value = 4;",
         "                optional binary struct_value = 5;",
         "                optional group list_value = 6 {",
-        "                  optional binary values = 1;",
+        "                  optional group values (LIST) = 1 {",
+        "                    repeated group list {",
+        "                      required binary element;",
+        "                    }",
+        "                  }",
         "                }",
         "              }",
         "            }",
@@ -559,10 +608,19 @@ public class ProtoSchemaConverterTest {
         "                optional binary string_value (STRING) = 3;",
         "                optional boolean bool_value = 4;",
         "                optional group struct_value = 5 {",
-        "                  optional binary fields = 1;",
+        "                  optional group fields (MAP) = 1 {",
+        "                    repeated group key_value {",
+        "                      required binary key (STRING);",
+        "                      optional binary value;",
+        "                    }",
+        "                  }",
         "                }",
         "                optional group list_value = 6 {",
-        "                  optional binary values = 1;",
+        "                  optional group values (LIST) = 1 {",
+        "                    repeated group list {",
+        "                      required binary element;",
+        "                    }",
+        "                  }",
         "                }",
         "              }",
         "            }",
@@ -577,6 +635,27 @@ public class ProtoSchemaConverterTest {
         Struct.class,
         TestUtils.readResource("Struct.par"),
         new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
+  }
+
+  @Test
+  public void testEmptyMessageFields() throws Exception {
+    String expectedSchema = JOINER.join(
+        "message Trees.StubBox {",
+        "  optional binary stub = 1;",
+        "  optional group stubs (LIST) = 2 {",
+        "    repeated group list {",
+        "      required binary element;",
+        "    }",
+        "  }",
+        "  optional group stub_map (MAP) = 3 {",
+        "    repeated group key_value {",
+        "      required binary key (STRING);",
+        "      optional binary value;",
+        "    }",
+        "  }",
+        "  optional binary name (STRING) = 4;",
+        "}");
+    testConversion(Trees.StubBox.class, expectedSchema, new ProtoSchemaConverter(true, 5, false));
   }
 
   @Test
@@ -596,9 +675,9 @@ public class ProtoSchemaConverterTest {
       expectedBinaryTreeSize = 2 * expectedBinaryTreeSize + 2;
 
       deepSchema = new ProtoSchemaConverter(true, i, false).convert(Struct.class);
-      // 7, 18, 40, 84, 172, 348, 700, 1404, 2812, 5628
+      // 7, 19, 43, 91, 187, 379, 763, 1531, 3067, 6139
       assertThat(deepSchema.getPaths()).hasSize((int) expectedStructSize);
-      expectedStructSize = 2 * expectedStructSize + 4;
+      expectedStructSize = 2 * expectedStructSize + 5;
     }
   }
 }

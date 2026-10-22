@@ -302,6 +302,49 @@ class VariantUtil {
   }
 
   /**
+   * Compares two object field names by the unsigned lexicographic byte order of their UTF-8
+   * encodings, as required by the Variant spec for object field ordering, without encoding
+   * either name. UTF-8 byte order is exactly code point order, so this compares the strings'
+   * code points via {@link #codePointOrderRank}.
+   *
+   * <p>This intentionally differs from {@link String#compareTo}, which compares UTF-16 code
+   * units. The two orderings agree for all names in the Basic Multilingual Plane but diverge for
+   * supplementary-plane characters (U+10000 and above): {@code String#compareTo} orders a leading
+   * high surrogate (0xD800-0xDBFF) before code points in U+E000..U+FFFF, whereas UTF-8 byte order
+   * (and the spec) orders them after. Using UTF-16 order here would produce objects whose field
+   * ids are mis-sorted relative to the spec, breaking binary-search lookups by any reader that
+   * follows the spec's UTF-8 byte ordering.
+   *
+   * <p>An unpaired surrogate has no UTF-8 encoding, and Java's encoder substitutes {@code ?} for
+   * one, so a name containing one is ordered by the surrogate itself rather than by the bytes
+   * that would be written for it.
+   */
+  static int compareKeys(String a, String b) {
+    int limit = Math.min(a.length(), b.length());
+    for (int i = 0; i < limit; ++i) {
+      char left = a.charAt(i);
+      char right = b.charAt(i);
+      if (left != right) {
+        return codePointOrderRank(left) - codePointOrderRank(right);
+      }
+    }
+    // All shared code units are equal, so the shorter name is a prefix of the longer one.
+    return a.length() - b.length();
+  }
+
+  /**
+   * Maps a UTF-16 code unit to a value ordered like the code point it encodes. A surrogate always
+   * encodes a supplementary code point (U+10000 and above), so U+D800..U+DFFF must rank above
+   * every other code unit; U+E000..U+FFFF shift down to fill the gap they leave behind.
+   */
+  private static int codePointOrderRank(char unit) {
+    if (unit < Character.MIN_SURROGATE) {
+      return unit;
+    }
+    return unit <= Character.MAX_SURROGATE ? unit + 0x2000 : unit - 0x800;
+  }
+
+  /**
    * Fast little-endian unsigned read using bulk ByteBuffer operations.
    * Requires the buffer to have {@link java.nio.ByteOrder#LITTLE_ENDIAN} byte order.
    * Adapted from Apache Iceberg's VariantUtil.readLittleEndianUnsigned.

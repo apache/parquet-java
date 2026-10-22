@@ -152,3 +152,43 @@ setup() {
 
   rm -f "$tmpfile"
 }
+
+# ---- require_env ----
+
+@test "require_env: succeeds when all variables are set" {
+  NEXUS_USERNAME="user"
+  NEXUS_PASSWORD="pass"
+  run require_env NEXUS_USERNAME NEXUS_PASSWORD
+  [ "$status" -eq 0 ]
+}
+
+@test "require_env: fails and names a variable that is set but empty" {
+  NEXUS_USERNAME=""
+  NEXUS_PASSWORD="pass"
+  run require_env NEXUS_USERNAME NEXUS_PASSWORD
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"NEXUS_USERNAME"* ]]
+  [[ "$output" != *"NEXUS_PASSWORD"* ]]
+}
+
+@test "require_env: fails and names a variable that is unset" {
+  unset NEXUS_USERNAME
+  run require_env NEXUS_USERNAME
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"NEXUS_USERNAME"* ]]
+}
+
+@test "require_env: reports every missing variable" {
+  unset NEXUS_USERNAME NEXUS_PASSWORD SVN_USERNAME
+  SVN_PASSWORD="pass"
+  run require_env NEXUS_USERNAME NEXUS_PASSWORD SVN_USERNAME SVN_PASSWORD
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"NEXUS_USERNAME"* ]]
+  [[ "$output" == *"NEXUS_PASSWORD"* ]]
+  [[ "$output" == *"SVN_USERNAME"* ]]
+}
+
+@test "require_env: succeeds with no arguments" {
+  run require_env
+  [ "$status" -eq 0 ]
+}

@@ -108,7 +108,7 @@ function nexus_get_staging_repo_metadata {
 function nexus_check_staging_artifact {
   local repo_id="$1"
   local version="$2"
-  local artifact_url="${NEXUS_CONTENT_BASE_URL}/${repo_id}/${NEXUS_VERIFY_GROUP_PATH}/${NEXUS_VERIFY_ARTIFACT_ID}/${version}/${NEXUS_VERIFY_ARTIFACT_ID}-${version}.pom"
+  local artifact_url="${NEXUS_CONTENT_BASE_URL}/${repo_id}/content/${NEXUS_VERIFY_GROUP_PATH}/${NEXUS_VERIFY_ARTIFACT_ID}/${version}/${NEXUS_VERIFY_ARTIFACT_ID}-${version}.pom"
 
   if [[ ${DRY_RUN:-1} -eq 1 ]]; then
     print_command "Dry-run, WOULD HEAD ${artifact_url}"

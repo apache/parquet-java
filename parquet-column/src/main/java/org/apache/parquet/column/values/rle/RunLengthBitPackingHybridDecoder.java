@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
@@ -47,7 +48,9 @@ public class RunLengthBitPackingHybridDecoder {
   private MODE mode;
   private int currentCount;
   private int currentValue;
-  private int[] currentBuffer;
+  private int currentBufferPosition;
+  private int[] currentBuffer = new int[0];
+  private byte[] packedBytes = new byte[0];
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     LOG.debug("decoding bitWidth {}", bitWidth);
@@ -69,12 +72,39 @@ public class RunLengthBitPackingHybridDecoder {
         result = currentValue;
         break;
       case PACKED:
-        result = currentBuffer[currentBuffer.length - 1 - currentCount];
+        result = currentBuffer[currentBufferPosition++];
         break;
       default:
         throw new ParquetDecodingException("not a valid mode " + mode);
     }
     return result;
+  }
+
+  /**
+   * Skip {@code n} values without returning them. Runs are decoded normally, but the values are
+   * dropped instead of being handed back one-by-one via {@link #readInt()}, which saves the
+   * per-value branch on {@link #mode} and the array-index arithmetic that {@code readInt()} does.
+   *
+   * <p>Intended for callers that filter rows (column-index row ranges, hash-join probe filtering,
+   * etc.) and need to advance past many values on a dictionary-key or level column cheaply.
+   *
+   * @param n number of values to skip; must be non-negative
+   */
+  public void skipInts(int n) throws IOException {
+    Preconditions.checkArgument(n >= 0, "n must be non-negative");
+    while (n > 0) {
+      if (currentCount == 0) {
+        readNext();
+      }
+      int consume = Math.min(n, currentCount);
+      if (mode == MODE.PACKED) {
+        // The run is already unpacked into currentBuffer; skipping must advance the read
+        // position too, otherwise a later readInt() re-reads the values we just dropped.
+        currentBufferPosition += consume;
+      }
+      currentCount -= consume;
+      n -= consume;
+    }
   }
 
   private void readNext() throws IOException {
@@ -91,16 +121,25 @@ public class RunLengthBitPackingHybridDecoder {
         int numGroups = header >>> 1;
         currentCount = numGroups * 8;
         LOG.debug("reading {} values BIT PACKED", currentCount);
-        currentBuffer = new int[currentCount]; // TODO: reuse a buffer
-        byte[] bytes = new byte[numGroups * bitWidth];
+        if (currentBuffer.length < currentCount) {
+          currentBuffer = new int[currentCount];
+        }
+        currentBufferPosition = 0;
+        int bytesRequired = numGroups * bitWidth;
+        if (packedBytes.length < bytesRequired) {
+          packedBytes = new byte[bytesRequired];
+        }
         // At the end of the file RLE data though, there might not be that many bytes left.
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
         bytesToRead = Math.min(bytesToRead, in.available());
-        new DataInputStream(in).readFully(bytes, 0, bytesToRead);
+        if (in.readNBytes(packedBytes, 0, bytesToRead) != bytesToRead) {
+          throw new EOFException();
+        }
+        Arrays.fill(packedBytes, bytesToRead, bytesRequired, (byte) 0);
         for (int valueIndex = 0, byteIndex = 0;
             valueIndex < currentCount;
             valueIndex += 8, byteIndex += bitWidth) {
-          packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
+          packer.unpack8Values(packedBytes, byteIndex, currentBuffer, valueIndex);
         }
         break;
       default:
