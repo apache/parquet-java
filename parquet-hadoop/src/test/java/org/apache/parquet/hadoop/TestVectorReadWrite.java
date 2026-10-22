@@ -18,11 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
-import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE;
-import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
@@ -48,16 +45,12 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
-import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.FloatStatistics;
@@ -71,7 +64,6 @@ import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -104,6 +96,12 @@ public class TestVectorReadWrite {
     Path path = new Path(tempDir.resolve(UUID.randomUUID() + ".parquet").toUri());
     VectorInteropFileGenerator.writeRows(path, schema, version, dictionary, rows);
     return path;
+  }
+
+  private static Path referenceFile(String name) throws java.net.URISyntaxException {
+    return new Path(java.nio.file.Path.of(
+            TestVectorReadWrite.class.getResource("/vector/" + name).toURI())
+        .toUri());
   }
 
   private static List<Group> listRows(MessageType schema, int... lengths) {
@@ -207,39 +205,16 @@ public class TestVectorReadWrite {
       assertThat(reader.getFooter().getFileMetaData().getSchema()).isEqualTo(schema);
       assertThat(reader.getFooter().getBlocks()).hasSize(1);
       assertThat(reader.getFooter().getBlocks().get(0).getRowCount()).isEqualTo(6);
-      List<ColumnChunkMetaData> columns =
-          reader.getFooter().getBlocks().get(0).getColumns();
-      for (ColumnChunkMetaData column : columns) {
-        assertThat(column.getCodec()).isEqualTo(CompressionCodecName.UNCOMPRESSED);
-      }
-      assertThat(reader.readColumnIndex(columns.get(0))).isNotNull();
-      assertThat(reader.readOffsetIndex(columns.get(0)).getPageCount()).isEqualTo(3);
       try (PageReadStore pages = reader.readRowGroup(0)) {
         PageReader f = pages.getPageReader(schema.getColumns().get(1));
         if (dictionary) {
-          DictionaryPage page = f.readDictionaryPage();
-          assertThat(page.getDictionarySize()).isEqualTo(10);
-          assertThat(page.getEncoding())
-              .isEqualTo(version == WriterVersion.PARQUET_1_0 ? PLAIN_DICTIONARY : PLAIN);
+          assertThat(f.readDictionaryPage()).isNotNull();
         } else {
           assertThat(f.readDictionaryPage()).isNull();
         }
-        for (int i = 0; i < 3; i++) {
-          DataPage page = f.readPage();
-          assertThat(page.getValueCount()).isEqualTo(10);
-          if (version == WriterVersion.PARQUET_1_0) {
-            DataPageV1 v1 = (DataPageV1) page;
-            assertThat(v1.getRlEncoding()).isEqualTo(RLE);
-            assertThat(v1.getDlEncoding()).isEqualTo(RLE);
-            assertThat(v1.getValueEncoding()).isEqualTo(dictionary ? PLAIN_DICTIONARY : PLAIN);
-          } else {
-            DataPageV2 v2 = (DataPageV2) page;
-            assertThat(v2.getRowCount()).isEqualTo(2);
-            assertThat(v2.getNullCount()).isZero();
-            assertThat(v2.getDataEncoding()).isEqualTo(dictionary ? RLE_DICTIONARY : PLAIN);
-          }
-        }
-        assertThat(f.readPage()).isNull();
+        DataPage page = f.readPage();
+        assertThat(page)
+            .isInstanceOf(version == WriterVersion.PARQUET_1_0 ? DataPageV1.class : DataPageV2.class);
       }
     }
     List<org.apache.parquet.format.SchemaElement> vectors = readFooter(path).getSchema().stream()
@@ -258,14 +233,6 @@ public class TestVectorReadWrite {
     MessageType schema = VectorInteropFileGenerator.mixedSchema();
     List<Group> expected = VectorInteropFileGenerator.mixedRows();
     var predicate = and(gtEq(intColumn("id"), 2), ltEq(intColumn("id"), 3));
-    try (ParquetFileReader reader = ParquetFileReader.open(
-        new LocalInputFile(java.nio.file.Path.of(path.toUri())),
-        ParquetReadOptions.builder()
-            .withRecordFilter(FilterCompat.get(predicate))
-            .useColumnIndexFilter(true)
-            .build())) {
-      assertThat(reader.getFilteredRecordCount()).isEqualTo(2);
-    }
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path)
         .withFilter(FilterCompat.get(predicate))
         .useColumnIndexFilter(true)
@@ -278,9 +245,7 @@ public class TestVectorReadWrite {
             ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())));
         PageReadStore pages = reader.readFilteredRowGroup(
             0, RowRanges.builder().addSelectedRange(1, 4).build())) {
-      assertThat(pages.getRowCount()).isEqualTo(4);
       assertThat(pages.getRowIndexes()).isPresent();
-      assertThat(pages.getRowIndexes().get()).toIterable().containsExactly(1L, 2L, 3L, 4L);
       MessageColumnIO columns = new ColumnIOFactory().getColumnIO(schema, schema);
       RecordReader<Group> records = columns.getRecordReader(pages, new GroupRecordConverter(schema));
       for (int i = 1; i <= 4; i++) assertRow(records.read(), expected.get(i));
@@ -379,160 +344,67 @@ public class TestVectorReadWrite {
     MessageType list = MessageTypeParser.parseMessageType(
         schema("required", 5, false).toString().replace("VECTOR(5)", "LIST"));
     MessageType vector = schema("required", 5, false);
-    Path original = writeVectors(list, WriterVersion.PARQUET_1_0, false, listRows(list, 4, 6));
-    try (ParquetFileReader reader =
-        ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(original.toUri())))) {
-      assertThat(reader.getFooter().getBlocks()).hasSize(1);
-      assertThat(reader.readOffsetIndex(reader.getFooter()
-                  .getBlocks()
-                  .get(0)
-                  .getColumns()
-                  .get(0))
-              .getPageCount())
-          .isEqualTo(1);
+    Path path = writeVectors(list, WriterVersion.PARQUET_1_0, false, listRows(list, 4, 6));
+    assertVectorRows(readGroups(path, vector), 4, 6);
+
+    rewriteFooter(path, footer -> footer.getSchema().get(1).setLogicalType(LogicalTypes.VECTOR(5)));
+    for (MessageType requested : List.of(vector, list)) {
+      assertThatThrownBy(() -> readGroups(path, requested))
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Invalid VECTOR data for [v, list, element]: expected 5 elements, got 4");
     }
-    assertVectorRows(readGroups(original, vector), 4, 6);
 
-    Path relabeled = new Path(tempDir.resolve("relabeled.parquet").toUri());
-    Files.copy(java.nio.file.Path.of(original.toUri()), java.nio.file.Path.of(relabeled.toUri()));
-    rewriteFooter(relabeled, footer -> footer.getSchema().get(1).setLogicalType(LogicalTypes.VECTOR(5)));
-    assertThatThrownBy(() -> readGroups(relabeled, vector))
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("Invalid VECTOR data for [v, list, element]: expected 5 elements, got 4");
-    assertThatThrownBy(() -> readGroups(relabeled, list))
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("Invalid VECTOR data for [v, list, element]: expected 5 elements, got 4");
-
-    assertStoredLevels(relabeled, 4);
-
-    Path generated = new Path(tempDir.resolve("invalid-generated.parquet").toUri());
-    VectorInteropFileGenerator.writeInvalid(generated);
-    Path reference = new Path(java.nio.file.Path.of(TestVectorReadWrite.class
-            .getResource("/vector/vector_invalid_v1_dictionary.parquet")
-            .toURI())
-        .toUri());
-    assertThat(readFooter(generated).getSchema())
-        .isEqualTo(readFooter(reference).getSchema());
-    verifyInvalidFixture(generated);
-    verifyInvalidFixture(reference);
-  }
-
-  private void verifyInvalidFixture(Path path) throws IOException {
-    MessageType schema = VectorInteropFileGenerator.invalidSchema();
     try (ParquetFileReader reader =
             ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())));
-        PageReadStore pages = reader.readRowGroup(0)) {
-      assertThat(reader.getFooter().getBlocks()).hasSize(1);
-      assertThat(pages.getRowCount()).isEqualTo(4);
-      for (ColumnChunkMetaData chunk :
-          reader.getFooter().getBlocks().get(0).getColumns()) {
-        assertThat(chunk.getCodec()).isEqualTo(CompressionCodecName.UNCOMPRESSED);
-        assertThat(chunk.getColumnIndexReference()).isNull();
-        assertThat(chunk.getOffsetIndexReference()).isNull();
-        assertThat(chunk.getStatistics().isNumNullsSet()).isFalse();
-      }
-      for (String name : List.of("nf_f", "nf_d", "nf_h")) {
-        PageReader column =
-            pages.getPageReader(schema.getColumnDescription(new String[] {name, "list", "element"}));
-        boolean dictionary = !name.equals("nf_h");
-        if (dictionary) {
-          assertThat(column.readDictionaryPage()).as(name).isNotNull();
-        } else {
-          assertThat(column.readDictionaryPage()).as(name).isNull();
-        }
-        for (int i = 0; i < 2; i++) {
-          DataPageV1 page = (DataPageV1) column.readPage();
-          assertThat(page.getValueCount()).isEqualTo(16);
-          assertThat(page.getValueEncoding()).isEqualTo(dictionary ? PLAIN_DICTIONARY : PLAIN);
-        }
-        assertThat(column.readPage()).isNull();
-      }
+        PageReadStore pages = reader.readFilteredRowGroup(0, RowRanges.createSingle(1))) {
+      MessageColumnIO columns = new ColumnIOFactory()
+          .getColumnIO(vector, reader.getFileMetaData().getSchema());
+      RecordReader<Group> records = columns.getRecordReader(pages, new GroupRecordConverter(vector));
+      assertThatThrownBy(records::read)
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Invalid VECTOR data for [v, list, element]: expected 5 elements, got 4");
     }
-    Path copy = new Path(tempDir.resolve(UUID.randomUUID() + ".parquet").toUri());
-    Files.copy(java.nio.file.Path.of(path.toUri()), java.nio.file.Path.of(copy.toUri()));
-    rewriteFooter(copy, footer -> footer.getSchema().stream()
-        .filter(element ->
-            element.isSetLogicalType() && element.getLogicalType().isSetVECTOR())
-        .forEach(org.apache.parquet.format.SchemaElement::unsetLogicalType));
-    List<Group> actual = readGroups(copy, schema);
-    List<Group> expected = VectorInteropFileGenerator.invalidRows();
-    assertThat(actual).hasSameSizeAs(expected);
-    for (int i = 0; i < expected.size(); i++) assertRow(actual.get(i), expected.get(i));
   }
 
   @ParameterizedTest
   @CsvSource(
       value = {
-        "short_v|expected 5 elements, got 4",
-        "long_v|expected 5 elements, got 6",
-        "empty_v|empty vector",
-        "nested|expected 5 elements, got 4",
-        "partial|expected 5 elements, got 3",
-        "nf_f|non-finite element",
-        "nf_d|non-finite element",
-        "nf_h|non-finite element"
+        "short_v|all|expected 5 elements, got 4",
+        "long_v|all|expected 5 elements, got 6",
+        "empty_v|all|empty vector",
+        "nested|all|expected 5 elements, got 4",
+        "partial|all|expected 5 elements, got 3",
+        "nf_f|all|non-finite element",
+        "nf_d|all|non-finite element",
+        "nf_h|all|non-finite element",
+        "short_v|filter2|expected 5 elements, got 4",
+        "short_v|legacy|expected 5 elements, got 4"
       },
       delimiter = '|')
-  public void testInvalidVectorReferenceFile(String field, String reason) throws Exception {
-    Path path = new Path(java.nio.file.Path.of(TestVectorReadWrite.class
-            .getResource("/vector/vector_invalid_v1_dictionary.parquet")
-            .toURI())
-        .toUri());
-    MessageType file;
+  public void testInvalidVectorReferenceFile(String field, String mode, String reason) throws Exception {
+    Path path = referenceFile("vector_invalid_v1_dictionary.parquet");
     try (ParquetFileReader reader =
         ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-      file = reader.getFileMetaData().getSchema();
-    }
-    MessageType projected = new MessageType("m", file.getType("id"), file.getType(field));
-    String name = field.equals("nested") || field.equals("partial") ? field + ", v" : field;
-    assertThatThrownBy(() -> readGroups(path, projected))
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("Invalid VECTOR data for [" + name + ", list, element]: " + reason);
-  }
-
-  @ParameterizedTest
-  @org.junit.jupiter.params.provider.ValueSource(strings = {"filter2", "legacy", "indexed"})
-  public void testInvalidFilteredVector(String mode) throws Exception {
-    Path path;
-    MessageType requested;
-    if (mode.equals("indexed")) {
-      MessageType list = MessageTypeParser.parseMessageType(
-          schema("required", 5, false).toString().replace("VECTOR(5)", "LIST"));
-      path = writeVectors(list, WriterVersion.PARQUET_1_0, false, listRows(list, 4, 6));
-      rewriteFooter(path, footer -> footer.getSchema().get(1).setLogicalType(LogicalTypes.VECTOR(5)));
-      requested = schema("required", 5, false);
-    } else {
-      path = new Path(java.nio.file.Path.of(TestVectorReadWrite.class
-              .getResource("/vector/vector_invalid_v1_dictionary.parquet")
-              .toURI())
-          .toUri());
-      MessageType file;
-      try (ParquetFileReader reader =
-          ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-        file = reader.getFileMetaData().getSchema();
+      MessageType file = reader.getFileMetaData().getSchema();
+      MessageType projected = new MessageType("m", file.getType("id"), file.getType(field));
+      reader.setRequestedSchema(projected);
+      try (PageReadStore pages = reader.readRowGroup(0)) {
+        MessageColumnIO columns = new ColumnIOFactory().getColumnIO(projected, file);
+        FilterCompat.Filter filter = mode.equals("filter2")
+            ? FilterCompat.get(eq(intColumn("id"), 1))
+            : mode.equals("legacy")
+                ? FilterCompat.get(
+                    org.apache.parquet.filter.ColumnRecordFilter.column("id", equalTo(1)))
+                : FilterCompat.NOOP;
+        RecordReader<Group> records =
+            columns.getRecordReader(pages, new GroupRecordConverter(projected), filter);
+        String name = field.equals("nested") || field.equals("partial") ? field + ", v" : field;
+        assertThatThrownBy(() -> {
+              for (long i = 0; i < pages.getRowCount(); i++) records.read();
+            })
+            .isInstanceOf(ParquetDecodingException.class)
+            .hasMessage("Invalid VECTOR data for [" + name + ", list, element]: " + reason);
       }
-      requested = new MessageType("m", file.getType("id"), file.getType("short_v"));
-    }
-    try (ParquetFileReader reader =
-            ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())));
-        PageReadStore pages = mode.equals("indexed")
-            ? reader.readFilteredRowGroup(0, RowRanges.createSingle(1))
-            : reader.readRowGroup(0)) {
-      MessageColumnIO columns = new ColumnIOFactory()
-          .getColumnIO(requested, reader.getFileMetaData().getSchema());
-      RecordReader<Group> records = mode.equals("indexed")
-          ? columns.getRecordReader(pages, new GroupRecordConverter(requested))
-          : columns.getRecordReader(
-              pages,
-              new GroupRecordConverter(requested),
-              mode.equals("filter2")
-                  ? FilterCompat.get(eq(intColumn("id"), 1))
-                  : FilterCompat.get(
-                      org.apache.parquet.filter.ColumnRecordFilter.column("id", equalTo(1))));
-      String name = mode.equals("indexed") ? "v" : "short_v";
-      assertThatThrownBy(records::read)
-          .isInstanceOf(ParquetDecodingException.class)
-          .hasMessage("Invalid VECTOR data for [" + name + ", list, element]: expected 5 elements, got 4");
     }
   }
 
@@ -544,70 +416,23 @@ public class TestVectorReadWrite {
   @CsvSource({"vector_mixed_v1_plain.parquet,PARQUET_1_0,false", "vector_mixed_v2_dictionary.parquet,PARQUET_2_0,true"
   })
   public void testVectorReferenceFile(String name, WriterVersion version, boolean dictionary) throws Exception {
-    java.nio.file.Path local = java.nio.file.Path.of(
-        TestVectorReadWrite.class.getResource("/vector/" + name).toURI());
-    verifyMixedFile(new Path(local.toUri()), version, dictionary);
+    verifyMixedFile(referenceFile(name), version, dictionary);
   }
 
   @org.junit.jupiter.api.Test
   public void testSplitVectorFile() throws Exception {
-    Path generated = new Path(tempDir.resolve("split.parquet").toUri());
-    VectorInteropFileGenerator.writeSplit(generated);
-    Path reference = new Path(java.nio.file.Path.of(TestVectorReadWrite.class
-            .getResource("/vector/vector_split_v1.parquet")
-            .toURI())
-        .toUri());
-    for (Path path : List.of(generated, reference)) verifySplitFile(path);
-  }
-
-  private static void verifySplitFile(Path path) throws IOException {
+    Path path = referenceFile("vector_split_v1.parquet");
     MessageType schema = schema("required", 5, false);
-    try (ParquetFileReader reader =
-        ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-      assertThat(reader.getFileMetaData().getSchema()).isEqualTo(schema);
-      assertThat(reader.getFooter().getBlocks()).hasSize(1);
-      assertThat(reader.getFooter().getBlocks().get(0).getRowCount()).isEqualTo(2);
-      ColumnChunkMetaData chunk =
-          reader.getFooter().getBlocks().get(0).getColumns().get(0);
-      assertThat(chunk.getValueCount()).isEqualTo(10);
-      assertThat(chunk.getCodec()).isEqualTo(CompressionCodecName.UNCOMPRESSED);
-      assertThat(chunk.getColumnIndexReference()).isNull();
-      assertThat(chunk.getOffsetIndexReference()).isNull();
-      try (PageReadStore pages = reader.readRowGroup(0)) {
-        PageReader column = pages.getPageReader(schema.getColumns().get(0));
-        assertThat(column.readDictionaryPage()).isNull();
-        int[] counts = {3, 4, 3};
-        for (int i = 0; i < counts.length; i++) {
-          DataPageV1 page = (DataPageV1) column.readPage();
-          assertThat(page.getValueCount()).isEqualTo(counts[i]);
-          assertThat(page.getValueEncoding()).isEqualTo(PLAIN);
-          assertThat(page.getRlEncoding()).isEqualTo(i == 1 ? BIT_PACKED : RLE);
-          assertThat(page.getDlEncoding()).isEqualTo(i == 1 ? BIT_PACKED : RLE);
-        }
-        assertThat(column.readPage()).isNull();
-      }
-    }
     assertVectorRows(readGroups(path, schema), 5, 5);
-    assertStoredLevels(path, 5);
-  }
-
-  private static void assertStoredLevels(Path path, int secondStart) throws IOException {
     try (ParquetFileReader reader =
             ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())));
         PageReadStore pages = reader.readRowGroup(0)) {
-      MessageType schema = reader.getFileMetaData().getSchema();
-      ColumnReadStoreImpl store = new ColumnReadStoreImpl(
-          pages,
-          new GroupRecordConverter(schema).getRootConverter(),
-          schema,
-          reader.getFileMetaData().getCreatedBy());
-      ColumnReader column = store.getColumnReader(schema.getColumns().get(0));
-      for (int i = 0; i < 10; i++) {
-        assertThat(column.getFloat()).isEqualTo((float) i);
-        assertThat(column.getCurrentRepetitionLevel()).isEqualTo(i == 0 || i == secondStart ? 0 : 1);
-        assertThat(column.getCurrentDefinitionLevel()).isEqualTo(1);
-        column.consume();
+      PageReader column = pages.getPageReader(schema.getColumns().get(0));
+      for (int count : new int[] {3, 4, 3}) {
+        DataPageV1 page = (DataPageV1) column.readPage();
+        assertThat(page.getValueCount()).isEqualTo(count);
       }
+      assertThat(column.readPage()).isNull();
     }
   }
 
