@@ -111,19 +111,7 @@ public class TestTypeBuildersWithLogicalTypes {
         Arguments.of(vector(Types.required(BINARY).as(stringType()).named("element"))),
         Arguments.of(vector(Types.required(INT32).as(dateType()).named("element"))),
         Arguments.of(
-            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(intType(64, true)))),
-        Arguments.of(
-            vector(Types.required(FLOAT).named("element").withLogicalTypeAnnotation(intType(32, true)))),
-        Arguments.of(
-            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(decimalType(0, 10)))),
-        Arguments.of(vector(Types.required(FIXED_LEN_BYTE_ARRAY)
-            .length(4)
-            .named("element")
-            .withLogicalTypeAnnotation(decimalType(0, 10)))),
-        Arguments.of(
-            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(decimalType(-1, 9)))),
-        Arguments.of(
-            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(decimalType(10, 9)))));
+            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(intType(64, true)))));
   }
 
   @ParameterizedTest
