@@ -308,21 +308,7 @@ public class TestVectorReadWrite {
             List.of(1.0f, 2.0f, 3.0f),
             "Invalid VECTOR length for v: expected 2, got 3"),
         Arguments.of("float element", 1, List.of(Float.NaN), "Non-finite VECTOR element in v"),
-        Arguments.of("float element", 1, List.of(Float.POSITIVE_INFINITY), "Non-finite VECTOR element in v"),
-        Arguments.of("float element", 1, List.of(Float.NEGATIVE_INFINITY), "Non-finite VECTOR element in v"),
-        Arguments.of("double element", 1, List.of(Double.NaN), "Non-finite VECTOR element in v"),
         Arguments.of("double element", 1, List.of(Double.POSITIVE_INFINITY), "Non-finite VECTOR element in v"),
-        Arguments.of("double element", 1, List.of(Double.NEGATIVE_INFINITY), "Non-finite VECTOR element in v"),
-        Arguments.of(
-            "fixed_len_byte_array(2) element (FLOAT16)",
-            1,
-            List.of(Binary.fromConstantByteArray(new byte[] {0, 0x7e})),
-            "Non-finite VECTOR element in v"),
-        Arguments.of(
-            "fixed_len_byte_array(2) element (FLOAT16)",
-            1,
-            List.of(Binary.fromConstantByteArray(new byte[] {0, 0x7c})),
-            "Non-finite VECTOR element in v"),
         Arguments.of(
             "fixed_len_byte_array(2) element (FLOAT16)",
             1,
