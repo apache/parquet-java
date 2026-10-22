@@ -273,6 +273,10 @@ class ProtoMessageConverter extends GroupConverter {
           public Optional<Converter> visit(
               LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
             TypeUtil.checkValidVectorSchema(parquetType);
+            if (!fieldDescriptor.isRepeated()) {
+              throw new IncompatibleSchemaModificationException("VECTOR field "
+                  + fieldDescriptor.getName() + " requires a repeated protobuf field");
+            }
             return visit(LogicalTypeAnnotation.listType());
           }
 

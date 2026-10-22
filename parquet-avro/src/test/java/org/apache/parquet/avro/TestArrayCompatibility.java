@@ -1650,6 +1650,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
         "VectorWithoutAvroSchema",
         field("v", array(primitive(Schema.Type.FLOAT))),
         optionalField("o", array(primitive(Schema.Type.FLOAT))));
+    assertThat(new AvroSchemaConverter().convert(schema)).isEqualTo(expectedSchema);
     try (AvroParquetReader<GenericRecord> reader = autoDetectReader(path)) {
       assertReaderContains(
           reader,
