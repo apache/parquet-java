@@ -131,13 +131,16 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.schema.TypeVisitor;
 import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
@@ -420,6 +423,11 @@ public class ParquetMetadataConverter {
     }
 
     @Override
+    public Optional<ConvertedType> visit(VectorLogicalTypeAnnotation vectorLogicalType) {
+      return of(ConvertedType.LIST);
+    }
+
+    @Override
     public Optional<ConvertedType> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
       return of(ConvertedType.ENUM);
     }
@@ -516,6 +524,11 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
       return of(LogicalTypes.LIST);
+    }
+
+    @Override
+    public Optional<LogicalType> visit(VectorLogicalTypeAnnotation vectorLogicalType) {
+      return of(LogicalTypes.VECTOR(vectorLogicalType.getNumElements()));
     }
 
     @Override
@@ -1399,6 +1412,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.jsonType();
       case LIST:
         return LogicalTypeAnnotation.listType();
+      case VECTOR:
+        return LogicalTypeAnnotation.vectorType(type.getVECTOR().getNum_elements());
       case TIME:
         TimeType time = type.getTIME();
         return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
@@ -2086,13 +2101,22 @@ public class ParquetMetadataConverter {
   MessageType fromParquetSchema(List<SchemaElement> schema, List<ColumnOrder> columnOrders) {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
+    if (root.isSetLogicalType() && root.logicalType.isSetVECTOR()) {
+      throw new ParquetDecodingException("Invalid VECTOR metadata for " + root.name);
+    }
     Types.MessageTypeBuilder builder = Types.buildMessage();
     if (root.isSetField_id()) {
       builder.id(root.field_id);
     }
     Iterator<ColumnOrder> columnOrderIterator = columnOrders == null ? null : columnOrders.iterator();
     buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
-    return builder.named(root.name);
+    MessageType messageType = builder.named(root.name);
+    try {
+      TypeUtil.checkValidVectorSchema(messageType);
+    } catch (InvalidSchemaException e) {
+      throw new ParquetDecodingException("Invalid VECTOR schema in file metadata", e);
+    }
+    return messageType;
   }
 
   private void buildChildren(
@@ -2102,6 +2126,14 @@ public class ParquetMetadataConverter {
       Iterator<ColumnOrder> columnOrders) {
     for (int i = 0; i < childrenCount; i++) {
       SchemaElement schemaElement = schema.next();
+      if (schemaElement.isSetLogicalType()
+          && schemaElement.logicalType.isSetVECTOR()
+          && (schemaElement.type != null
+              || schemaElement.converted_type != ConvertedType.LIST
+              || !schemaElement.logicalType.getVECTOR().isSetNum_elements()
+              || schemaElement.logicalType.getVECTOR().getNum_elements() <= 0)) {
+        throw new ParquetDecodingException("Invalid VECTOR metadata for " + schemaElement.name);
+      }
 
       // Create Parquet Type.
       Types.Builder childBuilder;
