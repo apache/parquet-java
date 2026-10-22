@@ -38,6 +38,10 @@ public class LogicalTypes {
     return LogicalType.VARIANT(type);
   }
 
+  public static LogicalType VECTOR(int numElements) {
+    return LogicalType.VECTOR(new VectorType(numElements));
+  }
+
   public static final LogicalType UTF8 = LogicalType.STRING(new StringType());
   public static final LogicalType MAP = LogicalType.MAP(new MapType());
   public static final LogicalType LIST = LogicalType.LIST(new ListType());
