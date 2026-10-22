@@ -27,11 +27,15 @@ import java.util.List;
 import java.util.Map;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
@@ -192,6 +196,9 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     private Case[][][] caseLookup;
     private List<Case> definedCases;
     private List<Case> undefinedCases;
+    private final int vectorLength;
+    private final boolean vectorFloat16;
+    private long vectorCount;
 
     private State(
         int id,
@@ -213,6 +220,69 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       this.primitiveField = fieldPath[fieldPath.length - 1];
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
       this.primitiveFieldIndex = indexFieldPath[indexFieldPath.length - 1];
+      VectorLogicalTypeAnnotation vector = null;
+      if (fieldPath.length >= 3) {
+        LogicalTypeAnnotation logical =
+            primitiveColumnIO.getParent().getParent().getType().getLogicalTypeAnnotation();
+        if (logical instanceof VectorLogicalTypeAnnotation) {
+          vector = (VectorLogicalTypeAnnotation) logical;
+        }
+      }
+      this.vectorLength = vector == null ? 0 : vector.getNumElements();
+      this.vectorFloat16 = vector != null
+          && primitiveColumnIO.getType().getLogicalTypeAnnotation() instanceof Float16LogicalTypeAnnotation;
+    }
+
+    void validateVector(int d) {
+      if (vectorLength == 0) return;
+      int r = column.getCurrentRepetitionLevel();
+      if (d < 0 || d > maxDefinitionLevel || r < 0 || r > maxRepetitionLevel) {
+        throw invalidVector("invalid levels");
+      }
+      if (vectorCount == 0 && r == maxRepetitionLevel) {
+        throw invalidVector("invalid continuation");
+      }
+      if (d < maxDefinitionLevel) {
+        if (vectorCount > 0) throw invalidVector("null within vector");
+        if (d == maxDefinitionLevel - 1) throw invalidVector("empty vector");
+        return;
+      }
+      vectorCount++;
+      if (vectorCount > vectorLength) {
+        throw invalidVector("expected " + vectorLength + " elements, got " + vectorCount);
+      }
+      if (primitive == PrimitiveTypeName.FLOAT && !Float.isFinite(column.getFloat())
+          || primitive == PrimitiveTypeName.DOUBLE && !Double.isFinite(column.getDouble())) {
+        throw invalidVector("non-finite element");
+      }
+      if (vectorFloat16) {
+        Binary value = column.getBinary();
+        if (value.length() != 2) {
+          throw invalidVector("invalid FLOAT16 element length: " + value.length());
+        }
+        if ((value.get2BytesLittleEndian() & 0x7c00) == 0x7c00) {
+          throw invalidVector("non-finite element");
+        }
+      }
+    }
+
+    void endVector(int nextR) {
+      if (vectorLength == 0) return;
+      if (nextR < 0 || nextR > maxRepetitionLevel) throw invalidVector("invalid levels");
+      if (nextR == maxRepetitionLevel && vectorCount == 0) {
+        throw invalidVector("null within vector");
+      }
+      if (nextR < maxRepetitionLevel && vectorCount > 0) {
+        if (vectorCount != vectorLength) {
+          throw invalidVector("expected " + vectorLength + " elements, got " + vectorCount);
+        }
+        vectorCount = 0;
+      }
+    }
+
+    private ParquetDecodingException invalidVector(String reason) {
+      return new ParquetDecodingException(
+          "Invalid VECTOR data for " + Arrays.toString(fieldPath) + ": " + reason);
     }
 
     public int getDepth(int definitionLevel) {
@@ -413,6 +483,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     do {
       ColumnReader columnReader = currentState.column;
       int d = columnReader.getCurrentDefinitionLevel();
+      currentState.validateVector(d);
       // creating needed nested groups until the current field (opening tags)
       int depth = currentState.definitionLevelToDepth[d];
       for (; currentLevel <= depth; ++currentLevel) {
@@ -427,6 +498,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       columnReader.consume();
 
       int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
+      currentState.endVector(nextR);
       // level to go to close current groups
       int next = currentState.nextLevel[nextR];
       for (; currentLevel > next; currentLevel--) {
