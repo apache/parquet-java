@@ -24,12 +24,48 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Offset.offset;
 
 import com.google.protobuf.ByteString;
+import java.io.IOException;
 import java.util.List;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class ProtoRecordConverterTest {
+  @Test
+  public void testVectorRepeatedPrimitive(@TempDir java.nio.file.Path dir) throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group repeatedInt"
+        + " (VECTOR(3)) { repeated group list { required int32 element; } } }");
+    Path path = new Path(dir.resolve("vector.parquet").toUri());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withWriterVersion(WriterVersion.PARQUET_1_0)
+        .withDictionaryEncoding(false)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withValidation(false)
+        .build()) {
+      for (int row = 0; row < 2; row++) {
+        Group group = new SimpleGroupFactory(schema).newGroup();
+        Group vector = group.addGroup("repeatedInt");
+        for (int i = 1; i <= 3; i++) vector.addGroup("list").append("element", row * 3 + i);
+        writer.write(group);
+      }
+    }
+    List<TestProtobuf.RepeatedIntMessage> messages =
+        TestUtils.readMessages(path, TestProtobuf.RepeatedIntMessage.class);
+    assertThat(messages).hasSize(2);
+    assertThat(messages.get(0).getRepeatedIntList()).containsExactly(1, 2, 3);
+    assertThat(messages.get(1).getRepeatedIntList()).containsExactly(4, 5, 6);
+  }
 
   @Test
   public void testAllTypes() throws Exception {

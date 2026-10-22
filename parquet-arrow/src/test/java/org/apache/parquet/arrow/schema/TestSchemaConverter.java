@@ -55,13 +55,33 @@ import org.apache.parquet.example.Paper;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * @see SchemaConverter
  */
 public class TestSchemaConverter {
+  @ParameterizedTest
+  @ValueSource(strings = {"required", "optional"})
+  public void testVectorAsList(String repetition) {
+    String children = "repeated group list { required float element; }";
+    MessageType vector = MessageTypeParser.parseMessageType(
+        "message m { " + repetition + " group v (VECTOR(5)) { " + children + " } }");
+    MessageType list = MessageTypeParser.parseMessageType(
+        "message m { " + repetition + " group v (LIST) { " + children + " } }");
+    SchemaMapping mapping = converter.fromParquet(vector);
+    assertThat(mapping.getArrowSchema())
+        .isEqualTo(converter.fromParquet(list).getArrowSchema());
+    Field field = mapping.getArrowSchema().findField("v");
+    assertThat(field.getType()).isEqualTo(new ArrowType.List());
+    assertThat(field.getChildren()).hasSize(1);
+    assertThat(field.getChildren().get(0).getType())
+        .isEqualTo(new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE));
+  }
 
   private static Field field(String name, boolean nullable, ArrowType type, Field... children) {
     if (nullable) {
