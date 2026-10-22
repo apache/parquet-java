@@ -21,16 +21,137 @@ package org.apache.parquet.io;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.lang.reflect.Field;
 import java.util.Deque;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class ValidatingRecordConsumerTest {
+  private static MessageType vectorSchema(String element) {
+    return MessageTypeParser.parseMessageType("message m { required group v (VECTOR(2)) {"
+        + " repeated group list { required " + element + "; } } }");
+  }
+
+  private static void startVector(RecordConsumer c) {
+    c.startField("v", 0);
+    c.startGroup();
+  }
+
+  private static void startEntry(RecordConsumer c) {
+    c.startGroup();
+    c.startField("element", 0);
+  }
+
+  private static void endEntry(RecordConsumer c) {
+    c.endField("element", 0);
+    c.endGroup();
+  }
+
+  private static void addEntry(RecordConsumer c, float value) {
+    startEntry(c);
+    c.addFloat(value);
+    endEntry(c);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 3})
+  public void testVectorLengthRejectedAtBoundary(int count) {
+    MessageType schema = vectorSchema("float element");
+    RecordConsumer delegate = mock(RecordConsumer.class);
+    ValidatingRecordConsumer c = new ValidatingRecordConsumer(delegate, schema);
+    c.startMessage();
+    startVector(c);
+    c.startField("list", 0);
+    for (int i = 0; i < Math.min(count, 2); i++) addEntry(c, i);
+    if (count == 1) {
+      c.endField("list", 0);
+      clearInvocations(delegate);
+      assertThatThrownBy(c::endGroup)
+          .isInstanceOf(InvalidRecordException.class)
+          .hasMessage("Invalid VECTOR length for v: expected 2, got 1");
+      verifyNoInteractions(delegate);
+    } else {
+      clearInvocations(delegate);
+      assertThatThrownBy(c::startGroup)
+          .isInstanceOf(InvalidRecordException.class)
+          .hasMessage("Invalid VECTOR length for v: expected 2, got 3");
+      verifyNoInteractions(delegate);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v", "element"})
+  public void testEmptyRequiredVectorField(String field) {
+    MessageType schema = vectorSchema("float element");
+    RecordConsumer delegate = mock(RecordConsumer.class);
+    ValidatingRecordConsumer c = new ValidatingRecordConsumer(delegate, schema);
+    c.startMessage();
+    c.startField("v", 0);
+    if (field.equals("element")) {
+      c.startGroup();
+      c.startField("list", 0);
+      startEntry(c);
+    }
+    clearInvocations(delegate);
+    assertThatThrownBy(() -> c.endField(field, 0))
+        .isInstanceOf(InvalidRecordException.class)
+        .hasMessage("required field is missing "
+            + (field.equals("v") ? schema.getType("v") : schema.getType("v", "list", "element")));
+    verifyNoInteractions(delegate);
+  }
+
+  private static Stream<Arguments> rejectedVectorElements() {
+    return Stream.of(
+        Arguments.of(
+            "float element",
+            (Consumer<RecordConsumer>) c -> c.addFloat(Float.NaN),
+            "Non-finite VECTOR element in v"),
+        Arguments.of(
+            "double element",
+            (Consumer<RecordConsumer>) c -> c.addDouble(Double.POSITIVE_INFINITY),
+            "Non-finite VECTOR element in v"),
+        Arguments.of(
+            "fixed_len_byte_array(2) element (FLOAT16)",
+            (Consumer<RecordConsumer>)
+                c -> c.addBinary(Binary.fromConstantByteArray(new byte[] {0, (byte) 0xfc})),
+            "Non-finite VECTOR element in v"),
+        Arguments.of(
+            "fixed_len_byte_array(2) element (FLOAT16)",
+            (Consumer<RecordConsumer>) c -> c.addBinary(Binary.fromConstantByteArray(new byte[] {0})),
+            "Invalid FLOAT16 VECTOR element length: 1"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("rejectedVectorElements")
+  public void testVectorElementRejectedImmediately(String element, Consumer<RecordConsumer> add, String message) {
+    MessageType schema = vectorSchema(element);
+    RecordConsumer delegate = mock(RecordConsumer.class);
+    ValidatingRecordConsumer c = new ValidatingRecordConsumer(delegate, schema);
+    c.startMessage();
+    startVector(c);
+    c.startField("list", 0);
+    startEntry(c);
+    clearInvocations(delegate);
+    assertThatThrownBy(() -> add.accept(c))
+        .isInstanceOf(InvalidRecordException.class)
+        .hasMessage(message);
+    verifyNoInteractions(delegate);
+  }
 
   private static final RecordConsumer NOOP = new RecordConsumer() {
     @Override
