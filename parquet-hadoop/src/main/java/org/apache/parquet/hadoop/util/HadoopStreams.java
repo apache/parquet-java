@@ -19,9 +19,7 @@
 
 package org.apache.parquet.hadoop.util;
 
-import java.io.InputStream;
 import java.util.Objects;
-import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.parquet.io.PositionOutputStream;
@@ -50,46 +48,8 @@ public class HadoopStreams {
     if (stream.hasCapability("in:preadbytebuffer")) {
       LOG.debug("Using ByteBufferPositionedReadable to read {}", stream);
       return new H3ByteBufferInputStream(stream);
-    } else if (isWrappedStreamByteBufferReadable(stream)) {
-      return new H2SeekableInputStream(stream);
-    } else {
-      return new H1SeekableInputStream(stream);
     }
-  }
-
-  /**
-   * Is the inner stream byte buffer readable?
-   * The test is 'the stream is not FSDataInputStream
-   * and implements ByteBufferReadable'
-   * <p>
-   * That is: all streams which implement ByteBufferReadable
-   * other than FSDataInputStream successfully support read(ByteBuffer).
-   * This is true for all filesystem clients the hadoop codebase.
-   * <p>
-   * In hadoop 3.3.0+, the StreamCapabilities probe can be used to
-   * check this: only those streams which provide the read(ByteBuffer)
-   * semantics MAY return true for the probe "in:readbytebuffer";
-   * FSDataInputStream will pass the probe down to the underlying stream.
-   *
-   * @param stream stream to probe
-   * @return true if it is safe to a H2SeekableInputStream to access
-   * the data, null when it cannot be determined because of missing hasCapabilities
-   */
-  private static Boolean isWrappedStreamByteBufferReadable(FSDataInputStream stream) {
-    boolean isByteBufferReadable = stream.hasCapability("in:readbytebuffer");
-
-    if (isByteBufferReadable) {
-      // stream is issuing the guarantee that it implements the
-      // API. Holds for all implementations in hadoop-*
-      // since Hadoop 3.3.0 (HDFS-14111).
-      return true;
-    }
-    InputStream wrapped = stream.getWrappedStream();
-    if (wrapped instanceof FSDataInputStream) {
-      LOG.debug("Checking on wrapped stream {} of {} whether is ByteBufferReadable", wrapped, stream);
-      return isWrappedStreamByteBufferReadable(((FSDataInputStream) wrapped));
-    }
-    return wrapped instanceof ByteBufferReadable;
+    return new H2SeekableInputStream(stream);
   }
 
   /**
