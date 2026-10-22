@@ -471,7 +471,9 @@ public class AvroSchemaConverter {
                 if (!repeatedType.isRepetition(REPEATED)) {
                   throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
                 }
-                if (isElementType(repeatedType, parquetGroupType.getName())) {
+                if (!(logicalTypeAnnotation
+                        instanceof LogicalTypeAnnotation.VectorLogicalTypeAnnotation)
+                    && isElementType(repeatedType, parquetGroupType.getName())) {
                   // repeated element types are always required
                   return of(Schema.createArray(convertField(repeatedType, names)));
                 } else {
