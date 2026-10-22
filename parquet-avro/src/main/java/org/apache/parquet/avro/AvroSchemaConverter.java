@@ -71,6 +71,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.schema.Types;
 
 /**
@@ -482,6 +483,13 @@ public class AvroSchemaConverter {
                     return of(Schema.createArray(convertField(elementType, names)));
                   }
                 }
+              }
+
+              @Override
+              public Optional<Schema> visit(
+                  LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
+                TypeUtil.checkValidVectorSchema(parquetGroupType);
+                return visit(LogicalTypeAnnotation.listType());
               }
 
               @Override
