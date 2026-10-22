@@ -246,12 +246,12 @@ public class TestHadoop3ByteBufferReadFully {
   }
 
   /**
-   * Regression test: verify that creating a stream for {@link MockHadoopInputStream}
-   * still generates an {@link H1SeekableInputStream}.
+   * Regression test: verify that creating a stream for {@link MockHadoopInputStream},
+   * which is not ByteBufferReadable, generates an {@link H2SeekableInputStream}.
    */
   @Test
-  public void testCreateH1Stream() {
-    assertStreamClass(H1SeekableInputStream.class, wrap(new FSDataInputStream(new MockHadoopInputStream())));
+  public void testCreateStreamNoByteBufferReadable() {
+    assertStreamClass(H2SeekableInputStream.class, wrap(new FSDataInputStream(new MockHadoopInputStream())));
   }
 
   /**
