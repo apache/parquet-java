@@ -71,6 +71,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.schema.Types;
 
 /**
@@ -470,7 +471,9 @@ public class AvroSchemaConverter {
                 if (!repeatedType.isRepetition(REPEATED)) {
                   throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
                 }
-                if (isElementType(repeatedType, parquetGroupType.getName())) {
+                if (!(logicalTypeAnnotation
+                        instanceof LogicalTypeAnnotation.VectorLogicalTypeAnnotation)
+                    && isElementType(repeatedType, parquetGroupType.getName())) {
                   // repeated element types are always required
                   return of(Schema.createArray(convertField(repeatedType, names)));
                 } else {
@@ -482,6 +485,13 @@ public class AvroSchemaConverter {
                     return of(Schema.createArray(convertField(elementType, names)));
                   }
                 }
+              }
+
+              @Override
+              public Optional<Schema> visit(
+                  LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
+                TypeUtil.checkValidVectorSchema(parquetGroupType);
+                return visit(LogicalTypeAnnotation.listType());
               }
 
               @Override

@@ -47,6 +47,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.TypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -508,7 +509,9 @@ public class MessageColumnIO extends GroupColumnIO {
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
     RecordConsumer recordWriter = new MessageColumnIORecordConsumer(columns);
     if (DEBUG) recordWriter = new RecordConsumerLoggingWrapper(recordWriter);
-    return validating ? new ValidatingRecordConsumer(recordWriter, getType()) : recordWriter;
+    return validating || TypeUtil.checkValidVectorSchema(getType())
+        ? new ValidatingRecordConsumer(recordWriter, getType())
+        : recordWriter;
   }
 
   void setLevels() {

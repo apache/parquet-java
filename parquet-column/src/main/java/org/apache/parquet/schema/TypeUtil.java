@@ -18,8 +18,104 @@
  */
 package org.apache.parquet.schema;
 
+import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type.Repetition;
+
 public class TypeUtil {
+  public static boolean checkValidVectorSchema(Type type) {
+    boolean found = type.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation;
+    if (found) {
+      if (type.isPrimitive()) {
+        throw new InvalidSchemaException("Invalid VECTOR schema: " + type);
+      }
+      checkVector(type.asGroupType());
+    } else if (!type.isPrimitive()) {
+      for (Type child : type.asGroupType().getFields()) {
+        found |= checkValidVectorSchema(child);
+      }
+    }
+    return found;
+  }
+
+  private static void checkVector(GroupType vector) {
+    if (vector.getRepetition() == Repetition.REPEATED || vector.getFieldCount() != 1) {
+      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+    }
+    Type listType = vector.getType(0);
+    if (listType.isPrimitive()
+        || !listType.getName().equals("list")
+        || listType.getRepetition() != Repetition.REPEATED
+        || listType.getLogicalTypeAnnotation() != null) {
+      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+    }
+    GroupType list = listType.asGroupType();
+    if (list.getFieldCount() != 1) {
+      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+    }
+    Type elementType = list.getType(0);
+    if (!elementType.isPrimitive()
+        || !elementType.getName().equals("element")
+        || elementType.getRepetition() != Repetition.REQUIRED) {
+      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+    }
+    PrimitiveType element = elementType.asPrimitiveType();
+    PrimitiveTypeName physical = element.getPrimitiveTypeName();
+    LogicalTypeAnnotation logical = element.getLogicalTypeAnnotation();
+    boolean allowed;
+    switch (physical) {
+      case BOOLEAN:
+      case FLOAT:
+      case DOUBLE:
+        allowed = logical == null;
+        break;
+      case INT32:
+      case INT64:
+        allowed = logical == null
+            || logical instanceof IntLogicalTypeAnnotation
+            || logical instanceof DecimalLogicalTypeAnnotation;
+        break;
+      case FIXED_LEN_BYTE_ARRAY:
+        allowed = logical instanceof Float16LogicalTypeAnnotation
+            || logical instanceof DecimalLogicalTypeAnnotation;
+        break;
+      default:
+        allowed = false;
+    }
+    if (!allowed) {
+      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+    }
+    try {
+      Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(physical, element.getRepetition());
+      if (physical == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+        builder.length(element.getTypeLength());
+      }
+      if (logical != null) {
+        builder.as(logical);
+      }
+      builder.named(element.getName());
+    } catch (IllegalArgumentException | IllegalStateException e) {
+      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector, e);
+    }
+  }
+
+  public static VectorLogicalTypeAnnotation getVectorType(GroupType schema, String[] path) {
+    if (path.length < 3) {
+      return null;
+    }
+    GroupType group = schema;
+    for (int i = 0; i < path.length - 2; i++) {
+      group = group.getType(path[i]).asGroupType();
+    }
+    LogicalTypeAnnotation logical = group.getLogicalTypeAnnotation();
+    return logical instanceof VectorLogicalTypeAnnotation ? (VectorLogicalTypeAnnotation) logical : null;
+  }
+
   public static void checkValidWriteSchema(GroupType schema) {
+    checkValidVectorSchema(schema);
     schema.accept(new TypeVisitor() {
       @Override
       public void visit(GroupType groupType) {
