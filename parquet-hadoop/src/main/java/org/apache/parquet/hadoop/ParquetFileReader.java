@@ -135,6 +135,10 @@ public class ParquetFileReader implements Closeable {
 
   public static final long HADOOP_VECTORED_READ_TIMEOUT_SECONDS = 300;
 
+  // old parquet-mr versions (PARQUET-816) left the header of the dictionary page (13 to 19 bytes) out of the size of
+  // the column chunk
+  private static final int MAX_MISSING_DICTIONARY_HEADER_BYTES = 100;
+
   private final ParquetMetadataConverter converter;
 
   private final CRC32 crc;
@@ -2024,10 +2028,11 @@ public class ParquetFileReader implements Closeable {
     private class ChunkData {
       final List<ByteBuffer> buffers = new ArrayList<>();
       OffsetIndex offsetIndex;
+      // end of the consecutive part list if the last part added ends it, otherwise -1
+      long tailEndPos = -1;
     }
 
     private final Map<ChunkDescriptor, ChunkData> map = new HashMap<>();
-    private ChunkDescriptor lastDescriptor;
     private final long rowCount;
     private SeekableInputStream f;
     private final ByteBufferReleaser releaser = new ByteBufferReleaser(options.getAllocator());
@@ -2036,9 +2041,10 @@ public class ParquetFileReader implements Closeable {
       this.rowCount = rowCount;
     }
 
-    void add(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f) {
-      map.computeIfAbsent(descriptor, d -> new ChunkData()).buffers.addAll(buffers);
-      lastDescriptor = descriptor;
+    void add(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f, long tailEndPos) {
+      ChunkData data = map.computeIfAbsent(descriptor, d -> new ChunkData());
+      data.buffers.addAll(buffers);
+      data.tailEndPos = tailEndPos;
       this.f = f;
     }
 
@@ -2056,9 +2062,10 @@ public class ParquetFileReader implements Closeable {
       for (Entry<ChunkDescriptor, ChunkData> entry : entries) {
         ChunkDescriptor descriptor = entry.getKey();
         ChunkData data = entry.getValue();
-        if (descriptor.equals(lastDescriptor)) {
-          // because of a bug, the last chunk might be larger than descriptor.size
-          chunks.add(new WorkaroundChunk(lastDescriptor, data.buffers, f, data.offsetIndex, rowCount));
+        if (data.tailEndPos >= 0) {
+          // because of a bug, the last chunk of a consecutive part list might be larger than descriptor.size
+          chunks.add(new WorkaroundChunk(
+              descriptor, data.buffers, f, data.tailEndPos, data.offsetIndex, rowCount));
         } else {
           chunks.add(new Chunk(descriptor, data.buffers, data.offsetIndex, rowCount));
         }
@@ -2311,19 +2318,24 @@ public class ParquetFileReader implements Closeable {
   private class WorkaroundChunk extends Chunk {
 
     private final SeekableInputStream f;
+    // where the bytes still missing at the end of this chunk are in the file
+    private long missingBytesPos;
 
     /**
      * @param descriptor the descriptor of the chunk
-     * @param f          the file stream positioned at the end of this chunk
+     * @param f          the file stream, it is repositioned to read the missing bytes
+     * @param endPos     the position following the last byte of this chunk according to the metadata
      */
     private WorkaroundChunk(
         ChunkDescriptor descriptor,
         List<ByteBuffer> buffers,
         SeekableInputStream f,
+        long endPos,
         OffsetIndex offsetIndex,
         long rowCount) {
       super(descriptor, buffers, offsetIndex, rowCount);
       this.f = f;
+      this.missingBytesPos = endPos;
     }
 
     protected PageHeader readPageHeader() throws IOException {
@@ -2339,15 +2351,17 @@ public class ParquetFileReader implements Closeable {
         // if the last page is smaller than this, the page header itself is truncated in the buffer.
         stream.reset(); // resetting the buffer to the position before we got the error
         LOG.info("completing the column chunk to read the page header");
+        f.seek(missingBytesPos);
         pageHeader = Util.readPageHeader(
             new SequenceInputStream(stream, f)); // trying again from the buffer + remainder of the stream.
+        missingBytesPos = f.getPos();
       }
       return pageHeader;
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
       int available = stream.available();
-      if (size > available) {
+      if (size > available && size - available <= MAX_MISSING_DICTIONARY_HEADER_BYTES) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
         // to allow reading older files (using dictionary) we need this.
@@ -2358,7 +2372,11 @@ public class ParquetFileReader implements Closeable {
         List<ByteBuffer> streamBuffers = stream.sliceBuffers(available);
 
         ByteBuffer lastBuffer = ByteBuffer.allocate(missingBytes);
+        // f is not at the end of this chunk after a vectored read or after reading the other part lists
+        f.seek(missingBytesPos);
         f.readFully(lastBuffer);
+        lastBuffer.flip();
+        missingBytesPos += missingBytes;
 
         List<ByteBuffer> buffers = new ArrayList<>(streamBuffers.size() + 1);
         buffers.addAll(streamBuffers);
@@ -2474,7 +2492,7 @@ public class ParquetFileReader implements Closeable {
       BenchmarkCounter.incrementBytesRead(length);
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (final ChunkDescriptor descriptor : chunks) {
-        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f, tailEndPos(descriptor));
       }
     }
 
@@ -2533,8 +2551,16 @@ public class ParquetFileReader implements Closeable {
       }
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (ChunkDescriptor descriptor : chunks) {
-        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f, tailEndPos(descriptor));
       }
+    }
+
+    /**
+     * @param descriptor a chunk of this list
+     * @return the position following the last byte of these chunks if the chunk is the last one, otherwise -1
+     */
+    private long tailEndPos(ChunkDescriptor descriptor) {
+      return descriptor == chunks.get(chunks.size() - 1) ? endPos() : -1;
     }
 
     /**
