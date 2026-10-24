@@ -29,6 +29,8 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class TestFileConverters {
   private static final GroupType SCHEMA = Types.optionalGroup()
@@ -104,6 +106,90 @@ public class TestFileConverters {
     assertThat(values.get(0).getInline()).isNull();
     assertThat(values.get(1).getUri()).isNull();
     assertThat(values.get(1).getInline().toStringUsingUTF8()).isEqualTo("second");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testSizeWithoutUriConvertsToNull(boolean emptyUri) {
+    List<FileValue> values = new ArrayList<>();
+    GroupConverter converter = FileConverters.newFileConverter(SCHEMA, SCHEMA, values::add);
+
+    converter.start();
+    if (emptyUri) {
+      converter.getConverter(0).asPrimitiveConverter().addBinary(Binary.fromString(""));
+    }
+    converter.getConverter(2).asPrimitiveConverter().addLong(2);
+    converter.getConverter(5).asPrimitiveConverter().addBinary(Binary.fromString("bytes"));
+    converter.end();
+
+    assertThat(values).containsExactly((FileValue) null);
+  }
+
+  @Test
+  public void testResetsAfterInvalidValue() {
+    List<FileValue> values = new ArrayList<>();
+    GroupConverter converter = FileConverters.newFileConverter(SCHEMA, SCHEMA, values::add);
+
+    converter.start();
+    converter.getConverter(0).asPrimitiveConverter().addBinary(Binary.fromString("first"));
+    converter.getConverter(1).asPrimitiveConverter().addLong(1);
+    converter.getConverter(2).asPrimitiveConverter().addLong(2);
+    converter.getConverter(3).asPrimitiveConverter().addBinary(Binary.fromString("image/png"));
+    converter.getConverter(4).asPrimitiveConverter().addBinary(Binary.fromString("ETAG:abc"));
+    converter.end();
+    converter.start();
+    converter.getConverter(3).asPrimitiveConverter().addBinary(Binary.fromString("image/jpeg"));
+    converter.end();
+    converter.start();
+    converter.getConverter(5).asPrimitiveConverter().addBinary(Binary.fromConstantByteArray(new byte[0]));
+    converter.end();
+
+    assertThat(values).hasSize(3);
+    assertThat(values.get(0).getUri()).isEqualTo("first");
+    assertThat(values.get(1)).isNull();
+    FileValue last = values.get(2);
+    assertThat(last.getInline().getBytes()).isEmpty();
+    assertThat(last.getUri()).isNull();
+    assertThat(last.getOffset()).isNull();
+    assertThat(last.getSize()).isNull();
+    assertThat(last.getContentType()).isNull();
+    assertThat(last.getChecksum()).isNull();
+  }
+
+  @Test
+  public void testCopiesReusedInlineBuffer() {
+    List<FileValue> values = new ArrayList<>();
+    GroupConverter converter = FileConverters.newFileConverter(SCHEMA, SCHEMA, values::add);
+    byte[] bytes = {1, 2, 3};
+    Binary binary = Binary.fromReusedByteArray(bytes);
+
+    converter.start();
+    converter.getConverter(5).asPrimitiveConverter().addBinary(binary);
+    converter.end();
+    bytes[0] = 4;
+    converter.start();
+    converter.getConverter(5).asPrimitiveConverter().addBinary(binary);
+    converter.end();
+
+    assertThat(values).hasSize(2);
+    assertThat(values.get(0).getInline().getBytes()).containsExactly(1, 2, 3);
+    assertThat(values.get(1).getInline().getBytes()).containsExactly(4, 2, 3);
+  }
+
+  @Test
+  public void testAllowsAddedFieldsAndReorderedProjection() {
+    GroupType storedSchema = SCHEMA.withNewFields(SCHEMA.getType("uri"));
+    GroupType requestedSchema = SCHEMA.withNewFields(SCHEMA.getType("inline"), SCHEMA.getType("uri"));
+    List<FileValue> values = new ArrayList<>();
+    GroupConverter converter = FileConverters.newFileConverter(requestedSchema, storedSchema, values::add);
+
+    converter.start();
+    converter.getConverter(1).asPrimitiveConverter().addBinary(Binary.fromString("s3://bucket/file"));
+    converter.end();
+
+    assertThat(values).hasSize(1);
+    assertThat(values.get(0).getUri()).isEqualTo("s3://bucket/file");
+    assertThat(values.get(0).getInline()).isNull();
   }
 
   @Test

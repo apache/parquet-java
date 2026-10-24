@@ -68,6 +68,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.FixedBinaryTestUtils;
@@ -143,6 +144,8 @@ import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class TestParquetMetadataConverter {
   private static SecureRandom random = new SecureRandom();
@@ -2443,43 +2446,55 @@ public class TestParquetMetadataConverter {
     assertThat(logicalType).isInstanceOf(LogicalTypeAnnotation.FileLogicalTypeAnnotation.class);
   }
 
-  @Test
-  public void testMalformedFileLogicalTypeIsDroppedOnRead() {
+  @ParameterizedTest
+  @MethodSource("malformedFileFields")
+  public void testMalformedFileLogicalTypeIsDroppedOnRead(List<org.apache.parquet.schema.Type> fields)
+      throws IOException {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType validSchema = Types.buildMessage()
+    MessageType physicalSchema = Types.buildMessage()
         .requiredGroup()
-        .as(LogicalTypeAnnotation.fileType())
-        .optional(PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.stringType())
-        .named("uri")
+        .id(17)
+        .addFields(fields.toArray(new org.apache.parquet.schema.Type[0]))
         .named("f")
+        .required(PrimitiveTypeName.INT32)
+        .named("sibling")
         .named("example");
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(validSchema);
-    parquetSchema.get(2).setLogicalType(null).setConverted_type(null);
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(physicalSchema);
+    parquetSchema.get(1).setLogicalType(LogicalType.FILE(new FileType()));
+    FileMetaData footer = new FileMetaData(1, parquetSchema, 0, emptyList());
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    Util.writeFileMetaData(footer, bytes);
 
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    ParquetMetadata metadata = parquetMetadataConverter.fromParquetMetadata(
+        Util.readFileMetaData(new ByteArrayInputStream(bytes.toByteArray())));
 
-    GroupType fileGroup = schema.getType("f").asGroupType();
-    assertThat(fileGroup.getLogicalTypeAnnotation()).isNull();
-    assertThat(fileGroup.getType("uri").asPrimitiveType().getPrimitiveTypeName())
-        .isEqualTo(PrimitiveTypeName.BINARY);
+    assertThat(metadata.getFileMetaData().getSchema()).isEqualTo(physicalSchema);
   }
 
-  @Test
-  public void testInvalidFileLogicalTypeCreatedWithNewFieldsCannotBeSerialized() {
-    GroupType validFile = Types.requiredGroup()
-        .as(LogicalTypeAnnotation.fileType())
-        .optional(PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.stringType())
-        .named("uri")
-        .named("f");
-    GroupType invalidFile = validFile.withNewFields(
-        Types.optional(PrimitiveTypeName.INT32).named("uri"));
-    MessageType schema = new MessageType("example", invalidFile);
-
-    assertThatThrownBy(() -> new ParquetMetadataConverter().toParquetSchema(schema))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("FILE type field 'uri' must be a STRING (BINARY annotated as STRING) in group 'f'");
+  private static Stream<List<org.apache.parquet.schema.Type>> malformedFileFields() {
+    PrimitiveType uri =
+        Types.optional(PrimitiveTypeName.BINARY).as(stringType()).named("uri");
+    return Stream.of(
+        List.of(Types.optional(PrimitiveTypeName.BINARY).named("uri")),
+        List.of(Types.optional(PrimitiveTypeName.INT32).named("uri")),
+        List.of(Types.required(PrimitiveTypeName.BINARY)
+            .as(stringType())
+            .named("uri")),
+        List.of(Types.optionalGroup()
+            .optional(PrimitiveTypeName.BINARY)
+            .named("nested")
+            .named("uri")),
+        List.of(Types.optional(PrimitiveTypeName.BINARY).named("unknown")),
+        List.of(Types.optional(PrimitiveTypeName.INT64)
+            .as(timestampType(true, MICROS))
+            .named("offset")),
+        List.of(Types.optional(PrimitiveTypeName.INT64)
+            .as(intType(64, false))
+            .named("size")),
+        List.of(Types.optional(PrimitiveTypeName.BINARY)
+            .as(stringType())
+            .named("inline")),
+        List.of(uri, uri));
   }
 
   @Test

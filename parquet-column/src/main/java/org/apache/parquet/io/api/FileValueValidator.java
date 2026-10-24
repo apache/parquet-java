@@ -25,13 +25,11 @@ final class FileValueValidator {
   private FileValueValidator() {}
 
   static void validateSchema(GroupType schema) {
-    if (!(schema.getLogicalTypeAnnotation()
-        instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation)) {
+    if (!(schema.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation)) {
       throw new IllegalArgumentException(
           "Cannot use a FILE value with a group without the FILE logical type: " + schema.getName());
     }
-    ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) schema.getLogicalTypeAnnotation())
-        .validate(schema);
+    ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) schema.getLogicalTypeAnnotation()).validate(schema);
   }
 
   static void validateValue(FileValue value) {

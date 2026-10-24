@@ -43,9 +43,12 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Arrays;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class TestTypeBuildersWithLogicalTypes {
   @Test
@@ -847,17 +850,18 @@ public class TestTypeBuildersWithLogicalTypes {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test
-  public void testFileLogicalTypeRejectsAnnotatedOffset() {
+  @ParameterizedTest
+  @ValueSource(strings = {"offset", "size"})
+  public void testFileLogicalTypeRejectsAnnotatedRangeField(String fieldName) {
     assertThatThrownBy(() -> Types.requiredGroup()
             .as(LogicalTypeAnnotation.fileType())
             .optional(INT64)
             .as(timestampType(true, MICROS))
-            .named("offset")
-            .named("file_with_annotated_offset"))
+            .named(fieldName)
+            .named("file_with_annotated_range"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage(
-            "FILE type field 'offset' must be an unannotated INT64 in group 'file_with_annotated_offset'");
+        .hasMessage("FILE type field '" + fieldName
+            + "' must be an unannotated INT64 in group 'file_with_annotated_range'");
   }
 
   @Test
@@ -869,24 +873,66 @@ public class TestTypeBuildersWithLogicalTypes {
             .named("inline")
             .named("file_with_annotated_inline"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage(
-            "FILE type field 'inline' must be an unannotated BYTE_ARRAY (BINARY) in group "
-                + "'file_with_annotated_inline'");
+        .hasMessage("FILE type field 'inline' must be an unannotated BYTE_ARRAY (BINARY) in group "
+            + "'file_with_annotated_inline'");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"uri", "offset", "size", "content_type", "checksum", "inline"})
+  public void testFileLogicalTypeRejectsDuplicateFields(String fieldName) {
+    PrimitiveType field;
+    if (fieldName.equals("offset") || fieldName.equals("size")) {
+      field = Types.optional(INT64).named(fieldName);
+    } else if (fieldName.equals("inline")) {
+      field = Types.optional(BINARY).named(fieldName);
+    } else {
+      field = Types.optional(BINARY).as(stringType()).named(fieldName);
+    }
+    assertThatThrownBy(() -> Types.requiredGroup()
+            .as(LogicalTypeAnnotation.fileType())
+            .addFields(field, field)
+            .named("file_with_duplicate_field"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("FILE type group 'file_with_duplicate_field' contains duplicate field '" + fieldName + "'");
   }
 
   @Test
-  public void testFileLogicalTypeRejectsDuplicateFields() {
-    assertThatThrownBy(() -> Types.requiredGroup()
-            .as(LogicalTypeAnnotation.fileType())
-            .optional(BINARY)
-            .as(stringType())
-            .named("uri")
-            .optional(BINARY)
-            .as(stringType())
-            .named("uri")
-            .named("file_with_duplicate_uri"))
+  public void testFileLogicalTypeWithNewFieldsRejectsInvalidFields() {
+    GroupType file = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(stringType())
+        .named("uri")
+        .named("file");
+    PrimitiveType invalidUri = Types.optional(INT32).named("uri");
+
+    assertThatThrownBy(() -> file.withNewFields(invalidUri))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("FILE type group 'file_with_duplicate_uri' contains duplicate field 'uri'");
+        .hasMessage("FILE type field 'uri' must be a STRING (BINARY annotated as STRING) in group 'file'");
+    assertThatThrownBy(() -> file.withNewFields(Arrays.asList(file.getType("uri"), file.getType("uri"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("FILE type group 'file' contains duplicate field 'uri'");
   }
 
+  @Test
+  public void testFileLogicalTypeWithNewFieldsPreservesAttributes() {
+    GroupType file = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .id(42)
+        .optional(BINARY)
+        .as(stringType())
+        .named("uri")
+        .optional(BINARY)
+        .named("inline")
+        .named("file");
+
+    GroupType projected = file.withNewFields(file.getType("inline"));
+
+    assertThat(projected.getFields()).containsExactly(file.getType("inline"));
+    assertThat(projected.getLogicalTypeAnnotation()).isEqualTo(LogicalTypeAnnotation.fileType());
+    assertThat(projected.getName()).isEqualTo("file");
+    assertThat(projected.getRepetition()).isEqualTo(Repetition.OPTIONAL);
+    assertThat(projected.getId()).isEqualTo(file.getId());
+    assertThat(file.getFields()).hasSize(2);
+  }
 }

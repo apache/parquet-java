@@ -1263,9 +1263,9 @@ public abstract class LogicalTypeAnnotation {
    *       the form {@code <algorithm>:<digest>}.</li>
    *   <li>{@code inline} (BYTE_ARRAY): the referenced bytes stored inline in the value.</li>
    * </ul>
-   * No fields with names other than the above are permitted. Each declared field must match its
-   * required physical type. Rules involving which fields are set and their values are enforced per
-   * value rather than by the schema.
+   * No fields with names other than the above are permitted, and field names must be unique. Each
+   * declared field must match its required physical and logical types. Rules involving which fields
+   * are set and their values are enforced per value rather than by the schema.
    */
   public static class FileLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final FileLogicalTypeAnnotation INSTANCE = new FileLogicalTypeAnnotation();
@@ -1340,14 +1340,16 @@ public abstract class LogicalTypeAnnotation {
         case OFFSET_FIELD:
         case SIZE_FIELD:
           Preconditions.checkArgument(
-              physicalType == PrimitiveType.PrimitiveTypeName.INT64 && field.getLogicalTypeAnnotation() == null,
+              physicalType == PrimitiveType.PrimitiveTypeName.INT64
+                  && field.getLogicalTypeAnnotation() == null,
               "FILE type field '%s' must be an unannotated INT64 in group '%s'",
               fieldName,
               groupName);
           break;
         case INLINE_FIELD:
           Preconditions.checkArgument(
-              physicalType == PrimitiveType.PrimitiveTypeName.BINARY && field.getLogicalTypeAnnotation() == null,
+              physicalType == PrimitiveType.PrimitiveTypeName.BINARY
+                  && field.getLogicalTypeAnnotation() == null,
               "FILE type field '%s' must be an unannotated BYTE_ARRAY (BINARY) in group '%s'",
               fieldName,
               groupName);

@@ -51,8 +51,8 @@ public final class FileConverters {
     FileValueValidator.validateSchema(fileSchema);
     for (Type field : fileSchema.getFields()) {
       if (!schema.containsField(field.getName())) {
-        throw new IllegalArgumentException("FILE group '" + schema.getName()
-            + "' cannot project stored field '" + field.getName() + "'");
+        throw new IllegalArgumentException(
+            "FILE group '" + schema.getName() + "' cannot project stored field '" + field.getName() + "'");
       }
     }
     return new FileGroupConverter(schema, consumer);
