@@ -61,7 +61,11 @@ public final class Variant {
    * Lazy cache for the parsed array header.
    */
   private VariantUtil.ArrayInfo cachedArrayInfo;
-  /** Nesting depth of this Variant relative to the top-level value (0 = top-level). */
+
+  /**
+   * Child depth of this Variant relative to the top-level value (0 = top-level).
+   * Arrays and short strings are children here, along with nested variants.
+   */
   private final int depth;
 
   /**
@@ -109,7 +113,6 @@ public final class Variant {
    * Includes validation of the version and the toplevel structure.
    * @param value value buffer
    * @param metadata metadata buffer
-   * @throws UnsupportedOperationException if there is a version mismatch
    * @throws IllegalArgumentException for any validation failure.
    */
   public Variant(ByteBuffer value, ByteBuffer metadata) {
