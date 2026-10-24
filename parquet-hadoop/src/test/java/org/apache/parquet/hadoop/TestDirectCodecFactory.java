@@ -17,7 +17,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.BROTLI;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4_RAW;
@@ -216,11 +215,6 @@ public class TestDirectCodecFactory {
     Set<CompressionCodecName> codecsToSkip = new HashSet<>();
     codecsToSkip.add(LZO); // not distributed because it is GPL
     codecsToSkip.add(LZ4); // not distributed in the default version of Hadoop
-    final String arch = System.getProperty("os.arch");
-    if ("aarch64".equals(arch)) {
-      // PARQUET-1975 brotli-codec does not have natives for ARM64 architectures
-      codecsToSkip.add(BROTLI);
-    }
 
     for (final int size : sizes) {
       for (final boolean useOnHeapComp : comp) {
