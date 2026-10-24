@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -645,25 +646,21 @@ public class TestVariantScalar {
 
   @Test
   public void testInvalidType() {
-    Variant value = new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getBoolean)
+    assertThatThrownBy(() -> new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), VariantTestUtil.EMPTY_METADATA))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read unknownType(basicType: 0, valueHeader: 63) value as BOOLEAN");
+        .hasMessage("Unknown primitive type in variant: 63");
   }
 
   @Test
   public void testInvalidBoolean() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getBoolean)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as BOOLEAN");
+    assertVariantLongReadInvalid("Cannot read LONG value as BOOLEAN", Variant::getBoolean);
   }
 
   @Test
   public void testInvalidLong() {
     Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(16)}), VariantTestUtil.EMPTY_METADATA);
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(16), 0, 0, 0, 0}),
+        VariantTestUtil.EMPTY_METADATA);
     assertThatThrownBy(value::getLong)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
@@ -672,82 +669,61 @@ public class TestVariantScalar {
 
   @Test
   public void testInvalidInt() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getInt)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]");
+    assertVariantLongReadInvalid("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]", Variant::getInt);
   }
 
   @Test
   public void testInvalidShort() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getShort)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as one of [BYTE, SHORT]");
+    assertVariantLongReadInvalid("Cannot read LONG value as one of [BYTE, SHORT]", Variant::getShort);
   }
 
   @Test
   public void testInvalidByte() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getByte)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as BYTE");
+    assertVariantLongReadInvalid("Cannot read LONG value as BYTE", Variant::getByte);
   }
 
   @Test
   public void testInvalidFloat() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getFloat)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as FLOAT");
+    assertVariantLongReadInvalid("Cannot read LONG value as FLOAT", Variant::getFloat);
   }
 
   @Test
   public void testInvalidDouble() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getDouble)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as DOUBLE");
+    assertVariantLongReadInvalid("Cannot read LONG value as DOUBLE", Variant::getDouble);
   }
 
   @Test
   public void testInvalidDecimal() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6), 0}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getDecimal)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]");
+    assertVariantLongReadInvalid(
+        "Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]", Variant::getDecimal);
   }
 
   @Test
   public void testInvalidUUID() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getUUID)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as UUID");
+    assertVariantLongReadInvalid("Cannot read LONG value as UUID", Variant::getUUID);
   }
 
   @Test
   public void testInvalidString() {
-    Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getString)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as STRING");
+    assertVariantLongReadInvalid("Cannot read LONG value as STRING", Variant::getString);
   }
 
   @Test
   public void testInvalidBinary() {
+    assertVariantLongReadInvalid("Cannot read LONG value as BINARY", Variant::getBinary);
+  }
+
+  /**
+   * Assert that reading a long value variant raises an IllegalArgumentException.
+   * @param expectedErrorText expected text.
+   * @param consumer variant consumer.
+   */
+  private static void assertVariantLongReadInvalid(String expectedErrorText, Consumer<Variant> consumer) {
     Variant value = new Variant(
-        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-    assertThatThrownBy(value::getBinary)
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6), 0, 0, 0, 0, 0, 0, 0, 0}),
+        VariantTestUtil.EMPTY_METADATA);
+    assertThatThrownBy(() -> consumer.accept(value))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Cannot read LONG value as BINARY");
+        .hasMessage(expectedErrorText);
   }
 }
