@@ -26,6 +26,7 @@ import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -678,6 +679,18 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withPageRowCountLimit(int rowCount) {
       encodingPropsBuilder.withPageRowCountLimit(rowCount);
+      return self();
+    }
+
+    /**
+     * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, or disable
+     * it with {@code null}; see {@link ParquetProperties.Builder#withContentDefinedChunking(CdcOptions)}.
+     *
+     * @param options the chunking options, or {@code null} to disable content defined chunking
+     * @return this builder for method chaining
+     */
+    public SELF withContentDefinedChunking(CdcOptions options) {
+      encodingPropsBuilder.withContentDefinedChunking(options);
       return self();
     }
 
