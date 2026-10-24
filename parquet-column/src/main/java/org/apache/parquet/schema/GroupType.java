@@ -135,8 +135,13 @@ public class GroupType extends Type {
   /**
    * @param newFields a list of types to use as fields in a copy of this group
    * @return a group with the same attributes and new fields.
+   * @throws IllegalArgumentException if the new fields do not conform to this group's FILE annotation
    */
   public GroupType withNewFields(List<Type> newFields) {
+    if (getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+      ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) getLogicalTypeAnnotation())
+          .validateFields(getName(), newFields);
+    }
     return new GroupType(getRepetition(), getName(), getLogicalTypeAnnotation(), newFields, getId());
   }
 
