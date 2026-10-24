@@ -106,7 +106,9 @@ public class TestHardenedReader {
     Variant top = new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0]));
 
     assertThat(top.getType()).isEqualTo(Variant.Type.ARRAY);
-    assertThatThrownBy(() -> top.getElementAtIndex(0)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> top.getElementAtIndex(0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("array child offset");
   }
 
   @Test

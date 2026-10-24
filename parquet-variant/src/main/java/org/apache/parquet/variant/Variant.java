@@ -63,6 +63,11 @@ public final class Variant {
   private VariantUtil.ArrayInfo cachedArrayInfo;
 
   /**
+   * Lazy cache for the parsed array offset; saved when {@link #cachedArrayInfo} is saved.
+   */
+  private int cachedArrayEndOffset;
+
+  /**
    * Child depth of this Variant relative to the top-level value (0 = top-level).
    * Arrays and short strings are children here, along with nested variants.
    */
@@ -396,6 +401,9 @@ public final class Variant {
     int dataStart = value.position() + info.dataStartOffset;
     int offset =
         VariantUtil.readUnsignedLittleEndian(value, offsetStart + info.offsetSize * index, info.offsetSize);
+    int endOffset = arrayEndOffset();
+    Preconditions.checkArgument(
+        offset <= endOffset, "variant array child offset out of range: %s (end offset %s)", offset, endOffset);
     return childVariant(VariantUtil.slice(value, dataStart + offset));
   }
 
@@ -448,7 +456,20 @@ public final class Variant {
     if (info == null) {
       info = VariantUtil.getArrayInfo(value);
       cachedArrayInfo = info;
+      cachedArrayEndOffset = VariantUtil.readUnsignedLittleEndian(
+          value,
+          value.position() + info.offsetStartOffset + info.offsetSize * info.numElements,
+          info.offsetSize);
     }
     return info;
+  }
+
+  /**
+   * Return the array end offset, parsing it on deman.
+   * @return array end offset.
+   */
+  private int arrayEndOffset() {
+    arrayInfo();
+    return cachedArrayEndOffset;
   }
 }
