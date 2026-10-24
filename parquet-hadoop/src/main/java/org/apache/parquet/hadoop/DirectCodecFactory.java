@@ -136,6 +136,10 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         if (codec == null) {
           return NO_OP_DECOMPRESSOR;
         }
+        if (codec.getDecompressorType() == null) {
+          // Stream-only codecs (for example Brotli) do not expose a Decompressor.
+          return new HeapBytesDecompressor(codec);
+        }
         DirectCodecPool.CodecPool pool = DirectCodecPool.INSTANCE.codec(codec);
         if (pool.supportsDirectDecompression()) {
           return new FullDirectDecompressor(pool.borrowDirectDecompressor());
