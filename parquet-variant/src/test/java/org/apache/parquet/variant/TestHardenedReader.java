@@ -96,16 +96,25 @@ public class TestHardenedReader {
     assertThat(v.getElementAtIndex(0).getType()).isEqualTo(Variant.Type.NULL);
   }
 
-  /**
-   * Out-of-range child offset.
-   */
   @Test
-  public void testOutOfRangeChildOffset() throws IOException {
+  public void testArrayChildOffsetIsCheckedOnAccess() throws IOException {
     byte[] value = arrayOneNull();
     // Layout of arrayOneNull(): [header, numElements=1, offset[0]=0, offset[1]=1, NULL_header]
-    // Set offset[0] to 0xFF — far outside the 1-byte data region.
+    // Set offset[0] to 0xFF, beyond the 1-byte data region.
     value[2] = (byte) 0xFF;
-    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "child offset");
+    byte[][] roundTripped = roundTrip(EMPTY_METADATA, value);
+    Variant top = new Variant(ByteBuffer.wrap(roundTripped[1]), ByteBuffer.wrap(roundTripped[0]));
+
+    assertThat(top.getType()).isEqualTo(Variant.Type.ARRAY);
+    assertThatThrownBy(() -> top.getElementAtIndex(0)).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testArrayEndOffsetMustFitInDataRegion() throws IOException {
+    byte[] value = arrayOneNull();
+    // Set offset[1], the end offset, beyond the 1-byte data region.
+    value[3] = (byte) 0xFF;
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "array end offset");
   }
 
   /**

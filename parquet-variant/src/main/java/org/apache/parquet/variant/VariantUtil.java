@@ -914,7 +914,7 @@ class VariantUtil {
    * Bounds-checks a single Variant value node against its buffer slot. Performs no recursion
    * into nested children: child nodes are checked on demand when callers descend into them.
    *
-   * <p>Cost: O(1) for primitives and short strings, O(numElements) for objects and arrays.
+   * <p>Cost: O(1) for primitives, short strings, and arrays; O(numElements) for objects.
    * Validation of nested structures is deferred so that opening a large well-formed Variant
    * is not penalized by sub-trees the caller never inspects.
    *
@@ -924,7 +924,8 @@ class VariantUtil {
    * @param valueBuffer the variant value buffer (position/limit define the extent of this node's slot)
    * @param dictSize the metadata dictionary size, used to bound object field ids
    * @throws IllegalArgumentException if the value header or container table does not fit within
-   *     the buffer slot, or if any object field id is out of range
+   *     the buffer slot, if an array's end offset extends past the buffer slot, or if any object
+   *     field id or child offset is out of range
    */
   static void validateValueShallow(final ByteBuffer valueBuffer, final int dictSize) {
     int pos = valueBuffer.position();
@@ -950,6 +951,8 @@ class VariantUtil {
 
   /**
    * Shallow validation of a container.
+   * <p>O(elements) for an object; O(1) for an array,
+   * the latter with a lot less validation.
    *
    * @param valueBuffer buffer with the variant data
    * @param typeInfo type information from the metadata
@@ -987,19 +990,32 @@ class VariantUtil {
         dataStart <= length, "variant container offset table extends past buffer: numElements=%s", numElements);
     long dataLen = length - dataStart;
     if (isObject) {
+      // validate the dictionary elements
       for (int i = 0; i < numElements; i++) {
         int id = readUnsignedLittleEndian(valueBuffer, pos + (int) idStart + i * idSize, idSize);
         Preconditions.checkArgument(
             id < dictSize, "variant object key id %s out of range (dictSize=%s)", id, dictSize);
       }
-    }
-    // Each child offset must lie within the data region. Children may overlap or leave gaps;
-    // the trailing terminator offset is range-checked for the same reason.
-    for (int i = 0; i <= numElements; i++) {
-      // O(elements)
-      int off = readUnsignedLittleEndian(valueBuffer, pos + (int) offsetStart + i * offsetSize, offsetSize);
+      // validate the child offsets are in range.
+      // This is O(elements), but so is the
+      // Children may overlap or leave gaps, but must remain in the object's data region.
+      for (int i = 0; i <= numElements; i++) {
+        int off = readUnsignedLittleEndian(valueBuffer, pos + (int) offsetStart + i * offsetSize, offsetSize);
+        Preconditions.checkArgument(
+            off <= dataLen, "variant child offset out of range: %s (data length %s)", off, dataLen);
+      }
+    } else {
+      // array validation: make sure the end offset isn't outside the data region.
+      // It ensures the container’s declared data region itself does not run past its slot.
+      // Without it, even an empty array—or an array whose accessed element offsets happen to be valid—can claim
+      // an
+      // end offset beyond the available bytes.
+      int endOffset = readUnsignedLittleEndian(valueBuffer, pos + (int) dataStart - offsetSize, offsetSize);
       Preconditions.checkArgument(
-          off <= dataLen, "variant child offset out of range: %s (data length %s)", off, dataLen);
+          endOffset <= dataLen,
+          "variant array end offset out of range: %s (data length %s)",
+          endOffset,
+          dataLen);
     }
   }
 
