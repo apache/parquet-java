@@ -52,6 +52,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -314,7 +315,7 @@ public class TestDataPageChecksums {
   private void testWriteOnVerifyOff(ParquetProperties.WriterVersion version) throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, true);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, false);
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
@@ -355,7 +356,7 @@ public class TestDataPageChecksums {
   private void testWriteOffVerifyOff(ParquetProperties.WriterVersion version) throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, false);
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
@@ -386,7 +387,7 @@ public class TestDataPageChecksums {
   private void testWriteOffVerifyOn(ParquetProperties.WriterVersion version) throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, true);
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
@@ -417,7 +418,7 @@ public class TestDataPageChecksums {
   private void testWriteOnVerifyOn(ParquetProperties.WriterVersion version) throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, true);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, true);
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
@@ -565,7 +566,7 @@ public class TestDataPageChecksums {
 
         // First we disable checksum verification, the corruption will go undetected as it is in the
         // data section of the page
-        conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+        conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, false);
         try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
           PageReadStore pageReadStore = reader.readNextRowGroup();
 
@@ -582,7 +583,7 @@ public class TestDataPageChecksums {
         }
 
         // Now we enable checksum verification, the corruption should be detected
-        conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+        conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, true);
         try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
           // We expect an exception on the first encountered corrupt page (in readAllPages)
           assertVerificationFailed(reader);
@@ -608,7 +609,7 @@ public class TestDataPageChecksums {
   private void testCompression(ParquetProperties.WriterVersion version) throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, true);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, true);
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.SNAPPY, version);
 
@@ -655,7 +656,7 @@ public class TestDataPageChecksums {
     // Write out sample file via the non-checksum code path, extract the raw bytes to calculate the
     // reference crc with
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, false);
     Path refPath = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY, version);
 
     try (ParquetFileReader refReader = getParquetFileReader(refPath, conf, List.of(colCIdDesc, colDValDesc))) {
@@ -665,7 +666,7 @@ public class TestDataPageChecksums {
 
       // Write out sample file with checksums
       conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, true);
-      conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+      conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, true);
       Path path = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY, version);
 
       try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colCIdDesc, colDValDesc))) {
@@ -698,7 +699,7 @@ public class TestDataPageChecksums {
     // Write out dictionary encoded sample file via the non-checksum code path, extract the raw
     // bytes to calculate the  reference crc with
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+    conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, false);
     Path refPath = writeNestedWithNullsSampleParquetFile(conf, true, CompressionCodecName.SNAPPY, version);
 
     try (ParquetFileReader refReader =
@@ -711,7 +712,7 @@ public class TestDataPageChecksums {
 
       // Write out sample file with checksums
       conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, true);
-      conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+      conf.setBoolean(ParquetInputProperties.PAGE_VERIFY_CHECKSUM_ENABLED, true);
       Path path = writeNestedWithNullsSampleParquetFile(conf, true, CompressionCodecName.SNAPPY, version);
 
       try (ParquetFileReader reader = getParquetFileReader(path, conf, Collections.singletonList(colDValDesc))) {

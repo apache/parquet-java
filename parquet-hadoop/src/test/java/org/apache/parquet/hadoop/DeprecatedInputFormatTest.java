@@ -52,6 +52,7 @@ import org.apache.hadoop.mapred.lib.CombineFileSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.parquet.conf.ParquetInputProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -116,7 +117,7 @@ public class DeprecatedInputFormatTest {
     }
     {
       jobConf.set(ReadSupport.PARQUET_READ_SCHEMA, readSchema);
-      jobConf.set(ParquetInputFormat.READ_SUPPORT_CLASS, GroupReadSupport.class.getCanonicalName());
+      jobConf.set(ParquetInputProperties.READ_SUPPORT_CLASS, GroupReadSupport.class.getCanonicalName());
       jobConf.setInputFormat(MyDeprecatedInputFormat.class);
       MyDeprecatedInputFormat.setInputPaths(jobConf, parquetPath);
       jobConf.setOutputFormat(org.apache.hadoop.mapred.TextOutputFormat.class);
@@ -244,7 +245,7 @@ public class DeprecatedInputFormatTest {
     conf.setMapperClass(DeprecatedWriteMapper.class);
     org.apache.hadoop.mapred.FileInputFormat.setInputPaths(conf, new Path(inputDir.toURI()));
     org.apache.hadoop.mapred.TextOutputFormat.setOutputPath(conf, new Path(outputDir.toURI()));
-    conf.set(ParquetInputFormat.READ_SUPPORT_CLASS, GroupReadSupport.class.getCanonicalName());
+    conf.set(ParquetInputProperties.READ_SUPPORT_CLASS, GroupReadSupport.class.getCanonicalName());
     JobClient.runJob(conf);
     File partFile = outputDir.listFiles(new PartFileFilter())[0];
     try (BufferedReader br = new BufferedReader(new FileReader(partFile))) {
