@@ -18,4 +18,6 @@
 #
 * text eol=lf
 *.png binary
+*.gz binary
+*.parquet binary
 core.autocrlf=false
