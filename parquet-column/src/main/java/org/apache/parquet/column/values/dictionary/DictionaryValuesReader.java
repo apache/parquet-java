@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 public class DictionaryValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesReader.class);
 
+  private static final String EMPTY_PAGE_MESSAGE = "Attempt to read from empty page";
+
   private ByteBufferInputStream in;
 
   private Dictionary dictionary;
@@ -57,7 +59,20 @@ public class DictionaryValuesReader extends ValuesReader {
       decoder = new RunLengthBitPackingHybridDecoder(1, in) {
         @Override
         public int readInt() throws IOException {
-          throw new IOException("Attempt to read from empty page");
+          throw new IOException(EMPTY_PAGE_MESSAGE);
+        }
+
+        /**
+         * Skipping goes through the decoder directly instead of {@link #readInt()}, so it needs the
+         * same guard: without it, readNext() would hit the empty stream and throw a raw
+         * IllegalArgumentException that {@link DictionaryValuesReader#skip(int)} does not wrap.
+         * Skipping zero values reads nothing and stays silent.
+         */
+        @Override
+        public void skipInts(int n) throws IOException {
+          if (n > 0) {
+            throw new IOException(EMPTY_PAGE_MESSAGE);
+          }
         }
       };
     }
@@ -121,6 +136,17 @@ public class DictionaryValuesReader extends ValuesReader {
   public void skip() {
     try {
       decoder.readInt(); // Type does not matter as we are just skipping dictionary keys
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public void skip(int n) {
+    // Bulk-skip dictionary keys without decoding them or looking them up in the dictionary.
+    // See RunLengthBitPackingHybridDecoder#skipInts for the fast-path details.
+    try {
+      decoder.skipInts(n);
     } catch (IOException e) {
       throw new ParquetDecodingException(e);
     }

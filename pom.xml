@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>39</version>
+    <version>40</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
@@ -78,7 +78,7 @@
     <jackson.version>2.22.3</jackson.version>
     <jackson-databind.version>2.22.3</jackson-databind.version>
     <jackson-annotations.version>2.22</jackson-annotations.version>
-    <japicmp.version>0.26.2</japicmp.version>
+    <japicmp.version>0.26.3</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>3.8.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
@@ -88,13 +88,13 @@
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.24.0</thrift.version>
+    <thrift.version>0.25.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.5.19</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.12.2</avro.version>
-    <guava.version>33.7.1-jre</guava.version>
+    <guava.version>33.7.2-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <assertj.version>3.27.7</assertj.version>
     <junit.version>6.1.3</junit.version>
@@ -110,7 +110,7 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.12</tukaani.version>
-    <zstd-jni.version>1.5.7-21</zstd-jni.version>
+    <zstd-jni.version>1.5.7-23</zstd-jni.version>
     <commons-text.version>1.15.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.21.0</commons-lang3.version>
@@ -554,6 +554,7 @@
           <excludes>
             <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
             <exclude>**/*.parquet</exclude>
+            <exclude>**/*.par</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
             <exclude>**/*.avsc</exclude>

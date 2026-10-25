@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.rewrite;
 import static java.util.Collections.emptyMap;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
@@ -46,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -64,7 +66,9 @@ import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.PageHeader;
@@ -73,7 +77,9 @@ import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -88,6 +94,7 @@ import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.TestFileBuilder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.OutputFile;
@@ -97,10 +104,12 @@ import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class ParquetRewriterTest {
 
@@ -772,6 +781,86 @@ public class ParquetRewriterTest {
         .hasMessage("Cannot nullify and rename the same column");
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testInputFileReadersClosedWhenLaterInputFileFailsToOpen(RewriterTestParams params) throws Exception {
+    initTestState(params);
+    MessageType schema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
+    EncryptionTestFile file = new TestFileBuilder(conf, schema)
+        .withNumRecord(numRecord)
+        .withCodec("UNCOMPRESSED")
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withWriterVersion(writerVersion)
+        .build();
+
+    CloseRecordingInputFile openable =
+        new CloseRecordingInputFile(HadoopInputFile.fromPath(new Path(file.getFileName()), conf));
+    InputFile failing = new InputFile() {
+      @Override
+      public long getLength() {
+        return 0;
+      }
+
+      @Override
+      public SeekableInputStream newStream() throws IOException {
+        throw new IOException("simulated open failure");
+      }
+    };
+
+    OutputFile output = HadoopOutputFile.fromPath(new Path(outputFile), conf);
+    RewriteOptions options =
+        new RewriteOptions.Builder(parquetConf, Arrays.asList(openable, failing), output).build();
+
+    assertThatThrownBy(() -> new ParquetRewriter(options))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Failed to open input file: " + failing);
+    assertThat(openable.isStreamClosed()).isTrue();
+  }
+
+  /**
+   * An {@link InputFile} that delegates to another one but records whether the {@link SeekableInputStream} it handed
+   * out was closed, so a test can assert that already-opened readers are released on a later failure.
+   */
+  private static class CloseRecordingInputFile implements InputFile {
+    private final InputFile delegate;
+    private final AtomicBoolean streamClosed = new AtomicBoolean(false);
+
+    CloseRecordingInputFile(InputFile delegate) {
+      this.delegate = delegate;
+    }
+
+    boolean isStreamClosed() {
+      return streamClosed.get();
+    }
+
+    @Override
+    public long getLength() throws IOException {
+      return delegate.getLength();
+    }
+
+    @Override
+    public SeekableInputStream newStream() throws IOException {
+      SeekableInputStream stream = delegate.newStream();
+      return new DelegatingSeekableInputStream(stream) {
+        @Override
+        public long getPos() throws IOException {
+          return stream.getPos();
+        }
+
+        @Override
+        public void seek(long newPos) throws IOException {
+          stream.seek(newPos);
+        }
+
+        @Override
+        public void close() throws IOException {
+          streamClosed.set(true);
+          super.close();
+        }
+      };
+    }
+  }
+
   public void testMergeTwoFilesWithDifferentSchemaSetup(
       Boolean wrongSchemaInInputFile, Map<String, String> renameColumns, Map<String, MaskMode> maskColumns)
       throws Exception {
@@ -914,6 +1003,61 @@ public class ParquetRewriterTest {
     FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(fileDecryptionProperties);
     assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
+  }
+
+  @ParameterizedTest(name = "transcode = {0}")
+  @ValueSource(booleans = {false, true})
+  public void testRewritePreservesBloomFiltersForCollidingDotStringPaths(boolean transcode) throws Exception {
+    conf = new Configuration();
+    usingHadoop = true;
+    Path inputPath = writeBloomFilterPathCollisionFile();
+
+    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, List.of(inputPath), new Path(outputFile));
+    if (transcode) {
+      builder.transform(CompressionCodecName.GZIP);
+    }
+
+    rewriter = new ParquetRewriter(builder.build());
+    rewriter.processBlocks();
+    rewriter.close();
+
+    // A codec change rewrites pages through processChunk; leaving the codec unchanged copies chunks
+    // through appendColumnChunk. Both branches must retain component boundaries even though the two
+    // columns below have the same dot-separated display name.
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allBloomFilters(inputPath.toString(), null);
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    assertThat(outputBloomFilters).containsOnlyKeys(ColumnPath.get("a.b"), ColumnPath.get("a", "b"));
+    assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
+  }
+
+  private Path writeBloomFilterPathCollisionFile() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(stringType())
+        .named("b")
+        .named("a")
+        .named("msg");
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Path inputPath = new Path(TestFileBuilder.createTempFile("bloom-filter-path-collision"));
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(inputPath)
+        .withConf(conf)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withDictionaryEncoding(false)
+        .withBloomFilterEnabled(true)
+        .build()) {
+      for (int i = 0; i < 100; i++) {
+        Group group = factory.newGroup().append("a.b", "top-" + i);
+        group.addGroup("a").append("b", "nested-" + i);
+        writer.write(group);
+      }
+    }
+    return inputPath;
   }
 
   private void testSingleInputFileSetupWithBloomFilter(String... bloomFilterEnabledColumns) throws IOException {
