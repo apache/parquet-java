@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
-import static org.apache.parquet.column.Encoding.BIT_PACKED;
+import static org.apache.parquet.column.Encoding.RLE;
 
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
@@ -72,7 +72,7 @@ public class DevNullValuesWriter extends ValuesWriter {
 
   @Override
   public Encoding getEncoding() {
-    return BIT_PACKED;
+    return RLE;
   }
 
   @Override
