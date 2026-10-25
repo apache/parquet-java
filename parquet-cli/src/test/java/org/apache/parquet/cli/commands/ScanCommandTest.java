@@ -24,8 +24,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Queue;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.event.LoggingEvent;
 
 public class ScanCommandTest extends ParquetFileTest {
   @Test
@@ -47,6 +50,24 @@ public class ScanCommandTest extends ParquetFileTest {
   }
 
   @Test
+  public void testScanCommandWithSpecificColumns() {
+    withLogger(this::testScanCommandWithSpecificColumns);
+  }
+
+  private void testScanCommandWithSpecificColumns(Logger console, Queue<? extends LoggingEvent> loggingEvents)
+      throws IOException {
+    File file = parquetFile();
+    ScanCommand command = new ScanCommand(console);
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList(INT32_FIELD, INT64_FIELD);
+    command.setConf(new Configuration());
+
+    assertThat(command.run()).isZero();
+    assertThat(loggingEvents).extracting(LoggingEvent::getMessage).contains("Scanned 10 records from 1 file(s)");
+    loggingEvents.clear();
+  }
+
+  @Test
   public void testScanCommandWithInvalidColumnName() {
     File file = parquetFile();
     ScanCommand command = new ScanCommand(createLogger());
@@ -56,5 +77,63 @@ public class ScanCommandTest extends ParquetFileTest {
     assertThatThrownBy(command::run)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Cannot find field 'invalid_field' in schema");
+  }
+
+  @Test
+  public void testScanCommandValidatesAllFilesBeforeScanning() {
+    withLogger(this::testScanCommandValidatesAllFilesBeforeScanning);
+  }
+
+  private void testScanCommandValidatesAllFilesBeforeScanning(
+      Logger console, Queue<? extends LoggingEvent> loggingEvents) throws IOException {
+    File validFile = parquetFile();
+    File invalidFile = AvroIsolationParquetFiles.writeNestedInt96(
+        new File(getTempFolder(), "scan_invalid_projection_nested_int96.parquet"));
+    ScanCommand command = new ScanCommand(console);
+    command.sourceFiles = Arrays.asList(validFile.getAbsolutePath(), invalidFile.getAbsolutePath());
+    command.columns = Arrays.asList(INT32_FIELD);
+    command.setConf(new Configuration());
+
+    assertThatThrownBy(command::run)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Cannot find field '" + INT32_FIELD + "' in schema");
+    assertThat(loggingEvents).isEmpty();
+  }
+
+  @Test
+  public void testScanCommandWithAvroCompatListInList() throws IOException {
+    File listInListFile = AvroIsolationParquetFiles.writeAvroCompatListInList(
+        new File(getTempFolder(), "scan_avro_compat_list_in_list.parquet"));
+
+    ScanCommand command = new ScanCommand(createLogger());
+    command.sourceFiles = Arrays.asList(listInListFile.getAbsolutePath());
+    command.setConf(new Configuration());
+
+    assertThat(command.run()).isZero();
+  }
+
+  @Test
+  public void testScanCommandWithAvroCompatListInListProjection() throws IOException {
+    File listInListFile = AvroIsolationParquetFiles.writeAvroCompatListInList(
+        new File(getTempFolder(), "scan_avro_compat_list_in_list_projected.parquet"));
+
+    ScanCommand command = new ScanCommand(createLogger());
+    command.sourceFiles = Arrays.asList(listInListFile.getAbsolutePath());
+    command.columns = Arrays.asList(AvroIsolationParquetFiles.LIST_OF_LISTS);
+    command.setConf(new Configuration());
+
+    assertThat(command.run()).isZero();
+  }
+
+  @Test
+  public void testScanCommandWithNestedInt96() throws IOException {
+    File int96File =
+        AvroIsolationParquetFiles.writeNestedInt96(new File(getTempFolder(), "scan_nested_int96.parquet"));
+
+    ScanCommand command = new ScanCommand(createLogger());
+    command.sourceFiles = Arrays.asList(int96File.getAbsolutePath());
+    command.setConf(new Configuration());
+
+    assertThat(command.run()).isZero();
   }
 }

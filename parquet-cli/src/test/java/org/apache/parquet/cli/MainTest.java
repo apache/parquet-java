@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.cli;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.io.File;
@@ -25,10 +26,15 @@ import java.io.FileWriter;
 import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.parquet.cli.commands.AvroIsolationParquetFiles;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
 public class MainTest {
+
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void mainTest() throws Exception {
@@ -72,5 +78,16 @@ public class MainTest {
             new Main(LoggerFactory.getLogger(MainTest.class)),
             new String[] {"--config-file", configFile, "version"}))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testHeadCommandWithNestedInt96() throws Exception {
+    File parquetFile = AvroIsolationParquetFiles.writeNestedInt96(tempDir.resolve("nested-int96.parquet").toFile());
+
+    assertThat(ToolRunner.run(
+            new Configuration(),
+            new Main(LoggerFactory.getLogger(MainTest.class)),
+            new String[] {"head", parquetFile.getAbsolutePath()}))
+        .isZero();
   }
 }
