@@ -30,6 +30,7 @@ import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.ParquetMetricsCallback;
+import org.apache.parquet.hadoop.VectoredReadExecutor;
 
 public class HadoopReadOptions extends ParquetReadOptions {
   private final Configuration conf;
@@ -52,7 +53,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
       Map<String, String> properties,
       Configuration conf,
       FileDecryptionProperties fileDecryptionProperties,
-      ParquetMetricsCallback metricsCallback) {
+      ParquetMetricsCallback metricsCallback,
+      VectoredReadExecutor vectoredReadExecutor) {
     super(
         useSignedStringMinMax,
         useStatsFilter,
@@ -71,7 +73,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
         properties,
         fileDecryptionProperties,
         metricsCallback,
-        new HadoopParquetConfiguration(conf));
+        new HadoopParquetConfiguration(conf),
+        vectoredReadExecutor);
     this.conf = conf;
   }
 
@@ -134,7 +137,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
           properties,
           conf,
           fileDecryptionProperties,
-          metricsCallback);
+          metricsCallback,
+          vectoredReadExecutor);
     }
   }
 

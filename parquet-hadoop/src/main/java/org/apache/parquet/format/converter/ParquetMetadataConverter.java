@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -90,6 +91,7 @@ import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.IEEE754TotalOrder;
+import org.apache.parquet.format.Int96TimestampOrder;
 import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.LogicalType;
@@ -148,6 +150,7 @@ public class ParquetMetadataConverter {
 
   private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();
   private static final IEEE754TotalOrder IEEE_754_TOTAL_ORDER = new IEEE754TotalOrder();
+  private static final Int96TimestampOrder INT96_TIMESTAMP_ORDER = new Int96TimestampOrder();
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
@@ -291,6 +294,9 @@ public class ParquetMetadataConverter {
           break;
         case IEEE_754_TOTAL_ORDER:
           columnOrder.setIEEE_754_TOTAL_ORDER(IEEE_754_TOTAL_ORDER);
+          break;
+        case INT96_TIMESTAMP_ORDER:
+          columnOrder.setINT96_TIMESTAMP_ORDER(INT96_TIMESTAMP_ORDER);
           break;
         case UNDEFINED:
           // Use TypeDefinedOrder if some types (e.g. INT96) have undefined column orders.
@@ -928,8 +934,16 @@ public class ParquetMetadataConverter {
   }
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {
-    return type.columnOrder().getColumnOrderName() == ColumnOrderName.TYPE_DEFINED_ORDER
-        || type.columnOrder().getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER;
+    switch (type.columnOrder().getColumnOrderName()) {
+      case TYPE_DEFINED_ORDER:
+      case IEEE_754_TOTAL_ORDER:
+      case INT96_TIMESTAMP_ORDER:
+        return true;
+      case UNDEFINED:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unknown column order: " + type.columnOrder());
+    }
   }
 
   /**
@@ -1725,7 +1739,9 @@ public class ParquetMetadataConverter {
         calculatedTag,
         0,
         AesCipher.GCM_TAG_LENGTH);
-    if (!Arrays.equals(gcmTag, calculatedTag)) {
+    // Use a constant-time comparison for the authentication tag to avoid leaking
+    // timing information about the correct value (CWE-208).
+    if (!MessageDigest.isEqual(gcmTag, calculatedTag)) {
       throw new TagVerificationException("Signature mismatch in plaintext footer");
     }
   }
@@ -2122,6 +2138,11 @@ public class ParquetMetadataConverter {
                   || schemaElement.converted_type == ConvertedType.INTERVAL)) {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
+          // INT96_TIMESTAMP_ORDER is only valid for INT96 columns, ignore it anywhere else.
+          if (columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER
+              && schemaElement.type != Type.INT96) {
+            columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
+          }
           primitiveBuilder.columnOrder(columnOrder);
         } else if (schemaElement.type == Type.FLOAT
             || schemaElement.type == Type.DOUBLE
@@ -2130,6 +2151,11 @@ public class ParquetMetadataConverter {
           // here must not inherit the (IEEE 754 total order) construction-time default: its stats, if
           // any, were written under the legacy type-defined order and must be read under it.
           primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.typeDefined());
+        } else if (schemaElement.type == Type.INT96) {
+          // A footer without column orders predates INT96_TIMESTAMP_ORDER, so an INT96 column here
+          // must not inherit the (chronological) construction-time default: its stats, if any, were
+          // written under the legacy order and must be ignored.
+          primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.undefined());
         }
         // Gracefully handle unsupported logical type combinations on the read path.
         primitiveBuilder.ignoreUnsupportedLogicalAnnotations();
@@ -2196,6 +2222,9 @@ public class ParquetMetadataConverter {
     }
     if (columnOrder.isSetIEEE_754_TOTAL_ORDER()) {
       return org.apache.parquet.schema.ColumnOrder.ieee754TotalOrder();
+    }
+    if (columnOrder.isSetINT96_TIMESTAMP_ORDER()) {
+      return org.apache.parquet.schema.ColumnOrder.int96TimestampOrder();
     }
     // The column order is not yet supported by this API
     return org.apache.parquet.schema.ColumnOrder.undefined();

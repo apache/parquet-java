@@ -25,6 +25,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Offset.offset;
 
 import java.io.IOException;
@@ -50,6 +51,7 @@ import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.jupiter.api.AfterEach;
@@ -175,6 +177,28 @@ public class TestDictionary {
         assertThat(plainReader.readBytes()).isEqualTo(Binary.fromString("c" + i));
         plainReader.skip(skipCount);
       }
+    }
+  }
+
+  /**
+   * An empty data page gets a decoder whose reads fail with a {@link ParquetDecodingException}, so
+   * the bulk-skip path has to fail the same way. Without an overridden skipInts it would reach the
+   * RLE decoder's readNext() and surface a raw IllegalArgumentException ("Reading past
+   * RLE/BitPacking stream") instead, which the skip(int) wrapper does not catch.
+   */
+  @Test
+  public void testSkipOnEmptyPage() throws Exception {
+    try (ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(200, 10000)) {
+      writeRepeated(100, cw, "a");
+      cw.getBytes();
+      DictionaryValuesReader cr = initDicReader(cw, BINARY);
+      cr.initFromPage(0, BytesInput.empty().toInputStream());
+
+      assertThatThrownBy(() -> cr.skip(10)).isInstanceOf(ParquetDecodingException.class);
+      assertThatThrownBy(cr::skip).isInstanceOf(ParquetDecodingException.class);
+      // Skipping nothing reads nothing, so it must not throw — same as the pre-bulk-skip
+      // ValuesReader.skip(int) loop, which simply ran zero iterations.
+      cr.skip(0);
     }
   }
 
