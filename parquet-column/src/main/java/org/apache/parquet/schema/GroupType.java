@@ -385,18 +385,8 @@ public class GroupType extends Type {
         toMerge.getRepetition(),
         getName(),
         toMerge.getLogicalTypeAnnotation(),
-        mergeFields(toMerge.asGroupType()),
+        mergeFields(toMerge.asGroupType(), strict),
         getId());
-  }
-
-  /**
-   * produces the list of fields resulting from merging toMerge into the fields of this
-   *
-   * @param toMerge the group containing the fields to merge
-   * @return the merged list
-   */
-  List<Type> mergeFields(GroupType toMerge) {
-    return mergeFields(toMerge, true);
   }
 
   /**

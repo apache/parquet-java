@@ -135,6 +135,41 @@ public class TestMessageType {
   }
 
   @Test
+  public void testNonStrictMergeSchemaWithNestedFields() {
+    MessageType t1 = new MessageType(
+        "root1",
+        new GroupType(REQUIRED, "g", new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, BINARY, "a"))));
+    MessageType t2 = new MessageType(
+        "root2",
+        new GroupType(
+            REQUIRED,
+            "g",
+            new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, INT32, "a")),
+            new PrimitiveType(OPTIONAL, BINARY, "b")));
+
+    assertThatThrownBy(() -> t1.union(t2, true))
+        .isInstanceOf(IncompatibleSchemaModificationException.class)
+        .hasMessage("can not merge type optional int32 a into optional binary a");
+
+    assertThat(t1.union(t2, false))
+        .isEqualTo(new MessageType(
+            "root1",
+            new GroupType(
+                REQUIRED,
+                "g",
+                new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, BINARY, "a")),
+                new PrimitiveType(OPTIONAL, BINARY, "b"))));
+    assertThat(t2.union(t1, false))
+        .isEqualTo(new MessageType(
+            "root2",
+            new GroupType(
+                REQUIRED,
+                "g",
+                new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, INT32, "a")),
+                new PrimitiveType(OPTIONAL, BINARY, "b"))));
+  }
+
+  @Test
   public void testMergeSchemaWithOriginalType() throws Exception {
     MessageType t5 = new MessageType(
         "root1",
