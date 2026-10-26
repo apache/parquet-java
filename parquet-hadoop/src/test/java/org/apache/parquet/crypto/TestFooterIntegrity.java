@@ -20,8 +20,8 @@ package org.apache.parquet.crypto;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +40,7 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that the signature of an encrypted file with a plaintext (signed) footer is checked
@@ -73,7 +73,7 @@ public class TestFooterIntegrity {
   @Test
   public void validSignatureIsAccepted() throws IOException {
     ParquetMetadata metaData = readFooter(writeSignedPlaintextFooterFile());
-    assertFalse(metaData.getBlocks().isEmpty());
+    assertThat(metaData.getBlocks()).isNotEmpty();
   }
 
   @Test
@@ -95,6 +95,8 @@ public class TestFooterIntegrity {
     File source = new File(file);
     Files.deleteIfExists(new File(source.getParent(), "." + source.getName() + ".crc").toPath());
 
-    assertThrows(TagVerificationException.class, () -> readFooter(file));
+    assertThatThrownBy(() -> readFooter(file))
+        .isInstanceOf(TagVerificationException.class)
+        .hasMessage("Signature mismatch in plaintext footer");
   }
 }
