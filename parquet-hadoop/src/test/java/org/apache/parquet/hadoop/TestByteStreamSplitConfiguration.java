@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ParquetProperties;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestByteStreamSplitConfiguration {
   @Test

@@ -19,6 +19,9 @@
 package org.apache.parquet.hadoop.rewrite;
 
 import static java.util.Collections.emptyMap;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
@@ -44,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -62,7 +66,9 @@ import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.PageHeader;
@@ -71,7 +77,9 @@ import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -86,6 +94,7 @@ import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.TestFileBuilder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.OutputFile;
@@ -95,54 +104,107 @@ import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.apache.parquet.schema.Types;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
-@RunWith(Parameterized.class)
 public class ParquetRewriterTest {
 
-  private final int numRecord;
-  private final Configuration conf;
+  private static final class RewriterTestParams {
+    private final ParquetProperties.WriterVersion writerVersion;
+    private final String indexCacheStrategy;
+    private final boolean usingHadoop;
+    private final int numRecord;
+    private final int rowsPerPage;
+
+    private RewriterTestParams(
+        ParquetProperties.WriterVersion writerVersion,
+        String indexCacheStrategy,
+        boolean usingHadoop,
+        int numRecord,
+        int rowsPerPage) {
+      this.writerVersion = writerVersion;
+      this.indexCacheStrategy = indexCacheStrategy;
+      this.usingHadoop = usingHadoop;
+      this.numRecord = numRecord;
+      this.rowsPerPage = rowsPerPage;
+    }
+
+    ParquetProperties.WriterVersion writerVersion() {
+      return writerVersion;
+    }
+
+    String indexCacheStrategy() {
+      return indexCacheStrategy;
+    }
+
+    boolean usingHadoop() {
+      return usingHadoop;
+    }
+
+    int numRecord() {
+      return numRecord;
+    }
+
+    int rowsPerPage() {
+      return rowsPerPage;
+    }
+
+    @Override
+    public String toString() {
+      return "WriterVersion = "
+          + writerVersion
+          + ", IndexCacheStrategy = "
+          + indexCacheStrategy
+          + ", UsingHadoop = "
+          + usingHadoop
+          + ", numRecord = "
+          + numRecord
+          + ", rowsPerPage = "
+          + rowsPerPage;
+    }
+  }
+
+  private int numRecord;
+  private Configuration conf;
   private final ParquetConfiguration parquetConf = new PlainParquetConfiguration();
-  private final ParquetProperties.WriterVersion writerVersion;
-  private final IndexCache.CacheStrategy indexCacheStrategy;
-  private final boolean usingHadoop;
+  private ParquetProperties.WriterVersion writerVersion;
+  private IndexCache.CacheStrategy indexCacheStrategy;
+  private boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFiles = Lists.newArrayList();
   private List<EncryptionTestFile> inputFilesToJoin = Lists.newArrayList();
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
-  private final EncryptionTestFile gzipEncryptionTestFileWithoutBloomFilterColumn;
-  private final EncryptionTestFile uncompressedEncryptionTestFileWithoutBloomFilterColumn;
+  private EncryptionTestFile gzipEncryptionTestFileWithoutBloomFilterColumn;
+  private EncryptionTestFile uncompressedEncryptionTestFileWithoutBloomFilterColumn;
 
-  @Parameterized.Parameters(
-      name =
-          "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}, numRecord = {3}, rowsPerPage = {4}")
-  public static Object[][] parameters() {
-    final int DefaultNumRecord = 10000;
-    final int DefaultRowsPerPage = DefaultNumRecord / 5;
-    return new Object[][] {
-      {"v1", "NONE", true, DefaultNumRecord, DefaultRowsPerPage},
-      {"v1", "PREFETCH_BLOCK", true, DefaultNumRecord, DefaultRowsPerPage},
-      {"v2", "PREFETCH_BLOCK", true, DefaultNumRecord, DefaultRowsPerPage},
-      {"v2", "PREFETCH_BLOCK", false, DefaultNumRecord, DefaultRowsPerPage}
-    };
+  static Stream<Arguments> parameters() {
+    final int defaultNumRecord = 10000;
+    final int defaultRowsPerPage = defaultNumRecord / 5;
+    return Stream.of(
+        Arguments.of(new RewriterTestParams(PARQUET_1_0, "NONE", true, defaultNumRecord, defaultRowsPerPage)),
+        Arguments.of(new RewriterTestParams(
+            PARQUET_1_0, "PREFETCH_BLOCK", true, defaultNumRecord, defaultRowsPerPage)),
+        Arguments.of(new RewriterTestParams(
+            PARQUET_2_0, "PREFETCH_BLOCK", true, defaultNumRecord, defaultRowsPerPage)),
+        Arguments.of(new RewriterTestParams(
+            PARQUET_2_0, "PREFETCH_BLOCK", false, defaultNumRecord, defaultRowsPerPage)));
   }
 
-  public ParquetRewriterTest(
-      String writerVersion, String indexCacheStrategy, boolean _usingHadoop, int _numRecord, int rowsPerPage)
-      throws IOException {
-    this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
-    this.indexCacheStrategy = IndexCache.CacheStrategy.valueOf(indexCacheStrategy);
-    this.usingHadoop = _usingHadoop;
-    this.numRecord = _numRecord;
+  private void initTestState(RewriterTestParams params) throws IOException {
+    this.writerVersion = params.writerVersion();
+    this.indexCacheStrategy = IndexCache.CacheStrategy.valueOf(params.indexCacheStrategy());
+    this.usingHadoop = params.usingHadoop();
+    this.numRecord = params.numRecord();
 
-    Configuration _conf = new Configuration();
-    _conf.set("parquet.page.row.count.limit", Integer.toString(rowsPerPage));
-    this.conf = _conf;
+    Configuration testConf = new Configuration();
+    testConf.set("parquet.page.row.count.limit", Integer.toString(params.rowsPerPage()));
+    this.conf = testConf;
 
     MessageType testSchema = createSchema();
     this.gzipEncryptionTestFileWithoutBloomFilterColumn = new TestFileBuilder(conf, testSchema)
@@ -198,14 +260,17 @@ public class ParquetRewriterTest {
     validateRowGroupRowCount();
   }
 
-  @Before
+  @BeforeEach
   public void setUp() {
     outputFile = TestFileBuilder.createTempFile("test");
+    inputFiles = Lists.newArrayList();
     inputFilesToJoin = new ArrayList<>();
   }
 
-  @Test
-  public void testPruneSingleColumnTranslateCodecSingleFile() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneSingleColumnTranslateCodecSingleFile(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     List<Path> inputPaths = new ArrayList<Path>() {
       {
@@ -215,8 +280,10 @@ public class ParquetRewriterTest {
     testPruneSingleColumnTranslateCodec(inputPaths);
   }
 
-  @Test
-  public void testPruneSingleColumnTranslateCodecTwoFiles() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneSingleColumnTranslateCodecTwoFiles(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     addUncompressedInputFile();
     List<Path> inputPaths = new ArrayList<Path>() {
@@ -269,8 +336,10 @@ public class ParquetRewriterTest {
     validateRowGroupRowCount();
   }
 
-  @Test
-  public void testPruneNullifyTranslateCodecSingleFile() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneNullifyTranslateCodecSingleFile(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
 
     List<Path> inputPaths = new ArrayList<Path>() {
@@ -281,8 +350,10 @@ public class ParquetRewriterTest {
     testPruneNullifyTranslateCodec(inputPaths);
   }
 
-  @Test
-  public void testPruneNullifyTranslateCodecTwoFiles() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneNullifyTranslateCodecTwoFiles(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     addUncompressedInputFile();
 
@@ -355,8 +426,10 @@ public class ParquetRewriterTest {
     validateRowGroupRowCount();
   }
 
-  @Test
-  public void testPruneEncryptTranslateCodecSingleFile() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneEncryptTranslateCodecSingleFile(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
 
     List<Path> inputPaths = new ArrayList<Path>() {
@@ -367,8 +440,10 @@ public class ParquetRewriterTest {
     testPruneEncryptTranslateCodec(inputPaths);
   }
 
-  @Test
-  public void testPruneEncryptTranslateCodecTwoFiles() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneEncryptTranslateCodecTwoFiles(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     addUncompressedInputFile();
 
@@ -381,8 +456,10 @@ public class ParquetRewriterTest {
     testPruneEncryptTranslateCodec(inputPaths);
   }
 
-  @Test
-  public void testRewriteWithoutColumnIndexes() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testRewriteWithoutColumnIndexes(RewriterTestParams params) throws Exception {
+    initTestState(params);
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(ParquetRewriterTest.class
@@ -519,8 +596,10 @@ public class ParquetRewriterTest {
     }
   }
 
-  @Test
-  public void testNullifyEncryptSingleFile() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testNullifyEncryptSingleFile(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
 
     List<Path> inputPaths = new ArrayList<Path>() {
@@ -531,8 +610,10 @@ public class ParquetRewriterTest {
     testNullifyAndEncryptColumn(inputPaths);
   }
 
-  @Test
-  public void testNullifyEncryptTwoFiles() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testNullifyEncryptTwoFiles(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     addUncompressedInputFile();
 
@@ -545,8 +626,10 @@ public class ParquetRewriterTest {
     testNullifyAndEncryptColumn(inputPaths);
   }
 
-  @Test
-  public void testMergeTwoFilesOnly() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesOnly(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     addUncompressedInputFile();
 
@@ -591,8 +674,10 @@ public class ParquetRewriterTest {
     validateRowGroupRowCount();
   }
 
-  @Test
-  public void testMergeTwoFilesOnlyRenameColumn() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesOnlyRenameColumn(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
     addUncompressedInputFile();
 
@@ -648,42 +733,132 @@ public class ParquetRewriterTest {
     }
   }
 
-  @Test
-  public void testMergeTwoFilesWithDifferentSchema() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesWithDifferentSchema(RewriterTestParams params) throws Exception {
+    initTestState(params);
     assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(true, null, null))
         .isInstanceOf(InvalidSchemaException.class)
         .hasMessageContaining("Input files have different schemas, current file:");
   }
 
-  @Test
-  public void testMergeTwoFilesToJoinWithDifferentSchema() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesToJoinWithDifferentSchema(RewriterTestParams params) throws Exception {
+    initTestState(params);
     assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(false, null, null))
         .isInstanceOf(InvalidSchemaException.class)
         .hasMessageContaining("Input files have different schemas, current file:");
   }
 
-  @Test
-  public void testMergeTwoFilesWithWrongDestinationRenamedColumn() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesWithWrongDestinationRenamedColumn(RewriterTestParams params) throws Exception {
+    initTestState(params);
     assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(
             null, ImmutableMap.of("WrongColumnName", "WrongColumnNameRenamed"), null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Column to rename 'WrongColumnName' is not found in input files schema");
   }
 
-  @Test
-  public void testMergeTwoFilesWithWrongSourceRenamedColumn() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesWithWrongSourceRenamedColumn(RewriterTestParams params) throws Exception {
+    initTestState(params);
     assertThatThrownBy(
             () -> testMergeTwoFilesWithDifferentSchemaSetup(null, ImmutableMap.of("Name", "DocId"), null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Renamed column target name 'DocId' is already present in a schema");
   }
 
-  @Test
-  public void testMergeTwoFilesNullifyAndRenamedSameColumn() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testMergeTwoFilesNullifyAndRenamedSameColumn(RewriterTestParams params) throws Exception {
+    initTestState(params);
     assertThatThrownBy(() -> testMergeTwoFilesWithDifferentSchemaSetup(
             null, ImmutableMap.of("Name", "NameRenamed"), ImmutableMap.of("Name", MaskMode.NULLIFY)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot nullify and rename the same column");
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testInputFileReadersClosedWhenLaterInputFileFailsToOpen(RewriterTestParams params) throws Exception {
+    initTestState(params);
+    MessageType schema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
+    EncryptionTestFile file = new TestFileBuilder(conf, schema)
+        .withNumRecord(numRecord)
+        .withCodec("UNCOMPRESSED")
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withWriterVersion(writerVersion)
+        .build();
+
+    CloseRecordingInputFile openable =
+        new CloseRecordingInputFile(HadoopInputFile.fromPath(new Path(file.getFileName()), conf));
+    InputFile failing = new InputFile() {
+      @Override
+      public long getLength() {
+        return 0;
+      }
+
+      @Override
+      public SeekableInputStream newStream() throws IOException {
+        throw new IOException("simulated open failure");
+      }
+    };
+
+    OutputFile output = HadoopOutputFile.fromPath(new Path(outputFile), conf);
+    RewriteOptions options =
+        new RewriteOptions.Builder(parquetConf, Arrays.asList(openable, failing), output).build();
+
+    assertThatThrownBy(() -> new ParquetRewriter(options))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Failed to open input file: " + failing);
+    assertThat(openable.isStreamClosed()).isTrue();
+  }
+
+  /**
+   * An {@link InputFile} that delegates to another one but records whether the {@link SeekableInputStream} it handed
+   * out was closed, so a test can assert that already-opened readers are released on a later failure.
+   */
+  private static class CloseRecordingInputFile implements InputFile {
+    private final InputFile delegate;
+    private final AtomicBoolean streamClosed = new AtomicBoolean(false);
+
+    CloseRecordingInputFile(InputFile delegate) {
+      this.delegate = delegate;
+    }
+
+    boolean isStreamClosed() {
+      return streamClosed.get();
+    }
+
+    @Override
+    public long getLength() throws IOException {
+      return delegate.getLength();
+    }
+
+    @Override
+    public SeekableInputStream newStream() throws IOException {
+      SeekableInputStream stream = delegate.newStream();
+      return new DelegatingSeekableInputStream(stream) {
+        @Override
+        public long getPos() throws IOException {
+          return stream.getPos();
+        }
+
+        @Override
+        public void seek(long newPos) throws IOException {
+          stream.seek(newPos);
+        }
+
+        @Override
+        public void close() throws IOException {
+          streamClosed.set(true);
+          super.close();
+        }
+      };
+    }
   }
 
   public void testMergeTwoFilesWithDifferentSchemaSetup(
@@ -748,8 +923,10 @@ public class ParquetRewriterTest {
     rewriter = new ParquetRewriter(options);
   }
 
-  @Test
-  public void testRewriteFileWithMultipleBlocks() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testRewriteFileWithMultipleBlocks(RewriterTestParams params) throws Exception {
+    initTestState(params);
     addGzipInputFile();
 
     List<Path> inputPaths = new ArrayList<Path>() {
@@ -760,8 +937,10 @@ public class ParquetRewriterTest {
     testPruneSingleColumnTranslateCodec(inputPaths);
   }
 
-  @Test
-  public void testPruneSingleColumnTranslateCodecAndEnableBloomFilter() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneSingleColumnTranslateCodecAndEnableBloomFilter(RewriterTestParams params) throws Exception {
+    initTestState(params);
     testSingleInputFileSetupWithBloomFilter("DocId");
     List<Path> inputPaths = new ArrayList<Path>() {
       {
@@ -776,8 +955,10 @@ public class ParquetRewriterTest {
     assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
   }
 
-  @Test
-  public void testPruneNullifyTranslateCodecAndEnableBloomFilter() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneNullifyTranslateCodecAndEnableBloomFilter(RewriterTestParams params) throws Exception {
+    initTestState(params);
     testSingleInputFileSetupWithBloomFilter("DocId", "Links.Forward");
     List<Path> inputPaths = new ArrayList<Path>() {
       {
@@ -799,8 +980,10 @@ public class ParquetRewriterTest {
     assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
   }
 
-  @Test
-  public void testPruneEncryptTranslateCodecAndEnableBloomFilter() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testPruneEncryptTranslateCodecAndEnableBloomFilter(RewriterTestParams params) throws Exception {
+    initTestState(params);
     testSingleInputFileSetupWithBloomFilter("DocId", "Links.Forward");
     List<Path> inputPaths = new ArrayList<Path>() {
       {
@@ -822,6 +1005,61 @@ public class ParquetRewriterTest {
     assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
   }
 
+  @ParameterizedTest(name = "transcode = {0}")
+  @ValueSource(booleans = {false, true})
+  public void testRewritePreservesBloomFiltersForCollidingDotStringPaths(boolean transcode) throws Exception {
+    conf = new Configuration();
+    usingHadoop = true;
+    Path inputPath = writeBloomFilterPathCollisionFile();
+
+    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, List.of(inputPath), new Path(outputFile));
+    if (transcode) {
+      builder.transform(CompressionCodecName.GZIP);
+    }
+
+    rewriter = new ParquetRewriter(builder.build());
+    rewriter.processBlocks();
+    rewriter.close();
+
+    // A codec change rewrites pages through processChunk; leaving the codec unchanged copies chunks
+    // through appendColumnChunk. Both branches must retain component boundaries even though the two
+    // columns below have the same dot-separated display name.
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allBloomFilters(inputPath.toString(), null);
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    assertThat(outputBloomFilters).containsOnlyKeys(ColumnPath.get("a.b"), ColumnPath.get("a", "b"));
+    assertThat(outputBloomFilters).isEqualTo(inputBloomFilters);
+  }
+
+  private Path writeBloomFilterPathCollisionFile() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(stringType())
+        .named("b")
+        .named("a")
+        .named("msg");
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Path inputPath = new Path(TestFileBuilder.createTempFile("bloom-filter-path-collision"));
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(inputPath)
+        .withConf(conf)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withDictionaryEncoding(false)
+        .withBloomFilterEnabled(true)
+        .build()) {
+      for (int i = 0; i < 100; i++) {
+        Group group = factory.newGroup().append("a.b", "top-" + i);
+        group.addGroup("a").append("b", "nested-" + i);
+        writer.write(group);
+      }
+    }
+    return inputPath;
+  }
+
   private void testSingleInputFileSetupWithBloomFilter(String... bloomFilterEnabledColumns) throws IOException {
     testSingleInputFileSetup(bloomFilterEnabledColumns);
   }
@@ -839,8 +1077,10 @@ public class ParquetRewriterTest {
         .build());
   }
 
-  @Test
-  public void testFilesToJoinHaveDifferentRowCount() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testFilesToJoinHaveDifferentRowCount(RewriterTestParams params) throws Exception {
+    initTestState(params);
     MessageType schema1 = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
     MessageType schema2 = new MessageType("schema", new PrimitiveType(REQUIRED, BINARY, "Name"));
     inputFiles = ImmutableList.of(
@@ -858,13 +1098,19 @@ public class ParquetRewriterTest {
         .hasMessageContaining("The number of rows in each block must match");
   }
 
-  @Test
-  public void testOneInputFileManyInputFilesToJoinWithJoinColumnsOverwrite() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testOneInputFileManyInputFilesToJoinWithJoinColumnsOverwrite(RewriterTestParams params)
+      throws Exception {
+    initTestState(params);
     testOneInputFileManyInputFilesToJoinSetup(true);
   }
 
-  @Test
-  public void testOneInputFileManyInputFilesToJoinWithoutJoinColumnsOverwrite() throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("parameters")
+  public void testOneInputFileManyInputFilesToJoinWithoutJoinColumnsOverwrite(RewriterTestParams params)
+      throws Exception {
+    initTestState(params);
     testOneInputFileManyInputFilesToJoinSetup(false);
   }
 

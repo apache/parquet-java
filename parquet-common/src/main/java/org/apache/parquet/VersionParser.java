@@ -41,6 +41,7 @@ public class VersionParser {
 
     private final boolean hasSemver;
     private final SemanticVersion semver;
+    private final Exception semanticVersionParseFailure;
 
     public ParsedVersion(String application, String version, String appBuildHash) {
       checkArgument(!Strings.isNullOrEmpty(application), "application cannot be null or empty");
@@ -48,17 +49,20 @@ public class VersionParser {
       this.version = Strings.isNullOrEmpty(version) ? null : version;
       this.appBuildHash = Strings.isNullOrEmpty(appBuildHash) ? null : appBuildHash;
 
-      SemanticVersion sv;
-      boolean hasSemver;
-      try {
-        sv = SemanticVersion.parse(version);
-        hasSemver = true;
-      } catch (RuntimeException | SemanticVersionParseException e) {
-        sv = null;
-        hasSemver = false;
+      SemanticVersion sv = null;
+      boolean hasSemver = false;
+      Exception parseFailure = null;
+      if (this.version != null) {
+        try {
+          sv = SemanticVersion.parse(this.version);
+          hasSemver = true;
+        } catch (RuntimeException | SemanticVersionParseException e) {
+          parseFailure = e;
+        }
       }
       this.semver = sv;
       this.hasSemver = hasSemver;
+      this.semanticVersionParseFailure = parseFailure;
     }
 
     public boolean hasSemanticVersion() {
@@ -67,6 +71,14 @@ public class VersionParser {
 
     public SemanticVersion getSemanticVersion() {
       return semver;
+    }
+
+    /**
+     * Returns the exception captured when parsing the semantic version failed, or {@code null} if
+     * parsing succeeded.
+     */
+    Exception getSemanticVersionParseFailure() {
+      return semanticVersionParseFailure;
     }
 
     @Override

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,9 +45,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Unit test to check how Parquet writing behaves in case of an error happens during the writes. We use an OOM because
@@ -60,13 +60,12 @@ import org.junit.rules.TemporaryFolder;
  * separate process.
  */
 public class TestParquetWriterError {
-
-  @Rule
-  public TemporaryFolder tmpFolder = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void testWriteAfterAbortShouldThrow() throws Exception {
-    java.nio.file.Path outputFile = tmpFolder.newFile("abort_test.parquet").toPath();
+    java.nio.file.Path outputFile = tempDir.resolve("abort_test.parquet");
     MessageType schema =
         MessageTypeParser.parseMessageType("message test { required binary name; required int32 age; }");
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
@@ -105,7 +104,7 @@ public class TestParquetWriterError {
 
   @Test
   public void testInSeparateProcess() throws IOException, InterruptedException {
-    String outputFile = tmpFolder.newFile("out.parquet").toString();
+    String outputFile = tempDir.resolve("out.parquet").toString();
 
     String classpath = System.getProperty("java.class.path");
     String javaPath = Paths.get(System.getProperty("java.home"), "bin", "java")

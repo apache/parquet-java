@@ -126,16 +126,18 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
   private Schema.Field getAvroField(String parquetFieldName) {
     Schema.Field avroField = avroSchema.getField(parquetFieldName);
+    if (avroField != null) {
+      return avroField;
+    }
+
     for (Schema.Field f : avroSchema.getFields()) {
       if (f.aliases().contains(parquetFieldName)) {
         return f;
       }
     }
-    if (avroField == null) {
-      throw new InvalidRecordException(
-          String.format("Parquet/Avro schema mismatch. Avro field '%s' not found.", parquetFieldName));
-    }
-    return avroField;
+
+    throw new InvalidRecordException(
+        String.format("Parquet/Avro schema mismatch. Avro field '%s' not found.", parquetFieldName));
   }
 
   private static Converter newConverter(Schema schema, Type type, GenericData model, ParentValueContainer setter) {

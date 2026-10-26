@@ -70,6 +70,7 @@ import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
@@ -96,16 +97,12 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-@RunWith(Parameterized.class)
 public class DictionaryFilterTest {
 
   private static final int nElements = 1000;
@@ -161,15 +158,15 @@ public class DictionaryFilterTest {
     toBinary("9999999999999999999999999999999999999999", 17)
   };
   private static final Binary[] INT96_VALUES = new Binary[] {
-    toBinary("-9999999999999999999999999999", 12),
-    toBinary("-9999999999999999999999999998", 12),
-    toBinary("-1234567890", 12),
-    toBinary("-1", 12),
-    toBinary("-0", 12),
-    toBinary("1", 12),
-    toBinary("1234567890", 12),
-    toBinary("-9999999999999999999999999998", 12),
-    toBinary("9999999999999999999999999999", 12)
+    new NanoTime(2440587, 86_399_999_999_999L).toBinary(),
+    new NanoTime(2440588, 0L).toBinary(),
+    new NanoTime(2440588, 1L).toBinary(),
+    new NanoTime(2440588, 1_234_567_890L).toBinary(),
+    new NanoTime(2440588, 43_200_000_000_000L).toBinary(),
+    new NanoTime(2440588, 86_399_999_999_999L).toBinary(),
+    new NanoTime(2440589, 0L).toBinary(),
+    new NanoTime(2440589, 1L).toBinary(),
+    new NanoTime(2440589, 1_234_567_890L).toBinary()
   };
 
   private static Binary toBinary(String decimalWithoutScale, int byteCount) {
@@ -220,7 +217,7 @@ public class DictionaryFilterTest {
     writer.close();
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void prepareFile() throws IOException {
     cleanup();
     prepareFile(PARQUET_1_0, FILE_V1);
@@ -242,7 +239,7 @@ public class DictionaryFilterTest {
     writeData(f, writer);
   }
 
-  @AfterClass
+  @AfterAll
   public static void cleanup() throws IOException {
     deleteFile(FILE_V1);
     deleteFile(FILE_V2);
@@ -255,44 +252,39 @@ public class DictionaryFilterTest {
     }
   }
 
-  @Parameters
-  public static Object[] params() {
-    return new Object[] {PARQUET_1_0, PARQUET_2_0};
-  }
-
   List<ColumnChunkMetaData> ccmd;
   ParquetFileReader reader;
   DictionaryPageReadStore dictionaries;
-  private Path file;
-  private WriterVersion version;
 
-  public DictionaryFilterTest(WriterVersion version) {
-    this.version = version;
+  private static Path fileForWriterVersion(WriterVersion version) {
     switch (version) {
       case PARQUET_1_0:
-        file = FILE_V1;
-        break;
+        return FILE_V1;
       case PARQUET_2_0:
-        file = FILE_V2;
-        break;
+        return FILE_V2;
+      default:
+        throw new IllegalArgumentException("Unexpected writer version: " + version);
     }
   }
 
-  @Before
-  public void setUp() throws Exception {
-    reader = ParquetFileReader.open(conf, file);
+  private void setUp(WriterVersion version) throws Exception {
+    reader = ParquetFileReader.open(conf, fileForWriterVersion(version));
     ParquetMetadata meta = reader.getFooter();
     ccmd = meta.getBlocks().get(0).getColumns();
     dictionaries = reader.getDictionaryReader(meta.getBlocks().get(0));
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
-    reader.close();
+    if (reader != null) {
+      reader.close();
+    }
   }
 
-  @Test
-  public void testDictionaryEncodedColumns() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testDictionaryEncodedColumns(WriterVersion version) throws Exception {
+    setUp(version);
     switch (version) {
       case PARQUET_1_0:
         testDictionaryEncodedColumnsV1();
@@ -391,8 +383,10 @@ public class DictionaryFilterTest {
     }
   }
 
-  @Test
-  public void testEqBinary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqBinary(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("binary_field");
     FilterPredicate pred = eq(b, Binary.fromString("c"));
 
@@ -409,8 +403,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testEqFixed() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqFixed(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("fixed_field");
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
@@ -429,8 +425,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testEqInt96() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqInt96(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("int96_field");
 
     // INT96 ordering is undefined => no filtering shall be done
@@ -447,8 +445,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testNotEqBinary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNotEqBinary(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn sharp = binaryColumn("single_value_field");
     BinaryColumn sharpAndNull = binaryColumn("optional_single_value_field");
     BinaryColumn b = binaryColumn("binary_field");
@@ -482,8 +482,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testLtInt() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtInt(WriterVersion version) throws Exception {
+    setUp(version);
     IntColumn i32 = intColumn("int32_field");
     int lowest = Integer.MAX_VALUE;
     for (int value : intValues) {
@@ -502,8 +504,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testLtFixed() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtFixed(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn fixed = binaryColumn("fixed_field");
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
@@ -518,8 +522,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testLtEqLong() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtEqLong(WriterVersion version) throws Exception {
+    setUp(version);
     LongColumn i64 = longColumn("int64_field");
     long lowest = Long.MAX_VALUE;
     for (long value : longValues) {
@@ -538,8 +544,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testGtFloat() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtFloat(WriterVersion version) throws Exception {
+    setUp(version);
     FloatColumn f = floatColumn("float_field");
     float highest = Float.MIN_VALUE;
     for (int value : intValues) {
@@ -558,8 +566,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testGtEqDouble() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtEqDouble(WriterVersion version) throws Exception {
+    setUp(version);
     DoubleColumn d = doubleColumn("double_field");
     double highest = Double.MIN_VALUE;
     for (int value : intValues) {
@@ -578,8 +588,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testNaNDictionaryFilterIsConservative() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNaNDictionaryFilterIsConservative(WriterVersion version) throws Exception {
+    setUp(version);
     List<ColumnChunkMetaData> nanColumns = nanColumns();
     DictionaryPageReadStore nanDictionaries = nanDictionaries();
     DoubleColumn doubleColumn = doubleColumn("double_nan_field");
@@ -647,8 +659,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testNaNDictionaryValuesMakeRangeFiltersConservative() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNaNDictionaryValuesMakeRangeFiltersConservative(WriterVersion version) throws Exception {
+    setUp(version);
     DictionaryPageReadStore dictionariesWithNaNs = dictionariesWithNaNs();
     assertNaNDictionaryRangeFiltersAreConservative(nanColumns(), dictionariesWithNaNs);
     assertNaNDictionaryRangeFiltersAreConservative(ieeeNaNColumns(), dictionariesWithNaNs);
@@ -693,15 +707,20 @@ public class DictionaryFilterTest {
     return List.of(
         nanColumn(
             "double_nan_field",
-            Types.required(PrimitiveTypeName.DOUBLE).named("double_nan_field")),
+            Types.required(PrimitiveTypeName.DOUBLE)
+                .columnOrder(ColumnOrder.typeDefined())
+                .named("double_nan_field")),
         nanColumn(
             "float_nan_field",
-            Types.required(PrimitiveTypeName.FLOAT).named("float_nan_field")),
+            Types.required(PrimitiveTypeName.FLOAT)
+                .columnOrder(ColumnOrder.typeDefined())
+                .named("float_nan_field")),
         nanColumn(
             "float16_nan_field",
             Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
                 .length(2)
                 .as(LogicalTypeAnnotation.float16Type())
+                .columnOrder(ColumnOrder.typeDefined())
                 .named("float16_nan_field")));
   }
 
@@ -804,8 +823,10 @@ public class DictionaryFilterTest {
     return buffer.array();
   }
 
-  @Test
-  public void testInBinary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInBinary(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("binary_field");
 
     Set<Binary> set1 = new HashSet<>();
@@ -874,8 +895,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testInFixed() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInFixed(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("fixed_field");
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
@@ -917,8 +940,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testInInt96() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInInt96(WriterVersion version) throws Exception {
+    setUp(version);
     // INT96 ordering is undefined => no filtering shall be done
     BinaryColumn b = binaryColumn("int96_field");
 
@@ -960,8 +985,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testAnd() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testAnd(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -986,8 +1013,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testOr() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testOr(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -1012,8 +1041,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testUdp() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testUdp(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP dropabble = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
 
@@ -1026,8 +1057,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testNullAcceptingUdp() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNullAcceptingUdp(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP drop42DenyNulls = new InInt32UDP(Sets.newHashSet(205));
     InInt32UDP drop42AcceptNulls = new InInt32UDP(Sets.newHashSet(null, 205));
 
@@ -1042,8 +1075,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testInverseUdp() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInverseUdp(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP droppable = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
     Set<Integer> allValues = ImmutableSet.copyOf(Ints.asList(intValues));
@@ -1068,8 +1103,10 @@ public class DictionaryFilterTest {
         .isTrue();
   }
 
-  @Test
-  public void testColumnWithoutDictionary() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testColumnWithoutDictionary(WriterVersion version) throws Exception {
+    setUp(version);
     IntColumn plain = intColumn("plain_int32_field");
     DictionaryPageReadStore dictionaryStore = mock(DictionaryPageReadStore.class);
 
@@ -1100,8 +1137,10 @@ public class DictionaryFilterTest {
     verifyNoInteractions(dictionaryStore);
   }
 
-  @Test
-  public void testColumnWithDictionaryAndPlainEncodings() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testColumnWithDictionaryAndPlainEncodings(WriterVersion version) throws Exception {
+    setUp(version);
     IntColumn plain = intColumn("fallback_binary_field");
     DictionaryPageReadStore dictionaryStore = mock(DictionaryPageReadStore.class);
 
@@ -1132,8 +1171,10 @@ public class DictionaryFilterTest {
     verifyNoInteractions(dictionaryStore);
   }
 
-  @Test
-  public void testEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
     assertThat(canDrop(eq(b, Binary.fromString("any")), ccmd, dictionaries))
@@ -1145,8 +1186,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testNotEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testNotEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
     assertThat(canDrop(notEq(b, Binary.fromString("any")), ccmd, dictionaries))
@@ -1158,8 +1201,10 @@ public class DictionaryFilterTest {
         .isTrue();
   }
 
-  @Test
-  public void testLtMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
     assertThat(canDrop(lt(b, Binary.fromString("any")), ccmd, dictionaries))
@@ -1167,8 +1212,10 @@ public class DictionaryFilterTest {
         .isTrue();
   }
 
-  @Test
-  public void testLtEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testLtEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
     assertThat(canDrop(ltEq(b, Binary.fromString("any")), ccmd, dictionaries))
@@ -1176,8 +1223,10 @@ public class DictionaryFilterTest {
         .isTrue();
   }
 
-  @Test
-  public void testGtMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
     assertThat(canDrop(gt(b, Binary.fromString("any")), ccmd, dictionaries))
@@ -1185,8 +1234,10 @@ public class DictionaryFilterTest {
         .isTrue();
   }
 
-  @Test
-  public void testGtEqMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testGtEqMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn b = binaryColumn("missing_column");
 
     assertThat(canDrop(gtEq(b, Binary.fromString("any")), ccmd, dictionaries))
@@ -1194,8 +1245,10 @@ public class DictionaryFilterTest {
         .isTrue();
   }
 
-  @Test
-  public void testUdpMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testUdpMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
     IntColumn fake = intColumn("missing_column");
@@ -1208,8 +1261,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testInverseUdpMissingColumn() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testInverseUdpMissingColumn(WriterVersion version) throws Exception {
+    setUp(version);
     InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
     IntColumn fake = intColumn("missing_column");
@@ -1222,8 +1277,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testContainsAnd() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testContainsAnd(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
@@ -1248,8 +1305,10 @@ public class DictionaryFilterTest {
         .isFalse();
   }
 
-  @Test
-  public void testContainsOr() throws Exception {
+  @ParameterizedTest
+  @EnumSource(WriterVersion.class)
+  public void testContainsOr(WriterVersion version) throws Exception {
+    setUp(version);
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)

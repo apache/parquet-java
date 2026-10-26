@@ -19,9 +19,9 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ErrorCollector;
+import org.apache.parquet.ErrorCollector;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 /*
  * This file continues the testing in TestEncryptionOptions. This test goals:
@@ -31,10 +31,14 @@ import org.junit.rules.ErrorCollector;
  * For a full description and the actual implementation see TestEncryptionOptions.
  */
 public class ITTestEncryptionOptions {
-  @Rule
-  public ErrorCollector errorCollector = new ErrorCollector();
+  private final ErrorCollector errorCollector = new ErrorCollector();
 
   TestEncryptionOptions test = new TestEncryptionOptions();
+
+  @AfterEach
+  public void verifyNoCollectedErrors() {
+    errorCollector.assertEmpty();
+  }
 
   @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {

@@ -77,9 +77,9 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
@@ -129,12 +129,12 @@ public class TestColumnChunkPageWriteStore {
   private Configuration conf;
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initConfiguration() {
     this.conf = new Configuration();
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }

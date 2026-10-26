@@ -46,7 +46,7 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestZstandardCodec {
 

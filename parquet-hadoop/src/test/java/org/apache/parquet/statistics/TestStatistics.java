@@ -34,6 +34,7 @@ import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -67,9 +68,8 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues.RandomBinaryBase;
 import org.apache.parquet.statistics.RandomValues.RandomValueGenerator;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -381,7 +381,8 @@ public class TestStatistics {
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.FixedGenerator(random.nextLong(), 12),
-          new RandomValues.FixedGenerator(random.nextLong(), 2));
+          new RandomValues.FixedGenerator(random.nextLong(), 2),
+          new RandomValues.FixedGenerator(random.nextLong(), 12));
     }
 
     private static MessageType buildSchema(long seed) {
@@ -451,7 +452,12 @@ public class TestStatistics {
           Types.optional(FIXED_LEN_BYTE_ARRAY)
               .length(2)
               .named("float16")
-              .withLogicalTypeAnnotation(LogicalTypeAnnotation.float16Type()));
+              .withLogicalTypeAnnotation(LogicalTypeAnnotation.float16Type()),
+          Types.optional(FIXED_LEN_BYTE_ARRAY)
+              .length(12)
+              .named("timestamp-nanos-flba")
+              .withLogicalTypeAnnotation(
+                  LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.NANOS)));
     }
 
     private static int calculatePrecision(int byteCnt) {
@@ -530,13 +536,12 @@ public class TestStatistics {
     }
   }
 
-  @Rule
-  public final TemporaryFolder folder = new TemporaryFolder();
+  @TempDir
+  private Path tempDir;
 
   @Test
   public void testStatistics() throws IOException {
-    File file = folder.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
@@ -582,8 +587,7 @@ public class TestStatistics {
 
   @Test
   public void testDisableStatistics() throws IOException {
-    File file = folder.newFile("test_file.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
@@ -668,8 +672,7 @@ public class TestStatistics {
 
   @Test
   public void testGlobalStatisticsDisabled() throws IOException {
-    File file = folder.newFile("test_file_global_stats_disabled.parquet");
-    file.delete();
+    File file = tempDir.resolve("test_file_global_stats_disabled.parquet").toFile();
 
     LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
     Random random = new Random(RANDOM_SEED);

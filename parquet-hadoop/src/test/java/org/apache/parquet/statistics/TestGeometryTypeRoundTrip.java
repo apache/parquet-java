@@ -23,11 +23,8 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.geometryType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -43,22 +40,18 @@ import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.io.WKBWriter;
 
 public class TestGeometryTypeRoundTrip {
+  @TempDir
+  private Path tempDir;
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
-
-  private Path newTempPath() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return file.toPath();
+  private Path newTempPath() {
+    return tempDir.resolve(java.util.UUID.randomUUID() + ".parquet");
   }
 
   @Test

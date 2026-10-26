@@ -31,7 +31,7 @@ import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class CodecConfigTest {
   @Test

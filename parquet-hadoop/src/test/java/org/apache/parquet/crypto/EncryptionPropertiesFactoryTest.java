@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class EncryptionPropertiesFactoryTest {
   @Test

@@ -42,7 +42,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -65,16 +64,12 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@RunWith(Parameterized.class)
 public class TestColumnIndexes {
   private static final int MAX_TOTAL_ROWS = 100_000;
   private static final MessageType SCHEMA = new MessageType(
@@ -120,6 +115,10 @@ public class TestColumnIndexes {
           .as(OriginalType.INTERVAL)
           .named("interval"),
       Types.optional(FIXED_LEN_BYTE_ARRAY).length(16).as(uuidType()).named("uuid"),
+      Types.optional(FIXED_LEN_BYTE_ARRAY)
+          .length(12)
+          .as(timestampType(true, TimeUnit.NANOS))
+          .named("timestamp-nanos-flba"),
       Types.optional(BINARY).as(stringType()).named("always-null"));
 
   private static List<Supplier<?>> buildGenerators(int recordCount, Random random) {
@@ -224,6 +223,8 @@ public class TestColumnIndexes {
             new RandomValues.FixedGenerator(random.nextLong(), 12), random, recordCount, fieldIndex++),
         sortedOrRandom(
             new RandomValues.FixedGenerator(random.nextLong(), 16), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.FixedGenerator(random.nextLong(), 12), random, recordCount, fieldIndex++),
         null);
   }
 
@@ -318,30 +319,24 @@ public class TestColumnIndexes {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestColumnIndexes.class);
 
-  @Rule
-  public TemporaryFolder tmp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
-  @Parameters
-  public static Collection<WriteContext> getContexts() {
+  static List<WriteContext> getContexts() {
     return List.of(
         new WriteContext(System.nanoTime(), 1000, 8),
         new WriteContext(System.nanoTime(), 20000, 64),
         new WriteContext(System.nanoTime(), 50000, 10));
   }
 
-  public TestColumnIndexes(WriteContext context) {
-    this.context = context;
-  }
-
-  private final WriteContext context;
-
-  @Test
-  public void testColumnIndexes() throws IOException {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("getContexts")
+  public void testColumnIndexes(WriteContext context) throws IOException {
     LOGGER.info("Starting test with context: {}", context);
 
     Path file = null;
     try {
-      file = context.write(new Path(tmp.getRoot().getAbsolutePath()));
+      file = context.write(new Path(tempDir.toUri()));
       LOGGER.info("Parquet file \"{}\" is successfully created for the context: {}", file, context);
 
       List<ContractViolation> violations =

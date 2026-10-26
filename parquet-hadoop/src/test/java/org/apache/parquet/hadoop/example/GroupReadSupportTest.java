@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class GroupReadSupportTest {
 

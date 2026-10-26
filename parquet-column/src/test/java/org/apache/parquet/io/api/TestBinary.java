@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -245,6 +246,29 @@ public class TestBinary {
   }
 
   @Test
+  public void testDirectByteBufferEqualityWithOffset() {
+    ByteBuffer slicedBuffer = ByteBuffer.allocateDirect(3);
+    slicedBuffer.put(new byte[] {9, 1, 2});
+    slicedBuffer.position(1);
+    Binary sliced = Binary.fromConstantByteBuffer(slicedBuffer);
+
+    ByteBuffer equalBuffer = ByteBuffer.allocateDirect(2);
+    equalBuffer.put(new byte[] {1, 2});
+    equalBuffer.flip();
+    Binary equal = Binary.fromConstantByteBuffer(equalBuffer);
+
+    ByteBuffer differentBuffer = ByteBuffer.allocateDirect(2);
+    differentBuffer.put(new byte[] {9, 1});
+    differentBuffer.flip();
+    Binary different = Binary.fromConstantByteBuffer(differentBuffer);
+
+    assertThat(sliced).isEqualTo(equal);
+    assertThat(equal).isEqualTo(sliced);
+    assertThat(sliced.hashCode()).isEqualTo(equal.hashCode());
+    assertThat(different).isNotEqualTo(sliced);
+  }
+
+  @Test
   public void testWriteAllTo() throws Exception {
     byte[] orig = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     testWriteAllToHelper(Binary.fromConstantByteBuffer(ByteBuffer.wrap(orig)), orig);
@@ -420,6 +444,27 @@ public class TestBinary {
     // ByteArraySliceBackedBinary: get2BytesLittleEndian
     Binary b3 = Binary.fromConstantByteArray(new byte[] {0x00, 0x01, 0x02, 0x03}, 1, 2);
     assertThat(b3.get2BytesLittleEndian()).isEqualTo((short) 0x0201);
+  }
+
+  @Test
+  public void testGet2BytesLittleEndianPreservesByteBufferOrder() {
+    assertGet2BytesLittleEndianPreservesOrder(ByteBuffer.wrap(new byte[] {0x01, 0x02}));
+
+    ByteBuffer direct = ByteBuffer.allocateDirect(2);
+    direct.put(new byte[] {0x01, 0x02});
+    direct.flip();
+    assertGet2BytesLittleEndianPreservesOrder(direct);
+
+    assertGet2BytesLittleEndianPreservesOrder(
+        ByteBuffer.wrap(new byte[] {0x01, 0x02}).asReadOnlyBuffer());
+  }
+
+  private static void assertGet2BytesLittleEndianPreservesOrder(ByteBuffer buffer) {
+    buffer.order(ByteOrder.BIG_ENDIAN);
+    Binary binary = Binary.fromConstantByteBuffer(buffer);
+
+    assertThat(binary.get2BytesLittleEndian()).isEqualTo((short) 0x0201);
+    assertThat(buffer.order()).isEqualTo(ByteOrder.BIG_ENDIAN);
   }
 
   @Test

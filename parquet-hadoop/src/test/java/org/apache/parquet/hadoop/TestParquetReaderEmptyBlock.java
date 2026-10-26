@@ -32,7 +32,7 @@ import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestParquetReaderEmptyBlock {
 

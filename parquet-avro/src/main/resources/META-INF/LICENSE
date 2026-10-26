@@ -178,9 +178,18 @@
 
 --------------------------------------------------------------------------------
 
-This product includes code from Apache Avro.
+This product includes code derived from Apache Avro.
 
-Copyright: 2014 The Apache Software Foundation.
+Copyright: 2009-2025 The Apache Software Foundation
 Home page: https://avro.apache.org/
-License: http://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles fastutil in this binary artifact. fastutil provides
+type-specific collection implementations.
+
+Copyright: 2002-2024 Sebastiano Vigna
+Home page: https://fastutil.di.unimi.it/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 

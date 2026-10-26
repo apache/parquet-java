@@ -160,4 +160,64 @@ public class TestFixedLenByteArrayPlainValuesWriterReader {
       // Should not throw
     }
   }
+
+  // ---- Lazy getBytes() must not corrupt the shared page buffer's live position ----
+
+  // Regression test: getBytes() on an old value used to shift the buffer's shared
+  // read position backwards, so the next readBytes() call returned stale data.
+  @Test
+  public void testLazyGetBytesDoesNotCorruptSubsequentReadsDirectBuffer() throws IOException {
+    Binary[] expected = {fixedBinary(0), fixedBinary(50), fixedBinary(100), fixedBinary(150)};
+    ByteBuffer direct = writeToDirectBuffer(expected);
+
+    FixedLenByteArrayPlainValuesReader reader = new FixedLenByteArrayPlainValuesReader(FIXED_LEN);
+    reader.initFromPage(expected.length, ByteBufferInputStream.wrap(direct));
+
+    // "row 0": read two values, then materialize them lazily -- getBytes() on the
+    // first value happens after the shared buffer's position has already moved past it.
+    Binary row0v0 = reader.readBytes();
+    Binary row0v1 = reader.readBytes();
+    assertThat(row0v0.getBytes()).as("row0 value 0").isEqualTo(expected[0].getBytes());
+    assertThat(row0v1.getBytes()).as("row0 value 1").isEqualTo(expected[1].getBytes());
+
+    // "row 1": the corruption from materializing row 0 above must not affect this.
+    Binary row1v0 = reader.readBytes();
+    Binary row1v1 = reader.readBytes();
+    assertThat(row1v0.getBytes()).as("row1 value 0").isEqualTo(expected[2].getBytes());
+    assertThat(row1v1.getBytes()).as("row1 value 1").isEqualTo(expected[3].getBytes());
+  }
+
+  // Same scenario using toStringUsingUTF8(), which shares the buggy non-array-backed
+  // path with getBytes().
+  @Test
+  public void testLazyToStringUsingUTF8DoesNotCorruptSubsequentReadsDirectBuffer() throws IOException {
+    Binary[] expected = {fixedBinary(0), fixedBinary(50), fixedBinary(100), fixedBinary(150)};
+    ByteBuffer direct = writeToDirectBuffer(expected);
+
+    FixedLenByteArrayPlainValuesReader reader = new FixedLenByteArrayPlainValuesReader(FIXED_LEN);
+    reader.initFromPage(expected.length, ByteBufferInputStream.wrap(direct));
+
+    Binary row0v0 = reader.readBytes();
+    Binary row0v1 = reader.readBytes();
+    assertThat(row0v0.toStringUsingUTF8()).as("row0 value 0").isEqualTo(expected[0].toStringUsingUTF8());
+    assertThat(row0v1.toStringUsingUTF8()).as("row0 value 1").isEqualTo(expected[1].toStringUsingUTF8());
+
+    Binary row1v0 = reader.readBytes();
+    Binary row1v1 = reader.readBytes();
+    assertThat(row1v0.getBytes()).as("row1 value 0").isEqualTo(expected[2].getBytes());
+    assertThat(row1v1.getBytes()).as("row1 value 1").isEqualTo(expected[3].getBytes());
+  }
+
+  private ByteBuffer writeToDirectBuffer(Binary[] values) throws IOException {
+    try (FixedLenByteArrayPlainValuesWriter writer = newWriter()) {
+      for (Binary v : values) {
+        writer.writeBytes(v);
+      }
+      byte[] pageBytes = writer.getBytes().toByteArray();
+      ByteBuffer direct = ByteBuffer.allocateDirect(pageBytes.length);
+      direct.put(pageBytes);
+      direct.flip();
+      return direct;
+    }
+  }
 }

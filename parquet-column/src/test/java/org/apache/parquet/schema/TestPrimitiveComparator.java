@@ -20,7 +20,9 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR;
@@ -39,6 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
 
@@ -353,6 +356,47 @@ public class TestPrimitiveComparator {
     }
   }
 
+  private static Binary int96(int julianDay, long nanosOfDay) {
+    return new NanoTime(julianDay, nanosOfDay).toBinary();
+  }
+
+  @Test
+  public void testInt96TimestampComparator() {
+    Binary[] valuesInAscendingOrder = {
+      int96(Integer.MIN_VALUE, 0), // most negative julian day
+      int96(-1, 86_399_999_999_999L), // negative julian days sort before day 0
+      int96(0, 0), // start of the julian period
+      int96(0, 86_399_999_999_999L), // same day, later time of day
+      int96(2440000, 123L), // 1968-05-23T00:00:00.000000123, pre-epoch but positive julian day
+      int96(2458850, 43_200_000_000_000L), // 2020-01-01T12:00:00
+      int96(2458881, 39_600_000_000_000L), // 2020-02-01T11:00:00, later day even though earlier time of day
+      int96(2458881, 39_600_000_000_001L), // 2020-02-01T11:00:00.000000001, nanos tie-break
+      int96(Integer.MAX_VALUE, 86_399_999_999_999L)
+    };
+
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        assertThat(Integer.signum(BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(
+                valuesInAscendingOrder[i], valuesInAscendingOrder[j])))
+            .as("comparing value " + i + " to value " + j)
+            .isEqualTo(Integer.signum(Integer.compare(i, j)));
+      }
+    }
+  }
+
+  @Test
+  public void testInt96TimestampComparatorRejectsInvalidNanos() {
+    // Same Julian day so the comparator reaches the nanos validation instead of
+    // returning early on the day comparison.
+    Binary valid = int96(0, 0);
+    for (long invalidNanos : new long[] {-1L, Long.MIN_VALUE, 86_400_000_000_000L, Long.MAX_VALUE}) {
+      Binary invalid = int96(0, invalidNanos);
+      assertThatThrownBy(() -> BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(valid, invalid))
+          .as("Expected IllegalArgumentException for nanos=" + invalidNanos)
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+  }
+
   @Test
   public void testFloat16Comparator() {
     Binary[] valuesInAscendingOrder = {
@@ -431,6 +475,47 @@ public class TestPrimitiveComparator {
     } else {
       assertThat(compareResult).isZero();
     }
+  }
+
+  @Test
+  public void testBinaryAsSignedIntegerLE12Comparator() {
+    // 12-byte LE encodings: byte[0]=LSB, byte[11]=MSB/sign
+    // large negative: 0x80 00..00 (most negative 96-bit value)
+    byte[] largeNeg = new byte[12];
+    largeNeg[11] = (byte) 0x80;
+    // -256: 0x00 FF FF..FF (little-endian)
+    byte[] negTwoFiftySix = new byte[12];
+    for (int i = 1; i < 12; i++) negTwoFiftySix[i] = (byte) 0xFF;
+    // -1: all 0xFF
+    byte[] negOne = new byte[12];
+    for (int i = 0; i < 12; i++) negOne[i] = (byte) 0xFF;
+    // 0: all 0x00
+    byte[] zero = new byte[12];
+    // +1: 0x01 followed by 0x00s
+    byte[] posOne = new byte[12];
+    posOne[0] = 1;
+    // +256: byte[0]=0x00, byte[1]=0x01, rest 0x00 — order vs +1 is decided at byte 1 (high byte);
+    // an LSB-first comparator would wrongly rank +256 < +1 (seeing byte[0]=0 < 1 first)
+    byte[] posTwoFiftySix = new byte[12];
+    posTwoFiftySix[1] = 1;
+    // +2^63: low 8 bytes have bit 63 set (LE: bytes 0..6=0x00, byte 7=0x80), high 4 bytes=0x00.
+    // Sits between small positives and largePos; fails if the lower 8 bytes are compared signed.
+    byte[] posTwo63 = new byte[12];
+    posTwo63[7] = (byte) 0x80;
+    // large positive: 0x7F FF..FF (most positive 96-bit value)
+    byte[] largePos = new byte[12];
+    for (int i = 0; i < 12; i++) largePos[i] = (byte) 0xFF;
+    largePos[11] = 0x7F;
+    testObjectComparator(
+        BINARY_AS_SIGNED_TIMESTAMP_COMPARATOR,
+        Binary.fromConstantByteArray(largeNeg),
+        Binary.fromConstantByteArray(negTwoFiftySix),
+        Binary.fromConstantByteArray(negOne),
+        Binary.fromConstantByteArray(zero),
+        Binary.fromConstantByteArray(posOne),
+        Binary.fromConstantByteArray(posTwoFiftySix),
+        Binary.fromConstantByteArray(posTwo63),
+        Binary.fromConstantByteArray(largePos));
   }
 
   private void checkThrowingUnsupportedException(PrimitiveComparator<?> comparator, Class<?> exclude) {

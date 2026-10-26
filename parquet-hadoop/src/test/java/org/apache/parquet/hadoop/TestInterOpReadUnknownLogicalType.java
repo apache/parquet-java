@@ -20,8 +20,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
@@ -31,7 +30,7 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestInterOpReadUnknownLogicalType {
   private static final String REFERENCE_FILE = "unknown-logical-type.parquet";
@@ -52,26 +51,23 @@ public class TestInterOpReadUnknownLogicalType {
             .build()) {
       Type knownColumn =
           fileReader.getFooter().getFileMetaData().getSchema().getType(KNOWN_COLUMN);
-      assertEquals(PrimitiveTypeName.BINARY, knownColumn.asPrimitiveType().getPrimitiveTypeName());
-      assertEquals(stringType(), knownColumn.getLogicalTypeAnnotation());
+      assertThat(knownColumn.asPrimitiveType().getPrimitiveTypeName()).isEqualTo(PrimitiveTypeName.BINARY);
+      assertThat(knownColumn.getLogicalTypeAnnotation()).isEqualTo(stringType());
 
       Type unknownColumn =
           fileReader.getFooter().getFileMetaData().getSchema().getType(UNKNOWN_COLUMN);
-      assertEquals(
-          PrimitiveTypeName.BINARY, unknownColumn.asPrimitiveType().getPrimitiveTypeName());
-      assertNull(unknownColumn.getLogicalTypeAnnotation());
+      assertThat(unknownColumn.asPrimitiveType().getPrimitiveTypeName()).isEqualTo(PrimitiveTypeName.BINARY);
+      assertThat(unknownColumn.getLogicalTypeAnnotation()).isNull();
 
       int rows = 0;
       Group group;
       while ((group = recordReader.read()) != null) {
         rows += 1;
-        assertEquals(
-            "known string " + rows, group.getBinary(KNOWN_COLUMN, 0).toStringUsingUTF8());
-        assertEquals(
-            "unknown string " + rows,
-            group.getBinary(UNKNOWN_COLUMN, 0).toStringUsingUTF8());
+        assertThat(group.getBinary(KNOWN_COLUMN, 0).toStringUsingUTF8()).isEqualTo("known string " + rows);
+        assertThat(group.getBinary(UNKNOWN_COLUMN, 0).toStringUsingUTF8())
+            .isEqualTo("unknown string " + rows);
       }
-      assertEquals(3, rows);
+      assertThat(rows).isEqualTo(3);
     }
   }
 }

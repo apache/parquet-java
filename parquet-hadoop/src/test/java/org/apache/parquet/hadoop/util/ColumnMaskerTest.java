@@ -54,8 +54,8 @@ import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReade
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ColumnMaskerTest {
 
@@ -68,7 +68,7 @@ public class ColumnMaskerTest {
   private String outputFile = null;
   private TestDocs testDocs = null;
 
-  @Before
+  @BeforeEach
   public void testSetup() throws Exception {
     testDocs = new TestDocs(numRecord);
     inputFile = createParquetFile(

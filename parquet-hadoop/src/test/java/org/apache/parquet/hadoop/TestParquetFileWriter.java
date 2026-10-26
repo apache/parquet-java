@@ -42,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,8 +78,11 @@ import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -97,20 +101,22 @@ import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.LocalOutputFile;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +127,6 @@ import org.slf4j.LoggerFactory;
  * This verifies that the vector IO code path is correct, and that
  * the default path continues to work.
  */
-@RunWith(Parameterized.class)
 public class TestParquetFileWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetFileWriter.class);
@@ -150,32 +155,15 @@ public class TestParquetFileWriter {
               Types.required(PrimitiveTypeName.BINARY).named("test_binary"))
           .build();
 
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
-
-  @Parameterized.Parameters(name = "vectored : {0}")
-  public static List<Boolean> params() {
-    return List.of(true, false);
-  }
-
-  /**
-   * Read type: true for vectored IO.
-   */
-  private final boolean vectoredRead;
-
-  /**
-   * Instantiate.
-   * @param vectoredRead use vector IO for reading.
-   */
-  public TestParquetFileWriter(boolean vectoredRead) {
-    this.vectoredRead = vectoredRead;
-  }
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   /**
    * Get the configuration for the tests.
+   * @param vectoredRead use vector IO for reading
    * @return a configuration which may have vector IO set.
    */
-  private Configuration getTestConfiguration() {
+  private Configuration getTestConfiguration(boolean vectoredRead) {
     Configuration conf = new Configuration();
     // set the vector IO option
     conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, vectoredRead);
@@ -184,12 +172,12 @@ public class TestParquetFileWriter {
 
   private TrackingByteBufferAllocator allocator;
 
-  @Before
+  @BeforeEach
   public void initAllocator() {
     allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
   }
 
-  @After
+  @AfterEach
   public void closeAllocator() {
     allocator.close();
   }
@@ -217,26 +205,22 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteMode() throws Exception {
-    File testFile = temp.newFile();
     MessageType schema = MessageTypeParser.parseMessageType(
         "message m { required group a {required binary b;} required group " + "c { required int64 d; }}");
     Configuration conf = new Configuration();
-
-    Path path = new Path(testFile.toURI());
+    Path path = existingTempPath();
     assertThatThrownBy(() -> createWriter(conf, schema, path))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("already exists");
     assertThatCode(() -> createWriter(conf, schema, path, OVERWRITE)).doesNotThrowAnyException();
-    testFile.delete();
+    Files.deleteIfExists(java.nio.file.Paths.get(path.toUri()));
   }
 
-  @Test
-  public void testWriteRead() throws Exception {
-    File testFile = temp.newFile();
-    testFile.delete();
-
-    Path path = new Path(testFile.toURI());
-    Configuration configuration = getTestConfiguration();
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testWriteRead(boolean vectoredRead) throws Exception {
+    Path path = newTempPath();
+    Configuration configuration = getTestConfiguration(vectoredRead);
 
     ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
     w.start();
@@ -333,13 +317,11 @@ public class TestParquetFileWriter {
     PrintFooter.main(new String[] {path.toString()});
   }
 
-  @Test
-  public void testWriteReadWithRecordReader() throws Exception {
-    File testFile = temp.newFile();
-    testFile.delete();
-
-    Path path = new Path(testFile.toURI());
-    Configuration configuration = getTestConfiguration();
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testWriteReadWithRecordReader(boolean vectoredRead) throws Exception {
+    Path path = newTempPath();
+    Configuration configuration = getTestConfiguration(vectoredRead);
 
     ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
     w.start();
@@ -415,10 +397,7 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteEmptyBlock() throws Exception {
-    File testFile = temp.newFile();
-    testFile.delete();
-
-    Path path = new Path(testFile.toURI());
+    Path path = newTempPath();
     Configuration configuration = new Configuration();
 
     ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
@@ -430,13 +409,12 @@ public class TestParquetFileWriter {
         .hasMessage("End block with zero record");
   }
 
-  @Test
-  public void testBloomFilterWriteRead() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testBloomFilterWriteRead(boolean vectoredRead) throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
-    File testFile = temp.newFile();
-    testFile.delete();
-    Path path = new Path(testFile.toURI());
-    Configuration configuration = getTestConfiguration();
+    Path path = newTempPath();
+    Configuration configuration = getTestConfiguration(vectoredRead);
     configuration.set("parquet.bloom.filter.column.names", "foo");
     String[] colPath = {"foo"};
     ColumnDescriptor col = schema.getColumnDescription(colPath);
@@ -474,12 +452,62 @@ public class TestParquetFileWriter {
   }
 
   @Test
-  public void testWriteReadDataPageV2() throws Exception {
-    File testFile = temp.newFile();
-    testFile.delete();
+  public void testAddBloomFilterStringResolvesUnambiguousDottedColumn() throws Exception {
+    MessageType schema = Types.buildMessage().required(BINARY).named("a.b").named("test");
+    Path path = newTempPath();
+    Configuration configuration = new Configuration();
+    ColumnDescriptor column = schema.getColumnDescription(new String[] {"a.b"});
+    BloomFilter expectedBloomFilter = new BlockSplitBloomFilter(0);
+    expectedBloomFilter.insertHash(expectedBloomFilter.hash(Binary.fromString("hello")));
 
-    Path path = new Path(testFile.toURI());
-    Configuration configuration = getTestConfiguration();
+    ParquetFileWriter writer = createWriter(configuration, schema, path);
+    writer.start();
+    writer.startBlock(1);
+    writer.startColumn(column, 1, CODEC);
+    writer.writeDataPage(1, 1, BytesInput.from(BYTES1), new BinaryStatistics(), BIT_PACKED, BIT_PACKED, PLAIN);
+    writer.endColumn();
+    writer.addBloomFilter("a.b", expectedBloomFilter);
+    writer.endBlock();
+    writer.end(new HashMap<>());
+
+    ParquetMetadata footer = ParquetFileReader.readFooter(configuration, path);
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, configuration))) {
+      ColumnChunkMetaData columnMetadata =
+          footer.getBlocks().get(0).getColumns().get(0);
+      BloomFilter actualBloomFilter = reader.readBloomFilter(columnMetadata);
+      assertThat(actualBloomFilter).isNotNull();
+      assertThat(actualBloomFilter.findHash(actualBloomFilter.hash(Binary.fromString("hello"))))
+          .isTrue();
+    }
+  }
+
+  @Test
+  public void testAddBloomFilterStringRejectsAmbiguousDottedColumn() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .named("b")
+        .named("a")
+        .named("test");
+    Path path = newTempPath();
+    ParquetFileWriter writer = createWriter(new Configuration(), schema, path);
+    writer.start();
+    writer.startBlock(1);
+
+    assertThatThrownBy(() -> writer.addBloomFilter("a.b", new BlockSplitBloomFilter(0)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Ambiguous column path 'a.b'; use addBloomFilterForPath(ColumnPath, BloomFilter)");
+
+    writer.close();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testWriteReadDataPageV2(boolean vectoredRead) throws Exception {
+    Path path = newTempPath();
+    Configuration configuration = getTestConfiguration(vectoredRead);
 
     ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
     w.start();
@@ -584,12 +612,11 @@ public class TestParquetFileWriter {
     }
   }
 
-  @Test
-  public void testAlignmentWithPadding() throws Exception {
-    File testFile = temp.newFile();
-
-    Path path = new Path(testFile.toURI());
-    Configuration conf = getTestConfiguration();
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testAlignmentWithPadding(boolean vectoredRead) throws Exception {
+    Path path = newTempPath();
+    Configuration conf = getTestConfiguration(vectoredRead);
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
 
@@ -709,12 +736,11 @@ public class TestParquetFileWriter {
     PrintFooter.main(new String[] {path.toString()});
   }
 
-  @Test
-  public void testAlignmentWithNoPaddingNeeded() throws Exception {
-    File testFile = temp.newFile();
-
-    Path path = new Path(testFile.toURI());
-    Configuration conf = getTestConfiguration();
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testAlignmentWithNoPaddingNeeded(boolean vectoredRead) throws Exception {
+    Path path = newTempPath();
+    Configuration conf = getTestConfiguration(vectoredRead);
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
     // close any filesystems to ensure that the the FS used by the writer picks up the configuration
@@ -835,8 +861,9 @@ public class TestParquetFileWriter {
     PrintFooter.main(new String[] {path.toString()});
   }
 
-  @Test
-  public void testConvertToThriftStatistics() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testConvertToThriftStatistics(boolean vectoredRead) throws Exception {
     long[] longArray =
         new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE
         };
@@ -857,16 +884,14 @@ public class TestParquetFileWriter {
     assertThat(convertedBackStats.getNumNulls()).isEqualTo(parquetMRstats.getNumNulls());
   }
 
-  @Test
-  public void testWriteReadStatistics() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testWriteReadStatistics(boolean vectoredRead) throws Exception {
     // this test assumes statistics will be read
     assumeThat(shouldIgnoreStatistics(Version.FULL_VERSION, BINARY)).isFalse();
 
-    File testFile = temp.newFile();
-    testFile.delete();
-
-    Path path = new Path(testFile.toURI());
-    Configuration configuration = getTestConfiguration();
+    Path path = newTempPath();
+    Configuration configuration = getTestConfiguration(vectoredRead);
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
 
     MessageType schema = MessageTypeParser.parseMessageType(
@@ -954,13 +979,12 @@ public class TestParquetFileWriter {
     }
   }
 
-  @Test
-  public void testMetaDataFile() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testMetaDataFile(boolean vectoredRead) throws Exception {
 
-    File testDir = temp.newFolder();
-
-    Path testDirPath = new Path(testDir.toURI());
-    Configuration configuration = getTestConfiguration();
+    Path testDirPath = new Path(Files.createTempDirectory(tempDir, "folder").toUri());
+    Configuration configuration = getTestConfiguration(vectoredRead);
 
     final FileSystem fs = testDirPath.getFileSystem(configuration);
     enforceEmptyDir(configuration, testDirPath);
@@ -1001,20 +1025,18 @@ public class TestParquetFileWriter {
     validateFooters(footers);
   }
 
-  @Test
-  public void testWriteReadStatisticsAllNulls() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testWriteReadStatisticsAllNulls(boolean vectoredRead) throws Exception {
     // this test assumes statistics will be read
     assumeThat(shouldIgnoreStatistics(Version.FULL_VERSION, BINARY)).isFalse();
 
-    File testFile = temp.newFile();
-    testFile.delete();
+    Path path = newTempPath();
 
     String writeSchema = "message example {\n" + "required binary content (UTF8);\n" + "}";
 
-    Path path = new Path(testFile.toURI());
-
     MessageType schema = MessageTypeParser.parseMessageType(writeSchema);
-    Configuration configuration = getTestConfiguration();
+    Configuration configuration = getTestConfiguration(vectoredRead);
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
     GroupWriteSupport.setSchema(schema, configuration);
 
@@ -1135,8 +1157,9 @@ public class TestParquetFileWriter {
     assertThat(((DataPageV1) page).getBytes().toByteArray()).isEqualTo(bytes.toByteArray());
   }
 
-  @Test
-  public void testMergeMetadata() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testMergeMetadata(boolean vectoredRead) {
     FileMetaData md1 = new FileMetaData(
         new MessageType(
             "root1", new PrimitiveType(REPEATED, BINARY, "a"), new PrimitiveType(OPTIONAL, BINARY, "b")),
@@ -1155,8 +1178,9 @@ public class TestParquetFileWriter {
         .isEqualTo(merged.getSchema());
   }
 
-  @Test
-  public void testMergeFooters() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testMergeFooters(boolean vectoredRead) {
     List<BlockMetaData> oneBlocks = new ArrayList<BlockMetaData>();
     oneBlocks.add(new BlockMetaData());
     oneBlocks.add(new BlockMetaData());
@@ -1207,9 +1231,10 @@ public class TestParquetFileWriter {
    * {@link ParquetFileWriter#mergeFooters(Path, List)} expects a fully-qualified
    * path for the root and crashes if a relative one is provided.
    */
-  @Test
-  public void testWriteMetadataFileWithRelativeOutputPath() throws IOException {
-    Configuration conf = getTestConfiguration();
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testWriteMetadataFileWithRelativeOutputPath(boolean vectoredRead) throws IOException {
+    Configuration conf = getTestConfiguration(vectoredRead);
     FileSystem fs = FileSystem.get(conf);
     Path relativeRoot = new Path("target/_test_relative");
     Path qualifiedRoot = fs.makeQualified(relativeRoot);
@@ -1229,20 +1254,18 @@ public class TestParquetFileWriter {
     ParquetFileWriter.writeMetadataFile(conf, relativeRoot, footers, JobSummaryLevel.ALL);
   }
 
-  @Test
-  public void testColumnIndexWriteRead() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testColumnIndexWriteRead(boolean vectoredRead) throws Exception {
     // Don't truncate
-    testColumnIndexWriteRead(Integer.MAX_VALUE);
+    testColumnIndexWriteRead(vectoredRead, Integer.MAX_VALUE);
     // Truncate to DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH
-    testColumnIndexWriteRead(ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
+    testColumnIndexWriteRead(vectoredRead, ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
   }
 
-  private void testColumnIndexWriteRead(int columnIndexTruncateLen) throws Exception {
-    File testFile = temp.newFile();
-    testFile.delete();
-
-    Path path = new Path(testFile.toURI());
-    Configuration configuration = getTestConfiguration();
+  private void testColumnIndexWriteRead(boolean vectoredRead, int columnIndexTruncateLen) throws Exception {
+    Path path = newTempPath();
+    Configuration configuration = getTestConfiguration(vectoredRead);
 
     ParquetFileWriter w = new ParquetFileWriter(
         configuration,
@@ -1413,8 +1436,9 @@ public class TestParquetFileWriter {
     }
   }
 
-  @Test
-  public void testMergeMetadataWithConflictingKeyValues() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testMergeMetadataWithConflictingKeyValues(boolean vectoredRead) {
     Map<String, String> keyValues1 = new HashMap<String, String>() {
       {
         put("a", "b");
@@ -1447,8 +1471,9 @@ public class TestParquetFileWriter {
     assertThat(mergedValue).isIn("b,c", "c,b");
   }
 
-  @Test
-  public void testMergeMetadataWithNoConflictingKeyValues() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testMergeMetadataWithNoConflictingKeyValues(boolean vectoredRead) {
     Map<String, String> keyValues1 = new HashMap<String, String>() {
       {
         put("a", "b");
@@ -1500,5 +1525,213 @@ public class TestParquetFileWriter {
       }
     }
     return stats;
+  }
+
+  private Path newTempPath() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
+  }
+
+  private Path existingTempPath() throws IOException {
+    return new Path(Files.createTempFile(tempDir, "test", ".tmp").toUri());
+  }
+
+  @Test
+  public void testNoFlushWhenEndFailsWithIOException() throws Exception {
+    assertEndFailureDoesNotFlush(new IOException("injected end() failure"));
+  }
+
+  @Test
+  public void testNoFlushWhenEndFailsWithRuntimeException() throws Exception {
+    // Validate that non-IOException failures are also caught and mark the writer aborted.
+    assertEndFailureDoesNotFlush(new RuntimeException("injected end() failure"));
+  }
+
+  private void assertEndFailureDoesNotFlush(Throwable toThrow) throws Exception {
+    Path path = newTempPath();
+    Configuration conf = getTestConfiguration(false);
+
+    FaultInjectingOutputFile out = new FaultInjectingOutputFile(HadoopOutputFile.fromPath(path, conf));
+    ParquetFileWriter w = new ParquetFileWriter(
+        out,
+        SCHEMA,
+        ParquetFileWriter.Mode.CREATE,
+        DEFAULT_BLOCK_SIZE,
+        MAX_PADDING_SIZE_DEFAULT,
+        null,
+        ParquetProperties.builder().withAllocator(allocator).build());
+
+    // Write one minimal, complete block.
+    w.start();
+    w.startBlock(1);
+    w.startColumn(C1, 1, CODEC);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 1, CODEC);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+
+    // Arm the fault so serialization inside end() throws, then reset the flush counter so we only
+    // measure flushes that happen during the failing end()/close().
+    out.flushCount = 0;
+    out.toThrow = toThrow;
+
+    try {
+      w.end(new HashMap<String, String>());
+      throw new AssertionError("Expected the injected failure from end()");
+    } catch (IOException | RuntimeException expected) {
+      // A RuntimeException propagates unwrapped; an IOException is wrapped by serializeFooter
+      // (Util.writeFileMetaData -> "can not write"), so unwrap to the injected root cause.
+      Throwable root = expected;
+      while (root.getCause() != null) {
+        root = root.getCause();
+      }
+      assertThat(root.getMessage()).isEqualTo("injected end() failure");
+    } finally {
+      // end()'s abort path intentionally leaves the underlying stream unclosed (so the incomplete
+      // file is never committed); close it here to make the resource contract explicit. Swallow any
+      // close failure so it can't mask the flushCount assertion below.
+      try {
+        out.stream.close();
+      } catch (IOException ignored) {
+      }
+    }
+
+    // The writer is marked aborted on failure before close() runs, so close() skips the flush and
+    // the incomplete stream is never flushed to storage.
+    assertThat(out.flushCount)
+        .as("end() must not flush the output stream when it fails")
+        .isEqualTo(0);
+  }
+
+  @Test
+  public void testNoFlushWhenRecordWriterCloseFailsWithError() throws Exception {
+    // An Error thrown from close() outside ParquetFileWriter (e.g. finalizeWrite) must abort
+    // before the finally flushes, so an incomplete file is never committed.
+    java.nio.file.Path path = tempDir.resolve(java.util.UUID.randomUUID() + ".tmp");
+    Configuration conf = getTestConfiguration(false);
+
+    FaultInjectingOutputFile out = new FaultInjectingOutputFile(new LocalOutputFile(path));
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required int64 id; }");
+    WriteSupport<Group> writeSupport = new GroupWriteSupport() {
+      @Override
+      public FinalizedWriteContext finalizeWrite() {
+        throw new AssertionError("injected finalizeWrite() failure");
+      }
+    };
+    GroupWriteSupport.setSchema(schema, conf);
+
+    ParquetWriter<Group> writer = new ParquetWriter<Group>(
+        out,
+        ParquetFileWriter.Mode.CREATE,
+        writeSupport,
+        CompressionCodecName.UNCOMPRESSED,
+        DEFAULT_BLOCK_SIZE,
+        false,
+        conf,
+        MAX_PADDING_SIZE_DEFAULT,
+        ParquetProperties.builder().withAllocator(allocator).build(),
+        null);
+
+    // Write enough rows to form a row group, so close() flushes pages before finalizeWrite().
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+    for (int i = 0; i < 100; i++) {
+      writer.write(groupFactory.newGroup().append("id", (long) i));
+    }
+
+    out.flushCount = 0;
+    assertThatThrownBy(writer::close)
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("injected finalizeWrite() failure");
+
+    // Aborted before close(), so the flush is skipped and the incomplete file is never committed.
+    assertThat(out.flushCount)
+        .as("close() must not flush the output stream when finalizeWrite() fails with an Error")
+        .isEqualTo(0);
+  }
+
+  /**
+   * OutputFile whose stream throws a preset Throwable on write (simulating a mid-write failure) and
+   * which counts flush() calls, so a test can assert nothing was flushed on the failure path.
+   */
+  private static class FaultInjectingOutputFile implements OutputFile {
+    private final OutputFile delegate;
+    volatile Throwable toThrow = null; // when non-null, the next write(s) throw it
+    int flushCount = 0;
+    PositionOutputStream stream; // the most recently created wrapping stream
+
+    FaultInjectingOutputFile(OutputFile delegate) {
+      this.delegate = delegate;
+    }
+
+    private void failIfArmed() throws IOException {
+      Throwable t = toThrow;
+      if (t == null) {
+        return;
+      }
+      if (t instanceof IOException) {
+        throw (IOException) t;
+      }
+      if (t instanceof RuntimeException) {
+        throw (RuntimeException) t;
+      }
+      if (t instanceof Error) {
+        throw (Error) t;
+      }
+      throw new IOException(t);
+    }
+
+    private PositionOutputStream wrap(PositionOutputStream out) {
+      stream = new PositionOutputStream() {
+        @Override
+        public long getPos() throws IOException {
+          return out.getPos();
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+          failIfArmed();
+          out.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+          failIfArmed();
+          out.write(b, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+          flushCount++;
+          out.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+          out.close();
+        }
+      };
+      return stream;
+    }
+
+    @Override
+    public PositionOutputStream create(long blockSizeHint) throws IOException {
+      return wrap(delegate.create(blockSizeHint));
+    }
+
+    @Override
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
+      return wrap(delegate.createOrOverwrite(blockSizeHint));
+    }
+
+    @Override
+    public boolean supportsBlockSize() {
+      return delegate.supportsBlockSize();
+    }
+
+    @Override
+    public long defaultBlockSize() {
+      return delegate.defaultBlockSize();
+    }
   }
 }

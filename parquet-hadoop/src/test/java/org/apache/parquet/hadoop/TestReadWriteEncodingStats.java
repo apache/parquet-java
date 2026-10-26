@@ -23,7 +23,6 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
@@ -35,17 +34,15 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.schema.MessageType;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests that files are written with EncodingStats, the stats are readable, and generally correct.
  */
 public class TestReadWriteEncodingStats {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private static final Configuration CONF = new Configuration();
   private static final int NUM_RECORDS = 1000;
@@ -77,9 +74,7 @@ public class TestReadWriteEncodingStats {
 
   @Test
   public void testReadWrite() throws Exception {
-    File file = temp.newFile("encoding-stats.parquet");
-    assertThat(file.delete()).isTrue();
-    Path path = new Path(file.toString());
+    Path path = new Path(tempDir.resolve("encoding-stats.parquet").toUri());
 
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withWriterVersion(PARQUET_1_0)

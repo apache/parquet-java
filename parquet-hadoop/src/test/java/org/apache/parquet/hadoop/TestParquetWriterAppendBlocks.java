@@ -26,7 +26,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -38,7 +37,6 @@ import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -48,15 +46,13 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestParquetWriterAppendBlocks {
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   public static final int FILE_SIZE = 10000;
   public static final Configuration CONF = new Configuration();
@@ -87,7 +83,7 @@ public class TestParquetWriterAppendBlocks {
   public Path file2;
   public List<Group> file2content = new ArrayList<Group>();
 
-  @Before
+  @BeforeEach
   public void createSourceData() throws IOException {
     this.file1 = newTemp();
     this.file2 = newTemp();
@@ -142,6 +138,87 @@ public class TestParquetWriterAppendBlocks {
     }
 
     assertThat(expected).as("All records should be present").isEmpty();
+  }
+
+  @Test
+  public void testAppendKeepsCollidingDotStringPathsDistinct() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(UTF8)
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(UTF8)
+        .named("b")
+        .named("a")
+        .named("AppendCollisionTest");
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    Group expected = factory.newGroup().append("a.b", "top-level");
+    expected.addGroup("a").append("b", "nested");
+
+    Path source = newTemp();
+    try (ParquetWriter<Group> sourceWriter =
+        ExampleParquetWriter.builder(source).withType(schema).build()) {
+      sourceWriter.write(expected);
+    }
+
+    Path copied = newTemp();
+    ParquetFileWriter copyWriter = new ParquetFileWriter(CONF, schema, copied);
+    copyWriter.start();
+    copyWriter.appendFile(CONF, source);
+    copyWriter.end(EMPTY_METADATA);
+
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), copied).build()) {
+      Group actual = reader.read();
+      assertThat(actual.getString("a.b", 0)).isEqualTo("top-level");
+      assertThat(actual.getGroup("a", 0).getString("b", 0)).isEqualTo("nested");
+      assertThat(reader.read()).isNull();
+    }
+  }
+
+  @Test
+  public void testAppendProjectionKeepsTopLevelDottedPathDistinct() throws IOException {
+    // These source columns have the same dot-separated display name but different component paths:
+    // ["a.b"] is a top-level field, while ["a", "b"] is nested. The projection intentionally asks
+    // for only the top-level field so the copy must select columns by component identity.
+    MessageType sourceSchema = Types.buildMessage()
+        .required(BINARY)
+        .as(UTF8)
+        .named("a.b")
+        .requiredGroup()
+        .required(BINARY)
+        .as(UTF8)
+        .named("b")
+        .named("a")
+        .named("AppendProjectionSource");
+    SimpleGroupFactory factory = new SimpleGroupFactory(sourceSchema);
+    Group sourceRow = factory.newGroup().append("a.b", "top-level");
+    sourceRow.addGroup("a").append("b", "nested");
+
+    Path source = newTemp();
+    try (ParquetWriter<Group> sourceWriter =
+        ExampleParquetWriter.builder(source).withType(sourceSchema).build()) {
+      sourceWriter.write(sourceRow);
+    }
+
+    MessageType projection =
+        Types.buildMessage().required(BINARY).as(UTF8).named("a.b").named("AppendProjectionTarget");
+    Path copied = newTemp();
+    ParquetFileWriter copyWriter = new ParquetFileWriter(CONF, projection, copied);
+    copyWriter.start();
+    copyWriter.appendFile(CONF, source);
+    copyWriter.end(EMPTY_METADATA);
+
+    // A flattened lookup used to select the nested chunk because it was also named "a.b". Reading
+    // the copied value proves that the projection selected the top-level component path instead.
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), copied).build()) {
+      Group actual = reader.read();
+      assertThat(actual).isNotNull();
+      assertThat(actual.getString("a.b", 0)).isEqualTo("top-level");
+      assertThat(reader.read()).isNull();
+    }
   }
 
   /**
@@ -334,9 +411,7 @@ public class TestParquetWriterAppendBlocks {
         .hasMessageContaining("Missing column 'value'");
   }
 
-  private Path newTemp() throws IOException {
-    File file = temp.newFile();
-    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
-    return new Path(file.toString());
+  private Path newTemp() {
+    return new Path(tempDir.resolve(java.util.UUID.randomUUID() + ".tmp").toUri());
   }
 }

@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
@@ -30,10 +29,9 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Verify MemoryManager could adjust its writers' allocated memory size.
@@ -46,7 +44,7 @@ public class TestMemoryManager {
   ParquetOutputFormat parquetOutputFormat;
   int counter = 0;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     parquetOutputFormat = new ParquetOutputFormat(new GroupWriteSupport());
 
@@ -163,16 +161,12 @@ public class TestMemoryManager {
         .hasSize(1);
   }
 
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private RecordWriter createWriter(int index) throws Exception {
-    File file = temp.newFile(String.valueOf(index) + ".parquet");
-    if (!file.delete()) {
-      throw new RuntimeException("Could not delete file: " + file);
-    }
-    RecordWriter writer =
-        parquetOutputFormat.getRecordWriter(conf, new Path(file.toString()), CompressionCodecName.UNCOMPRESSED);
+    RecordWriter writer = parquetOutputFormat.getRecordWriter(
+        conf, new Path(tempDir.resolve(index + ".parquet").toUri()), CompressionCodecName.UNCOMPRESSED);
 
     return writer;
   }

@@ -22,7 +22,6 @@ import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -38,13 +37,12 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestMergeMetadataFiles {
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private static final MessageType schema = parseMessageType("message test { "
       + "required binary binary_field; "
@@ -68,7 +66,7 @@ public class TestMergeMetadataFiles {
       + "required fixed_len_byte_array(3) flba_field; "
       + "} ");
 
-  private static void writeFile(File out, Configuration conf, boolean useSchema2) throws IOException {
+  private static void writeFile(Path out, Configuration conf, boolean useSchema2) throws IOException {
     if (!useSchema2) {
       GroupWriteSupport.setSchema(schema, conf);
     } else {
@@ -79,7 +77,7 @@ public class TestMergeMetadataFiles {
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put("schema_num", useSchema2 ? "2" : "1");
 
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(out.getAbsolutePath()))
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(out)
         .withConf(conf)
         .withExtraMetaData(extraMetaData)
         .build();
@@ -116,13 +114,11 @@ public class TestMergeMetadataFiles {
     Configuration conf = new Configuration();
     info.conf = conf;
 
-    File root1 = new File(temp.getRoot(), "out1");
-    File root2 = new File(temp.getRoot(), "out2");
-    Path rootPath1 = new Path(root1.getAbsolutePath());
-    Path rootPath2 = new Path(root2.getAbsolutePath());
+    Path rootPath1 = new Path(tempDir.resolve("out1").toUri());
+    Path rootPath2 = new Path(tempDir.resolve("out2").toUri());
 
     for (int i = 0; i < 10; i++) {
-      writeFile(new File(root1, i + ".parquet"), conf, true);
+      writeFile(new Path(rootPath1, i + ".parquet"), conf, true);
     }
 
     List<Footer> footers = ParquetFileReader.readFooters(
@@ -130,19 +126,17 @@ public class TestMergeMetadataFiles {
     ParquetFileWriter.writeMetadataFile(conf, rootPath1, footers, JobSummaryLevel.ALL);
 
     for (int i = 0; i < 7; i++) {
-      writeFile(new File(root2, i + ".parquet"), conf, !mixedSchemas);
+      writeFile(new Path(rootPath2, i + ".parquet"), conf, !mixedSchemas);
     }
 
     footers = ParquetFileReader.readFooters(
         conf, rootPath2.getFileSystem(conf).getFileStatus(rootPath2), false);
     ParquetFileWriter.writeMetadataFile(conf, rootPath2, footers, JobSummaryLevel.ALL);
 
-    info.commonMetaPath1 =
-        new Path(new File(root1, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE).getAbsolutePath());
-    info.commonMetaPath2 =
-        new Path(new File(root2, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE).getAbsolutePath());
-    info.metaPath1 = new Path(new File(root1, ParquetFileWriter.PARQUET_METADATA_FILE).getAbsolutePath());
-    info.metaPath2 = new Path(new File(root2, ParquetFileWriter.PARQUET_METADATA_FILE).getAbsolutePath());
+    info.commonMetaPath1 = new Path(rootPath1, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE);
+    info.commonMetaPath2 = new Path(rootPath2, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE);
+    info.metaPath1 = new Path(rootPath1, ParquetFileWriter.PARQUET_METADATA_FILE);
+    info.metaPath2 = new Path(rootPath2, ParquetFileWriter.PARQUET_METADATA_FILE);
 
     return info;
   }
@@ -176,8 +170,8 @@ public class TestMergeMetadataFiles {
         .isEqualTo(meta1.getFileMetaData().getKeyValueMetaData());
 
     // test file serialization
-    Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
-    Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
+    Path mergedOut = new Path(tempDir.resolve("merged_meta").toUri());
+    Path mergedCommonOut = new Path(tempDir.resolve("merged_common_meta").toUri());
     ParquetFileWriter.writeMergedMetadataFile(List.of(info.metaPath1, info.metaPath2), mergedOut, info.conf);
     ParquetFileWriter.writeMergedMetadataFile(
         List.of(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
@@ -207,8 +201,8 @@ public class TestMergeMetadataFiles {
   public void testThrowsWhenIncompatible() throws Exception {
     WrittenFileInfo info = writeFiles(true);
 
-    Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
-    Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
+    Path mergedOut = new Path(tempDir.resolve("merged_meta").toUri());
+    Path mergedCommonOut = new Path(tempDir.resolve("merged_common_meta").toUri());
 
     assertThatThrownBy(() -> ParquetFileWriter.writeMergedMetadataFile(
             List.of(info.metaPath1, info.metaPath2), mergedOut, info.conf))

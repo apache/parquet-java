@@ -22,7 +22,6 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -36,10 +35,9 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests {@link ParquetFileReader#getRowRanges(int)}.
@@ -50,16 +48,14 @@ public class TestParquetFileReaderRowRanges {
   private static final MessageType SCHEMA =
       MessageTypeParser.parseMessageType("message test { required int64 id; required int64 grp; }");
 
-  @Rule
-  public final TemporaryFolder temp = new TemporaryFolder();
+  @TempDir
+  private java.nio.file.Path tempDir;
 
   private Path file;
 
-  @Before
+  @BeforeEach
   public void writeFile() throws IOException {
-    File f = temp.newFile();
-    f.delete();
-    file = new Path(f.toURI());
+    file = new Path(tempDir.resolve("row-ranges.parquet").toUri());
 
     // Small page size produces many pages per column chunk.
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)

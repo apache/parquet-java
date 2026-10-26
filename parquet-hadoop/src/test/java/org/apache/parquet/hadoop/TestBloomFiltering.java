@@ -33,7 +33,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -63,15 +62,14 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.api.Binary;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@RunWith(Parameterized.class)
 public class TestBloomFiltering {
   private static final Path FILE_V1 = createTempFile(false);
   private static final Path FILE_V2 = createTempFile(false);
@@ -89,12 +87,12 @@ public class TestBloomFiltering {
   private static final String COLUMN_ENCRYPTION_KEY1_ID = "kc1";
   private static final String COLUMN_ENCRYPTION_KEY2_ID = "kc2";
 
-  private final Path file;
-  private final boolean isEncrypted;
-
-  public TestBloomFiltering(Path file, boolean isEncrypted) {
-    this.file = file;
-    this.isEncrypted = isEncrypted;
+  static Stream<Arguments> fileAndEncryption() {
+    return Stream.of(
+        Arguments.of(FILE_V1, false),
+        Arguments.of(FILE_V2, false),
+        Arguments.of(FILE_V1_E, true),
+        Arguments.of(FILE_V2_E, true));
   }
 
   private static Path createTempFile(boolean encrypted) {
@@ -106,15 +104,6 @@ public class TestBloomFiltering {
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }
-  }
-
-  @Parameterized.Parameters(name = "Run {index}: isEncrypted={1}")
-  public static Collection<Object[]> params() {
-    return List.of(
-        new Object[] {FILE_V1, false /*isEncrypted*/},
-        new Object[] {FILE_V2, false /*isEncrypted*/},
-        new Object[] {FILE_V1_E, true /*isEncrypted*/},
-        new Object[] {FILE_V2_E, true /*isEncrypted*/});
   }
 
   private static List<PhoneBookWriter.User> generateData(int rowCount) {
@@ -210,8 +199,9 @@ public class TestBloomFiltering {
   }
 
   private List<PhoneBookWriter.User> readUsers(
-      FilterPredicate filter, boolean useOtherFiltering, boolean useBloomFilter) throws IOException {
-    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties();
+      Path file, boolean isEncrypted, FilterPredicate filter, boolean useOtherFiltering, boolean useBloomFilter)
+      throws IOException {
+    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties(isEncrypted);
 
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
@@ -225,7 +215,7 @@ public class TestBloomFiltering {
         true);
   }
 
-  public FileDecryptionProperties getFileDecryptionProperties() {
+  public FileDecryptionProperties getFileDecryptionProperties(boolean isEncrypted) {
     if (!isEncrypted) {
       return null;
     }
@@ -259,10 +249,14 @@ public class TestBloomFiltering {
         .isExhausted();
   }
 
-  private void assertCorrectFiltering(Predicate<PhoneBookWriter.User> expectedFilter, FilterPredicate actualFilter)
+  private void assertCorrectFiltering(
+      Path file,
+      boolean isEncrypted,
+      Predicate<PhoneBookWriter.User> expectedFilter,
+      FilterPredicate actualFilter)
       throws IOException {
     // Check with only bloom filter based filtering
-    List<PhoneBookWriter.User> result = readUsers(actualFilter, false, true);
+    List<PhoneBookWriter.User> result = readUsers(file, isEncrypted, actualFilter, false, true);
 
     assertThat(result).as("Bloom filtering should drop some row groups").hasSizeLessThan(DATA.size());
     LOGGER.info(
@@ -274,7 +268,7 @@ public class TestBloomFiltering {
     assertContains(result.stream(), DATA);
 
     // Check with all the filtering filtering to ensure the result contains exactly the required values
-    result = readUsers(actualFilter, true, false);
+    result = readUsers(file, isEncrypted, actualFilter, true, false);
     assertThat(result).isEqualTo(DATA.stream().filter(expectedFilter).collect(Collectors.toList()));
   }
 
@@ -342,11 +336,7 @@ public class TestBloomFiltering {
     file.getFileSystem(new Configuration()).delete(file, false);
   }
 
-  public Path getFile() {
-    return file;
-  }
-
-  @BeforeClass
+  @BeforeAll
   public static void createFiles() throws IOException {
     createFiles(false);
   }
@@ -362,7 +352,7 @@ public class TestBloomFiltering {
         FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties, useAdaptiveBloomFilter);
   }
 
-  @AfterClass
+  @AfterAll
   public static void deleteFiles() throws IOException {
     deleteFile(FILE_V1);
     deleteFile(FILE_V2);
@@ -370,18 +360,24 @@ public class TestBloomFiltering {
     deleteFile(FILE_V2_E);
   }
 
-  @Test
-  public void testSimpleFiltering() throws IOException {
-    assertCorrectFiltering(record -> record.getId() == 1234L, eq(longColumn("id"), 1234L));
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testSimpleFiltering(Path file, boolean isEncrypted) throws IOException {
+    assertCorrectFiltering(file, isEncrypted, record -> record.getId() == 1234L, eq(longColumn("id"), 1234L));
 
     assertCorrectFiltering(
-        record -> "miller".equals(record.getName()), eq(binaryColumn("name"), Binary.fromString("miller")));
+        file,
+        isEncrypted,
+        record -> "miller".equals(record.getName()),
+        eq(binaryColumn("name"), Binary.fromString("miller")));
 
     Set<Binary> values1 = new HashSet<>();
     values1.add(Binary.fromString("miller"));
     values1.add(Binary.fromString("anderson"));
 
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> "miller".equals(record.getName()) || "anderson".equals(record.getName()),
         in(binaryColumn("name"), values1));
 
@@ -389,18 +385,23 @@ public class TestBloomFiltering {
     values2.add(Binary.fromString("miller"));
     values2.add(Binary.fromString("alien"));
 
-    assertCorrectFiltering(record -> "miller".equals(record.getName()), in(binaryColumn("name"), values2));
+    assertCorrectFiltering(
+        file, isEncrypted, record -> "miller".equals(record.getName()), in(binaryColumn("name"), values2));
 
     Set<Binary> values3 = new HashSet<>();
     values3.add(Binary.fromString("alien"));
     values3.add(Binary.fromString("predator"));
 
-    assertCorrectFiltering(record -> "dummy".equals(record.getName()), in(binaryColumn("name"), values3));
+    assertCorrectFiltering(
+        file, isEncrypted, record -> "dummy".equals(record.getName()), in(binaryColumn("name"), values3));
   }
 
-  @Test
-  public void testNestedFiltering() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testNestedFiltering(Path file, boolean isEncrypted) throws IOException {
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> {
           PhoneBookWriter.Location location = record.getLocation();
           return location != null && location.getLat() != null && location.getLat() == 99.9;
@@ -408,18 +409,24 @@ public class TestBloomFiltering {
         eq(doubleColumn("location.lat"), 99.9));
   }
 
-  @Test
-  public void testContainsEqFiltering() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testContainsEqFiltering(Path file, boolean isEncrypted) throws IOException {
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> Optional.ofNullable(record.getPhoneNumbers())
             .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 250L))
             .orElse(false),
         contains(eq(longColumn("phoneNumbers.phone.number"), 250L)));
   }
 
-  @Test
-  public void testContainsOrFiltering() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testContainsOrFiltering(Path file, boolean isEncrypted) throws IOException {
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> Optional.ofNullable(record.getPhoneNumbers())
             .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 250L || n.getNumber() == 50L))
             .orElse(false),
@@ -428,9 +435,12 @@ public class TestBloomFiltering {
             contains(eq(longColumn("phoneNumbers.phone.number"), 50L))));
   }
 
-  @Test
-  public void testContainsAndFiltering() throws IOException {
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void testContainsAndFiltering(Path file, boolean isEncrypted) throws IOException {
     assertCorrectFiltering(
+        file,
+        isEncrypted,
         record -> Optional.ofNullable(record.getPhoneNumbers())
             .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 10L)
                 && numbers.stream().anyMatch(n -> n.getNumber() == 5L))
@@ -440,13 +450,14 @@ public class TestBloomFiltering {
             contains(eq(longColumn("phoneNumbers.phone.number"), 5L))));
   }
 
-  @Test
-  public void checkBloomFilterSize() throws IOException {
-    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties();
+  @ParameterizedTest
+  @MethodSource("fileAndEncryption")
+  public void checkBloomFilterSize(Path file, boolean isEncrypted) throws IOException {
+    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties(isEncrypted);
     final ParquetReadOptions readOptions = ParquetReadOptions.builder()
         .withDecryption(fileDecryptionProperties)
         .build();
-    InputFile inputFile = HadoopInputFile.fromPath(getFile(), new Configuration());
+    InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
     try (ParquetFileReader fileReader = ParquetFileReader.open(inputFile, readOptions)) {
       fileReader.getRowGroups().forEach(block -> {
         BloomFilterReader bloomFilterReader = fileReader.getBloomFilterDataReader(block);

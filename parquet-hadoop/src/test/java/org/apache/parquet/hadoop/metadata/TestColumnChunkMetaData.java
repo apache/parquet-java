@@ -26,7 +26,7 @@ import java.util.Set;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestColumnChunkMetaData {
 

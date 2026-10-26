@@ -178,170 +178,208 @@
 
 --------------------------------------------------------------------------------
 
-This product depends on Apache Thrift and includes it in this binary artifact.
-
-Copyright: 2006-2010 The Apache Software Foundation.
-Home page: https://thrift.apache.org/
-License: http://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
-This product depends on SLF4J and includes SLF4J in this binary artifact. SLF4J
-is a simple logging facade for Java.
-
-Copyright: 2004-2013 QOS.ch.
-Home page: http://www.slf4j.org/
-License: http://slf4j.org/license.html (MIT license)
-
-The following is the SLF4J license (MIT):
-
-  Copyright (c) 2004-2013 QOS.ch
-  All rights reserved.
-
-  Permission is hereby granted, free  of charge, to any person obtaining
-  a  copy  of this  software  and  associated  documentation files  (the
-  "Software"), to  deal in  the Software without  restriction, including
-  without limitation  the rights to  use, copy, modify,  merge, publish,
-  distribute,  sublicense, and/or sell  copies of  the Software,  and to
-  permit persons to whom the Software  is furnished to do so, subject to
-  the following conditions:
-
-  The  above  copyright  notice  and  this permission  notice  shall  be
-  included in all copies or substantial portions of the Software.
-
-  THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
-  EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
-  MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
-  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-  OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
-  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
---------------------------------------------------------------------------------
-
-This project includes code from Daniel Lemire's JavaFastPFOR project in this
+This product includes code from Daniel Lemire's JavaFastPFOR project in this
 binary artifact. The "Lemire" bit packing classes produced by parquet-generator
 are derived from the JavaFastPFOR project.
 
 Copyright: 2013 Daniel Lemire
 Home page: http://lemire.me/en/
 Project page: https://github.com/lemire/JavaFastPFOR
-License: Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
 --------------------------------------------------------------------------------
 
-This product depends on Apache Avro and includes it in this binary artifact.
+This product bundles fastutil in this binary artifact. fastutil provides
+type-specific collection implementations.
 
-Copyright: 2010-2016 The Apache Software Foundation.
-Home page: https://avro.apache.org/
-License: http://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
-This product depends on fastutil and includes it in this binary artifact.
-Fastutil provides type-specific collection implementations.
-
-Copyright: 2002-2014 Sebastiano Vigna
-Home page: http://fasutil.di.unimi.it/
-License: http://www.apache.org/licenses/LICENSE-2.0.html
+Copyright: 2002-2024 Sebastiano Vigna
+Home page: https://fastutil.di.unimi.it/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
 --------------------------------------------------------------------------------
 
-This product depends on Jackson and includes it in this binary artifact.
+This product bundles Zero-Allocation-Hashing in this binary artifact.
+Zero-Allocation-Hashing provides fast non-cryptographic hashing.
+
+Copyright: 2014-2018 Chronicle Software Ltd
+Home page: https://github.com/OpenHFT/Zero-Allocation-Hashing
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Thrift (libthrift) in this binary artifact.
+
+Copyright: 2006-2019 The Apache Software Foundation
+Home page: https://thrift.apache.org/
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+--------------------------------------------------------------------------------
+
+This product bundles Jackson (jackson-core, jackson-databind,
+jackson-annotations, and jackson-datatype-jsr310) in this binary artifact.
 Jackson is a high-performance JSON processor.
 
-Copyright: 2007-2015 Tatu Saloranta and other contributors
-Home page: http://jackson.codehaus.org/
-Home page: http://wiki.fasterxml.com/JacksonHome
-License: http://www.apache.org/licenses/LICENSE-2.0.txt
+Copyright: 2007-2024 Tatu Saloranta and other Jackson contributors
+Home page: https://github.com/FasterXML/jackson
+License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+jackson-core bundles a shaded copy of FastDoubleParser and a copy of the
+Schubfach number-writing code, both of which are available under the MIT
+License:
+
+  FastDoubleParser
+  Copyright (c) 2023 Werner Randelshofer, Switzerland
+  https://github.com/wrandelshofer/FastDoubleParser
+
+  Schubfach
+  Copyright (c) 2018-2020 Raffaello Giulietti
+  https://github.com/c4f7fcce9cb06515/Schubfach
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
 
 --------------------------------------------------------------------------------
 
-This product depends on snappy-java and includes it in this binary artifact.
-Snappy is a fast compression codec that aims for high speeds and reasonable
-compression, developed by Google.
+This product bundles the following Apache License 2.0 dependencies in this
+binary artifact:
 
-Copyright: 2011 Taro L. Saito and other contributors
-Home page: http://www.xerial.org/
-License: http://www.apache.org/licenses/LICENSE-2.0.txt
+  Apache Avro
+    Copyright 2009-2025 The Apache Software Foundation
+    https://avro.apache.org/
+  Apache Commons Codec
+    Copyright 2002-2017 The Apache Software Foundation
+    https://commons.apache.org/proper/commons-codec/
+  Apache Commons Compress
+    Copyright 2002-2024 The Apache Software Foundation
+    https://commons.apache.org/proper/commons-compress/
+  Apache Commons Lang
+    Copyright 2001-2025 The Apache Software Foundation
+    https://commons.apache.org/proper/commons-lang/
+  Apache Commons Pool
+    Copyright 2001-2012 The Apache Software Foundation
+    https://commons.apache.org/proper/commons-pool/
+  Apache Commons Text
+    Copyright 2014-2025 The Apache Software Foundation
+    https://commons.apache.org/proper/commons-text/
+  aircompressor
+    Copyright 2011-2024 the original authors
+    https://github.com/airlift/aircompressor
+  JCommander
+    Copyright 2010-2022 Cedric Beust and contributors
+    https://jcommander.org/
+  opencsv
+    Copyright 2005 Bytecode Pty Ltd
+    http://opencsv.sourceforge.net/
+  snappy-java
+    Copyright 2011-2024 Taro L. Saito and other contributors
+    https://github.com/xerial/snappy-java
+
+  Each of the above is licensed under the Apache License, Version 2.0
+  (https://www.apache.org/licenses/LICENSE-2.0).
+
+Apache Commons Compress includes files derived from the LZMA SDK, version 9.20
+(in package org.apache.commons.compress.archivers.sevenz), which is placed in
+the public domain (http://www.7-zip.org/sdk.html).
 
 --------------------------------------------------------------------------------
 
-This product depends on Apache Commons and includes commons-pool, and
-commons-compress in this binary artifact.
+This product bundles zstd-jni in this binary artifact. zstd-jni provides JNI
+bindings for the Zstandard compression library.
 
-Copyright: 2002-2015 The Apache Software Foundation.
-Home page: https://commons.apache.org/proper/commons-pool/
-License: http://www.apache.org/licenses/LICENSE-2.0
+Copyright: 2015-2025 Luben Karavelov
+Home page: https://github.com/luben/zstd-jni
+License: BSD 2-Clause License (https://opensource.org/licenses/BSD-2-Clause)
 
-Commons Compress includes files derived from the LZMA SDK, version 9.20 (C/ and
-CPP/7zip/), in the package org.apache.commons.compress.archivers.sevenz:
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
 
-| LZMA SDK is placed in the public domain. (http://www.7-zip.org/sdk.html)
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 
-This product depends on Google guava and includes it in this binary artifact.
+This product bundles XZ for Java in this binary artifact.
 
-Copyright: 2010-2015 The Guava Authors
-Home page: https://github.com/google/guava
-License: http://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
-This product depends on JCommander and includes it in this binary artifact.
-
-Copyright: Copyright 2012, Cedric Beust and contributors
-Home page: http://jcommander.org
-License: https://github.com/cbeust/jcommander/blob/master/license.txt
+Home page: https://tukaani.org/xz/java.html
+License: This Java implementation of XZ has been put into the public domain,
+thus you can do whatever you want with it. All the files in the package have
+been written by Lasse Collin and/or Igor Pavlov, and are based on public domain
+code.
 
 --------------------------------------------------------------------------------
 
-This product depends on OpenCSV and includes it in this binary artifact.
+This product bundles SLF4J (slf4j-api) in this binary artifact. SLF4J is a
+simple logging facade for Java.
 
-Copyright: 2006 Glen Smith and contributors
-Home page: http://opencsv.sourceforge.net/
-License: http://www.apache.org/licenses/LICENSE-2.0
+Copyright: 2004-2022 QOS.ch
+Home page: https://www.slf4j.org/
+License: MIT License (https://www.slf4j.org/license.html)
 
-----------------------------------------------------------------------
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
 
-License for paranamer, included in this binary artifact:
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
 
-Copyright (c) 2006 Paul Hammant & ThoughtWorks Inc
-All rights reserved.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
 
-| Redistribution and use in source and binary forms, with or without
-| modification, are permitted provided that the following conditions
-| are met:
-| 1. Redistributions of source code must retain the above copyright
-|    notice, this list of conditions and the following disclaimer.
-| 2. Redistributions in binary form must reproduce the above copyright
-|    notice, this list of conditions and the following disclaimer in the
-|    documentation and/or other materials provided with the distribution.
-| 3. Neither the name of the copyright holders nor the names of its
-|    contributors may be used to endorse or promote products derived from
-|    this software without specific prior written permission.
-|
-| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-| AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-| IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-| ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-| LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-| CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-| SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-| INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-| CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-| ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-| THE POSSIBILITY OF SUCH DAMAGE.
+--------------------------------------------------------------------------------
 
-----------------------------------------------------------------------
+This product bundles the JTS Topology Suite (jts-core) in this binary artifact.
 
-License for xz compression, included in this binary artifact:
+Copyright: 2001-2024 Vivid Solutions, Inc. and others
+Home page: https://github.com/locationtech/jts
+License: JTS is dual-licensed under the Eclipse Public License 2.0
+(https://www.eclipse.org/legal/epl-v20.html) and the Eclipse Distribution
+License 1.0, a BSD-style license (https://www.eclipse.org/org/documents/edl-v10.php).
 
-Home page: http://tukaani.org/xz/java.html
+--------------------------------------------------------------------------------
 
-| This Java implementation of XZ has been put into the public domain, thus you
-| can do whatever you want with it. All the files in the package have been
-| written by Lasse Collin, but some files are heavily based on public domain code
-| written by Igor Pavlov.
+This product bundles the Common Annotations API (javax.annotation-api) in this
+binary artifact.
+
+Copyright: 2005-2018 Oracle and/or its affiliates
+Home page: https://github.com/javaee/javax.annotation
+License: CDDL 1.1 and GPL 2.0 with Classpath Exception (dual-licensed)
+(https://github.com/javaee/javax.annotation/blob/master/LICENSE)
 

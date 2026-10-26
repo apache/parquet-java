@@ -176,7 +176,7 @@ If the frequency is low, the performance will be better.
 ---
 
 **Property:** `parquet.page.value.count.threshold`  
-**Description:** The value count threshold within a Parquet page used on each page check.
+**Description:** The value count threshold within a Parquet page used on each page check.  
 **Default value:** `Integer.MAX_VALUE / 2`
 
 ---
@@ -222,7 +222,7 @@ conf.set("parquet.bloom.filter.enabled#column.path", false);
 If it is true, the bloom filter will be generated with the optimal bit size 
 according to the number of real data distinct values. If it is false, it will not take effect.
 Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration (if it is 
-set too small, the generated bloom filter will not be efficient).
+set too small, the generated bloom filter will not be efficient).  
 **Default value:** `false`
 
 ---
@@ -230,7 +230,7 @@ set too small, the generated bloom filter will not be efficient).
 **Property:** `parquet.bloom.filter.candidates.number`  
 **Description:** The number of candidate bloom filters written at the same time.  
 When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be inserted 
-at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.
+at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.  
 **Default value:** `5`
 
 ---
@@ -268,13 +268,13 @@ conf.set("parquet.bloom.filter.fpp#column.path", 0.02)
 
 **Property:** `parquet.decrypt.off-heap.buffer.enabled`  
 **Description:** Whether to use direct buffers to decrypt encrypted files. This should be set to 
-true if the reader is using a `DirectByteBufferAllocator`
+true if the reader is using a `DirectByteBufferAllocator`  
 **Default value:** `false`
 
 ---
 
-**Property:** `parquet.block.row.count.limit`
-**Description:** The maximum number of rows per row group.
+**Property:** `parquet.block.row.count.limit`  
+**Description:** The maximum number of rows per row group.  
 **Default value:** `2147483647` (Integer.MAX_VALUE)
 
 ---
@@ -292,7 +292,7 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 **Property:** `parquet.crypto.factory.class`  
 **Description:** Class implementing EncryptionPropertiesFactory.  
-**Default value:** None. If not set, the file won't be encrypted by a crypto factory.  
+**Default value:** None. If not set, the file won't be encrypted by a crypto factory. 
 
 ## Class: ParquetInputFormat
 
@@ -403,10 +403,21 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 **Description:** The number of threads will be spawned to compress in parallel. More workers improve speed, but also increase memory usage. When it is 0, it works as single-threaded mode.  
 **Default value:** `0`
 
+## Class: ParquetReadOptions
+
+**Property:** `parquet.read.allocation.size`
+
+**Description:** Size in bytes used to split planned column-chunk ranges into read buffers.
+For vectored IO, this limits the length of each range requested from the filesystem.
+Filesystems may merge or align ranges for checksums and allocate larger buffers.
+This setting does not limit other allocations, such as footer reads or decoding, or total memory use.
+
+**Default value:** `8388608` (8 MiB)
+
 ## Class: HadoopReadOptions
 
 **Property:** `parquet.crypto.factory.class`  
-**Description:** Class implementing DecryptionPropertiesFactory.
+**Description:** Class implementing DecryptionPropertiesFactory.  
 **Default value:** None. If not set, the file won't be decrypted by a crypto factory.
 
 ## Class: PropertiesDrivenCryptoFactory
@@ -455,6 +466,28 @@ If `false`, write files in encrypted footer mode, that fully encrypts the footer
 **Description:** Class implementing the KmsClient interface. "KMS" stands for “key management service”. The Client will interact with a KMS Server to wrap/unrwap encryption keys.  
 **Default value:** None
 
+KMS clients can also be supplied programmatically when they require constructor-injected dependencies:
+
+```java
+KeyToolkit.setKmsClientFactory(
+    configuration,
+    (conf, kmsInstanceID, kmsInstanceURL, accessToken) -> new CustomKmsClient(dependency));
+try {
+  // Construct and close readers and writers using configuration or its copies.
+} finally {
+  KeyToolkit.removeKmsClientFactory(configuration);
+}
+```
+
+A registered factory takes precedence over `parquet.encryption.kms.client.class`. Each invocation must return a
+distinct, uninitialized `KmsClient`; `KeyToolkit` initializes and caches it. The factory can be invoked concurrently
+for different access-token and KMS-instance combinations, so it must be thread-safe.
+
+Copies of the `Configuration` in the same JVM share the registration and its caches. A configuration deserialized in
+another JVM must register the factory there before use. Call `removeKmsClientFactory` only after all readers and writers
+using the configuration and its copies have closed. Registering another factory for the configuration or one of its
+copies replaces the previous factory and clears the registration's caches.
+
 ---
 
 **Property:** `parquet.encryption.kms.instance.id`  
@@ -466,6 +499,16 @@ If `false`, write files in encrypted footer mode, that fully encrypts the footer
 **Property:** `parquet.encryption.kms.instance.url`  
 **Description:** URL of the KMS instance.  
 **Default value:** `DEFAULT`
+
+---
+
+**Property:** `parquet.encryption.kms.enable.url.read`  
+**Description:** If a KMS URL is set by writers, it will be stored in the key material. However, by default, it will not be
+given to readers because the storage is untrusted. Readers that need the URL should set the KMS URL property.
+If they cannot do so, they can enable retrieving the KMS URL from the stored key material by setting this parameter
+to `true`. KMS client implementations must validate the URL value and use authentication to prevent key material
+tampering attacks that could, for example, result in a KMS access token being sent to a malicious URL endpoint.  
+**Default value:** `false`
 
 ---
 
@@ -510,17 +553,65 @@ If `false`, key material is stored in separate new files, created in the same fo
 **Property:** `parquet.hadoop.vectored.io.enabled`  
 **Description:** Flag to enable use of the FileSystem Vector IO API on Hadoop releases which support the feature.
 If `true` then an attempt will be made to dynamically load the relevant classes; 
-if not found then the library will use the classic non-vectored reads: it is safe to enable this option on older releases. 
+if not found then the library will use the classic non-vectored reads: it is safe to enable this option on older releases.  
 **Default value:** `true`
 
 ---
 
-**Property:** `parquet.column.statistics.enabled`
+**JVM system property:** `parquet.hadoop.vectored.io.threads`
+
+**Description:** Maximum number of workers in the default shared vectored-read pool. Set a positive integer
+with `-Dparquet.hadoop.vectored.io.threads=N` before the first vectored read; this is
+read once per JVM, not from the Hadoop configuration. Invalid values fail initialization.
+Readers without a caller-supplied executor share this limit. Waiting for a worker, submitting the read, and waiting
+for its results share the same 300-second deadline. If admission times out, the read
+fails before submitting filesystem work and the reader retains its stream.
+
+A worker remains occupied until submission returns, the caller transfers or abandons
+the buffers, and any failure cleanup closes the stream. A backend that ignores
+interruption therefore retains capacity; repeated timeouts cannot create workers
+beyond the configured limit. If all workers are blocked, further vectored reads time
+out waiting for capacity. Idle workers expire after 60 seconds. This limit does not
+bound threads created by the filesystem or total buffer memory.
+
+**Default value:** `64`
+
+Applications can supply their own executor through `ParquetReadOptions` (including
+`HadoopReadOptions`) or `ParquetReader.Builder.withVectoredReadExecutor` instead of
+using the default pool:
+
+```java
+ExecutorService ioPool = Executors.newFixedThreadPool(8);
+VectoredReadExecutor vectoredReads = new VectoredReadExecutor(ioPool, 8);
+ParquetReadOptions options = ParquetReadOptions.builder()
+    .withVectoredReadExecutor(vectoredReads)
+    .build();
+```
+
+Reuse the same `VectoredReadExecutor` across readers to share its admission limit.
+Copies of the read options retain that same instance. The limit bounds accepted
+vectored operations, including queued work and failure cleanup, independently of
+other tasks submitted to the underlying executor. A supplied executor bypasses the
+JVM default and its system property; passing `null` restores the default.
+
+The application owns the supplied executor: Parquet never shuts it down, including
+when a reader closes or fails. Its `execute` method must return promptly, run tasks asynchronously, and either accept
+them for execution or reject them with an exception, without silently dropping
+tasks. Inline execution (including `CallerRunsPolicy`) is rejected before filesystem
+submission. Reading threads must not occupy all of the supplied pool's workers
+while waiting for vectored reads on that same pool. After readers finish, use an
+orderly shutdown that drains accepted tasks; `shutdownNow()` or cancelling queued
+tasks can prevent deferred cleanup. Closing a failed reader does not imply that
+an interruption-ignoring backend or its cleanup has finished.
+
+---
+
+**Property:** `parquet.column.statistics.enabled`  
 **Description:** Whether to enable column statistics collection.
 If `true`, statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, statistics will be disabled for all columns regardless of column-specific settings.
-It is possible to enable or disable statistics for specific columns by appending `#` followed by the column path.
-**Default value:** `true`
+It is possible to enable or disable statistics for specific columns by appending `#` followed by the column path.  
+**Default value:** `true`  
 **Example:**
 ```java
 // Enable statistics for all columns
@@ -532,12 +623,12 @@ conf.set("parquet.column.statistics.enabled#column.path", false);
 
 ---
 
-**Property:** `parquet.size.statistics.enabled`
-**Description:** Whether to enable size statistics collection.
+**Property:** `parquet.size.statistics.enabled`  
+**Description:** Whether to enable size statistics collection.  
 If `true`, size statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, size statistics will be disabled for all columns regardless of column-specific settings.
-It is possible to enable or disable size statistics for specific columns by appending `#` followed by the column path.
-**Default value:** `true`
+It is possible to enable or disable size statistics for specific columns by appending `#` followed by the column path.  
+**Default value:** `true`  
 **Example:**
 ```java
 // Enable size statistics for all columns

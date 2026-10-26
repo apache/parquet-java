@@ -38,7 +38,7 @@ import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TestColumnChunkPageReadStore {
 

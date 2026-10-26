@@ -19,13 +19,14 @@
 
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.hadoop.TestBloomFiltering.generateDictionaryData;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -34,50 +35,38 @@ import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-@RunWith(Parameterized.class)
 public class TestStoreBloomFilter {
-  private static final Path FILE_V1 = createTempFile("v1");
-  private static final Path FILE_V2 = createTempFile("v2");
+  private static final Path FILE_V1 = createTempFile(PARQUET_1_0);
+  private static final Path FILE_V2 = createTempFile(PARQUET_2_0);
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(generateDictionaryData(10000));
-  private final Path file;
-  private final String version;
 
-  public TestStoreBloomFilter(Path file, String version) {
-    this.file = file;
-    this.version = version;
-  }
-
-  @Parameterized.Parameters(name = "Run {index}: parquet {1}")
-  public static Collection<Object[]> params() {
-    return List.of(new Object[] {FILE_V1, "v1"}, new Object[] {FILE_V2, "v2"});
-  }
-
-  @BeforeClass
+  @BeforeAll
   public static void createFiles() throws IOException {
-    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0);
-    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0);
+    writePhoneBookToFile(FILE_V1, PARQUET_1_0);
+    writePhoneBookToFile(FILE_V2, PARQUET_2_0);
   }
 
-  @AfterClass
+  @AfterAll
   public static void deleteFiles() throws IOException {
     deleteFile(FILE_V1);
     deleteFile(FILE_V2);
   }
 
-  @Test
-  public void testStoreBloomFilter() throws IOException {
+  @ParameterizedTest(name = "WriterVersion = {0}")
+  @EnumSource(WriterVersion.class)
+  public void testStoreBloomFilter(WriterVersion writerVersion) throws IOException {
+    Path file = fileForWriterVersion(writerVersion);
     try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
         ParquetFileReader reader = new ParquetFileReader(
             HadoopInputFile.fromPath(file, new Configuration()),
@@ -103,9 +92,20 @@ public class TestStoreBloomFilter {
     }
   }
 
-  private static Path createTempFile(String version) {
+  private static Path fileForWriterVersion(WriterVersion writerVersion) {
+    switch (writerVersion) {
+      case PARQUET_1_0:
+        return FILE_V1;
+      case PARQUET_2_0:
+        return FILE_V2;
+      default:
+        throw new IllegalArgumentException("Unexpected writer version: " + writerVersion);
+    }
+  }
+
+  private static Path createTempFile(WriterVersion writerVersion) {
     try {
-      return new Path(Files.createTempFile("test-store-bloom-filter-" + version, ".parquet")
+      return new Path(Files.createTempFile("test-store-bloom-filter-" + writerVersion, ".parquet")
           .toAbsolutePath()
           .toString());
     } catch (IOException e) {
@@ -117,8 +117,7 @@ public class TestStoreBloomFilter {
     file.getFileSystem(new Configuration()).delete(file, false);
   }
 
-  private static void writePhoneBookToFile(Path file, ParquetProperties.WriterVersion parquetVersion)
-      throws IOException {
+  private static void writePhoneBookToFile(Path file, WriterVersion parquetVersion) throws IOException {
     int pageSize = DATA.size() / 100; // Ensure that several pages will be created
     int rowGroupSize = pageSize * 4; // Ensure that there are more row-groups created
     try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {

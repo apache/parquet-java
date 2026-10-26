@@ -21,8 +21,8 @@ package org.apache.parquet.hadoop.util.wrapped.io;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThatCode;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ public class TestFileRangeBridge {
    */
   static final String CLASSNAME = "org.apache.hadoop.fs.FileRange";
 
-  @Before
+  @BeforeEach
   public void setUp() {
     assumeThatCode(() -> this.getClass().getClassLoader().loadClass(CLASSNAME))
         .doesNotThrowAnyException();

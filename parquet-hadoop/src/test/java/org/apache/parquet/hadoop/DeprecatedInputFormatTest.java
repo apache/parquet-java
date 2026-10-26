@@ -63,8 +63,8 @@ import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +86,7 @@ public class DeprecatedInputFormatTest {
   private String readSchema;
   private Configuration conf;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     conf = new Configuration();
     jobConf = new JobConf();
