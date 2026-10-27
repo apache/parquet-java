@@ -19,47 +19,71 @@
 
 package org.apache.parquet.hadoop.codec;
 
-import com.aayushatharva.brotli4j.decoder.BrotliInputStream;
+import com.aayushatharva.brotli4j.decoder.Decoder;
 import java.io.IOException;
 import java.io.InputStream;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 
 class BrotliCompressionInputStream extends CompressionInputStream {
 
-  private final BrotliInputStream in;
+  private final byte[] decompressed;
+  private int position;
 
   BrotliCompressionInputStream(InputStream in) throws IOException {
     super(in);
-    this.in = new BrotliInputStream(in);
+    byte[] compressed = in.readAllBytes();
+    try {
+      // brotli4j's streaming BrotliInputStream fails on valid streams whose output crosses the
+      // encoder window (hyperxpro/Brotli4j#267). Parquet feeds one page at a time, so use the
+      // one-shot decoder, which handles those streams correctly.
+      this.decompressed = Decoder.decompress(compressed, 0, compressed.length);
+    } catch (IOException e) {
+      throw new IOException("Failed to decompress Brotli stream", e);
+    }
   }
 
   @Override
-  public int read() throws IOException {
-    return in.read();
+  public int read() {
+    if (position >= decompressed.length) {
+      return -1;
+    }
+    return decompressed[position++] & 0xFF;
   }
 
   @Override
-  public int read(byte[] b, int off, int len) throws IOException {
-    return in.read(b, off, len);
+  public int read(byte[] b, int off, int len) {
+    if (len == 0) {
+      return 0;
+    }
+    if (position >= decompressed.length) {
+      return -1;
+    }
+    int count = Math.min(len, decompressed.length - position);
+    System.arraycopy(decompressed, position, b, off, count);
+    position += count;
+    return count;
   }
 
   @Override
-  public void resetState() throws IOException {
-    throw new IOException("BrotliCompressionInputStream does not support resetState");
+  public int available() {
+    return decompressed.length - position;
+  }
+
+  @Override
+  public void resetState() {
+    position = 0;
   }
 
   @Override
   public void seek(long pos) {
-    throw new UnsupportedOperationException("BrotliCompressionInputStream does not support seek");
+    if (pos < 0 || pos > decompressed.length) {
+      throw new IllegalArgumentException("Invalid position: " + pos);
+    }
+    position = (int) pos;
   }
 
   @Override
   public long getPos() {
-    return 0;
-  }
-
-  @Override
-  public void close() throws IOException {
-    in.close();
+    return position;
   }
 }

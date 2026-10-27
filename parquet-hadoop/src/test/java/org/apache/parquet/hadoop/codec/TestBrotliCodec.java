@@ -19,10 +19,16 @@
 
 package org.apache.parquet.hadoop.codec;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -35,21 +41,119 @@ public class TestBrotliCodec {
     byte[] input = new byte[64 * 1024];
     new Random(42).nextBytes(input);
 
-    Configuration conf = new Configuration(false);
-    conf.setInt(BrotliCodec.BROTLI_QUALITY, 5);
+    BrotliCodec codec = newCodec(5);
+    try (CompressionInputStream in = codec.createInputStream(compress(codec, input))) {
+      assertThat(in.readAllBytes()).isEqualTo(input);
+    }
+  }
 
-    CodecFactory factory = new CodecFactory(conf, 64 * 1024);
+  @Test
+  public void testLargeStreamCrossingEncoderWindow() throws Exception {
+    // brotli4j's streaming decoder fails once the decompressed output crosses the 4 MiB encoder
+    // window (hyperxpro/Brotli4j#267). Parquet pages can be larger than that, so keep a regression
+    // test for the one-shot decoder path.
+    byte[] input = largeCompressibleInput();
+    BrotliCodec codec = newCodec(5);
+
+    try (CompressionInputStream in = codec.createInputStream(compress(codec, input))) {
+      assertThat(in.readAllBytes()).isEqualTo(input);
+    }
+  }
+
+  @Test
+  public void testLargeStreamThroughCodecFactory() throws Exception {
+    byte[] input = largeCompressibleInput();
+    CodecFactory factory = new CodecFactory(new Configuration(false), 64 * 1024);
     try {
-      CodecFactory.BytesCompressor compressor = factory.getCompressor(CompressionCodecName.BROTLI);
-      BytesInput compressed = compressor.compress(BytesInput.from(input));
-
-      CodecFactory.BytesDecompressor decompressor =
-          factory.getDecompressor(CompressionCodecName.BROTLI);
-      BytesInput decompressed = decompressor.decompress(compressed, input.length);
-
-      assertArrayEquals(input, decompressed.toByteArray());
+      BytesInput compressed = factory.getCompressor(CompressionCodecName.BROTLI).compress(
+          BytesInput.from(input));
+      BytesInput decompressed = factory.getDecompressor(CompressionCodecName.BROTLI).decompress(
+          compressed, input.length);
+      assertThat(decompressed.toByteArray()).isEqualTo(input);
     } finally {
       factory.release();
+    }
+  }
+
+  @Test
+  public void testCloseClosesTarget() throws Exception {
+    TrackingOutputStream target = new TrackingOutputStream();
+    BrotliCodec codec = newCodec(5);
+    try (CompressionOutputStream out = codec.createOutputStream(target)) {
+      out.write(new byte[] {1, 2, 3});
+    }
+    assertThat(target.closed).isTrue();
+  }
+
+  @Test
+  public void testFlushThenFinishRoundTrips() throws Exception {
+    byte[] input = new byte[1024 * 1024];
+    new Random(11).nextBytes(input);
+    BrotliCodec codec = newCodec(5);
+    ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+
+    try (CompressionOutputStream out = codec.createOutputStream(compressed)) {
+      out.write(input, 0, input.length / 2);
+      out.flush();
+      out.write(input, input.length / 2, input.length / 2);
+      out.finish();
+    }
+
+    try (CompressionInputStream in =
+        codec.createInputStream(new ByteArrayInputStream(compressed.toByteArray()))) {
+      assertThat(in.readAllBytes()).isEqualTo(input);
+    }
+  }
+
+  @Test
+  public void testPositionAndReset() throws Exception {
+    byte[] input = new byte[100];
+    new Random(7).nextBytes(input);
+    BrotliCodec codec = newCodec(5);
+
+    try (CompressionInputStream in = codec.createInputStream(compress(codec, input))) {
+      assertThat(in.read()).isEqualTo(input[0] & 0xFF);
+      assertThat(in.getPos()).isEqualTo(1);
+
+      in.resetState();
+      assertThat(in.getPos()).isZero();
+      assertThat(in.readAllBytes()).isEqualTo(input);
+    }
+  }
+
+  private static BrotliCodec newCodec(int quality) {
+    Configuration conf = new Configuration(false);
+    conf.setInt(BrotliCodec.BROTLI_QUALITY, quality);
+    BrotliCodec codec = new BrotliCodec();
+    codec.setConf(conf);
+    return codec;
+  }
+
+  private static ByteArrayInputStream compress(BrotliCodec codec, byte[] input) throws IOException {
+    ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+    try (CompressionOutputStream out = codec.createOutputStream(compressed)) {
+      out.write(input);
+      out.finish();
+    }
+    return new ByteArrayInputStream(compressed.toByteArray());
+  }
+
+  private static byte[] largeCompressibleInput() {
+    StringBuilder builder = new StringBuilder();
+    String line = "at com.example.SomeClass.someMethod(SomeClass.java:123)\n";
+    while (builder.length() < 5 * 1024 * 1024) {
+      builder.append(line);
+    }
+    return builder.toString().getBytes(StandardCharsets.UTF_8);
+  }
+
+  private static final class TrackingOutputStream extends ByteArrayOutputStream {
+    private boolean closed;
+
+    @Override
+    public void close() throws IOException {
+      closed = true;
+      super.close();
     }
   }
 }

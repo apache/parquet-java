@@ -41,7 +41,7 @@ import org.apache.hadoop.io.compress.Decompressor;
 public class BrotliCodec implements CompressionCodec, Configurable {
 
   public static final String BROTLI_QUALITY = "compression.brotli.quality";
-  public static final int DEFAULT_QUALITY = 5;
+  public static final int DEFAULT_QUALITY = 1;
 
   private Configuration conf;
   private int quality = DEFAULT_QUALITY;
@@ -66,8 +66,12 @@ public class BrotliCodec implements CompressionCodec, Configurable {
 
   @Override
   public CompressionOutputStream createOutputStream(OutputStream out) throws IOException {
-    Brotli4jLoader.ensureAvailability();
-    return new BrotliCompressionOutputStream(out, quality);
+    ensureBrotliAvailable();
+    try {
+      return new BrotliCompressionOutputStream(out, quality);
+    } catch (LinkageError e) {
+      throw missingBrotli(e);
+    }
   }
 
   @Override
@@ -88,8 +92,12 @@ public class BrotliCodec implements CompressionCodec, Configurable {
 
   @Override
   public CompressionInputStream createInputStream(InputStream in) throws IOException {
-    Brotli4jLoader.ensureAvailability();
-    return new BrotliCompressionInputStream(in);
+    ensureBrotliAvailable();
+    try {
+      return new BrotliCompressionInputStream(in);
+    } catch (LinkageError e) {
+      throw missingBrotli(e);
+    }
   }
 
   @Override
@@ -111,5 +119,20 @@ public class BrotliCodec implements CompressionCodec, Configurable {
   @Override
   public String getDefaultExtension() {
     return ".br";
+  }
+
+  private static void ensureBrotliAvailable() throws IOException {
+    try {
+      Brotli4jLoader.ensureAvailability();
+    } catch (LinkageError e) {
+      throw missingBrotli(e);
+    }
+  }
+
+  private static IOException missingBrotli(LinkageError cause) {
+    return new IOException(
+        "Brotli codec requires the optional brotli4j dependency and its native library "
+            + "for this platform on the classpath",
+        cause);
   }
 }

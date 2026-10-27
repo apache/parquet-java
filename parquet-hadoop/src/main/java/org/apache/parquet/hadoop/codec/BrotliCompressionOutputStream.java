@@ -28,31 +28,51 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 
 class BrotliCompressionOutputStream extends CompressionOutputStream {
 
-  private final BrotliOutputStream out;
+  private final BrotliOutputStream encoder;
   private boolean finished;
+  private boolean closed;
+  private IOException failure;
 
   BrotliCompressionOutputStream(OutputStream out, int quality) throws IOException {
     super(out);
-    this.out = new BrotliOutputStream(new NonClosingOutputStream(out), Encoder.Parameters.create(quality));
+    this.encoder =
+        new BrotliOutputStream(new NonClosingOutputStream(out), Encoder.Parameters.create(quality));
   }
 
   @Override
   public void write(int b) throws IOException {
-    ensureOpen();
-    out.write(b);
+    ensureWritable();
+    encoder.write(b);
   }
 
   @Override
   public void write(byte[] b, int off, int len) throws IOException {
-    ensureOpen();
-    out.write(b, off, len);
+    ensureWritable();
+    encoder.write(b, off, len);
+  }
+
+  @Override
+  public void flush() throws IOException {
+    ensureNoFailure();
+    if (finished) {
+      out.flush();
+      return;
+    }
+    encoder.flush();
   }
 
   @Override
   public void finish() throws IOException {
-    if (!finished) {
-      out.close();
+    ensureNoFailure();
+    if (finished) {
+      return;
+    }
+    try {
+      encoder.close();
       finished = true;
+    } catch (IOException e) {
+      failure = e;
+      throw e;
     }
   }
 
@@ -63,18 +83,47 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
 
   @Override
   public void close() throws IOException {
-    finish();
+    if (closed) {
+      return;
+    }
+    IOException closeFailure = null;
+    try {
+      finish();
+    } catch (IOException e) {
+      closeFailure = e;
+    }
+    try {
+      out.close();
+    } catch (IOException e) {
+      if (closeFailure == null) {
+        closeFailure = e;
+      } else {
+        closeFailure.addSuppressed(e);
+      }
+    }
+    if (closeFailure != null) {
+      throw closeFailure;
+    }
+    closed = true;
   }
 
-  private void ensureOpen() throws IOException {
+  private void ensureWritable() throws IOException {
+    ensureNoFailure();
     if (finished) {
       throw new IOException("Stream is finished");
     }
   }
 
+  private void ensureNoFailure() throws IOException {
+    if (failure != null) {
+      throw new IOException("Previous Brotli stream operation failed", failure);
+    }
+  }
+
   /**
    * BrotliOutputStream closes its target when it finalizes the Brotli stream. Hadoop finishes a
-   * codec stream without closing the caller's target, so swallow close here and only flush.
+   * codec stream without closing the caller's target, so swallow close here and only flush. The
+   * codec's own close() closes the target explicitly.
    */
   private static final class NonClosingOutputStream extends FilterOutputStream {
 
