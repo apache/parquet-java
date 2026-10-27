@@ -29,15 +29,20 @@ class BrotliCompressionInputStream extends CompressionInputStream {
   private final byte[] decompressed;
   private int position;
 
-  BrotliCompressionInputStream(InputStream in) throws IOException {
+  BrotliCompressionInputStream(InputStream in, int maxOutputSize) throws IOException {
     super(in);
     byte[] compressed = in.readAllBytes();
+    if (compressed.length == 0) {
+      this.decompressed = new byte[0];
+      return;
+    }
+    int outputLimit = maxOutputSize > 0 ? maxOutputSize : 1;
     try {
       // brotli4j's streaming BrotliInputStream fails on valid streams whose output crosses the
       // encoder window (hyperxpro/Brotli4j#267). Parquet feeds one page at a time, so use the
-      // one-shot decoder, which handles those streams correctly.
-      this.decompressed = Decoder.decompress(compressed, 0, compressed.length);
-    } catch (IOException e) {
+      // bounded one-shot decoder, which handles those streams without allowing unbounded output.
+      this.decompressed = Decoder.decompress(compressed, 0, compressed.length, outputLimit);
+    } catch (IOException | RuntimeException e) {
       throw new IOException("Failed to decompress Brotli stream", e);
     }
   }
@@ -70,8 +75,8 @@ class BrotliCompressionInputStream extends CompressionInputStream {
   }
 
   @Override
-  public void resetState() {
-    position = 0;
+  public void resetState() throws IOException {
+    throw new IOException("BrotliCompressionInputStream does not support resetState");
   }
 
   @Override

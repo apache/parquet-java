@@ -35,8 +35,7 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
 
   BrotliCompressionOutputStream(OutputStream out, int quality) throws IOException {
     super(out);
-    this.encoder =
-        new BrotliOutputStream(new NonClosingOutputStream(out), Encoder.Parameters.create(quality));
+    this.encoder = new BrotliOutputStream(new NonClosingOutputStream(out), Encoder.Parameters.create(quality));
   }
 
   @Override
@@ -54,11 +53,10 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
   @Override
   public void flush() throws IOException {
     ensureNoFailure();
-    if (finished) {
-      out.flush();
-      return;
+    if (!finished) {
+      encoder.flush();
     }
-    encoder.flush();
+    out.flush();
   }
 
   @Override
@@ -101,10 +99,10 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
         closeFailure.addSuppressed(e);
       }
     }
+    closed = true;
     if (closeFailure != null) {
       throw closeFailure;
     }
-    closed = true;
   }
 
   private void ensureWritable() throws IOException {

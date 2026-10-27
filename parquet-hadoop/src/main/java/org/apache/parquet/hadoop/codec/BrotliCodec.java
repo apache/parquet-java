@@ -42,6 +42,7 @@ public class BrotliCodec implements CompressionCodec, Configurable {
 
   public static final String BROTLI_QUALITY = "compression.brotli.quality";
   public static final int DEFAULT_QUALITY = 1;
+  private static final int DEFAULT_MAX_OUTPUT_SIZE = Integer.MAX_VALUE - 8;
 
   private Configuration conf;
   private int quality = DEFAULT_QUALITY;
@@ -50,12 +51,7 @@ public class BrotliCodec implements CompressionCodec, Configurable {
   public void setConf(Configuration conf) {
     this.conf = conf;
     if (conf != null) {
-      int configuredQuality = conf.getInt(BROTLI_QUALITY, DEFAULT_QUALITY);
-      if (configuredQuality < 0 || configuredQuality > 11) {
-        throw new IllegalArgumentException(
-            "Invalid Brotli compression quality: " + configuredQuality + ". Expected 0..11.");
-      }
-      quality = configuredQuality;
+      quality = conf.getInt(BROTLI_QUALITY, DEFAULT_QUALITY);
     }
   }
 
@@ -66,6 +62,9 @@ public class BrotliCodec implements CompressionCodec, Configurable {
 
   @Override
   public CompressionOutputStream createOutputStream(OutputStream out) throws IOException {
+    if (quality < 0 || quality > 11) {
+      throw new IllegalArgumentException("Invalid Brotli compression quality: " + quality + ". Expected 0..11.");
+    }
     ensureBrotliAvailable();
     try {
       return new BrotliCompressionOutputStream(out, quality);
@@ -75,8 +74,7 @@ public class BrotliCodec implements CompressionCodec, Configurable {
   }
 
   @Override
-  public CompressionOutputStream createOutputStream(OutputStream out, Compressor compressor)
-      throws IOException {
+  public CompressionOutputStream createOutputStream(OutputStream out, Compressor compressor) throws IOException {
     return createOutputStream(out);
   }
 
@@ -92,17 +90,24 @@ public class BrotliCodec implements CompressionCodec, Configurable {
 
   @Override
   public CompressionInputStream createInputStream(InputStream in) throws IOException {
+    return createInputStream(in, DEFAULT_MAX_OUTPUT_SIZE);
+  }
+
+  /**
+   * Creates a decoder with an upper bound on the decompressed size. Parquet passes the size from
+   * the page header, so a crafted page cannot expand without limit during decoding.
+   */
+  public CompressionInputStream createInputStream(InputStream in, int maxOutputSize) throws IOException {
     ensureBrotliAvailable();
     try {
-      return new BrotliCompressionInputStream(in);
+      return new BrotliCompressionInputStream(in, maxOutputSize);
     } catch (LinkageError e) {
       throw missingBrotli(e);
     }
   }
 
   @Override
-  public CompressionInputStream createInputStream(InputStream in, Decompressor decompressor)
-      throws IOException {
+  public CompressionInputStream createInputStream(InputStream in, Decompressor decompressor) throws IOException {
     return createInputStream(in);
   }
 
