@@ -1135,13 +1135,15 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if an error occurs while reading
    */
   public PageReadStore readNextRowGroup() throws IOException {
-    ColumnChunkPageReadStore rowGroup = null;
-    try {
-      rowGroup = internalReadRowGroup(currentBlock);
-    } catch (ParquetEmptyBlockException e) {
-      LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
-      advanceToNextBlock();
-      return readNextRowGroup();
+    ColumnChunkPageReadStore rowGroup;
+    while (true) {
+      try {
+        rowGroup = internalReadRowGroup(currentBlock);
+        break;
+      } catch (ParquetEmptyBlockException e) {
+        LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
+        advanceToNextBlock();
+      }
     }
 
     closeCurrentRowGroup();
@@ -1531,36 +1533,39 @@ public class ParquetFileReader implements Closeable {
     if (!options.useColumnIndexFilter() || !FilterCompat.isFilteringRequired(options.getRecordFilter())) {
       return readNextRowGroup();
     }
-    BlockMetaData block = blocks.get(currentBlock);
-    if (block.getRowCount() == 0L) {
-      LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
-      // Skip the empty block
+    while (currentBlock < blocks.size()) {
+      BlockMetaData block = blocks.get(currentBlock);
+      if (block.getRowCount() == 0L) {
+        LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
+        // Skip the empty block
+        advanceToNextBlock();
+        continue;
+      }
+      RowRanges rowRanges = getRowRanges(currentBlock);
+      long rowCount = rowRanges.rowCount();
+      if (rowCount == 0) {
+        // There are no matching rows -> skipping this row-group
+        advanceToNextBlock();
+        continue;
+      }
+      if (rowCount == block.getRowCount()) {
+        // All rows are matching -> fall back to the non-filtering path
+        return readNextRowGroup();
+      }
+
+      closeCurrentRowGroup();
+      this.currentRowGroup = internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(currentBlock));
+
+      // avoid re-reading bytes the dictionary reader is used after this call
+      if (nextDictionaryReader != null) {
+        nextDictionaryReader.setRowGroup(currentRowGroup);
+      }
+
       advanceToNextBlock();
-      return readNextFilteredRowGroup();
-    }
-    RowRanges rowRanges = getRowRanges(currentBlock);
-    long rowCount = rowRanges.rowCount();
-    if (rowCount == 0) {
-      // There are no matching rows -> skipping this row-group
-      advanceToNextBlock();
-      return readNextFilteredRowGroup();
-    }
-    if (rowCount == block.getRowCount()) {
-      // All rows are matching -> fall back to the non-filtering path
-      return readNextRowGroup();
-    }
 
-    closeCurrentRowGroup();
-    this.currentRowGroup = internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(currentBlock));
-
-    // avoid re-reading bytes the dictionary reader is used after this call
-    if (nextDictionaryReader != null) {
-      nextDictionaryReader.setRowGroup(currentRowGroup);
+      return this.currentRowGroup;
     }
-
-    advanceToNextBlock();
-
-    return this.currentRowGroup;
+    return null;
   }
 
   private ColumnChunkPageReadStore internalReadFilteredRowGroup(
