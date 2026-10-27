@@ -71,4 +71,7 @@ final class StubTTransport extends TTransport {
 
   @Override
   public void updateKnownMessageSize(long l) {}
+
+  @Override
+  public void resetMessageSizeAndConsumedBytes(long l) {}
 }
