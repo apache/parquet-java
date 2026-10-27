@@ -41,22 +41,37 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
   @Override
   public void write(int b) throws IOException {
     ensureWritable();
-    encoder.write(b);
+    try {
+      encoder.write(b);
+    } catch (IOException e) {
+      failure = e;
+      throw e;
+    }
   }
 
   @Override
   public void write(byte[] b, int off, int len) throws IOException {
     ensureWritable();
-    encoder.write(b, off, len);
+    try {
+      encoder.write(b, off, len);
+    } catch (IOException e) {
+      failure = e;
+      throw e;
+    }
   }
 
   @Override
   public void flush() throws IOException {
     ensureNoFailure();
-    if (!finished) {
-      encoder.flush();
+    try {
+      if (!finished) {
+        encoder.flush();
+      }
+      out.flush();
+    } catch (IOException e) {
+      failure = e;
+      throw e;
     }
-    out.flush();
   }
 
   @Override

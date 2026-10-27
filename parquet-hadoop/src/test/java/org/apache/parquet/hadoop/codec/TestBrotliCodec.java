@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.jupiter.api.Test;
@@ -96,11 +97,13 @@ public class TestBrotliCodec {
     try (CompressionOutputStream out = codec.createOutputStream(target)) {
       out.write(input, 0, input.length / 2);
       out.flush();
+      assertThat(target.flushes).isGreaterThan(0);
+      assertThat(target.size()).isGreaterThan(0);
+
       out.write(input, input.length / 2, input.length / 2);
       out.finish();
     }
 
-    assertThat(target.flushes).isGreaterThan(0);
     try (CompressionInputStream in = codec.createInputStream(new ByteArrayInputStream(target.toByteArray()))) {
       assertThat(in.readAllBytes()).isEqualTo(input);
     }
@@ -112,16 +115,60 @@ public class TestBrotliCodec {
     byte[] compressed = compressBytes(newCodec(5), zeros);
 
     assertThatThrownBy(() -> newCodec(5).createInputStream(new ByteArrayInputStream(compressed), 1024))
-        .isInstanceOf(IOException.class);
+        .isInstanceOf(IOException.class)
+        .hasStackTraceContaining("exceeds maximum size");
 
     CodecFactory factory = new CodecFactory(new Configuration(false), 64 * 1024);
     try {
       assertThatThrownBy(() -> factory.getDecompressor(CompressionCodecName.BROTLI)
               .decompress(BytesInput.from(compressed), 1024))
-          .isInstanceOf(IOException.class);
+          .isInstanceOf(IOException.class)
+          .hasStackTraceContaining("exceeds maximum size");
     } finally {
       factory.release();
     }
+  }
+
+  @Test
+  public void testInvalidQualityOnlyRejectsCompression() throws Exception {
+    byte[] input = new byte[1024];
+    new Random(13).nextBytes(input);
+    byte[] compressed = compressBytes(newCodec(5), input);
+
+    BrotliCodec codec = newCodec(99);
+    try (CompressionInputStream in = codec.createInputStream(new ByteArrayInputStream(compressed), input.length)) {
+      assertThat(in.readAllBytes()).isEqualTo(input);
+    }
+
+    assertThatThrownBy(() -> codec.createOutputStream(new ByteArrayOutputStream()))
+        .isInstanceOf(BadConfigurationException.class);
+  }
+
+  @Test
+  public void testEmptyAndZeroSizeStreams() throws Exception {
+    byte[] compressed = compressBytes(newCodec(5), new byte[0]);
+    try (CompressionInputStream in = newCodec(5).createInputStream(new ByteArrayInputStream(compressed), 0)) {
+      assertThat(in.readAllBytes()).isEmpty();
+    }
+
+    byte[] nonEmpty = new byte[1024];
+    byte[] nonEmptyCompressed = compressBytes(newCodec(5), nonEmpty);
+    assertThatThrownBy(() -> newCodec(5).createInputStream(new ByteArrayInputStream(nonEmptyCompressed), -1))
+        .isInstanceOf(IOException.class);
+  }
+
+  @Test
+  public void testCloseAfterFinishFailureIsIdempotent() throws Exception {
+    FailingOutputStream target = new FailingOutputStream();
+    BrotliCodec codec = newCodec(5);
+    CompressionOutputStream out = codec.createOutputStream(target);
+    out.write(new byte[100 * 1024]);
+    target.fail = true;
+
+    assertThatThrownBy(out::finish).isInstanceOf(IOException.class);
+    assertThatThrownBy(out::close).isInstanceOf(IOException.class);
+    out.close();
+    assertThat(target.closes).isEqualTo(1);
   }
 
   @Test
@@ -202,6 +249,7 @@ public class TestBrotliCodec {
 
   private static final class FailingOutputStream extends ByteArrayOutputStream {
     private boolean fail;
+    private int closes;
 
     @Override
     public void flush() throws IOException {
@@ -209,6 +257,12 @@ public class TestBrotliCodec {
         throw new IOException("flush failed");
       }
       super.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+      closes++;
+      super.close();
     }
   }
 }

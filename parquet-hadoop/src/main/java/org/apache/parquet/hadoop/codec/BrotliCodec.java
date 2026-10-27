@@ -30,6 +30,7 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.parquet.hadoop.BadConfigurationException;
 
 /**
  * Hadoop codec for Brotli, backed by the maintained brotli4j native bindings.
@@ -63,7 +64,7 @@ public class BrotliCodec implements CompressionCodec, Configurable {
   @Override
   public CompressionOutputStream createOutputStream(OutputStream out) throws IOException {
     if (quality < 0 || quality > 11) {
-      throw new IllegalArgumentException("Invalid Brotli compression quality: " + quality + ". Expected 0..11.");
+      throw new BadConfigurationException("Invalid Brotli compression quality: " + quality + ". Expected 0..11.");
     }
     ensureBrotliAvailable();
     try {
@@ -88,6 +89,11 @@ public class BrotliCodec implements CompressionCodec, Configurable {
     return null;
   }
 
+  /**
+   * Decodes a complete Brotli stream into memory. Callers that handle untrusted data should use
+   * {@link #createInputStream(InputStream, int)} so the decoded output is bounded by the size they
+   * expect.
+   */
   @Override
   public CompressionInputStream createInputStream(InputStream in) throws IOException {
     return createInputStream(in, DEFAULT_MAX_OUTPUT_SIZE);
