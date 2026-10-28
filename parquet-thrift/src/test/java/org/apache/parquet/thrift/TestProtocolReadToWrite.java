@@ -124,7 +124,7 @@ public class TestProtocolReadToWrite {
     writeReadCompare(a);
   }
 
-  private void writeReadCompare(TBase<?, ?> a) throws TException, InstantiationException, IllegalAccessException {
+  private void writeReadCompare(TBase<?, ?> a) throws TException, ReflectiveOperationException {
     ProtocolPipe[] pipes = {
       new ProtocolReadToWrite(),
       new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType((Class<TBase<?, ?>>) a.getClass()))
@@ -134,7 +134,7 @@ public class TestProtocolReadToWrite {
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
       a.write(protocol(in));
       p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-      TBase<?, ?> b = a.getClass().newInstance();
+      TBase<?, ?> b = a.getClass().getDeclaredConstructor().newInstance();
       b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
 
       assertThat(b).as(p.getClass().getSimpleName()).isEqualTo(a);
@@ -372,7 +372,8 @@ public class TestProtocolReadToWrite {
     assertThat(countingHandler.recordCountOfMissingFields).isEqualTo(1);
     assertThat(countingHandler.fieldIgnoredCount).isEqualTo(1);
 
-    StructV4WithExtracStructField b = StructV4WithExtracStructField.class.newInstance();
+    StructV4WithExtracStructField b =
+        StructV4WithExtracStructField.class.getDeclaredConstructor().newInstance();
     b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
     assertThat(b.getName()).isEqualTo(dataWithNewSchema.getName());
     assertThat(b.getAge()).isEqualTo(dataWithNewSchema.getAge());

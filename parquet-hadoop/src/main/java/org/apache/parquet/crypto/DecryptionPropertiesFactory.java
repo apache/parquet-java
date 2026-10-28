@@ -66,8 +66,9 @@ public interface DecryptionPropertiesFactory {
     }
 
     try {
-      return (DecryptionPropertiesFactory) decryptionPropertiesFactoryClass.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
+      return (DecryptionPropertiesFactory)
+          decryptionPropertiesFactoryClass.getDeclaredConstructor().newInstance();
+    } catch (ReflectiveOperationException e) {
       throw new BadConfigurationException(
           "could not instantiate decryptionPropertiesFactoryClass class: " + decryptionPropertiesFactoryClass,
           e);

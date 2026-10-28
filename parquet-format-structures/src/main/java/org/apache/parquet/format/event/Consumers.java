@@ -186,8 +186,8 @@ class TBaseStructConsumer<T extends TBase<T, ? extends TFieldIdEnum>> extends St
 
   protected T newObject() {
     try {
-      return c.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
+      return c.getDeclaredConstructor().newInstance();
+    } catch (ReflectiveOperationException e) {
       throw new RuntimeException(c.getName(), e);
     }
   }
