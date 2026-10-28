@@ -20,15 +20,16 @@
 package org.apache.parquet.cli.csv;
 
 import au.com.bytecode.opencsv.CSVReader;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.apache.avro.Schema;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.util.RuntimeIOException;
 
 public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
@@ -51,10 +52,10 @@ public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
     List<String> header = null;
     if (props.useHeader) {
       this.hasNext = advance();
-      header = Lists.newArrayList(next);
+      header = new ArrayList<>(Arrays.asList(next));
     } else if (props.header != null) {
       try {
-        header = Lists.newArrayList(AvroCSV.newParser(props).parseLine(props.header));
+        header = new ArrayList<>(Arrays.asList(AvroCSV.newParser(props).parseLine(props.header)));
       } catch (IOException e) {
         throw new RuntimeIOException("Failed to parse header from properties: " + props.header, e);
       }

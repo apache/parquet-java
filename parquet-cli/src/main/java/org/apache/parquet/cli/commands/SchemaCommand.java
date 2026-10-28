@@ -21,14 +21,14 @@ package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.avro.file.SeekableInput;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Formats;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -88,7 +88,7 @@ public class SchemaCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Print the Avro schema for a Parquet file",
         "sample.parquet",
         "# Print the Avro schema for an Avro file",

@@ -26,16 +26,16 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Codecs;
@@ -153,7 +153,7 @@ public class ConvertCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Create a Parquet file from an Avro file",
         "sample.avro -o sample.parquet",
         "# Create a Parquet file in S3 from a local Avro file",

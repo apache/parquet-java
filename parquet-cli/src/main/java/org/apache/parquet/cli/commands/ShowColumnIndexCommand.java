@@ -20,15 +20,15 @@ package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -74,7 +74,7 @@ public class ShowColumnIndexCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Show only column indexes for column 'col' from a Parquet file", "-c col -i sample.parquet");
   }
 

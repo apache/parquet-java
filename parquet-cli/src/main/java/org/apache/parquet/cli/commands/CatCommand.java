@@ -22,14 +22,14 @@ import static org.apache.parquet.cli.util.Expressions.select;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaParseException;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Expressions;
 import org.apache.parquet.example.data.Group;
@@ -150,7 +150,7 @@ public class CatCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Show the first 10 records in file \"data.avro\":",
         "data.avro",
         "# Show the first 50 records in file \"data.parquet\":",

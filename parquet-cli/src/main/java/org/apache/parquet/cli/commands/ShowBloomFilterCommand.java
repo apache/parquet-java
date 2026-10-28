@@ -21,12 +21,12 @@ package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.apache.commons.text.TextStringBuilder;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.Util;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
@@ -120,7 +120,7 @@ public class ShowBloomFilterCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Show bloom filter for column 'col' from a Parquet file", "-c col -v 1,2,3 -i sample.parquet");
   }
 }

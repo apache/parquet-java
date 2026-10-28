@@ -24,13 +24,10 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.internal.Lists;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import javax.annotation.Nullable;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Version;
@@ -97,13 +94,11 @@ public class CheckParquet251Command extends BaseCommand {
 
       // get just the binary columns
       List<ColumnDescriptor> columns = Lists.newArrayList();
-      Iterables.addAll(
-          columns, Iterables.filter(meta.getSchema().getColumns(), new Predicate<ColumnDescriptor>() {
-            @Override
-            public boolean apply(@Nullable ColumnDescriptor input) {
-              return input != null && input.getType() == BINARY;
-            }
-          }));
+      for (ColumnDescriptor input : meta.getSchema().getColumns()) {
+        if (input != null && input.getType() == BINARY) {
+          columns.add(input);
+        }
+      }
 
       // now check to see if the data is actually corrupt
       try (ParquetFileReader reader =

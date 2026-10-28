@@ -20,11 +20,11 @@ package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.text.TextStringBuilder;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -105,6 +105,6 @@ public class ShowGeospatialStatisticsCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList("# Show geospatial statistics for a Parquet file", "sample.parquet");
+    return Arrays.asList("# Show geospatial statistics for a Parquet file", "sample.parquet");
   }
 }

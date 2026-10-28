@@ -25,17 +25,16 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaNormalization;
 import org.apache.avro.generic.GenericData;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.csv.AvroCSV;
@@ -141,9 +140,9 @@ public class ConvertCSVCommand extends BaseCommand {
     if (avroSchemaFile != null) {
       csvSchema = Schemas.fromAvsc(open(avroSchemaFile));
     } else {
-      Set<String> required = ImmutableSet.of();
+      Set<String> required = Set.of();
       if (requiredFields != null) {
-        required = ImmutableSet.copyOf(requiredFields);
+        required = Set.copyOf(requiredFields);
       }
 
       String filename = new File(targets.get(0)).getName();
@@ -199,7 +198,7 @@ public class ConvertCSVCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Create a Parquet file from a CSV file",
         "sample.csv -o sample.parquet --schema schema.avsc",
         "# Create a Parquet file in HDFS from local CSV",

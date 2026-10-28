@@ -28,16 +28,14 @@ import static org.apache.parquet.cli.Util.shortCodec;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import javax.annotation.Nullable;
 import org.apache.commons.text.TextStringBuilder;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -102,7 +100,7 @@ public class ParquetMetadataCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList();
+    return new ArrayList<>();
   }
 
   private int maxSize(Iterable<String> strings) {
@@ -131,12 +129,11 @@ public class ParquetMetadataCommand extends BaseCommand {
         filePath != null ? "path: " + filePath : "",
         new TextStringBuilder(80).appendPadding(80, '-')));
 
-    int size = maxSize(Iterables.transform(rowGroup.getColumns(), new Function<ColumnChunkMetaData, String>() {
-      @Override
-      public String apply(@Nullable ColumnChunkMetaData input) {
-        return input == null ? "" : input.getPath().toDotString();
-      }
-    }));
+    List<String> columnNames = new ArrayList<>();
+    for (ColumnChunkMetaData input : rowGroup.getColumns()) {
+      columnNames.add(input == null ? "" : input.getPath().toDotString());
+    }
+    int size = maxSize(columnNames);
 
     console.info(String.format(
         "%-" + size + "s  %-9s %-9s %-9s %-10s %-7s %s",
@@ -155,7 +152,7 @@ public class ParquetMetadataCommand extends BaseCommand {
   private void printColumnChunk(Logger console, int width, ColumnChunkMetaData column, MessageType schema) {
     String[] path = column.getPath().toArray();
     PrimitiveType type = primitive(schema, path);
-    Preconditions.checkNotNull(type);
+    Objects.requireNonNull(type);
 
     ColumnDescriptor desc = schema.getColumnDescription(path);
     long size = column.getTotalSize();

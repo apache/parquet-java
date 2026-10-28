@@ -29,12 +29,9 @@ import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY;
 
 import com.google.common.base.Ascii;
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
 import com.google.common.hash.HashCode;
 import java.util.Set;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -240,16 +237,14 @@ public class Util {
     return sb.toString();
   }
 
-  private static final Splitter DOT = Splitter.on('.');
-
   public static ColumnDescriptor descriptor(String column, MessageType schema) {
-    String[] path = Iterables.toArray(DOT.split(column), String.class);
+    String[] path = column.split("\\.", -1);
     Preconditions.checkArgument(schema.containsPath(path), "Schema doesn't have column: %s", column);
     return schema.getColumnDescription(path);
   }
 
   public static String columnName(ColumnDescriptor desc) {
-    return Joiner.on('.').join(desc.getPath());
+    return String.join(".", desc.getPath());
   }
 
   public static PrimitiveType primitive(MessageType schema, String[] path) {
@@ -264,7 +259,7 @@ public class Util {
   }
 
   public static PrimitiveType primitive(String column, MessageType schema) {
-    String[] path = Iterables.toArray(DOT.split(column), String.class);
+    String[] path = column.split("\\.", -1);
     Preconditions.checkArgument(schema.containsPath(path), "Schema doesn't have column: %s", column);
     return primitive(schema, path);
   }
