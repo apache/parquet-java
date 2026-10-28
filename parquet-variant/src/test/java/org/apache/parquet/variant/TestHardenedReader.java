@@ -43,9 +43,9 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 /**
  * Test that the hardened variant reader behaves as expected.
@@ -80,8 +80,12 @@ public class TestHardenedReader {
   /** Directory under the module's build dir where generated files are written, if enabled. */
   private static final Path OUTPUT_DIR = Paths.get("target", "test-hardened-reader");
 
-  @Rule
-  public TestName testName = new TestName();
+  private String testName;
+
+  @BeforeEach
+  void setTestName(TestInfo testInfo) {
+    testName = testInfo.getTestMethod().orElseThrow().getName();
+  }
 
   /**
    * Happy path.
@@ -647,7 +651,7 @@ public class TestHardenedReader {
     // optional save to fs for later testing.
     if (SAVE_GENERATED_FILES) {
       Files.createDirectories(OUTPUT_DIR);
-      Path target = OUTPUT_DIR.resolve(testName.getMethodName() + ".parquet");
+      Path target = OUTPUT_DIR.resolve(testName + ".parquet");
       Files.write(target, parquetBytes);
     }
     // read it back
