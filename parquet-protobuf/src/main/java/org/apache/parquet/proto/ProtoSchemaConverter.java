@@ -33,7 +33,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
-import com.google.common.collect.ImmutableSetMultimap;
 import com.google.protobuf.BoolValue;
 import com.google.protobuf.BytesValue;
 import com.google.protobuf.Descriptors;
@@ -52,7 +51,11 @@ import com.google.protobuf.UInt64Value;
 import com.google.type.Date;
 import com.google.type.TimeOfDay;
 import com.twitter.elephantbird.util.Protobufs;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
@@ -194,7 +197,7 @@ public class ProtoSchemaConverter {
   public MessageType convert(Descriptors.Descriptor descriptor) {
     // Remember classes seen with depths to avoid cycles.
     int depth = 0;
-    ImmutableSetMultimap<String, Integer> seen = ImmutableSetMultimap.of(descriptor.getFullName(), depth);
+    Map<String, Set<Integer>> seen = Map.of(descriptor.getFullName(), Set.of(depth));
     LOG.trace("convert:\n{}", descriptor.toProto());
     MessageType messageType = convertFields(Types.buildMessage(), descriptor.getFields(), seen, depth)
         .named(descriptor.getFullName());
@@ -218,7 +221,7 @@ public class ProtoSchemaConverter {
   private <T> GroupBuilder<T> convertFields(
       GroupBuilder<T> groupBuilder,
       List<FieldDescriptor> fieldDescriptors,
-      ImmutableSetMultimap<String, Integer> seen,
+      Map<String, Set<Integer>> seen,
       int depth) {
     for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
       groupBuilder = addField(fieldDescriptor, groupBuilder, seen, depth)
@@ -239,10 +242,7 @@ public class ProtoSchemaConverter {
   }
 
   private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(
-      FieldDescriptor descriptor,
-      final GroupBuilder<T> builder,
-      ImmutableSetMultimap<String, Integer> seen,
-      int depth) {
+      FieldDescriptor descriptor, final GroupBuilder<T> builder, Map<String, Set<Integer>> seen, int depth) {
     if (descriptor.getJavaType() == JavaType.MESSAGE) {
       if (unwrapProtoWrappers) {
         Descriptor messageType = descriptor.getMessageType();
@@ -314,10 +314,7 @@ public class ProtoSchemaConverter {
   }
 
   private <T> GroupBuilder<GroupBuilder<T>> addRepeatedMessage(
-      FieldDescriptor descriptor,
-      GroupBuilder<T> builder,
-      ImmutableSetMultimap<String, Integer> seen,
-      int depth) {
+      FieldDescriptor descriptor, GroupBuilder<T> builder, Map<String, Set<Integer>> seen, int depth) {
     GroupBuilder<GroupBuilder<GroupBuilder<GroupBuilder<T>>>> result = builder.group(Type.Repetition.OPTIONAL)
         .as(listType())
         .group(Type.Repetition.REPEATED)
@@ -329,10 +326,7 @@ public class ProtoSchemaConverter {
   }
 
   private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addMessageField(
-      FieldDescriptor descriptor,
-      final GroupBuilder<T> builder,
-      ImmutableSetMultimap<String, Integer> seen,
-      int depth) {
+      FieldDescriptor descriptor, final GroupBuilder<T> builder, Map<String, Set<Integer>> seen, int depth) {
     // Terminate with proto bytes anything a static parquet schema cannot represent - recursion
     // beyond maxRecursion and empty message types (parquet forbids empty groups) - preserving the
     // field's repetition so the write path (Array/Repeated/MapWriter) still matches the schema.
@@ -348,7 +342,8 @@ public class ProtoSchemaConverter {
     }
 
     boolean emptyMessage = descriptor.getMessageType().getFields().isEmpty();
-    if (emptyMessage || (typeName != null && seen.get(typeName).size() > maxRecursion)) {
+    if (emptyMessage
+        || (typeName != null && seen.getOrDefault(typeName, Set.of()).size() > maxRecursion)) {
       if (descriptor.isRepeated() && parquetSpecsCompliant) {
         // LIST-wrap the truncated bytes the same way any repeated primitive is wrapped
         return addRepeatedPrimitive(BINARY, null, builder);
@@ -357,10 +352,7 @@ public class ProtoSchemaConverter {
       return builder.primitive(BINARY, getRepetition(descriptor)).as((LogicalTypeAnnotation) null);
     }
 
-    seen = ImmutableSetMultimap.<String, Integer>builder()
-        .putAll(seen)
-        .put(typeName, depth)
-        .build();
+    seen = withSeen(seen, typeName, depth);
 
     if (descriptor.isRepeated() && parquetSpecsCompliant) {
       // the old schema style did not include the LIST wrapper around repeated messages
@@ -371,6 +363,15 @@ public class ProtoSchemaConverter {
     GroupBuilder<GroupBuilder<T>> group = builder.group(getRepetition(descriptor));
     convertFields(group, descriptor.getMessageType().getFields(), seen, depth);
     return group;
+  }
+
+  // Returns an immutable copy of seen with depth added for typeName, leaving seen untouched.
+  private static Map<String, Set<Integer>> withSeen(Map<String, Set<Integer>> seen, String typeName, int depth) {
+    Set<Integer> depths = new HashSet<>(seen.getOrDefault(typeName, Set.of()));
+    depths.add(depth);
+    Map<String, Set<Integer>> result = new HashMap<>(seen);
+    result.put(typeName, Set.copyOf(depths));
+    return Map.copyOf(result);
   }
 
   @Nullable private String getInnerTypeName(FieldDescriptor descriptor) {
@@ -387,10 +388,7 @@ public class ProtoSchemaConverter {
   }
 
   private <T> GroupBuilder<GroupBuilder<T>> addMapField(
-      FieldDescriptor descriptor,
-      final GroupBuilder<T> builder,
-      ImmutableSetMultimap<String, Integer> seen,
-      int depth) {
+      FieldDescriptor descriptor, final GroupBuilder<T> builder, Map<String, Set<Integer>> seen, int depth) {
     List<FieldDescriptor> fields = descriptor.getMessageType().getFields();
     if (fields.size() != 2) {
       throw new UnsupportedOperationException("Expected two fields for the map (key/value), but got: " + fields);
