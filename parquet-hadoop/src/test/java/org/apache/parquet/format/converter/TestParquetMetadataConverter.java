@@ -56,7 +56,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -985,11 +985,11 @@ public class TestParquetMetadataConverter {
       assertThat(formatStats.getMin_value()).isNull();
       assertThat(formatStats.getMax_value()).isNull();
     } else {
-      String minString = new String(min, Charset.forName("UTF-8"));
-      String minStatString = new String(formatStats.getMin_value(), Charset.forName("UTF-8"));
+      String minString = new String(min, StandardCharsets.UTF_8);
+      String minStatString = new String(formatStats.getMin_value(), StandardCharsets.UTF_8);
       assertThat(minStatString.compareTo(minString)).isLessThanOrEqualTo(0);
-      String maxString = new String(max, Charset.forName("UTF-8"));
-      String maxStatString = new String(formatStats.getMax_value(), Charset.forName("UTF-8"));
+      String maxString = new String(max, StandardCharsets.UTF_8);
+      String maxStatString = new String(formatStats.getMax_value(), StandardCharsets.UTF_8);
       assertThat(maxStatString.compareTo(maxString)).isGreaterThanOrEqualTo(0);
     }
   }
