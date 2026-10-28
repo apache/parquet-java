@@ -276,7 +276,13 @@ if ! maven_deploy "${settings_file}" "${staging_description}"; then
 fi
 
 if ! maven_read_staging_repo_id; then
-  step_summary "Deploy succeeded but the staging repository ID could not be read; see the Maven log for the closed repository"
+  if maven_find_created_staging_repos; then
+    print_error "Deploy succeeded but the staging repository ID could not be read; the deploy log reports creating ${created_staging_repo_ids[*]}."
+    step_summary "Deploy succeeded but the staging repository ID could not be read; deploy log reports \`${created_staging_repo_ids[*]}\`"
+  else
+    print_error "Deploy succeeded but no staging repository was found; nexus-staging-maven-plugin may not have run, so check Nexus for an implicitly created repository."
+    step_summary "Deploy succeeded but no staging repository was found; check Nexus for an implicitly created repository"
+  fi
   exit 1
 fi
 
