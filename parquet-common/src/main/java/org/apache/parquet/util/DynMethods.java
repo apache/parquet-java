@@ -21,11 +21,10 @@ package org.apache.parquet.util;
 
 import static org.apache.parquet.Exceptions.throwIfInstance;
 
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Arrays;
 import org.apache.parquet.Preconditions;
 import org.slf4j.Logger;
@@ -389,9 +388,9 @@ public class DynMethods {
 
       try {
         Method hidden = targetClass.getDeclaredMethod(methodName, argClasses);
-        AccessController.doPrivileged(new MakeAccessible(hidden));
+        hidden.setAccessible(true);
         this.method = new UnboundMethod(hidden, name);
-      } catch (SecurityException | NoSuchMethodException e) {
+      } catch (SecurityException | InaccessibleObjectException | NoSuchMethodException e) {
         // unusable or not the right implementation
         LOG.debug("failed to load method {} from class {}", methodName, targetClass, e);
       }
@@ -492,20 +491,6 @@ public class DynMethods {
      */
     public StaticMethod buildStatic() {
       return build().asStatic();
-    }
-  }
-
-  private static class MakeAccessible implements PrivilegedAction<Void> {
-    private Method hidden;
-
-    public MakeAccessible(Method hidden) {
-      this.hidden = hidden;
-    }
-
-    @Override
-    public Void run() {
-      hidden.setAccessible(true);
-      return null;
     }
   }
 }
