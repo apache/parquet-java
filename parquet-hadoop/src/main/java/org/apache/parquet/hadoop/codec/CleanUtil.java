@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,37 +29,30 @@ import org.slf4j.LoggerFactory;
 /**
  * A helper class which uses {@code sun.misc.Unsafe.invokeCleaner} to explicitly free
  * direct ByteBuffers.
+ * <p>
+ * {@code sun.misc.Unsafe} is looked up reflectively to avoid a compile-time dependency on the
+ * {@code jdk.unsupported} module. If it is not available (for example, on JVMs that block access
+ * to it), cleaning is a no-op and direct buffers are freed by the garbage collector instead.
  */
 public class CleanUtil {
   private static final Logger logger = LoggerFactory.getLogger(CleanUtil.class);
 
-  private static final Object unsafe;
-  private static final Method invokeCleanerMethod;
+  // Unsafe.invokeCleaner(ByteBuffer) bound to the Unsafe instance, or null if unavailable
+  private static final MethodHandle INVOKE_CLEANER;
 
   static {
-    final ByteBuffer tempBuffer = ByteBuffer.allocateDirect(0);
-    Object unsafeLocal = null;
-    Method invokeCleanerMethodLocal = null;
+    MethodHandle invokeCleaner = null;
     try {
       final Class<?> clazz = Class.forName("sun.misc.Unsafe");
       final Field theUnsafe = clazz.getDeclaredField("theUnsafe");
       theUnsafe.setAccessible(true);
-      unsafeLocal = theUnsafe.get(null);
-      invokeCleanerMethodLocal = clazz.getMethod("invokeCleaner", ByteBuffer.class);
-      invokeCleanerMethodLocal.invoke(unsafeLocal, tempBuffer);
-    } catch (IllegalAccessException
-        | IllegalArgumentException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | SecurityException
-        | ClassNotFoundException
-        | NoSuchFieldException e) {
+      invokeCleaner = MethodHandles.lookup()
+          .findVirtual(clazz, "invokeCleaner", MethodType.methodType(void.class, ByteBuffer.class))
+          .bindTo(theUnsafe.get(null));
+    } catch (ReflectiveOperationException | RuntimeException e) {
       logger.warn("Cannot use direct ByteBuffer cleaner, memory leaking may occur", e);
-      unsafeLocal = null;
-      invokeCleanerMethodLocal = null;
     }
-    unsafe = unsafeLocal;
-    invokeCleanerMethod = invokeCleanerMethodLocal;
+    INVOKE_CLEANER = invokeCleaner;
   }
 
   private CleanUtil() {
@@ -66,14 +60,14 @@ public class CleanUtil {
   }
 
   public static void cleanDirectBuffer(ByteBuffer buf) {
-    if (invokeCleanerMethod != null) {
+    if (INVOKE_CLEANER != null) {
       try {
-        invokeCleanerMethod.invoke(unsafe, buf);
-      } catch (IllegalAccessException
-          | IllegalArgumentException
-          | InvocationTargetException
-          | SecurityException e) {
-        logger.warn("Error while cleaning up the DirectBuffer", e);
+        INVOKE_CLEANER.invokeExact(buf);
+      } catch (Error e) {
+        throw e;
+      } catch (Throwable t) {
+        // e.g. IllegalArgumentException if buf is not direct, or is a slice or duplicate
+        logger.warn("Error while cleaning up the DirectBuffer", t);
       }
     }
   }
