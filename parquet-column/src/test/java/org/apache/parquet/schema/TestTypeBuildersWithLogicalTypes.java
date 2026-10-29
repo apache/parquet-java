@@ -43,7 +43,9 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.junit.jupiter.api.Test;
@@ -894,6 +896,31 @@ public class TestTypeBuildersWithLogicalTypes {
             .named("file_with_duplicate_field"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("FILE type group 'file_with_duplicate_field' contains duplicate field '" + fieldName + "'");
+  }
+
+  @Test
+  public void testFileLogicalTypeConstructorRejectsInvalidFields() {
+    PrimitiveType invalidUri = Types.optional(INT32).named("uri");
+
+    assertThatThrownBy(
+            () -> new GroupType(Repetition.OPTIONAL, "file", LogicalTypeAnnotation.fileType(), invalidUri))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("FILE type field 'uri' must be a STRING (BINARY annotated as STRING) in group 'file'");
+  }
+
+  @Test
+  public void testFileLogicalTypeFieldsCannotChangeAfterValidation() {
+    PrimitiveType uri = Types.optional(BINARY).as(stringType()).named("uri");
+    List<Type> fields = new ArrayList<>(Arrays.asList(uri));
+    GroupType file = new GroupType(Repetition.OPTIONAL, "file", LogicalTypeAnnotation.fileType(), fields);
+
+    fields.add(Types.optional(INT32).named("unknown"));
+
+    assertThat(file.getFields()).containsExactly(uri);
+    assertThat(file.getFieldIndex("uri")).isZero();
+    assertThat(file.containsField("unknown")).isFalse();
+    // Collections.unmodifiableList throws without a message.
+    assertThatThrownBy(() -> file.getFields().clear()).isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test

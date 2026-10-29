@@ -2505,7 +2505,7 @@ public class TestParquetMetadataConverter {
 
   @ParameterizedTest
   @MethodSource("malformedFileFields")
-  public void testMalformedFileLogicalTypeIsDroppedOnRead(List<org.apache.parquet.schema.Type> fields)
+  public void testMalformedFileLogicalTypeFailsOnRead(List<org.apache.parquet.schema.Type> fields)
       throws IOException {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType physicalSchema = Types.buildMessage()
@@ -2522,10 +2522,25 @@ public class TestParquetMetadataConverter {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     Util.writeFileMetaData(footer, bytes);
 
-    ParquetMetadata metadata = parquetMetadataConverter.fromParquetMetadata(
-        Util.readFileMetaData(new ByteArrayInputStream(bytes.toByteArray())));
+    FileMetaData storedFooter = Util.readFileMetaData(new ByteArrayInputStream(bytes.toByteArray()));
 
-    assertThat(metadata.getFileMetaData().getSchema()).isEqualTo(physicalSchema);
+    assertThatThrownBy(() -> parquetMetadataConverter.fromParquetMetadata(storedFooter))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageStartingWith("FILE type ");
+  }
+
+  @Test
+  public void testFileLogicalTypeOnPrimitiveIsIgnored() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    MessageType physicalSchema = Types.buildMessage()
+        .optional(PrimitiveTypeName.BINARY)
+        .columnOrder(org.apache.parquet.schema.ColumnOrder.undefined())
+        .named("file")
+        .named("example");
+    List<SchemaElement> parquetSchema = converter.toParquetSchema(physicalSchema);
+    parquetSchema.get(1).setLogicalType(LogicalType.FILE(new FileType()));
+
+    assertThat(converter.fromParquetSchema(parquetSchema, null)).isEqualTo(physicalSchema);
   }
 
   private static Stream<List<org.apache.parquet.schema.Type>> malformedFileFields() {

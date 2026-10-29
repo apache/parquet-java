@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io.api;
+package org.apache.parquet.file;
 
 import java.util.Objects;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 
@@ -35,7 +37,7 @@ public final class FileValueWriter {
     Objects.requireNonNull(schema, "schema cannot be null");
     Objects.requireNonNull(value, "value cannot be null");
 
-    FileValueValidator.validateSchema(schema);
+    FileValueValidator.requireFileSchema(schema);
     FileValueValidator.validateValue(value);
     validateSchemaContainsSetFields(schema, value);
 

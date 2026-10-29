@@ -847,10 +847,6 @@ public class Types {
     @Override
     protected GroupType build(String name) {
       if (newLogicalTypeSet) {
-        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
-          ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) logicalTypeAnnotation)
-              .validateFields(name, fields);
-        }
         return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
       } else {
         return new GroupType(repetition, name, getOriginalType(), fields, id);

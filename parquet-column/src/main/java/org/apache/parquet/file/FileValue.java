@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io.api;
+package org.apache.parquet.file;
+
+import org.apache.parquet.io.api.Binary;
 
 /** A value represented by a Parquet {@code FILE}-annotated group. */
 public final class FileValue {

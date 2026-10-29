@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io.api;
+package org.apache.parquet.file;
 
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 
+/** Per-value checks; FILE schema fields are validated when the GroupType is constructed. */
 final class FileValueValidator {
   private FileValueValidator() {}
 
-  static void validateSchema(GroupType schema) {
+  static void requireFileSchema(GroupType schema) {
     if (!(schema.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation)) {
       throw new IllegalArgumentException(
           "Cannot use a FILE value with a group without the FILE logical type: " + schema.getName());
     }
-    ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) schema.getLogicalTypeAnnotation()).validate(schema);
   }
 
   static void validateValue(FileValue value) {

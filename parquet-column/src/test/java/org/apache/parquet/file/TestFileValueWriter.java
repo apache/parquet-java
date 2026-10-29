@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io.api;
+package org.apache.parquet.file;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
@@ -27,6 +27,8 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 import org.apache.parquet.io.ExpectationValidatingRecordConsumer;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Types;
@@ -55,36 +57,43 @@ public class TestFileValueWriter {
   @Test
   public void testWritesSetFieldsInSchemaOrder() {
     FileValue value = FileValue.builder()
+        .withChecksum("ETAG:abc")
+        .withSize(20)
+        .withInline(Binary.fromString("bytes"))
+        .withContentType("image/png")
         .withUri("s3://bucket/file")
         .withOffset(10)
-        .withSize(20)
-        .withContentType("image/png")
-        .withChecksum("ETAG:abc")
-        .withInline(Binary.fromString("bytes"))
         .build();
+    GroupType schema = ALL_FIELDS_SCHEMA.withNewFields(
+        ALL_FIELDS_SCHEMA.getType("inline"),
+        ALL_FIELDS_SCHEMA.getType("size"),
+        ALL_FIELDS_SCHEMA.getType("uri"),
+        ALL_FIELDS_SCHEMA.getType("checksum"),
+        ALL_FIELDS_SCHEMA.getType("offset"),
+        ALL_FIELDS_SCHEMA.getType("content_type"));
     Deque<String> expectations = new ArrayDeque<>(Arrays.asList(
         "startGroup()",
-        "startField(uri, 0)",
-        "addBinary(s3://bucket/file)",
-        "endField(uri, 0)",
-        "startField(offset, 1)",
-        "addLong(10)",
-        "endField(offset, 1)",
-        "startField(size, 2)",
-        "addLong(20)",
-        "endField(size, 2)",
-        "startField(content_type, 3)",
-        "addBinary(image/png)",
-        "endField(content_type, 3)",
-        "startField(checksum, 4)",
-        "addBinary(ETAG:abc)",
-        "endField(checksum, 4)",
-        "startField(inline, 5)",
+        "startField(inline, 0)",
         "addBinary(bytes)",
-        "endField(inline, 5)",
+        "endField(inline, 0)",
+        "startField(size, 1)",
+        "addLong(20)",
+        "endField(size, 1)",
+        "startField(uri, 2)",
+        "addBinary(s3://bucket/file)",
+        "endField(uri, 2)",
+        "startField(checksum, 3)",
+        "addBinary(ETAG:abc)",
+        "endField(checksum, 3)",
+        "startField(offset, 4)",
+        "addLong(10)",
+        "endField(offset, 4)",
+        "startField(content_type, 5)",
+        "addBinary(image/png)",
+        "endField(content_type, 5)",
         "endGroup()"));
 
-    FileValueWriter.write(new ExpectationValidatingRecordConsumer(expectations), ALL_FIELDS_SCHEMA, value);
+    FileValueWriter.write(new ExpectationValidatingRecordConsumer(expectations), schema, value);
 
     assertThat(expectations).isEmpty();
   }

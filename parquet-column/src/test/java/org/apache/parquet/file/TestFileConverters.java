@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io.api;
+package org.apache.parquet.file;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Types;
@@ -174,6 +176,20 @@ public class TestFileConverters {
     assertThat(values).hasSize(2);
     assertThat(values.get(0).getInline().getBytes()).containsExactly(1, 2, 3);
     assertThat(values.get(1).getInline().getBytes()).containsExactly(4, 2, 3);
+  }
+
+  @Test
+  public void testRetainsConstantInlineBuffer() {
+    List<FileValue> values = new ArrayList<>();
+    GroupConverter converter = FileConverters.newFileConverter(SCHEMA, SCHEMA, values::add);
+    Binary binary = Binary.fromConstantByteArray(new byte[] {1, 2, 3});
+
+    converter.start();
+    converter.getConverter(5).asPrimitiveConverter().addBinary(binary);
+    converter.end();
+
+    assertThat(values).hasSize(1);
+    assertThat(values.get(0).getInline()).isSameAs(binary);
   }
 
   @Test

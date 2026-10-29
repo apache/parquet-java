@@ -1294,11 +1294,6 @@ public abstract class LogicalTypeAnnotation {
 
     private FileLogicalTypeAnnotation() {}
 
-    /** Validates the fields of a FILE-annotated group. */
-    public void validate(GroupType group) {
-      validateFields(group.getName(), group.getFields());
-    }
-
     void validateFields(String groupName, List<Type> fields) {
       Set<String> fieldNames = new HashSet<>();
       for (Type field : fields) {

@@ -16,10 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io.api;
+package org.apache.parquet.file;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
@@ -47,8 +51,8 @@ public final class FileConverters {
     Objects.requireNonNull(schema, "schema cannot be null");
     Objects.requireNonNull(fileSchema, "fileSchema cannot be null");
     Objects.requireNonNull(consumer, "consumer cannot be null");
-    FileValueValidator.validateSchema(schema);
-    FileValueValidator.validateSchema(fileSchema);
+    FileValueValidator.requireFileSchema(schema);
+    FileValueValidator.requireFileSchema(fileSchema);
     for (Type field : fileSchema.getFields()) {
       if (!schema.containsField(field.getName())) {
         throw new IllegalArgumentException(
@@ -130,7 +134,7 @@ public final class FileConverters {
     return new PrimitiveConverter() {
       @Override
       public void addBinary(Binary value) {
-        consumer.accept(Binary.fromConstantByteArray(value.getBytes()));
+        consumer.accept(value.copy());
       }
     };
   }
