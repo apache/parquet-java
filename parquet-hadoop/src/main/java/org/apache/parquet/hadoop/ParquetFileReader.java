@@ -2311,10 +2311,11 @@ public class ParquetFileReader implements Closeable {
   private class WorkaroundChunk extends Chunk {
 
     private final SeekableInputStream f;
+    private boolean positionedAfterChunk;
 
     /**
      * @param descriptor the descriptor of the chunk
-     * @param f          the file stream positioned at the end of this chunk
+     * @param f          the file stream to read the bytes missing at the end of this chunk from
      */
     private WorkaroundChunk(
         ChunkDescriptor descriptor,
@@ -2326,11 +2327,26 @@ public class ParquetFileReader implements Closeable {
       this.f = f;
     }
 
-    protected PageHeader readPageHeader() throws IOException {
+    /**
+     * @return the file stream, positioned right after the bytes of this chunk that have been read so far
+     * @throws IOException if there is an error while seeking the file stream
+     */
+    private SeekableInputStream remainderOfFile() throws IOException {
+      if (!positionedAfterChunk) {
+        // vectored reads do not move the file stream, so it is not necessarily at the end of this chunk
+        f.seek(descriptor.fileOffset + descriptor.size);
+        positionedAfterChunk = true;
+      }
+      return f;
+    }
+
+    @Override
+    protected PageHeader readPageHeader(BlockCipher.Decryptor blockDecryptor, byte[] pageHeaderAAD)
+        throws IOException {
       PageHeader pageHeader;
       stream.mark(8192); // headers should not be larger than 8k
       try {
-        pageHeader = Util.readPageHeader(stream);
+        pageHeader = Util.readPageHeader(stream, blockDecryptor, pageHeaderAAD);
       } catch (IOException e) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
@@ -2340,11 +2356,14 @@ public class ParquetFileReader implements Closeable {
         stream.reset(); // resetting the buffer to the position before we got the error
         LOG.info("completing the column chunk to read the page header");
         pageHeader = Util.readPageHeader(
-            new SequenceInputStream(stream, f)); // trying again from the buffer + remainder of the stream.
+            new SequenceInputStream(stream, remainderOfFile()),
+            blockDecryptor,
+            pageHeaderAAD); // trying again from the buffer + remainder of the stream.
       }
       return pageHeader;
     }
 
+    @Override
     public BytesInput readAsBytesInput(int size) throws IOException {
       int available = stream.available();
       if (size > available) {
@@ -2358,7 +2377,8 @@ public class ParquetFileReader implements Closeable {
         List<ByteBuffer> streamBuffers = stream.sliceBuffers(available);
 
         ByteBuffer lastBuffer = ByteBuffer.allocate(missingBytes);
-        f.readFully(lastBuffer);
+        remainderOfFile().readFully(lastBuffer);
+        lastBuffer.flip();
 
         List<ByteBuffer> buffers = new ArrayList<>(streamBuffers.size() + 1);
         buffers.addAll(streamBuffers);
