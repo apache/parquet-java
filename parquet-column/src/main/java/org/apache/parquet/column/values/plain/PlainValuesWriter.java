@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -36,8 +37,11 @@ import org.slf4j.LoggerFactory;
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
 
+  /**
+   * @deprecated Use {@link StandardCharsets#UTF_8} instead
+   */
   @Deprecated
-  public static final Charset CHARSET = Charset.forName("UTF-8");
+  public static final Charset CHARSET = StandardCharsets.UTF_8;
 
   private CapacityByteArrayOutputStream arrayOut;
 

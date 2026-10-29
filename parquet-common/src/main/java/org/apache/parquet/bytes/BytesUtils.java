@@ -38,7 +38,7 @@ public class BytesUtils {
    * @deprecated Use {@link StandardCharsets#UTF_8} instead
    */
   @Deprecated
-  public static final Charset UTF8 = Charset.forName("UTF-8");
+  public static final Charset UTF8 = StandardCharsets.UTF_8;
 
   /**
    * give the number of bits needed to encode an int given the max value
