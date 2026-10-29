@@ -42,6 +42,7 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
+import org.apache.parquet.column.values.rle.ZeroIntegerValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
@@ -727,8 +728,12 @@ abstract class ColumnReaderBase implements ColumnReader {
   }
 
   private void readPageV1(DataPageV1 page) {
-    ValuesReader rlReader = page.getRlEncoding().getValuesReader(path, REPETITION_LEVEL);
-    ValuesReader dlReader = page.getDlEncoding().getValuesReader(path, DEFINITION_LEVEL);
+    ValuesReader rlReader = path.getMaxRepetitionLevel() == 0
+        ? new ZeroIntegerValuesReader()
+        : page.getRlEncoding().getValuesReader(path, REPETITION_LEVEL);
+    ValuesReader dlReader = path.getMaxDefinitionLevel() == 0
+        ? new ZeroIntegerValuesReader()
+        : page.getDlEncoding().getValuesReader(path, DEFINITION_LEVEL);
     this.repetitionLevelColumn = new ValuesReaderIntIterator(rlReader);
     this.definitionLevelColumn = new ValuesReaderIntIterator(dlReader);
     int valueCount = page.getValueCount();
