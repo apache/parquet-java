@@ -39,17 +39,31 @@ public enum CompressionCodecName {
     return valueOf(name.toUpperCase(Locale.ENGLISH));
   }
 
+  // Brotli codec class from the removed jbrotli-based brotli-codec artifact. Still accepted so that
+  // jobs configured through mapred.output.compression.codec keep writing Brotli.
+  private static final String LEGACY_BROTLI_CODEC_CLASS = "org.apache.hadoop.io.compress.BrotliCodec";
+
   public static CompressionCodecName fromCompressionCodec(Class<?> clazz) {
     if (clazz == null) {
       return UNCOMPRESSED;
     }
-    String name = clazz.getName();
+    CompressionCodecName codec = fromCompressionCodecClassName(clazz.getName());
+    if (codec == null) {
+      throw new CompressionCodecNotSupportedException(clazz);
+    }
+    return codec;
+  }
+
+  static CompressionCodecName fromCompressionCodecClassName(String name) {
     for (CompressionCodecName codec : CompressionCodecName.values()) {
       if (name.equals(codec.getHadoopCompressionCodecClassName())) {
         return codec;
       }
     }
-    throw new CompressionCodecNotSupportedException(clazz);
+    if (LEGACY_BROTLI_CODEC_CLASS.equals(name)) {
+      return BROTLI;
+    }
+    return null;
   }
 
   public static CompressionCodecName fromParquet(CompressionCodec codec) {
