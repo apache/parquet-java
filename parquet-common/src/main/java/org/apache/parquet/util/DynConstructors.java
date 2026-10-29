@@ -22,9 +22,8 @@ package org.apache.parquet.util;
 import static org.apache.parquet.Exceptions.throwIfInstance;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.parquet.Preconditions;
@@ -184,9 +183,9 @@ public class DynConstructors {
 
       try {
         Constructor<T> hidden = targetClass.getDeclaredConstructor(types);
-        AccessController.doPrivileged(new MakeAccessible(hidden));
+        hidden.setAccessible(true);
         ctor = new Ctor<T>(hidden, targetClass);
-      } catch (NoSuchMethodException | SecurityException e) {
+      } catch (NoSuchMethodException | SecurityException | InaccessibleObjectException e) {
         // unusable or not the right implementation
         problems.put(methodName(targetClass, types), e);
       }
@@ -208,20 +207,6 @@ public class DynConstructors {
         return ctor;
       }
       throw new RuntimeException("Cannot find constructor for " + baseClass + "\n" + formatProblems(problems));
-    }
-  }
-
-  private static class MakeAccessible implements PrivilegedAction<Void> {
-    private Constructor<?> hidden;
-
-    public MakeAccessible(Constructor<?> hidden) {
-      this.hidden = hidden;
-    }
-
-    @Override
-    public Void run() {
-      hidden.setAccessible(true);
-      return null;
     }
   }
 
