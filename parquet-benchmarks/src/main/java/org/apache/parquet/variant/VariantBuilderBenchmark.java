@@ -159,24 +159,34 @@ public class VariantBuilderBenchmark {
    * the variant builder and (b) add the type to a GroupBuilder.
    */
   private enum FieldType {
-    String((o, builder) -> builder.appendString(((String) o) + count()), b -> b.optional(PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.stringType())
-        .named("typed_value")),
-    Int((o, builder) -> builder.appendInt((Integer) o), b -> b.optional(PrimitiveTypeName.INT32)
-        .named("typed_value")),
-    Long((o, builder) -> builder.appendLong((Long) o), b -> b.optional(PrimitiveTypeName.INT64)
-        .named("typed_value")),
-    Float((o, builder) -> builder.appendFloat((Float) o), b -> b.optional(PrimitiveTypeName.FLOAT)
-        .named("typed_value")),
-    Double((o, builder) -> builder.appendDouble((Double) o), b -> b.optional(PrimitiveTypeName.DOUBLE)
-        .named("typed_value")),
-    BigDecimal((o, builder) -> builder.appendDecimal((BigDecimal) o), b -> b.optional(PrimitiveTypeName.INT32)
-        .as(LogicalTypeAnnotation.decimalType(0, 9))
-        .named("typed_value")),
-    UUID((o, builder) -> builder.appendUUID((UUID) o), b -> b.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
-        .length(16)
-        .as(LogicalTypeAnnotation.uuidType())
-        .named("typed_value")),
+    String(
+        (o, builder) -> builder.appendString(((String) o) + count()),
+        b -> b.optional(PrimitiveTypeName.BINARY)
+            .as(LogicalTypeAnnotation.stringType())
+            .named("typed_value")),
+    Int(
+        (o, builder) -> builder.appendInt((Integer) o),
+        b -> b.optional(PrimitiveTypeName.INT32).named("typed_value")),
+    Long(
+        (o, builder) -> builder.appendLong((Long) o),
+        b -> b.optional(PrimitiveTypeName.INT64).named("typed_value")),
+    Float(
+        (o, builder) -> builder.appendFloat((Float) o),
+        b -> b.optional(PrimitiveTypeName.FLOAT).named("typed_value")),
+    Double(
+        (o, builder) -> builder.appendDouble((Double) o),
+        b -> b.optional(PrimitiveTypeName.DOUBLE).named("typed_value")),
+    BigDecimal(
+        (o, builder) -> builder.appendDecimal((BigDecimal) o),
+        b -> b.optional(PrimitiveTypeName.INT32)
+            .as(LogicalTypeAnnotation.decimalType(0, 9))
+            .named("typed_value")),
+    UUID(
+        (o, builder) -> builder.appendUUID((UUID) o),
+        b -> b.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+            .length(16)
+            .as(LogicalTypeAnnotation.uuidType())
+            .named("typed_value")),
     /** Nested MUST be the last in the enum. */
     Nested(
         (o, builder) -> {
