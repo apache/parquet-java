@@ -102,6 +102,8 @@ public class BrotliCodec implements CompressionCodec, Configurable {
   /**
    * Creates a decoder with an upper bound on the decompressed size. Parquet passes the size from
    * the page header, so a crafted page cannot expand without limit during decoding.
+   *
+   * @throws IOException if the bound is negative or the decoded output exceeds it
    */
   public CompressionInputStream createInputStream(InputStream in, int maxOutputSize) throws IOException {
     ensureBrotliAvailable();

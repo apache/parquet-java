@@ -77,6 +77,10 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
   @Override
   public void finish() throws IOException {
     ensureNoFailure();
+    finishEncoder();
+  }
+
+  private void finishEncoder() throws IOException {
     if (finished) {
       return;
     }
@@ -84,7 +88,9 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
       encoder.close();
       finished = true;
     } catch (IOException e) {
-      failure = e;
+      if (failure == null) {
+        failure = e;
+      }
       throw e;
     }
   }
@@ -99,18 +105,25 @@ class BrotliCompressionOutputStream extends CompressionOutputStream {
     if (closed) {
       return;
     }
-    IOException closeFailure = null;
+    // Use a distinct exception so try-with-resources can suppress it onto the original failure.
+    IOException closeFailure =
+        failure == null ? null : new IOException("Previous Brotli stream operation failed", failure);
     try {
-      finish();
+      // Release native resources even when a previous write or flush has failed.
+      finishEncoder();
     } catch (IOException e) {
-      closeFailure = e;
+      if (closeFailure == null) {
+        closeFailure = e;
+      } else if (closeFailure != e && closeFailure.getCause() != e) {
+        closeFailure.addSuppressed(e);
+      }
     }
     try {
       out.close();
     } catch (IOException e) {
       if (closeFailure == null) {
         closeFailure = e;
-      } else {
+      } else if (closeFailure != e && closeFailure.getCause() != e) {
         closeFailure.addSuppressed(e);
       }
     }

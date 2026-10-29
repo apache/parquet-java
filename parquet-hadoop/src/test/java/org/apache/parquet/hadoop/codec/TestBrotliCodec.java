@@ -22,9 +22,12 @@ package org.apache.parquet.hadoop.codec;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.aayushatharva.brotli4j.encoder.BrotliOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
@@ -116,6 +119,7 @@ public class TestBrotliCodec {
 
     assertThatThrownBy(() -> newCodec(5).createInputStream(new ByteArrayInputStream(compressed), 1024))
         .isInstanceOf(IOException.class)
+        .hasMessage("Failed to decompress Brotli stream")
         .hasStackTraceContaining("exceeds maximum size");
 
     CodecFactory factory = new CodecFactory(new Configuration(false), 64 * 1024);
@@ -123,6 +127,7 @@ public class TestBrotliCodec {
       assertThatThrownBy(() -> factory.getDecompressor(CompressionCodecName.BROTLI)
               .decompress(BytesInput.from(compressed), 1024))
           .isInstanceOf(IOException.class)
+          .hasMessage("Failed to decompress Brotli stream")
           .hasStackTraceContaining("exceeds maximum size");
     } finally {
       factory.release();
@@ -141,7 +146,8 @@ public class TestBrotliCodec {
     }
 
     assertThatThrownBy(() -> codec.createOutputStream(new ByteArrayOutputStream()))
-        .isInstanceOf(BadConfigurationException.class);
+        .isInstanceOf(BadConfigurationException.class)
+        .hasMessage("Invalid Brotli compression quality: 99. Expected 0..11.");
   }
 
   @Test
@@ -150,11 +156,111 @@ public class TestBrotliCodec {
     try (CompressionInputStream in = newCodec(5).createInputStream(new ByteArrayInputStream(compressed), 0)) {
       assertThat(in.readAllBytes()).isEmpty();
     }
+  }
 
-    byte[] nonEmpty = new byte[1024];
-    byte[] nonEmptyCompressed = compressBytes(newCodec(5), nonEmpty);
-    assertThatThrownBy(() -> newCodec(5).createInputStream(new ByteArrayInputStream(nonEmptyCompressed), -1))
-        .isInstanceOf(IOException.class);
+  @Test
+  public void testZeroSizeRejectsOneByteOutput() throws Exception {
+    byte[] compressed = compressBytes(newCodec(5), new byte[] {1});
+
+    assertThatThrownBy(() -> newCodec(5).createInputStream(new ByteArrayInputStream(compressed), 0))
+        .isInstanceOf(IOException.class)
+        .hasMessage("Failed to decompress Brotli stream")
+        .hasRootCauseMessage("Brotli decompressed size 1 exceeds maximum size 0");
+
+    CodecFactory factory = new CodecFactory(new Configuration(false), 64 * 1024);
+    try {
+      assertThatThrownBy(() -> factory.getDecompressor(CompressionCodecName.BROTLI)
+              .decompress(BytesInput.from(compressed), 0))
+          .isInstanceOf(IOException.class)
+          .hasMessage("Failed to decompress Brotli stream")
+          .hasRootCauseMessage("Brotli decompressed size 1 exceeds maximum size 0");
+    } finally {
+      factory.release();
+    }
+  }
+
+  @Test
+  public void testNegativeSizeIsRejectedForEmptyAndNonEmptyInput() throws Exception {
+    byte[][] inputs = {new byte[0], compressBytes(newCodec(5), new byte[] {1})};
+    for (byte[] input : inputs) {
+      assertThatThrownBy(() -> newCodec(5).createInputStream(new ByteArrayInputStream(input), -1))
+          .isInstanceOf(IOException.class)
+          .hasMessage("Invalid Brotli maximum output size: -1. Expected a non-negative size.");
+    }
+  }
+
+  @Test
+  public void testCloseAfterFlushFailureClosesEncoderAndTarget() throws Exception {
+    FailingOutputStream target = new FailingOutputStream();
+    CompressionOutputStream out = newCodec(5).createOutputStream(target);
+    BrotliOutputStream encoder = encoderOf(out);
+    out.write(new byte[] {1, 2, 3});
+    target.failOnFlush = true;
+
+    assertThatThrownBy(out::flush).isInstanceOf(IOException.class).hasMessage("flush failed");
+    assertThatThrownBy(out::close).isInstanceOf(IOException.class).hasMessageContaining("failed");
+    assertThatThrownBy(encoder::flush).isInstanceOf(IOException.class).hasMessage("write after close");
+    out.close();
+    assertThat(target.closes).isEqualTo(1);
+  }
+
+  @Test
+  public void testCloseAfterWriteFailureClosesEncoderAndTarget() throws Exception {
+    FailingOutputStream target = new FailingOutputStream();
+    CompressionOutputStream out = newCodec(1).createOutputStream(target);
+    BrotliOutputStream encoder = encoderOf(out);
+    byte[] input = new byte[1024 * 1024];
+    new Random(17).nextBytes(input);
+    target.failOnWrite = true;
+
+    assertThatThrownBy(() -> out.write(input))
+        .isInstanceOf(IOException.class)
+        .hasMessage("write failed");
+    assertThatThrownBy(out::close).isInstanceOf(IOException.class).hasMessageContaining("failed");
+    assertThatThrownBy(encoder::flush).isInstanceOf(IOException.class).hasMessage("write after close");
+    out.close();
+    assertThat(target.closes).isEqualTo(1);
+  }
+
+  @Test
+  public void testClosePreservesFailureWhenCleanupAlsoFails() throws Exception {
+    FailingOutputStream target = new FailingOutputStream();
+    CompressionOutputStream out = newCodec(5).createOutputStream(target);
+    out.write(new byte[] {1, 2, 3});
+    target.failOnFlush = true;
+    target.failOnClose = true;
+
+    assertThatThrownBy(out::flush).isInstanceOf(IOException.class).hasMessage("flush failed");
+    assertThatThrownBy(out::close)
+        .isInstanceOf(IOException.class)
+        .hasMessage("Previous Brotli stream operation failed")
+        .hasCause(target.flushFailure)
+        .hasSuppressedException(target.closeFailure);
+    out.close();
+    assertThat(target.closes).isEqualTo(1);
+  }
+
+  @Test
+  public void testTryWithResourcesPreservesWriteFailure() throws Exception {
+    FailingOutputStream target = new FailingOutputStream();
+    byte[] input = new byte[1024 * 1024];
+    new Random(19).nextBytes(input);
+    target.failOnWrite = true;
+
+    assertThatThrownBy(() -> {
+          try (CompressionOutputStream out = newCodec(1).createOutputStream(target)) {
+            out.write(input);
+          }
+        })
+        .isInstanceOf(IOException.class)
+        .hasMessage("write failed")
+        .isSameAs(target.writeFailure);
+    assertThat(target.writeFailure.getSuppressed()).hasSize(1);
+    assertThat(target.writeFailure.getSuppressed()[0])
+        .isInstanceOf(IOException.class)
+        .hasMessage("Previous Brotli stream operation failed")
+        .hasCause(target.writeFailure);
+    assertThat(target.closes).isEqualTo(1);
   }
 
   @Test
@@ -163,10 +269,10 @@ public class TestBrotliCodec {
     BrotliCodec codec = newCodec(5);
     CompressionOutputStream out = codec.createOutputStream(target);
     out.write(new byte[100 * 1024]);
-    target.fail = true;
+    target.failOnFlush = true;
 
-    assertThatThrownBy(out::finish).isInstanceOf(IOException.class);
-    assertThatThrownBy(out::close).isInstanceOf(IOException.class);
+    assertThatThrownBy(out::finish).isInstanceOf(IOException.class).hasMessage("flush failed");
+    assertThatThrownBy(out::close).isInstanceOf(IOException.class).hasMessageContaining("failed");
     out.close();
     assertThat(target.closes).isEqualTo(1);
   }
@@ -177,10 +283,14 @@ public class TestBrotliCodec {
     BrotliCodec codec = newCodec(5);
     CompressionOutputStream out = codec.createOutputStream(target);
     out.write(new byte[100 * 1024]);
-    target.fail = true;
+    target.failOnFlush = true;
 
-    assertThatThrownBy(out::finish).isInstanceOf(IOException.class);
-    assertThatThrownBy(out::finish).isInstanceOf(IOException.class);
+    assertThatThrownBy(out::finish).isInstanceOf(IOException.class).hasMessage("flush failed");
+    assertThatThrownBy(out::finish)
+        .isInstanceOf(IOException.class)
+        .hasMessage("Previous Brotli stream operation failed")
+        .hasCause(target.flushFailure);
+    assertThatThrownBy(out::close).isInstanceOf(IOException.class).hasMessageContaining("failed");
   }
 
   @Test
@@ -196,7 +306,9 @@ public class TestBrotliCodec {
       in.seek(0);
       assertThat(in.getPos()).isZero();
       assertThat(in.readAllBytes()).isEqualTo(input);
-      assertThatThrownBy(in::resetState).isInstanceOf(IOException.class);
+      assertThatThrownBy(in::resetState)
+          .isInstanceOf(IOException.class)
+          .hasMessage("BrotliCompressionInputStream does not support resetState");
     }
   }
 
@@ -206,6 +318,13 @@ public class TestBrotliCodec {
     BrotliCodec codec = new BrotliCodec();
     codec.setConf(conf);
     return codec;
+  }
+
+  private static BrotliOutputStream encoderOf(CompressionOutputStream out) throws ReflectiveOperationException {
+    // Verify the native encoder's lifecycle without exposing it through the production codec API.
+    Field field = BrotliCompressionOutputStream.class.getDeclaredField("encoder");
+    field.setAccessible(true);
+    return (BrotliOutputStream) field.get(out);
   }
 
   private static ByteArrayInputStream compress(BrotliCodec codec, byte[] input) throws IOException {
@@ -247,22 +366,42 @@ public class TestBrotliCodec {
     }
   }
 
-  private static final class FailingOutputStream extends ByteArrayOutputStream {
-    private boolean fail;
+  private static final class FailingOutputStream extends OutputStream {
+    private final IOException writeFailure = new IOException("write failed");
+    private final IOException flushFailure = new IOException("flush failed");
+    private final IOException closeFailure = new IOException("close failed");
+    private boolean failOnWrite;
+    private boolean failOnFlush;
+    private boolean failOnClose;
     private int closes;
 
     @Override
-    public void flush() throws IOException {
-      if (fail) {
-        throw new IOException("flush failed");
+    public void write(int b) throws IOException {
+      if (failOnWrite) {
+        throw writeFailure;
       }
-      super.flush();
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+      if (failOnWrite) {
+        throw writeFailure;
+      }
+    }
+
+    @Override
+    public void flush() throws IOException {
+      if (failOnFlush) {
+        throw flushFailure;
+      }
     }
 
     @Override
     public void close() throws IOException {
       closes++;
-      super.close();
+      if (failOnClose) {
+        throw closeFailure;
+      }
     }
   }
 }

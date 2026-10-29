@@ -31,17 +31,27 @@ class BrotliCompressionInputStream extends CompressionInputStream {
 
   BrotliCompressionInputStream(InputStream in, int maxOutputSize) throws IOException {
     super(in);
+    if (maxOutputSize < 0) {
+      throw new IOException(
+          "Invalid Brotli maximum output size: " + maxOutputSize + ". Expected a non-negative size.");
+    }
     byte[] compressed = in.readAllBytes();
     if (compressed.length == 0) {
       this.decompressed = new byte[0];
       return;
     }
-    int outputLimit = maxOutputSize > 0 ? maxOutputSize : 1;
+    // The native decoder requires a positive limit, including for an empty decoded stream.
+    int outputLimit = Math.max(maxOutputSize, 1);
     try {
       // brotli4j's streaming BrotliInputStream fails on valid streams whose output crosses the
       // encoder window (hyperxpro/Brotli4j#267). Parquet feeds one page at a time, so use the
       // bounded one-shot decoder, which handles those streams without allowing unbounded output.
-      this.decompressed = Decoder.decompress(compressed, 0, compressed.length, outputLimit);
+      byte[] decoded = Decoder.decompress(compressed, 0, compressed.length, outputLimit);
+      if (decoded.length > maxOutputSize) {
+        throw new IOException(
+            "Brotli decompressed size " + decoded.length + " exceeds maximum size " + maxOutputSize);
+      }
+      this.decompressed = decoded;
     } catch (IOException | RuntimeException e) {
       throw new IOException("Failed to decompress Brotli stream", e);
     }
