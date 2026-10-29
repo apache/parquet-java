@@ -662,8 +662,8 @@ public final class Operators {
     @Override
     public U getUserDefinedPredicate() {
       try {
-        return udpClass.newInstance();
-      } catch (InstantiationException | IllegalAccessException e) {
+        return udpClass.getDeclaredConstructor().newInstance();
+      } catch (ReflectiveOperationException e) {
         throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       }
     }
