@@ -24,7 +24,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterDescription;
 import com.beust.jcommander.Parameters;
-import com.google.common.collect.Lists;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 @Parameters(commandDescription = "Retrieves details on the functions of other commands")
 public class Help implements Command {
   @Parameter(description = "<commands>")
-  List<String> helpCommands = Lists.newArrayList();
+  List<String> helpCommands = new ArrayList<>();
 
   private final JCommander jc;
   private final Logger console;
