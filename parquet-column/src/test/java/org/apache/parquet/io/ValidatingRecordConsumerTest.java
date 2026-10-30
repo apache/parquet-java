@@ -21,16 +21,45 @@ package org.apache.parquet.io;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.lang.reflect.Field;
 import java.util.Deque;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class ValidatingRecordConsumerTest {
+  @ParameterizedTest
+  @ValueSource(strings = {"v", "element"})
+  public void testEmptyRequiredVectorField(String field) {
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message m { required group v (VECTOR(2)) {" + " repeated group list { required float element; } } }");
+    RecordConsumer delegate = mock(RecordConsumer.class);
+    ValidatingRecordConsumer c = new ValidatingRecordConsumer(delegate, schema);
+    c.startMessage();
+    c.startField("v", 0);
+    if (field.equals("element")) {
+      c.startGroup();
+      c.startField("list", 0);
+      c.startGroup();
+      c.startField("element", 0);
+    }
+    clearInvocations(delegate);
+    assertThatThrownBy(() -> c.endField(field, 0))
+        .isInstanceOf(InvalidRecordException.class)
+        .hasMessage("required field is missing "
+            + (field.equals("v") ? schema.getType("v") : schema.getType("v", "list", "element")));
+    verifyNoInteractions(delegate);
+  }
 
   private static final RecordConsumer NOOP = new RecordConsumer() {
     @Override

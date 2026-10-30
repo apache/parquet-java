@@ -31,17 +31,25 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
+import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.mem.MemPageStore;
+import org.apache.parquet.column.statistics.FloatStatistics;
+import org.apache.parquet.column.values.plain.PlainValuesWriter;
+import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.GroupWriter;
@@ -60,12 +68,58 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TestColumnIO {
   private static final Logger LOG = LoggerFactory.getLogger(TestColumnIO.class);
+
+  private static Stream<Arguments> invalidVectorLevels() {
+    return Stream.of(
+        Arguments.of(new int[] {0}, new int[] {3}, "invalid levels"),
+        Arguments.of(new int[] {3}, new int[] {2}, "invalid levels"),
+        Arguments.of(new int[] {2}, new int[] {2}, "invalid continuation"),
+        Arguments.of(new int[] {0, 2}, new int[] {2, 1}, "null within vector"),
+        Arguments.of(new int[] {0, 2}, new int[] {0, 2}, "null within vector"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidVectorLevels")
+  public void testInvalidVectorLevels(int[] repetition, int[] definition, String reason) throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType("message m { repeated group outer {"
+        + " required group v (VECTOR(2)) { repeated group list { required float element; } } } }");
+    ColumnDescriptor descriptor = schema.getColumnDescription(new String[] {"outer", "v", "list", "element"});
+    HeapByteBufferAllocator allocator = new HeapByteBufferAllocator();
+    try (MemPageStore pages = new MemPageStore(1);
+        RunLengthBitPackingHybridValuesWriter rl =
+            new RunLengthBitPackingHybridValuesWriter(2, 64, 64, allocator);
+        RunLengthBitPackingHybridValuesWriter dl =
+            new RunLengthBitPackingHybridValuesWriter(2, 64, 64, allocator);
+        PlainValuesWriter values = new PlainValuesWriter(64, 64, allocator)) {
+      for (int i = 0; i < repetition.length; i++) {
+        rl.writeInteger(repetition[i]);
+        dl.writeInteger(definition[i]);
+        if (definition[i] >= 2) values.writeFloat(1.0f);
+      }
+      pages.getPageWriter(descriptor)
+          .writePage(
+              BytesInput.concat(rl.getBytes(), dl.getBytes(), values.getBytes()),
+              repetition.length,
+              new FloatStatistics(),
+              Encoding.RLE,
+              Encoding.RLE,
+              Encoding.PLAIN);
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+      RecordReaderImplementation<Group> reader = getRecordReader(columnIO, schema, pages);
+      assertThatThrownBy(reader::read)
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessageContaining("[outer, v, list, element]")
+          .hasMessageContaining(reason);
+    }
+  }
 
   private static final String oneOfEach = "message Document {\n"
       + "  required int64 a;\n"

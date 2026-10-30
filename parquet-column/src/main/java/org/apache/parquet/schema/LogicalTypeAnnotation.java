@@ -59,6 +59,13 @@ public abstract class LogicalTypeAnnotation {
         return listType();
       }
     },
+    VECTOR {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        Preconditions.checkArgument(params.size() == 1, "Expecting 1 parameter for VECTOR: %s", params);
+        return vectorType(Integer.parseInt(params.get(0)));
+      }
+    },
     VARIANT {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -305,6 +312,10 @@ public abstract class LogicalTypeAnnotation {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
+  public static VectorLogicalTypeAnnotation vectorType(int numElements) {
+    return new VectorLogicalTypeAnnotation(numElements);
+  }
+
   public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
     return new VariantLogicalTypeAnnotation(specVersion);
   }
@@ -497,6 +508,50 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
+    }
+  }
+
+  public static class VectorLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final int numElements;
+
+    private VectorLogicalTypeAnnotation(int numElements) {
+      Preconditions.checkArgument(numElements > 0, "Invalid VECTOR length: %s", numElements);
+      this.numElements = numElements;
+    }
+
+    public int getNumElements() {
+      return numElements;
+    }
+
+    @Override
+    public OriginalType toOriginalType() {
+      return OriginalType.LIST;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.VECTOR;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      return "(" + numElements + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof VectorLogicalTypeAnnotation
+          && numElements == ((VectorLogicalTypeAnnotation) obj).numElements;
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * getClass().hashCode() + numElements;
     }
   }
 
@@ -1368,6 +1423,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(VectorLogicalTypeAnnotation vectorLogicalType) {
       return empty();
     }
 

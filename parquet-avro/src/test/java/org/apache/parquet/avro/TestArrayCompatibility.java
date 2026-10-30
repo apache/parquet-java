@@ -39,13 +39,20 @@ import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
@@ -1608,6 +1615,49 @@ public class TestArrayCompatibility extends DirectWriterTest {
     assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
     assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
     assertReaderContains(new AvroParquetReader<>(newAutoDetectConf(), test), expectedSchema, expectedRecord);
+  }
+
+  @Test
+  public void testVectorWithoutAvroSchema(@TempDir java.nio.file.Path dir) throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType("message VectorWithoutAvroSchema {"
+        + " required group v (VECTOR(2)) { repeated group list { required float element; } }"
+        + " optional group o (VECTOR(1)) { repeated group list { required float element; } } }");
+    Path path = new Path(dir.resolve("vector.parquet").toUri());
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    Group first = factory.newGroup();
+    first.addGroup("v").addGroup("list").append("element", 1.0f);
+    first.getGroup("v", 0).addGroup("list").append("element", 2.0f);
+    first.addGroup("o").addGroup("list").append("element", 9.0f);
+    Group second = factory.newGroup();
+    second.addGroup("v").addGroup("list").append("element", 3.0f);
+    second.getGroup("v", 0).addGroup("list").append("element", 4.0f);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withWriterVersion(org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0)
+        .withDictionaryEncoding(false)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withValidation(false)
+        .build()) {
+      writer.write(first);
+      writer.write(second);
+    }
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(dir.resolve("vector.parquet")))) {
+      assertThat(reader.getFileMetaData().getKeyValueMetaData())
+          .doesNotContainKeys(
+              AvroReadSupport.AVRO_SCHEMA_METADATA_KEY, AvroReadSupport.OLD_AVRO_SCHEMA_METADATA_KEY);
+    }
+    Schema expectedSchema = record(
+        "VectorWithoutAvroSchema",
+        field("v", array(primitive(Schema.Type.FLOAT))),
+        optionalField("o", array(primitive(Schema.Type.FLOAT))));
+    assertThat(new AvroSchemaConverter().convert(schema)).isEqualTo(expectedSchema);
+    try (AvroParquetReader<GenericRecord> reader = autoDetectReader(path)) {
+      assertReaderContains(
+          reader,
+          expectedSchema,
+          instance(expectedSchema, "v", Arrays.asList(1.0f, 2.0f), "o", Arrays.asList(9.0f)),
+          instance(expectedSchema, "v", Arrays.asList(3.0f, 4.0f), "o", null));
+    }
   }
 
   private static Configuration newAutoDetectConf() {

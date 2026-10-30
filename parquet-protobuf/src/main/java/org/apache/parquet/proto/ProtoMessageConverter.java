@@ -67,6 +67,7 @@ import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.TypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -266,6 +267,17 @@ class ProtoMessageConverter extends GroupConverter {
           @Override
           public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
             return of(new ListConverter(parentBuilder, fieldDescriptor, parquetType));
+          }
+
+          @Override
+          public Optional<Converter> visit(
+              LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
+            TypeUtil.checkValidVectorSchema(parquetType);
+            if (!fieldDescriptor.isRepeated()) {
+              throw new IncompatibleSchemaModificationException("VECTOR field "
+                  + fieldDescriptor.getName() + " requires a repeated protobuf field");
+            }
+            return visit(LogicalTypeAnnotation.listType());
           }
 
           @Override
@@ -885,6 +897,7 @@ class ProtoMessageConverter extends GroupConverter {
         Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
       LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
       if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation)
+              && !(logicalTypeAnnotation instanceof LogicalTypeAnnotation.VectorLogicalTypeAnnotation)
           || parquetType.isPrimitive()) {
         throw new ParquetDecodingException(
             "Expected LIST wrapper. Found: " + logicalTypeAnnotation + " instead.");

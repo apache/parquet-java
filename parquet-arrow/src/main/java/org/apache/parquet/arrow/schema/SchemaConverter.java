@@ -79,6 +79,7 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.schema.Types.GroupBuilder;
 
@@ -484,6 +485,13 @@ public class SchemaConverter {
                   FieldType.nullable(new ArrowType.List()),
                   Collections.singletonList(child.getArrowField()));
               return of(new ListTypeMapping(arrowField, list3Levels, child));
+            }
+
+            @Override
+            public Optional<TypeMapping> visit(
+                LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
+              TypeUtil.checkValidVectorSchema(type);
+              return visit(LogicalTypeAnnotation.listType());
             }
 
             @Override

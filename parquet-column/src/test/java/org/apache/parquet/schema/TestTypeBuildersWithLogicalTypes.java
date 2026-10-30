@@ -31,6 +31,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.uuidType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.vectorType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -43,11 +44,91 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.stream.Stream;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class TestTypeBuildersWithLogicalTypes {
+  private static GroupType vector(Type element) {
+    return new GroupType(REQUIRED, "v", vectorType(5), new GroupType(Repetition.REPEATED, "list", element));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, Integer.MAX_VALUE})
+  public void testVectorAnnotation(int length) {
+    GroupType vector = new GroupType(
+        REQUIRED,
+        "v",
+        vectorType(length),
+        new GroupType(Repetition.REPEATED, "list", Types.required(FLOAT).named("element")));
+    MessageType schema = Types.buildMessage().addField(vector).named("m");
+    TypeUtil.checkValidWriteSchema(schema);
+    assertThat(MessageTypeParser.parseMessageType(schema.toString())).isEqualTo(schema);
+    assertThat(vectorType(length).getNumElements()).isEqualTo(length);
+    assertThat(vectorType(length).toOriginalType()).isEqualTo(OriginalType.LIST);
+    assertThat(vectorType(length)).isEqualTo(vectorType(length)).hasSameHashCodeAs(vectorType(length));
+    assertThat(vectorType(length)).isNotEqualTo(vectorType(length == 1 ? 5 : 1));
+    assertThat(vectorType(length)).isNotEqualTo(LogicalTypeAnnotation.listType());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1})
+  public void testInvalidVectorLength(int length) {
+    assertThatThrownBy(() -> vectorType(length))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid VECTOR length: " + length);
+  }
+
+  private static Stream<Arguments> invalidVectors() {
+    PrimitiveType element = Types.required(FLOAT).named("element");
+    GroupType list = new GroupType(Repetition.REPEATED, "list", element);
+    return Stream.of(
+        Arguments.of(new GroupType(Repetition.REPEATED, "v", vectorType(5), list)),
+        Arguments.of(new GroupType(
+            REQUIRED, "v", vectorType(5), new GroupType(Repetition.REPEATED, "items", element))),
+        Arguments.of(new GroupType(REQUIRED, "v", vectorType(5), list, list)),
+        Arguments.of(new GroupType(REQUIRED, "v", vectorType(5), new GroupType(REQUIRED, "list", element))),
+        Arguments.of(new GroupType(
+            REQUIRED,
+            "v",
+            vectorType(5),
+            new GroupType(Repetition.REPEATED, "list", LogicalTypeAnnotation.listType(), element))),
+        Arguments.of(new GroupType(
+            REQUIRED, "v", vectorType(5), new GroupType(Repetition.REPEATED, "list", element, element))),
+        Arguments.of(vector(Types.required(FLOAT).named("item"))),
+        Arguments.of(vector(Types.optional(FLOAT).named("element"))),
+        Arguments.of(vector(Types.repeated(FLOAT).named("element"))),
+        Arguments.of(vector(new GroupType(REQUIRED, "element", element))),
+        Arguments.of(vector(Types.required(BINARY).as(decimalType(2, 9)).named("element"))),
+        Arguments.of(
+            vector(Types.required(FIXED_LEN_BYTE_ARRAY).length(2).named("element"))),
+        Arguments.of(vector(Types.required(INT96).named("element"))),
+        Arguments.of(vector(Types.required(BINARY).as(stringType()).named("element"))),
+        Arguments.of(vector(Types.required(INT32).as(dateType()).named("element"))),
+        Arguments.of(
+            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(intType(64, true)))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidVectors")
+  public void testInvalidVectorSchema(GroupType vector) {
+    assertThatThrownBy(() -> TypeUtil.checkValidVectorSchema(new MessageType("m", vector)))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessage("Invalid VECTOR schema: " + vector);
+  }
+
+  @Test
+  public void testVectorOnPrimitive() {
+    assertThatThrownBy(() -> Types.required(FLOAT).as(vectorType(5)).named("v"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("VECTOR(5) can not be applied to a primitive type");
+  }
+
   @Test
   public void testGroupTypeConstruction() {
     PrimitiveType f1 = Types.required(BINARY).as(stringType()).named("f1");
