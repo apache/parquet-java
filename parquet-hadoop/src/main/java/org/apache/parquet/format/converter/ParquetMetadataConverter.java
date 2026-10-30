@@ -391,16 +391,12 @@ public class ParquetMetadataConverter {
   }
 
   static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
-    switch (unit) {
-      case MICROS:
-        return org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
-      case MILLIS:
-        return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
-      case NANOS:
-        return TimeUnit.NANOS(new NanoSeconds());
-      default:
-        throw new RuntimeException("Unknown time unit " + unit);
-    }
+    return switch (unit) {
+      case MICROS -> org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
+      case MILLIS -> org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
+      case NANOS -> TimeUnit.NANOS(new NanoSeconds());
+      default -> throw new RuntimeException("Unknown time unit " + unit);
+    };
   }
 
   private static class ConvertedTypeConverterVisitor
@@ -437,48 +433,36 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<ConvertedType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
-      switch (timeLogicalType.getUnit()) {
-        case MILLIS:
-          return of(ConvertedType.TIME_MILLIS);
-        case MICROS:
-          return of(ConvertedType.TIME_MICROS);
-        case NANOS:
-          return empty();
-        default:
-          throw new RuntimeException("Unknown converted type for " + timeLogicalType.toOriginalType());
-      }
+      return switch (timeLogicalType.getUnit()) {
+        case MILLIS -> of(ConvertedType.TIME_MILLIS);
+        case MICROS -> of(ConvertedType.TIME_MICROS);
+        case NANOS -> empty();
+        default -> throw new RuntimeException("Unknown converted type for " + timeLogicalType.toOriginalType());
+      };
     }
 
     @Override
     public Optional<ConvertedType> visit(
         LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
-      switch (timestampLogicalType.getUnit()) {
-        case MICROS:
-          return of(ConvertedType.TIMESTAMP_MICROS);
-        case MILLIS:
-          return of(ConvertedType.TIMESTAMP_MILLIS);
-        case NANOS:
-          return empty();
-        default:
+      return switch (timestampLogicalType.getUnit()) {
+        case MICROS -> of(ConvertedType.TIMESTAMP_MICROS);
+        case MILLIS -> of(ConvertedType.TIMESTAMP_MILLIS);
+        case NANOS -> empty();
+        default ->
           throw new RuntimeException("Unknown converted type for " + timestampLogicalType.toOriginalType());
-      }
+      };
     }
 
     @Override
     public Optional<ConvertedType> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
       boolean signed = intLogicalType.isSigned();
-      switch (intLogicalType.getBitWidth()) {
-        case 8:
-          return of(signed ? ConvertedType.INT_8 : ConvertedType.UINT_8);
-        case 16:
-          return of(signed ? ConvertedType.INT_16 : ConvertedType.UINT_16);
-        case 32:
-          return of(signed ? ConvertedType.INT_32 : ConvertedType.UINT_32);
-        case 64:
-          return of(signed ? ConvertedType.INT_64 : ConvertedType.UINT_64);
-        default:
-          throw new RuntimeException("Unknown original type " + intLogicalType.toOriginalType());
-      }
+      return switch (intLogicalType.getBitWidth()) {
+        case 8 -> of(signed ? ConvertedType.INT_8 : ConvertedType.UINT_8);
+        case 16 -> of(signed ? ConvertedType.INT_16 : ConvertedType.UINT_16);
+        case 32 -> of(signed ? ConvertedType.INT_32 : ConvertedType.UINT_32);
+        case 64 -> of(signed ? ConvertedType.INT_64 : ConvertedType.UINT_64);
+        default -> throw new RuntimeException("Unknown original type " + intLogicalType.toOriginalType());
+      };
     }
 
     @Override
@@ -924,16 +908,11 @@ public class ParquetMetadataConverter {
   }
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {
-    switch (type.columnOrder().getColumnOrderName()) {
-      case TYPE_DEFINED_ORDER:
-      case IEEE_754_TOTAL_ORDER:
-      case INT96_TIMESTAMP_ORDER:
-        return true;
-      case UNDEFINED:
-        return false;
-      default:
-        throw new IllegalArgumentException("Unknown column order: " + type.columnOrder());
-    }
+    return switch (type.columnOrder().getColumnOrderName()) {
+      case TYPE_DEFINED_ORDER, IEEE_754_TOTAL_ORDER, INT96_TIMESTAMP_ORDER -> true;
+      case UNDEFINED -> false;
+      default -> throw new IllegalArgumentException("Unknown column order: " + type.columnOrder());
+    };
   }
 
   /**
@@ -1149,18 +1128,11 @@ public class ParquetMetadataConverter {
    * @return the default sort order used when the logical type is not known
    */
   private static SortOrder defaultSortOrder(PrimitiveTypeName primitive) {
-    switch (primitive) {
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-        return SortOrder.SIGNED;
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-        return SortOrder.UNSIGNED;
-    }
-    return SortOrder.UNKNOWN;
+    return switch (primitive) {
+      case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> SortOrder.SIGNED;
+      case BINARY, FIXED_LEN_BYTE_ARRAY -> SortOrder.UNSIGNED;
+      default -> SortOrder.UNKNOWN;
+    };
   }
 
   /**
@@ -1280,105 +1252,67 @@ public class ParquetMetadataConverter {
   }
 
   public PrimitiveTypeName getPrimitive(Type type) {
-    switch (type) {
-      case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
-        return PrimitiveTypeName.BINARY;
-      case INT64:
-        return PrimitiveTypeName.INT64;
-      case INT32:
-        return PrimitiveTypeName.INT32;
-      case BOOLEAN:
-        return PrimitiveTypeName.BOOLEAN;
-      case FLOAT:
-        return PrimitiveTypeName.FLOAT;
-      case DOUBLE:
-        return PrimitiveTypeName.DOUBLE;
-      case INT96:
-        return PrimitiveTypeName.INT96;
-      case FIXED_LEN_BYTE_ARRAY:
-        return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-      default:
-        throw new RuntimeException("Unknown type " + type);
-    }
+    return switch (type) {
+      case BYTE_ARRAY -> PrimitiveTypeName.BINARY; // TODO: rename BINARY and remove this switch
+      case INT64 -> PrimitiveTypeName.INT64;
+      case INT32 -> PrimitiveTypeName.INT32;
+      case BOOLEAN -> PrimitiveTypeName.BOOLEAN;
+      case FLOAT -> PrimitiveTypeName.FLOAT;
+      case DOUBLE -> PrimitiveTypeName.DOUBLE;
+      case INT96 -> PrimitiveTypeName.INT96;
+      case FIXED_LEN_BYTE_ARRAY -> PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+      default -> throw new RuntimeException("Unknown type " + type);
+    };
   }
 
   // Visible for testing
   Type getType(PrimitiveTypeName type) {
-    switch (type) {
-      case INT64:
-        return Type.INT64;
-      case INT32:
-        return Type.INT32;
-      case BOOLEAN:
-        return Type.BOOLEAN;
-      case BINARY:
-        return Type.BYTE_ARRAY;
-      case FLOAT:
-        return Type.FLOAT;
-      case DOUBLE:
-        return Type.DOUBLE;
-      case INT96:
-        return Type.INT96;
-      case FIXED_LEN_BYTE_ARRAY:
-        return Type.FIXED_LEN_BYTE_ARRAY;
-      default:
-        throw new RuntimeException("Unknown primitive type " + type);
-    }
+    return switch (type) {
+      case INT64 -> Type.INT64;
+      case INT32 -> Type.INT32;
+      case BOOLEAN -> Type.BOOLEAN;
+      case BINARY -> Type.BYTE_ARRAY;
+      case FLOAT -> Type.FLOAT;
+      case DOUBLE -> Type.DOUBLE;
+      case INT96 -> Type.INT96;
+      case FIXED_LEN_BYTE_ARRAY -> Type.FIXED_LEN_BYTE_ARRAY;
+      default -> throw new RuntimeException("Unknown primitive type " + type);
+    };
   }
 
   // Visible for testing
   LogicalTypeAnnotation getLogicalTypeAnnotation(ConvertedType type, SchemaElement schemaElement) {
-    switch (type) {
-      case UTF8:
-        return LogicalTypeAnnotation.stringType();
-      case MAP:
-        return LogicalTypeAnnotation.mapType();
-      case MAP_KEY_VALUE:
-        return LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance();
-      case LIST:
-        return LogicalTypeAnnotation.listType();
-      case ENUM:
-        return LogicalTypeAnnotation.enumType();
-      case DECIMAL:
+    return switch (type) {
+      case UTF8 -> LogicalTypeAnnotation.stringType();
+      case MAP -> LogicalTypeAnnotation.mapType();
+      case MAP_KEY_VALUE -> LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance();
+      case LIST -> LogicalTypeAnnotation.listType();
+      case ENUM -> LogicalTypeAnnotation.enumType();
+      case DECIMAL -> {
         int scale = (schemaElement == null ? 0 : schemaElement.scale);
         int precision = (schemaElement == null ? 0 : schemaElement.precision);
-        return LogicalTypeAnnotation.decimalType(scale, precision);
-      case DATE:
-        return LogicalTypeAnnotation.dateType();
-      case TIME_MILLIS:
-        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
-      case TIME_MICROS:
-        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
-      case TIMESTAMP_MILLIS:
-        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
-      case TIMESTAMP_MICROS:
-        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
-      case INTERVAL:
-        return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
-      case INT_8:
-        return LogicalTypeAnnotation.intType(8, true);
-      case INT_16:
-        return LogicalTypeAnnotation.intType(16, true);
-      case INT_32:
-        return LogicalTypeAnnotation.intType(32, true);
-      case INT_64:
-        return LogicalTypeAnnotation.intType(64, true);
-      case UINT_8:
-        return LogicalTypeAnnotation.intType(8, false);
-      case UINT_16:
-        return LogicalTypeAnnotation.intType(16, false);
-      case UINT_32:
-        return LogicalTypeAnnotation.intType(32, false);
-      case UINT_64:
-        return LogicalTypeAnnotation.intType(64, false);
-      case JSON:
-        return LogicalTypeAnnotation.jsonType();
-      case BSON:
-        return LogicalTypeAnnotation.bsonType();
-      default:
+        yield LogicalTypeAnnotation.decimalType(scale, precision);
+      }
+      case DATE -> LogicalTypeAnnotation.dateType();
+      case TIME_MILLIS -> LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+      case TIME_MICROS -> LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+      case TIMESTAMP_MILLIS -> LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+      case TIMESTAMP_MICROS -> LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+      case INTERVAL -> LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
+      case INT_8 -> LogicalTypeAnnotation.intType(8, true);
+      case INT_16 -> LogicalTypeAnnotation.intType(16, true);
+      case INT_32 -> LogicalTypeAnnotation.intType(32, true);
+      case INT_64 -> LogicalTypeAnnotation.intType(64, true);
+      case UINT_8 -> LogicalTypeAnnotation.intType(8, false);
+      case UINT_16 -> LogicalTypeAnnotation.intType(16, false);
+      case UINT_32 -> LogicalTypeAnnotation.intType(32, false);
+      case UINT_64 -> LogicalTypeAnnotation.intType(64, false);
+      case JSON -> LogicalTypeAnnotation.jsonType();
+      case BSON -> LogicalTypeAnnotation.bsonType();
+      default ->
         throw new RuntimeException(
             "Can't convert converted type to logical type, unknown converted type " + type);
-    }
+    };
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
@@ -1387,69 +1321,60 @@ public class ParquetMetadataConverter {
       // Ignore unknown logical types to preserve the physical type.
       return null;
     }
-    switch (setField) {
-      case MAP:
-        return LogicalTypeAnnotation.mapType();
-      case BSON:
-        return LogicalTypeAnnotation.bsonType();
-      case DATE:
-        return LogicalTypeAnnotation.dateType();
-      case ENUM:
-        return LogicalTypeAnnotation.enumType();
-      case JSON:
-        return LogicalTypeAnnotation.jsonType();
-      case LIST:
-        return LogicalTypeAnnotation.listType();
-      case TIME:
+    return switch (setField) {
+      case MAP -> LogicalTypeAnnotation.mapType();
+      case BSON -> LogicalTypeAnnotation.bsonType();
+      case DATE -> LogicalTypeAnnotation.dateType();
+      case ENUM -> LogicalTypeAnnotation.enumType();
+      case JSON -> LogicalTypeAnnotation.jsonType();
+      case LIST -> LogicalTypeAnnotation.listType();
+      case TIME -> {
         TimeType time = type.getTIME();
-        return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
-      case STRING:
-        return LogicalTypeAnnotation.stringType();
-      case DECIMAL:
+        yield LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
+      }
+      case STRING -> LogicalTypeAnnotation.stringType();
+      case DECIMAL -> {
         DecimalType decimal = type.getDECIMAL();
-        return LogicalTypeAnnotation.decimalType(decimal.scale, decimal.precision);
-      case INTEGER:
+        yield LogicalTypeAnnotation.decimalType(decimal.scale, decimal.precision);
+      }
+      case INTEGER -> {
         IntType integer = type.getINTEGER();
-        return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
-      case UNKNOWN:
-        return LogicalTypeAnnotation.unknownType();
-      case TIMESTAMP:
+        yield LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
+      }
+      case UNKNOWN -> LogicalTypeAnnotation.unknownType();
+      case TIMESTAMP -> {
         TimestampType timestamp = type.getTIMESTAMP();
-        return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
-      case UUID:
-        return LogicalTypeAnnotation.uuidType();
-      case FLOAT16:
-        return LogicalTypeAnnotation.float16Type();
-      case GEOMETRY:
+        yield LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
+      }
+      case UUID -> LogicalTypeAnnotation.uuidType();
+      case FLOAT16 -> LogicalTypeAnnotation.float16Type();
+      case GEOMETRY -> {
         GeometryType geometry = type.getGEOMETRY();
-        return LogicalTypeAnnotation.geometryType(geometry.getCrs());
-      case GEOGRAPHY:
+        yield LogicalTypeAnnotation.geometryType(geometry.getCrs());
+      }
+      case GEOGRAPHY -> {
         GeographyType geography = type.getGEOGRAPHY();
-        return LogicalTypeAnnotation.geographyType(
+        yield LogicalTypeAnnotation.geographyType(
             geography.getCrs(), toParquetEdgeInterpolationAlgorithm(geography.getAlgorithm()));
-      case VARIANT:
+      }
+      case VARIANT -> {
         VariantType variant = type.getVARIANT();
-        return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
-      case FILE:
-        // Present in the format but not mapped to a LogicalTypeAnnotation yet. Ignore it to
-        // preserve the physical type, as an unrecognised logical type would be.
-        return null;
-      default:
-        throw new RuntimeException("Unknown logical type " + type);
-    }
+        yield LogicalTypeAnnotation.variantType(variant.getSpecification_version());
+      }
+      // Present in the format but not mapped to a LogicalTypeAnnotation yet. Ignore it to
+      // preserve the physical type, as an unrecognised logical type would be.
+      case FILE -> null;
+      default -> throw new RuntimeException("Unknown logical type " + type);
+    };
   }
 
   private LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) {
-    switch (unit.getSetField()) {
-      case MICROS:
-        return LogicalTypeAnnotation.TimeUnit.MICROS;
-      case MILLIS:
-        return LogicalTypeAnnotation.TimeUnit.MILLIS;
-      case NANOS:
-        return LogicalTypeAnnotation.TimeUnit.NANOS;
-      default:
-        throw new RuntimeException("Unknown time unit " + unit);
-    }
+    return switch (unit.getSetField()) {
+      case MICROS -> LogicalTypeAnnotation.TimeUnit.MICROS;
+      case MILLIS -> LogicalTypeAnnotation.TimeUnit.MILLIS;
+      case NANOS -> LogicalTypeAnnotation.TimeUnit.NANOS;
+      default -> throw new RuntimeException("Unknown time unit " + unit);
+    };
   }
 
   private static void addKeyValue(FileMetaData fileMetaData, String key, String value) {
@@ -2630,30 +2555,22 @@ public class ParquetMetadataConverter {
 
   private static BoundaryOrder toParquetBoundaryOrder(
       org.apache.parquet.internal.column.columnindex.BoundaryOrder boundaryOrder) {
-    switch (boundaryOrder) {
-      case ASCENDING:
-        return BoundaryOrder.ASCENDING;
-      case DESCENDING:
-        return BoundaryOrder.DESCENDING;
-      case UNORDERED:
-        return BoundaryOrder.UNORDERED;
-      default:
-        throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
-    }
+    return switch (boundaryOrder) {
+      case ASCENDING -> BoundaryOrder.ASCENDING;
+      case DESCENDING -> BoundaryOrder.DESCENDING;
+      case UNORDERED -> BoundaryOrder.UNORDERED;
+      default -> throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
+    };
   }
 
   private static org.apache.parquet.internal.column.columnindex.BoundaryOrder fromParquetBoundaryOrder(
       BoundaryOrder boundaryOrder) {
-    switch (boundaryOrder) {
-      case ASCENDING:
-        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.ASCENDING;
-      case DESCENDING:
-        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.DESCENDING;
-      case UNORDERED:
-        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.UNORDERED;
-      default:
-        throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
-    }
+    return switch (boundaryOrder) {
+      case ASCENDING -> org.apache.parquet.internal.column.columnindex.BoundaryOrder.ASCENDING;
+      case DESCENDING -> org.apache.parquet.internal.column.columnindex.BoundaryOrder.DESCENDING;
+      case UNORDERED -> org.apache.parquet.internal.column.columnindex.BoundaryOrder.UNORDERED;
+      default -> throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
+    };
   }
 
   public static ColumnIndex toParquetColumnIndex(
