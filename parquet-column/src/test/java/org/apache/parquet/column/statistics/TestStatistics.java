@@ -522,6 +522,52 @@ public class TestStatistics {
   }
 
   @Test
+  public void testBinaryMinMaxForRepeatedSingleConstantInstance() {
+    BinaryStatistics stats = new BinaryStatistics();
+
+    Binary value = Binary.fromConstantByteArray(new byte[] {7});
+    stats.updateStats(value);
+    stats.updateStats(value);
+    stats.updateStats(value);
+
+    assertThat(stats.genericGetMin()).isSameAs(value);
+    assertThat(stats.genericGetMax()).isSameAs(value);
+  }
+
+  @Test
+  public void testBinaryMinMaxKeepsBoundInstancesForConstantValues() {
+    BinaryStatistics stats = new BinaryStatistics();
+
+    Binary low = Binary.fromConstantByteArray(new byte[] {10});
+    Binary high = Binary.fromConstantByteArray(new byte[] {30});
+    stats.updateStats(low);
+    stats.updateStats(high);
+    // The bounds keep the constant instances. An update with a bound instance does not change the bounds.
+    assertThat(stats.genericGetMin()).isSameAs(low);
+    assertThat(stats.genericGetMax()).isSameAs(high);
+    stats.updateStats(low);
+    assertThat(stats.genericGetMin()).isSameAs(low);
+    assertThat(stats.genericGetMax()).isSameAs(high);
+    stats.updateStats(high);
+    assertThat(stats.genericGetMin()).isSameAs(low);
+    assertThat(stats.genericGetMax()).isSameAs(high);
+    stats.updateStats(Binary.fromConstantByteArray(new byte[] {20}));
+    assertThat(stats.genericGetMin()).isSameAs(low);
+    assertThat(stats.genericGetMax()).isSameAs(high);
+
+    // A different instance with equal content does not change the bounds. Lower or higher values change them.
+    stats.updateStats(Binary.fromConstantByteArray(new byte[] {10}));
+    assertThat(stats.genericGetMin()).isSameAs(low);
+    assertThat(stats.genericGetMax()).isSameAs(high);
+    stats.updateStats(Binary.fromConstantByteArray(new byte[] {5}));
+    assertThat(stats.getMinBytes()).isEqualTo(new byte[] {5});
+    assertThat(stats.genericGetMax()).isSameAs(high);
+    stats.updateStats(Binary.fromConstantByteArray(new byte[] {40}));
+    assertThat(stats.getMinBytes()).isEqualTo(new byte[] {5});
+    assertThat(stats.getMaxBytes()).isEqualTo(new byte[] {40});
+  }
+
+  @Test
   public void testMergingStatistics() {
     testMergingIntStats();
     testMergingLongStats();
