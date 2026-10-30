@@ -828,6 +828,33 @@ public class TestDictionary {
   }
 
   @Test
+  public void testCheckDictionarySizeLimitExceedsByEntryCount() {
+    // Use a large maxDictionaryByteSize so only the entry-count limit can trigger
+    int maxDictionaryByteSize = Integer.MAX_VALUE;
+    try (PlainIntegerDictionaryValuesWriter writer = new PlainIntegerDictionaryValuesWriter(
+        maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, allocator)) {
+
+      assertThat(writer.shouldFallBack()).as("should not fall back initially").isFalse();
+
+      // At the limit (Integer.MAX_VALUE - 1 entries): should NOT trigger
+      writer.checkDictionarySizeLimit(Integer.MAX_VALUE - 1);
+      assertThat(writer.shouldFallBack())
+          .as("should not fall back when entry count equals MAX_DICTIONARY_ENTRIES")
+          .isFalse();
+
+      // Exceeding the limit (Integer.MAX_VALUE entries): should trigger
+      writer.checkDictionarySizeLimit(Integer.MAX_VALUE);
+      assertThat(writer.shouldFallBack())
+          .as("should fall back when entry count exceeds MAX_DICTIONARY_ENTRIES")
+          .isTrue();
+
+      // resetDictionary clears the flag
+      writer.resetDictionary();
+      assertThat(writer.shouldFallBack()).as("should not fall back after resetDictionary").isFalse();
+    }
+  }
+
+  @Test
   public void testBooleanDictionary() throws IOException {
     // Create a dictionary page with boolean values (false, true)
     // Bit-packed: bit 0 = false (0), bit 1 = true (1) => byte = 0b00000010 = 0x02
