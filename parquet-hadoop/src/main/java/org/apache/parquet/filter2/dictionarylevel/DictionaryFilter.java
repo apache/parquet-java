@@ -103,14 +103,14 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     PrimitiveTypeName type = meta.getPrimitiveType().getPrimitiveTypeName();
     switch (type) {
       case FLOAT:
-        return value instanceof Float && Float.isNaN((Float) value);
+        return value instanceof Float floatValue && Float.isNaN(floatValue);
       case DOUBLE:
-        return value instanceof Double && Double.isNaN((Double) value);
+        return value instanceof Double doubleValue && Double.isNaN(doubleValue);
       case FIXED_LEN_BYTE_ARRAY:
         return isFloat16(meta)
-            && value instanceof Binary
-            && ((Binary) value).length() == 2
-            && Float16.isNaN(((Binary) value).get2BytesLittleEndian());
+            && value instanceof Binary binaryValue
+            && binaryValue.length() == 2
+            && Float16.isNaN(binaryValue.get2BytesLittleEndian());
       default:
         return false;
     }

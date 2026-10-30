@@ -73,28 +73,18 @@ public class BitPacking {
    * @return the correct implementation for the width
    */
   public static BitPackingWriter getBitPackingWriter(int bitLength, OutputStream out) {
-    switch (bitLength) {
-      case 0:
-        return new ZeroBitPackingWriter();
-      case 1:
-        return new OneBitPackingWriter(out);
-      case 2:
-        return new TwoBitPackingWriter(out);
-      case 3:
-        return new ThreeBitPackingWriter(out);
-      case 4:
-        return new FourBitPackingWriter(out);
-      case 5:
-        return new FiveBitPackingWriter(out);
-      case 6:
-        return new SixBitPackingWriter(out);
-      case 7:
-        return new SevenBitPackingWriter(out);
-      case 8:
-        return new EightBitPackingWriter(out);
-      default:
-        throw new UnsupportedOperationException("only support up to 8 for now");
-    }
+    return switch (bitLength) {
+      case 0 -> new ZeroBitPackingWriter();
+      case 1 -> new OneBitPackingWriter(out);
+      case 2 -> new TwoBitPackingWriter(out);
+      case 3 -> new ThreeBitPackingWriter(out);
+      case 4 -> new FourBitPackingWriter(out);
+      case 5 -> new FiveBitPackingWriter(out);
+      case 6 -> new SixBitPackingWriter(out);
+      case 7 -> new SevenBitPackingWriter(out);
+      case 8 -> new EightBitPackingWriter(out);
+      default -> throw new UnsupportedOperationException("only support up to 8 for now");
+    };
   }
 
   /**
@@ -104,28 +94,18 @@ public class BitPacking {
    * @return the correct implementation for the width
    */
   public static BitPackingReader createBitPackingReader(int bitLength, InputStream in, long valueCount) {
-    switch (bitLength) {
-      case 0:
-        return new ZeroBitPackingReader();
-      case 1:
-        return new OneBitPackingReader(in);
-      case 2:
-        return new TwoBitPackingReader(in);
-      case 3:
-        return new ThreeBitPackingReader(in, valueCount);
-      case 4:
-        return new FourBitPackingReader(in);
-      case 5:
-        return new FiveBitPackingReader(in, valueCount);
-      case 6:
-        return new SixBitPackingReader(in, valueCount);
-      case 7:
-        return new SevenBitPackingReader(in, valueCount);
-      case 8:
-        return new EightBitPackingReader(in);
-      default:
-        throw new UnsupportedOperationException("only support up to 8 for now");
-    }
+    return switch (bitLength) {
+      case 0 -> new ZeroBitPackingReader();
+      case 1 -> new OneBitPackingReader(in);
+      case 2 -> new TwoBitPackingReader(in);
+      case 3 -> new ThreeBitPackingReader(in, valueCount);
+      case 4 -> new FourBitPackingReader(in);
+      case 5 -> new FiveBitPackingReader(in, valueCount);
+      case 6 -> new SixBitPackingReader(in, valueCount);
+      case 7 -> new SevenBitPackingReader(in, valueCount);
+      case 8 -> new EightBitPackingReader(in);
+      default -> throw new UnsupportedOperationException("only support up to 8 for now");
+    };
   }
 }
 
