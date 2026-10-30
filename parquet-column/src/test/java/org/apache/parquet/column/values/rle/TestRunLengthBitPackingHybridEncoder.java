@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -379,7 +380,7 @@ public class TestRunLengthBitPackingHybridEncoder {
         new RunLengthBitPackingHybridDecoder(bitWidth, new ByteArrayInputStream(encoded));
 
     for (int ignored = 0; ignored < 8; ignored++) {
-      assertEquals(7, decoder.readInt());
+      assertThat(decoder.readInt()).isEqualTo(7);
     }
 
     int[] actualSecondRun = new int[8];
@@ -392,7 +393,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     int[] expectedSecondRun = new int[8];
     packer.unpack8Values(expectedSecondPacked, 0, expectedSecondRun, 0);
 
-    assertArrayEquals(expectedSecondRun, actualSecondRun);
+    assertThat(actualSecondRun).containsExactly(expectedSecondRun);
   }
 
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
