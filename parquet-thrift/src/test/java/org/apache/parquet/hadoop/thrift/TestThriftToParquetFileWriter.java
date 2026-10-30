@@ -38,6 +38,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -51,7 +52,6 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.ParquetWriteProtocol;
@@ -375,8 +375,7 @@ public class TestThriftToParquetFileWriter {
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
     ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(
-        fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, (Class<
-                ? extends TBase<?, ?>>)
+        fileToCreate, new TaskAttemptContextImpl(conf, taskId), protocolFactory, (Class<? extends TBase<?, ?>>)
             tObjs[0].getClass());
 
     for (T tObj : tObjs) {

@@ -21,7 +21,6 @@ package org.apache.parquet.avro;
 import org.apache.avro.Schema;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
-import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Parquet files.
@@ -39,7 +38,7 @@ public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setSchema(Job job, Schema schema) {
-    AvroWriteSupport.setSchema(ContextUtil.getConfiguration(job), schema);
+    AvroWriteSupport.setSchema(job.getConfiguration(), schema);
   }
 
   public AvroParquetOutputFormat() {
@@ -55,6 +54,6 @@ public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
    * @param supplierClass a supplier class
    */
   public static void setAvroDataSupplier(Job job, Class<? extends AvroDataSupplier> supplierClass) {
-    AvroWriteSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
+    AvroWriteSupport.setAvroDataSupplier(job.getConfiguration(), supplierClass);
   }
 }

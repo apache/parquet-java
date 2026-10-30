@@ -43,7 +43,6 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleInputFormat;
 import org.apache.parquet.hadoop.example.ExampleOutputFormat;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
@@ -96,7 +95,7 @@ public class TestInputFormatColumnProjection {
     @Override
     protected void map(Void key, Group value, Context context) throws IOException, InterruptedException {
       // Do nothing. The test uses Hadoop FS counters for verification.
-      setBytesReadCounter(ContextUtil.getCounter(context, "parquet", "bytesread"));
+      setBytesReadCounter(context.getCounter("parquet", "bytesread"));
     }
   }
 

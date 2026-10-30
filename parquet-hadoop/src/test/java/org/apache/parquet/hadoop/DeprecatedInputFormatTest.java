@@ -61,7 +61,6 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.mapred.Container;
 import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -320,7 +319,7 @@ public class DeprecatedInputFormatTest {
     private SimpleGroupFactory factory;
 
     protected void setup(Context context) throws IOException, InterruptedException {
-      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
+      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(context.getConfiguration()));
     }
 
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
