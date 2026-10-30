@@ -29,6 +29,8 @@ import java.io.IOException;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.column.values.alp.AlpValuesReaderForDouble;
+import org.apache.parquet.column.values.alp.AlpValuesReaderForFloat;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForDouble;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForFLBA;
@@ -143,6 +145,27 @@ public enum Encoding {
           return new ByteStreamSplitValuesReaderForFLBA(descriptor.getTypeLength());
         default:
           throw new ParquetDecodingException("no byte stream split reader for type " + descriptor.getType());
+      }
+    }
+  },
+
+  /**
+   * ALP (Adaptive Lossless floating-Point) encoding for FLOAT and DOUBLE types.
+   *
+   * @see <a href="https://parquet.apache.org/docs/file-format/data-pages/alpencoding/">ALP specification</a>
+   * @see <a href="https://parquet.apache.org/blog/2026/09/22/alp-adaptive-lossless-floating-point-encoding-in-apache-parquet/">ALP blog post</a>
+   */
+  ALP {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      switch (descriptor.getType()) {
+        case FLOAT:
+          return new AlpValuesReaderForFloat();
+        case DOUBLE:
+          return new AlpValuesReaderForDouble();
+        default:
+          throw new ParquetDecodingException(
+              "ALP encoding is only supported for FLOAT and DOUBLE, not " + descriptor.getType());
       }
     }
   },
