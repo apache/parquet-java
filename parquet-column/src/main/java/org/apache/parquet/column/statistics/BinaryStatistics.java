@@ -57,12 +57,17 @@ public class BinaryStatistics extends Statistics<Binary> {
       min = value.copy();
       max = value.copy();
       this.markAsNotEmpty();
-    } else {
-      if (comparator().compare(min, value) > 0) {
-        min = value.copy();
-      } else if (comparator().compare(max, value) < 0) {
-        max = value.copy();
-      }
+      return;
+    }
+    // copy() keeps the same instance when the backing bytes are not reused.
+    // Thus, a value can be the same instance as min or max. That value is equal to the bound, so do not compare it.
+    if (value == min || value == max) {
+      return;
+    }
+    if (comparator().compare(min, value) > 0) {
+      min = value.copy();
+    } else if (comparator().compare(max, value) < 0) {
+      max = value.copy();
     }
   }
 
