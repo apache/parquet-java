@@ -125,8 +125,7 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   @Override
   public boolean equals(Object other) {
     if (other == this) return true;
-    if (!(other instanceof ColumnDescriptor)) return false;
-    ColumnDescriptor descriptor = (ColumnDescriptor) other;
+    if (!(other instanceof ColumnDescriptor descriptor)) return false;
     return Arrays.equals(path, descriptor.path);
   }
 
