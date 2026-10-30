@@ -21,6 +21,7 @@ package org.apache.parquet.column;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
@@ -31,6 +32,7 @@ import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
+import org.apache.parquet.column.impl.ContentDefinedChunker;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
@@ -138,6 +140,7 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> sizeStatistics;
   private final ColumnProperty<CompressionCodecName> columnCodecs;
   private final ColumnProperty<Integer> columnCompressionLevels;
+  private final CdcOptions contentDefinedChunkingOptions;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -172,6 +175,7 @@ public class ParquetProperties {
     this.sizeStatistics = builder.sizeStatistics.build();
     this.columnCodecs = builder.columnCodecs.build();
     this.columnCompressionLevels = builder.columnCompressionLevels.build();
+    this.contentDefinedChunkingOptions = builder.contentDefinedChunkingOptions;
   }
 
   public static Builder builder() {
@@ -291,6 +295,32 @@ public class ParquetProperties {
     }
   }
 
+  /**
+   * EXPERIMENTAL: Makes the column write store of one row group, continuing the content defined
+   * chunking of the file's previous row groups that shared {@code chunkers}. With content defined
+   * chunking enabled, every column write store must be made this way.
+   *
+   * @param schema the schema of the row group
+   * @param pageStore the page store of the row group
+   * @param bloomFilterWriteStore the bloom filter store of the row group
+   * @param chunkers the content defined chunkers of the file
+   * @return the column write store
+   */
+  public ColumnWriteStore newColumnWriteStore(
+      MessageType schema,
+      PageWriteStore pageStore,
+      BloomFilterWriteStore bloomFilterWriteStore,
+      List<ContentDefinedChunker> chunkers) {
+    switch (writerVersion) {
+      case PARQUET_1_0:
+        return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this, chunkers);
+      case PARQUET_2_0:
+        return new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriteStore, this, chunkers);
+      default:
+        throw new IllegalArgumentException("unknown version " + writerVersion);
+    }
+  }
+
   public int getMinRowCountForPageSizeCheck() {
     return minRowCountForPageSizeCheck;
   }
@@ -317,6 +347,24 @@ public class ParquetProperties {
 
   public int getRowGroupRowCountLimit() {
     return rowGroupRowCountLimit;
+  }
+
+  /**
+   * EXPERIMENTAL: Whether data page boundaries are derived from the content of the data.
+   *
+   * @return {@code true} if content defined chunking is enabled
+   */
+  public boolean isContentDefinedChunkingEnabled() {
+    return contentDefinedChunkingOptions != null;
+  }
+
+  /**
+   * EXPERIMENTAL: The content defined chunking options.
+   *
+   * @return the chunking options, or {@code null} if content defined chunking is disabled
+   */
+  public CdcOptions getContentDefinedChunkingOptions() {
+    return contentDefinedChunkingOptions;
   }
 
   public int getPageRowCountLimit() {
@@ -413,6 +461,9 @@ public class ParquetProperties {
         + "Bloom filter expected number of distinct values are: " + bloomFilterNDVs + '\n'
         + "Bloom filter false positive probabilities are: " + bloomFilterFPPs + '\n'
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
+        + "Content defined chunking is: "
+        + (contentDefinedChunkingOptions != null ? contentDefinedChunkingOptions : "off")
+        + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
         + "Size statistics enabled: " + sizeStatisticsEnabled;
@@ -460,6 +511,7 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
     private final ColumnProperty.Builder<CompressionCodecName> columnCodecs;
     private final ColumnProperty.Builder<Integer> columnCompressionLevels;
+    private CdcOptions contentDefinedChunkingOptions;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -511,6 +563,7 @@ public class ParquetProperties {
       this.sizeStatisticsEnabled = toCopy.sizeStatisticsEnabled;
       this.columnCodecs = ColumnProperty.builder(toCopy.columnCodecs);
       this.columnCompressionLevels = ColumnProperty.builder(toCopy.columnCompressionLevels);
+      this.contentDefinedChunkingOptions = toCopy.contentDefinedChunkingOptions;
     }
 
     /**
@@ -752,6 +805,22 @@ public class ParquetProperties {
     public Builder withPageRowCountLimit(int rowCount) {
       Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for pages: %s", rowCount);
       pageRowCountLimit = rowCount;
+      return this;
+    }
+
+    /**
+     * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, such as
+     * {@link CdcOptions#DEFAULT}, or disable it with {@code null}. Disabled by default. The page size
+     * and row count limits still apply. Column write stores must then be made with
+     * {@link ParquetProperties#newColumnWriteStore(MessageType, PageWriteStore, BloomFilterWriteStore,
+     * List)}, passing every row group of a file the chunkers {@link ContentDefinedChunker#forColumns}
+     * made for it.
+     *
+     * @param options the chunking options, or {@code null} to disable content defined chunking
+     * @return this builder for method chaining.
+     */
+    public Builder withContentDefinedChunking(CdcOptions options) {
+      this.contentDefinedChunkingOptions = options;
       return this;
     }
 
