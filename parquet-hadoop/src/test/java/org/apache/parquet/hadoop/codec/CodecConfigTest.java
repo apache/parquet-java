@@ -28,9 +28,9 @@ import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskID;
+import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.junit.jupiter.api.Test;
 
 public class CodecConfigTest {
@@ -55,8 +55,8 @@ public class CodecConfigTest {
     Job job = new Job();
     Configuration conf = job.getConfiguration();
     conf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
-    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(
-        conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
+    TaskAttemptContext task =
+        new TaskAttemptContextImpl(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     assertThat(CodecConfig.from(task).getCodec()).isEqualTo(expectedCodec);
 
     // Test mapred API
@@ -72,8 +72,8 @@ public class CodecConfigTest {
     Configuration conf = job.getConfiguration();
     conf.setBoolean("mapred.output.compress", true);
     conf.set("mapred.output.compression.codec", codecClassStr);
-    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(
-        conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
+    TaskAttemptContext task =
+        new TaskAttemptContextImpl(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     assertThat(CodecConfig.from(task).getCodec()).isEqualTo(expectedCodec);
 
     // Test mapred API

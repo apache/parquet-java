@@ -21,7 +21,6 @@ package org.apache.parquet.avro;
 import org.apache.avro.Schema;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.hadoop.ParquetInputFormat;
-import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
@@ -53,7 +52,7 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Job job, Schema requestedProjection) {
-    AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
+    AvroReadSupport.setRequestedProjection(job.getConfiguration(), requestedProjection);
   }
 
   /**
@@ -69,7 +68,7 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setAvroReadSchema(Job job, Schema avroReadSchema) {
-    AvroReadSupport.setAvroReadSchema(ContextUtil.getConfiguration(job), avroReadSchema);
+    AvroReadSupport.setAvroReadSchema(job.getConfiguration(), avroReadSchema);
   }
 
   /**
@@ -81,6 +80,6 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * @param supplierClass an avro data supplier class
    */
   public static void setAvroDataSupplier(Job job, Class<? extends AvroDataSupplier> supplierClass) {
-    AvroReadSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
+    AvroReadSupport.setAvroDataSupplier(job.getConfiguration(), supplierClass);
   }
 }

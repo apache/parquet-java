@@ -64,7 +64,6 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.SerializationUtil;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -173,7 +172,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final boolean HADOOP_VECTORED_IO_DEFAULT = true;
 
   public static void setTaskSideMetaData(Job job, boolean taskSideMetadata) {
-    ContextUtil.getConfiguration(job).setBoolean(TASK_SIDE_METADATA, taskSideMetadata);
+    job.getConfiguration().setBoolean(TASK_SIDE_METADATA, taskSideMetadata);
   }
 
   public static boolean isTaskSideMetaData(Configuration configuration) {
@@ -181,11 +180,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public static void setReadSupportClass(Job job, Class<?> readSupportClass) {
-    ContextUtil.getConfiguration(job).set(READ_SUPPORT_CLASS, readSupportClass.getName());
+    job.getConfiguration().set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
   public static void setUnboundRecordFilter(Job job, Class<? extends UnboundRecordFilter> filterClass) {
-    Configuration conf = ContextUtil.getConfiguration(job);
+    Configuration conf = job.getConfiguration();
     checkArgument(
         getFilterPredicate(conf) == null,
         "You cannot provide an UnboundRecordFilter after providing a FilterPredicate");
@@ -295,7 +294,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public RecordReader<Void, T> createRecordReader(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
+    Configuration conf = taskAttemptContext.getConfiguration();
     ReadSupport<T> readSupport = getReadSupport(conf);
     return new ParquetRecordReader<T>(readSupport, getFilter(conf));
   }
@@ -340,7 +339,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   @Override
   protected boolean isSplitable(JobContext context, Path filename) {
-    return ContextUtil.getConfiguration(context).getBoolean(SPLIT_FILES, true);
+    return context.getConfiguration().getBoolean(SPLIT_FILES, true);
   }
 
   /**
@@ -348,7 +347,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
-    Configuration configuration = ContextUtil.getConfiguration(jobContext);
+    Configuration configuration = jobContext.getConfiguration();
     List<InputSplit> splits = new ArrayList<InputSplit>();
 
     if (isTaskSideMetaData(configuration)) {
@@ -396,7 +395,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   @Override
   protected List<FileStatus> listStatus(JobContext jobContext) throws IOException {
-    return getAllFileRecursively(super.listStatus(jobContext), ContextUtil.getConfiguration(jobContext));
+    return getAllFileRecursively(super.listStatus(jobContext), jobContext.getConfiguration());
   }
 
   private static List<FileStatus> getAllFileRecursively(List<FileStatus> files, Configuration conf)
@@ -436,7 +435,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     if (statuses.isEmpty()) {
       return Collections.emptyList();
     }
-    Configuration config = ContextUtil.getConfiguration(jobContext);
+    Configuration config = jobContext.getConfiguration();
     // Use LinkedHashMap to preserve the insertion order and ultimately to return the list of
     // footers in the same order as the list of file statuses returned from listStatus()
     Map<FileStatusWrapper, Footer> footersMap = new LinkedHashMap<FileStatusWrapper, Footer>();

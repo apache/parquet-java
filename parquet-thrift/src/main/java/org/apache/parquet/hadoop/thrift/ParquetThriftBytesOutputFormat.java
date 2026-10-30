@@ -22,7 +22,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.thrift.FieldIgnoredHandler;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
@@ -34,15 +33,15 @@ import org.apache.thrift.protocol.TProtocolFactory;
 public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWritable> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
-    TBaseWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
+    TBaseWriteSupport.setThriftClass(job.getConfiguration(), thriftClass);
   }
 
   public static Class<? extends TBase<?, ?>> getThriftClass(Job job) {
-    return TBaseWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
+    return TBaseWriteSupport.getThriftClass(job.getConfiguration());
   }
 
   public static <U extends TProtocol> void setTProtocolClass(Job job, Class<U> tProtocolClass) {
-    ThriftBytesWriteSupport.setTProtocolClass(ContextUtil.getConfiguration(job), tProtocolClass);
+    ThriftBytesWriteSupport.setTProtocolClass(job.getConfiguration(), tProtocolClass);
   }
 
   /**
