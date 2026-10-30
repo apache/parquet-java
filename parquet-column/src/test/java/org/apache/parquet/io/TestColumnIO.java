@@ -52,12 +52,14 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -241,6 +243,45 @@ public class TestColumnIO {
       };
       validateGroups(groups, expected);
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testColumnIOAllowsProjectionWithinFileGroup(boolean useDictionary) {
+    GroupType fileGroup = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("uri")
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .named("file");
+    GroupType projectedFileGroup = Types.optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("content_type")
+        .named("file");
+
+    MessageColumnIO columnIO = new ColumnIOFactory()
+        .getColumnIO(new MessageType("schema", projectedFileGroup), new MessageType("schema", fileGroup));
+
+    assertThat(columnIO.getLeaves()).hasSize(1);
+
+    MessageType fileSchema = new MessageType("schema", fileGroup);
+    MessageType requestedSchema = new MessageType("schema", projectedFileGroup);
+    Group record = new SimpleGroupFactory(fileSchema).newGroup();
+    record.addGroup("file").append("uri", "s3://bucket/file").append("content_type", "image/png");
+    MemPageStore pages = new MemPageStore(1);
+    writeGroups(fileSchema, pages, useDictionary, record);
+
+    List<Group> records = readGroups(pages, fileSchema, requestedSchema, 1);
+
+    assertThat(records).hasSize(1);
+    Group projected = records.get(0).getGroup("file", 0);
+    assertThat(projected.getType()).isEqualTo(projectedFileGroup);
+    assertThat(projected.getString("content_type", 0)).isEqualTo("image/png");
   }
 
   private void validateGroups(List<Group> groups1, Object[][] e1) {
