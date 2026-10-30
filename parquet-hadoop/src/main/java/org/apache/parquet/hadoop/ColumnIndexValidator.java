@@ -460,12 +460,14 @@ public class ColumnIndexValidator {
 
       if (isNullPage) {
         // By specification null pages have empty byte arrays as min/max values
-        validateContract(!minValue.hasRemaining(), NULL_PAGE_HAS_NO_MIN, () -> statValueBuilder
-            .build(minValue)
-            .toString());
-        validateContract(!maxValue.hasRemaining(), NULL_PAGE_HAS_NO_MAX, () -> statValueBuilder
-            .build(maxValue)
-            .toString());
+        validateContract(
+            !minValue.hasRemaining(),
+            NULL_PAGE_HAS_NO_MIN,
+            () -> statValueBuilder.build(minValue).toString());
+        validateContract(
+            !maxValue.hasRemaining(),
+            NULL_PAGE_HAS_NO_MAX,
+            () -> statValueBuilder.build(maxValue).toString());
       } else if (prevMinValue != null) {
         validateBoundaryOrder(
             statValueBuilder.build(prevMinValue), statValueBuilder.build(prevMaxValue), boundaryOrder);
