@@ -112,11 +112,9 @@ public class VariantValueWriter {
   // Return true if the logical type is a decimal with the same scale as the provided value, with enough
   // precision to hold the value. The provided value must be a decimal.
   private static boolean compatibleDecimalType(Variant value, LogicalTypeAnnotation logicalType) {
-    if (!(logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation)) {
+    if (!(logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType)) {
       return false;
     }
-    LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
-        (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalType;
 
     BigDecimal decimal = value.getDecimal();
     return decimal.scale() == decimalType.getScale() && decimal.precision() <= decimalType.getPrecision();
@@ -136,30 +134,26 @@ public class VariantValueWriter {
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.BOOLEAN;
         case BYTE:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
-              && logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
-              && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
-              && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 8;
+              && logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation intType
+              && intType.isSigned()
+              && intType.getBitWidth() == 8;
         case SHORT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
-              && logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
-              && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
-              && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 16;
+              && logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation intType
+              && intType.isSigned()
+              && intType.getBitWidth() == 16;
         case INT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
               && (logicalType == null
-                  || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType)
-                              .getBitWidth()
-                          == 32));
+                  || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation intType
+                      && intType.isSigned()
+                      && intType.getBitWidth() == 32));
         case LONG:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
               && (logicalType == null
-                  || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType)
-                              .getBitWidth()
-                          == 64));
+                  || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation intType
+                      && intType.isSigned()
+                      && intType.getBitWidth() == 64));
         case FLOAT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.FLOAT;
         case DOUBLE:
@@ -184,9 +178,7 @@ public class VariantValueWriter {
         case TIMESTAMP_TZ:
         case TIMESTAMP_NANOS_TZ:
           if (primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
-              && logicalType instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) {
-            LogicalTypeAnnotation.TimestampLogicalTypeAnnotation annotation =
-                (LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) logicalType;
+              && logicalType instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation annotation) {
             boolean micros = annotation.getUnit() == LogicalTypeAnnotation.TimeUnit.MICROS;
             boolean nanos = annotation.getUnit() == LogicalTypeAnnotation.TimeUnit.NANOS;
             boolean adjustedToUTC = annotation.isAdjustedToUTC();
