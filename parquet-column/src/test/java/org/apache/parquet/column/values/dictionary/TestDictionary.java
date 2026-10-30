@@ -834,19 +834,23 @@ public class TestDictionary {
     try (PlainIntegerDictionaryValuesWriter writer = new PlainIntegerDictionaryValuesWriter(
         maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, allocator)) {
 
-      assertFalse("should not fall back initially", writer.shouldFallBack());
+      assertThat(writer.shouldFallBack()).as("should not fall back initially").isFalse();
 
       // At the limit (Integer.MAX_VALUE - 1 entries): should NOT trigger
       writer.checkDictionarySizeLimit(Integer.MAX_VALUE - 1);
-      assertFalse("should not fall back when entry count equals MAX_DICTIONARY_ENTRIES", writer.shouldFallBack());
+      assertThat(writer.shouldFallBack())
+          .as("should not fall back when entry count equals MAX_DICTIONARY_ENTRIES")
+          .isFalse();
 
       // Exceeding the limit (Integer.MAX_VALUE entries): should trigger
       writer.checkDictionarySizeLimit(Integer.MAX_VALUE);
-      assertTrue("should fall back when entry count exceeds MAX_DICTIONARY_ENTRIES", writer.shouldFallBack());
+      assertThat(writer.shouldFallBack())
+          .as("should fall back when entry count exceeds MAX_DICTIONARY_ENTRIES")
+          .isTrue();
 
       // resetDictionary clears the flag
       writer.resetDictionary();
-      assertFalse("should not fall back after resetDictionary", writer.shouldFallBack());
+      assertThat(writer.shouldFallBack()).as("should not fall back after resetDictionary").isFalse();
     }
   }
 
