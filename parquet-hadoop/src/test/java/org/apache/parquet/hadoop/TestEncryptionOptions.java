@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -102,6 +103,8 @@ import org.slf4j.LoggerFactory;
  *                                  identity storage in file metadata.
  *  ENCRYPT_COLUMNS_AND_FOOTER_CTR: Encrypt six columns and the footer, with different
  *                                  keys. Use the alternative (AES_GCM_CTR_V1) algorithm.
+ *  ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_CTR: Encrypt six columns with different keys and
+ *                                  a plaintext footer, using AES_GCM_CTR_V1.
  *  NO_ENCRYPTION:                  Do not encrypt anything
  *
  *
@@ -126,6 +129,7 @@ public class TestEncryptionOptions {
   private ErrorCollector errorCollector = new ErrorCollector();
   private InterOpTester interop = new InterOpTester();
   private static final String CHANGESET = "40379b3";
+  private static final String PLAINTEXT_FOOTER_CTR_CHANGESET = "eedfad3f086678d282a00d8ff3cf8932d5d29af5";
 
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
   private static final byte[][] COLUMN_ENCRYPTION_KEYS = {
@@ -145,7 +149,8 @@ public class TestEncryptionOptions {
 
   private static final int ROW_COUNT = 10000;
   private static final List<SingleRow> DATA = Collections.unmodifiableList(SingleRow.generateRandomData(ROW_COUNT));
-  private static final List<SingleRow> LINEAR_DATA = Collections.unmodifiableList(SingleRow.generateLinearData(250));
+  // The C++-generated interoperability fixtures contain one row group of 50 rows.
+  private static final List<SingleRow> LINEAR_DATA = Collections.unmodifiableList(SingleRow.generateLinearData(50));
 
   private static final MessageType SCHEMA = SingleRow.getSchema();
 
@@ -236,6 +241,20 @@ public class TestEncryptionOptions {
             .withFooterKeyMetadata(footerKeyMetadata)
             .withEncryptedColumns(columnPropertiesMap)
             .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
+            .build();
+      }
+    },
+    ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_CTR {
+      /**
+       * Encryption configuration 9: Encrypt six columns with different keys and a plaintext footer.
+       * Use AES_GCM_CTR_V1.
+       */
+      public FileEncryptionProperties getEncryptionProperties() {
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+            .withFooterKeyMetadata(footerKeyMetadata)
+            .withEncryptedColumns(getColumnEncryptionPropertiesMap())
+            .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
+            .withPlaintextFooter()
             .build();
       }
     },
@@ -408,7 +427,9 @@ public class TestEncryptionOptions {
 
         // Read only the non-encrypted columns
         if ((decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION)
-            && (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
+            && (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER
+                || encryptionConfiguration
+                    == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_CTR)) {
           conf.set(
               "parquet.read.schema",
               Types.buildMessage()
@@ -480,6 +501,7 @@ public class TestEncryptionOptions {
               }
             }
           }
+          assertThat(rowNum).isEqualTo(data.size());
         } catch (ParquetCryptoRuntimeException e) {
           checkResult(file.getName(), decryptionConfiguration, e);
         } catch (Exception e) {
@@ -510,7 +532,10 @@ public class TestEncryptionOptions {
         if (EncryptionConfiguration.ENCRYPT_COLUMNS_PLAIN_FOOTER_COMPLETE == encryptionConfiguration) {
           continue;
         }
-        Path file = interop.GetInterOpFile(getFileName(encryptionConfiguration), CHANGESET);
+        boolean plaintextFooterCtr =
+            encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_CTR;
+        String changeset = plaintextFooterCtr ? PLAINTEXT_FOOTER_CTR_CHANGESET : CHANGESET;
+        Path file = interop.GetInterOpFile(getFileName(encryptionConfiguration), changeset);
         LOG.info("==> Decryption configuration {}", decryptionConfiguration);
         FileDecryptionProperties fileDecryptionProperties = decryptionConfiguration.getDecryptionProperties();
 
@@ -518,7 +543,9 @@ public class TestEncryptionOptions {
 
         // Read only the non-encrypted columns
         if ((decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION)
-            && (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
+            && (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER
+                || encryptionConfiguration
+                    == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_CTR)) {
           conf.set(
               "parquet.read.schema",
               Types.buildMessage()
@@ -558,6 +585,7 @@ public class TestEncryptionOptions {
               }
             }
           }
+          assertThat(rowNum).isEqualTo(data.size());
         } catch (ParquetCryptoRuntimeException e) {
           checkResult(file.getName(), decryptionConfiguration, e);
         } catch (Exception e) {
@@ -640,7 +668,8 @@ public class TestEncryptionOptions {
     // be thrown if the file is encrypted.
     if (decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION) {
       if ((encryptionConfiguration != EncryptionConfiguration.NO_ENCRYPTION
-          && encryptionConfiguration != EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
+          && encryptionConfiguration != EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER
+          && encryptionConfiguration != EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_CTR)) {
         if (!exceptionMsg.endsWith("No keys available")
             && !exceptionMsg.endsWith("Null File Decryptor")
             && !exceptionMsg.endsWith("Footer key unavailable")) {
