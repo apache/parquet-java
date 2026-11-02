@@ -592,10 +592,9 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof DecimalLogicalTypeAnnotation)) {
+      if (!(obj instanceof DecimalLogicalTypeAnnotation other)) {
         return false;
       }
-      DecimalLogicalTypeAnnotation other = (DecimalLogicalTypeAnnotation) obj;
       return scale == other.scale && precision == other.precision;
     }
 
@@ -713,10 +712,9 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof TimeLogicalTypeAnnotation)) {
+      if (!(obj instanceof TimeLogicalTypeAnnotation other)) {
         return false;
       }
-      TimeLogicalTypeAnnotation other = (TimeLogicalTypeAnnotation) obj;
       return isAdjustedToUTC == other.isAdjustedToUTC && unit == other.unit;
     }
 
@@ -792,10 +790,9 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof TimestampLogicalTypeAnnotation)) {
+      if (!(obj instanceof TimestampLogicalTypeAnnotation other)) {
         return false;
       }
-      TimestampLogicalTypeAnnotation other = (TimestampLogicalTypeAnnotation) obj;
       return (isAdjustedToUTC == other.isAdjustedToUTC) && (unit == other.unit);
     }
 
@@ -881,10 +878,9 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof IntLogicalTypeAnnotation)) {
+      if (!(obj instanceof IntLogicalTypeAnnotation other)) {
         return false;
       }
-      IntLogicalTypeAnnotation other = (IntLogicalTypeAnnotation) obj;
       return (bitWidth == other.bitWidth) && (isSigned == other.isSigned);
     }
 
@@ -1220,11 +1216,10 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof VariantLogicalTypeAnnotation)) {
+      if (!(obj instanceof VariantLogicalTypeAnnotation other)) {
         return false;
       }
 
-      VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
       return specVersion == other.specVersion;
     }
   }
@@ -1266,10 +1261,9 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation other)) {
         return false;
       }
-      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
       return Objects.equals(crs, other.crs);
     }
 
@@ -1329,10 +1323,9 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof GeographyLogicalTypeAnnotation)) {
+      if (!(obj instanceof GeographyLogicalTypeAnnotation other)) {
         return false;
       }
-      GeographyLogicalTypeAnnotation other = (GeographyLogicalTypeAnnotation) obj;
       return Objects.equals(crs, other.crs) && Objects.equals(algorithm, other.algorithm);
     }
 
