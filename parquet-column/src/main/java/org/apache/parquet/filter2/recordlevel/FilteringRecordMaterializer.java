@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.PrimitiveColumnIO;
@@ -65,7 +64,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
 
     for (PrimitiveColumnIO c : columnIOs) {
       List<Integer> indexFieldPath =
-          Arrays.stream(c.getIndexFieldPath()).boxed().collect(Collectors.toList());
+          Arrays.stream(c.getIndexFieldPath()).boxed().toList();
       columnIOsByIndexFieldPath.put(indexFieldPath, c);
     }
 

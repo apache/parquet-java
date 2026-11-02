@@ -171,7 +171,7 @@ public class ParquetRewriter implements Closeable {
         "Start rewriting {} input file(s) {} to {}",
         inputFiles.size() + inputFilesToJoin.size(),
         Stream.concat(options.getParquetInputFiles().stream(), options.getParquetInputFilesToJoin().stream())
-            .collect(Collectors.toList()),
+            .toList(),
         out);
 
     if (options.getMaskColumns() != null) {
@@ -298,7 +298,7 @@ public class ParquetRewriter implements Closeable {
       allFiles = new ArrayList<>(inputFiles);
     } else {
       allFiles = Stream.concat(inputFiles.stream(), inputFilesToJoin.stream())
-          .collect(Collectors.toList());
+          .toList();
     }
     Map<String, String> result = new HashMap<>();
     result.put(
@@ -317,10 +317,10 @@ public class ParquetRewriter implements Closeable {
     if (!inputFilesToJoin.isEmpty()) {
       List<Long> blocksRowCountsL = inputFiles.stream()
           .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
-          .collect(Collectors.toList());
+          .toList();
       List<Long> blocksRowCountsR = inputFilesToJoin.stream()
           .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
-          .collect(Collectors.toList());
+          .toList();
       if (!blocksRowCountsL.equals(blocksRowCountsR)) {
         throw new IllegalArgumentException(
             "The number of rows in each block must match! Left blocks row counts: " + blocksRowCountsL

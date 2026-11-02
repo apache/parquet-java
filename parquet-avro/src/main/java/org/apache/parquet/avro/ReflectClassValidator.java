@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 abstract class ReflectClassValidator {
@@ -33,7 +32,7 @@ abstract class ReflectClassValidator {
 
     private final List<String> trustedPackagePrefixes = Stream.of(AvroConverters.SERIALIZABLE_PACKAGES)
         .map(p -> p.endsWith(".") ? p : p + ".")
-        .collect(Collectors.toList());
+        .toList();
     private final boolean trustAllPackages =
         trustedPackagePrefixes.size() == 1 && "*".equals(trustedPackagePrefixes.get(0));
     // The primitive "class names" based on Class.isPrimitive()
