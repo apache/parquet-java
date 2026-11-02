@@ -274,8 +274,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
           .borrowDirectDecompressor());
     }
 
-    private FullDirectDecompressor(DirectDecompressor decompressor) {
-      this.decompressor = decompressor;
+    private FullDirectDecompressor(Object decompressor) {
+      this.decompressor = (DirectDecompressor) decompressor;
     }
 
     @Override
@@ -555,7 +555,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         }
       }
 
-      public DirectDecompressor borrowDirectDecompressor() {
+      public Object borrowDirectDecompressor() {
         Preconditions.checkArgument(
             supportDirectDecompressor, "Tried to get a direct Decompressor from a non-direct codec.");
         return borrow(directDecompressorPool);
@@ -625,7 +625,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       returnToPool(decompressor, dePools);
     }
 
-    public void returnDirectDecompressor(DirectDecompressor decompressor) {
+    public void returnDirectDecompressor(Object decompressor) {
       returnToPool(decompressor, directDePools);
     }
 
