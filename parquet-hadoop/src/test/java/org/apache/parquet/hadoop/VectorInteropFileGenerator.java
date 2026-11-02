@@ -64,21 +64,21 @@ public final class VectorInteropFileGenerator {
   static MessageType mixedSchema() {
     return MessageTypeParser.parseMessageType("message m {"
         + " required int32 id;"
-        + " required group f (VECTOR(5)) { repeated group list { required float element; } }"
-        + " optional group o (VECTOR(2)) { repeated group list { required int32 element; } }"
-        + " optional group a { required group h (VECTOR(2)) { repeated group list {"
+        + " required group f (FINITE_VECTOR(5)) { repeated group list { required float element; } }"
+        + " optional group o (FINITE_VECTOR(2)) { repeated group list { required int32 element; } }"
+        + " optional group a { required group h (FINITE_VECTOR(2)) { repeated group list {"
         + " required fixed_len_byte_array(2) element (FLOAT16); } } }"
-        + " repeated group outer { required group d (VECTOR(2)) { repeated group list {"
+        + " repeated group outer { required group d (FINITE_VECTOR(2)) { repeated group list {"
         + " required double element; } } }"
-        + " required group b (VECTOR(2)) { repeated group list { required boolean element; } }"
-        + " required group l (VECTOR(1)) { repeated group list { required int64 element; } }"
-        + " required group s (VECTOR(1)) { repeated group list {"
+        + " required group b (FINITE_VECTOR(2)) { repeated group list { required boolean element; } }"
+        + " required group l (FINITE_VECTOR(1)) { repeated group list { required int64 element; } }"
+        + " required group s (FINITE_VECTOR(1)) { repeated group list {"
         + " required int32 element (INTEGER(16,true)); } }"
-        + " required group u (VECTOR(1)) { repeated group list {"
+        + " required group u (FINITE_VECTOR(1)) { repeated group list {"
         + " required int64 element (INTEGER(64,false)); } }"
-        + " required group dec (VECTOR(1)) { repeated group list {"
+        + " required group dec (FINITE_VECTOR(1)) { repeated group list {"
         + " required int32 element (DECIMAL(9,2)); } }"
-        + " required group bytes (VECTOR(1)) { repeated group list {"
+        + " required group bytes (FINITE_VECTOR(1)) { repeated group list {"
         + " required fixed_len_byte_array(4) element (DECIMAL(9,2)); } } }");
   }
 
@@ -212,7 +212,7 @@ public final class VectorInteropFileGenerator {
       footer.getSchema().stream()
           .filter(element -> element.getConverted_type() == ConvertedType.LIST)
           .forEach(element -> element.setLogicalType(
-              LogicalTypes.VECTOR(element.getName().startsWith("nf_") ? 8 : 5)));
+              LogicalTypes.FINITE_VECTOR(element.getName().startsWith("nf_") ? 8 : 5)));
       for (org.apache.parquet.format.ColumnChunk chunk :
           footer.getRow_groups().get(0).getColumns()) {
         chunk.getMeta_data().getStatistics().unsetNull_count();
@@ -250,8 +250,8 @@ public final class VectorInteropFileGenerator {
   }
 
   static void writeSplit(Path path) throws IOException {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message m { required group v (VECTOR(5)) {" + " repeated group list { required float element; } } }");
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group v (FINITE_VECTOR(5)) {"
+        + " repeated group list { required float element; } } }");
     ParquetFileWriter writer = new ParquetFileWriter(
         HadoopOutputFile.fromPath(path, new Configuration()),
         schema,

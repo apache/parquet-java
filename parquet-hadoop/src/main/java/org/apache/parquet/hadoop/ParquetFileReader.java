@@ -117,7 +117,7 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetFileRange;
 import org.apache.parquet.io.SeekableInputStream;
-import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.TypeUtil;
@@ -1182,7 +1182,7 @@ public class ParquetFileReader implements Closeable {
       invalid = (values - nulls) % numElements != 0;
     }
     if (invalid) {
-      throw new ParquetDecodingException("Invalid VECTOR counts for " + Arrays.toString(path.getPath())
+      throw new ParquetDecodingException("Invalid FINITE_VECTOR counts for " + Arrays.toString(path.getPath())
           + ": rows=" + rows + ", values=" + values + ", nulls=" + declaredNulls
           + ", length=" + numElements);
     }
@@ -1191,7 +1191,7 @@ public class ParquetFileReader implements Closeable {
   private void checkVectorColumnCounts(ColumnChunkMetaData column, long rows) {
     MessageType fileSchema = getFileMetaData().getSchema();
     String[] path = column.getPath().toArray();
-    VectorLogicalTypeAnnotation vector = TypeUtil.getVectorType(fileSchema, path);
+    FiniteVectorLogicalTypeAnnotation vector = TypeUtil.getFiniteVectorType(fileSchema, path);
     if (vector == null) return;
     ColumnDescriptor descriptor = fileSchema.getColumnDescription(path);
     org.apache.parquet.column.statistics.Statistics<?> stats = column.getStatistics();
@@ -2180,7 +2180,7 @@ public class ParquetFileReader implements Closeable {
           .asPrimitiveType();
       MessageType fileSchema = getFileMetaData().getSchema();
       String[] path = descriptor.col.getPath();
-      VectorLogicalTypeAnnotation vector = TypeUtil.getVectorType(fileSchema, path);
+      FiniteVectorLogicalTypeAnnotation vector = TypeUtil.getFiniteVectorType(fileSchema, path);
       ColumnDescriptor fileDescriptor = vector == null ? null : fileSchema.getColumnDescription(path);
       long valuesCountReadSoFar = 0L;
       int dataPageCountReadSoFar = 0;
@@ -2273,7 +2273,8 @@ public class ParquetFileReader implements Closeable {
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
             if (vector != null) {
               if (dataHeaderV2.getNum_nulls() < 0) {
-                throw new ParquetDecodingException("Invalid VECTOR counts for " + Arrays.toString(path)
+                throw new ParquetDecodingException("Invalid FINITE_VECTOR counts for "
+                    + Arrays.toString(path)
                     + ": rows=" + dataHeaderV2.getNum_rows() + ", values="
                     + dataHeaderV2.getNum_values() + ", nulls=" + dataHeaderV2.getNum_nulls()
                     + ", length=" + vector.getNumElements());

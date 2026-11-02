@@ -62,11 +62,11 @@ public abstract class LogicalTypeAnnotation {
         return listType();
       }
     },
-    VECTOR {
+    FINITE_VECTOR {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
-        Preconditions.checkArgument(params.size() == 1, "Expecting 1 parameter for VECTOR: %s", params);
-        return vectorType(Integer.parseInt(params.get(0)));
+        Preconditions.checkArgument(params.size() == 1, "Expecting 1 parameter for FINITE_VECTOR: %s", params);
+        return finiteVectorType(Integer.parseInt(params.get(0)));
       }
     },
     VARIANT {
@@ -321,8 +321,8 @@ public abstract class LogicalTypeAnnotation {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
-  public static VectorLogicalTypeAnnotation vectorType(int numElements) {
-    return new VectorLogicalTypeAnnotation(numElements);
+  public static FiniteVectorLogicalTypeAnnotation finiteVectorType(int numElements) {
+    return new FiniteVectorLogicalTypeAnnotation(numElements);
   }
 
   public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
@@ -524,11 +524,11 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
-  public static class VectorLogicalTypeAnnotation extends LogicalTypeAnnotation {
+  public static class FiniteVectorLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final int numElements;
 
-    private VectorLogicalTypeAnnotation(int numElements) {
-      Preconditions.checkArgument(numElements > 0, "Invalid VECTOR length: %s", numElements);
+    private FiniteVectorLogicalTypeAnnotation(int numElements) {
+      Preconditions.checkArgument(numElements > 0, "Invalid FINITE_VECTOR length: %s", numElements);
       this.numElements = numElements;
     }
 
@@ -548,7 +548,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     LogicalTypeToken getType() {
-      return LogicalTypeToken.VECTOR;
+      return LogicalTypeToken.FINITE_VECTOR;
     }
 
     @Override
@@ -558,8 +558,8 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof VectorLogicalTypeAnnotation
-          && numElements == ((VectorLogicalTypeAnnotation) obj).numElements;
+      return obj instanceof FiniteVectorLogicalTypeAnnotation
+          && numElements == ((FiniteVectorLogicalTypeAnnotation) obj).numElements;
     }
 
     @Override
@@ -1591,7 +1591,7 @@ public abstract class LogicalTypeAnnotation {
       return empty();
     }
 
-    default Optional<T> visit(VectorLogicalTypeAnnotation vectorLogicalType) {
+    default Optional<T> visit(FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
       return empty();
     }
 

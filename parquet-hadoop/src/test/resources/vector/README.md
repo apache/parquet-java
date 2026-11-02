@@ -17,20 +17,21 @@
   under the License.
 -->
 
-# VECTOR reference files
+# FINITE_VECTOR reference files
 
-These files use the draft [VECTOR proposal](https://github.com/apache/parquet-format/pull/624)
-at revision `3573b3e1357f6546f3710d8cb48103e61ad40350`. They are
+These files use the draft [FINITE_VECTOR proposal](https://github.com/apache/parquet-format/pull/624)
+at revision `8ad956d543e3074e1d9c8d4faa194199e06a8be4`. They are
 parquet-java-generated examples, not independent interoperability evidence. Runtime
 mixed-file tests exercise the writer; these fixed bytes exercise reader compatibility.
 The valid files are intended for a later parquet-testing/data export. Malformed 4/6,
 content, and count cases and Java exception policy are excluded from portable conformance.
 
-The current `VectorInteropFileGenerator` source blob is
+These bytes were generated before VECTOR was renamed to FINITE_VECTOR. The rename
+preserves Thrift field 20 and its parameter, so the files and hashes are unchanged.
+The malformed file's `VectorInteropFileGenerator` source blob was
 `f5217bb32e86abfac965a3eebab9709adbaa549d`. The three valid files came from
 the Round 2 generator source `2d496dad2213216ca6e75f1ab0b4249822829421`.
-The malformed file came from the current source. Both used Java 17, Maven 3.9.16,
-and Thrift 0.25.0.
+Both used Java 17, Maven 3.9.16, and Thrift 0.25.0.
 
 ## Mixed files
 
@@ -51,15 +52,15 @@ and column and offset indexes are absent.
 
 ## Malformed file
 
-`vector_invalid_v1_dictionary.parquet` is deliberately invalid VECTOR data. Its
+`vector_invalid_v1_dictionary.parquet` is deliberately invalid FINITE_VECTOR data. Its
 ordinary V1 writer used a canonical LIST schema with `id=0..3`, then changed only
-the footer to annotate eight LIST groups as VECTOR. `short_v` has lengths
+the footer to annotate eight LIST groups as FINITE_VECTOR. `short_v` has lengths
 `[4,6,5,5]`, `long_v` has `[6,4,5,5]`, `empty_v` has `[0,5,5,5]`, nested `v`
 has per-row instance lengths `[[4,6],[],[5],[5]]`, and partial `v` has
-`[[5],[5],[5],[3]]`. These groups declare VECTOR(5). Their finite element `k`
+`[[5],[5],[5],[3]]`. These groups declare FINITE_VECTOR(5). Their finite element `k`
 in instance `j` of row `i` is `100*i+10*j+k` as FLOAT.
 
-`nf_f`, `nf_d`, and `nf_h` declare VECTOR(8). Each row contains seven ones;
+`nf_f`, `nf_d`, and `nf_h` declare FINITE_VECTOR(8). Each row contains seven ones;
 element zero is zero except in row zero, where the fields contain FLOAT NaN,
 DOUBLE positive infinity, and FLOAT16 negative infinity respectively. The FLOAT16
 values use little-endian bytes `00fc`, `0000`, and `003c` for negative infinity,
@@ -67,7 +68,7 @@ zero, and one. The file is UNCOMPRESSED with a page row limit of two. `nf_f` and
 `nf_d` each have a dictionary and two V1 PLAIN_DICTIONARY pages of 16 values;
 `nf_h` has no dictionary and two V1 PLAIN pages of 16 values. All column-chunk
 null counts are unset, and column and offset index references are absent.
-Each projected malformed VECTOR field must be rejected.
+Each projected malformed FINITE_VECTOR field must be rejected.
 
 ## SHA-256
 

@@ -86,7 +86,8 @@ public class TestVectorReadWrite {
   private java.nio.file.Path tempDir;
 
   private static MessageType schema(String outer, int length, boolean nested) {
-    String vector = outer + " group v (VECTOR(" + length + ")) { repeated group list { required float element; } }";
+    String vector =
+        outer + " group v (FINITE_VECTOR(" + length + ")) { repeated group list { required float element; } }";
     return MessageTypeParser.parseMessageType(
         nested ? "message m { repeated group outer { " + vector + " } }" : "message m { " + vector + " }");
   }
@@ -160,7 +161,7 @@ public class TestVectorReadWrite {
       Files.copy(java.nio.file.Path.of(path.toUri()), java.nio.file.Path.of(legacy.toUri()));
       rewriteFooter(legacy, footer -> footer.getSchema().stream()
           .filter(element -> element.isSetLogicalType()
-              && element.getLogicalType().isSetVECTOR())
+              && element.getLogicalType().isSetFINITE_VECTOR())
           .forEach(org.apache.parquet.format.SchemaElement::unsetLogicalType));
       List<org.apache.parquet.format.SchemaElement> vectors = readFooter(legacy).getSchema().stream()
           .filter(element -> element.getConverted_type() == org.apache.parquet.format.ConvertedType.LIST)
@@ -219,7 +220,7 @@ public class TestVectorReadWrite {
     }
     List<org.apache.parquet.format.SchemaElement> vectors = readFooter(path).getSchema().stream()
         .filter(element ->
-            element.isSetLogicalType() && element.getLogicalType().isSetVECTOR())
+            element.isSetLogicalType() && element.getLogicalType().isSetFINITE_VECTOR())
         .toList();
     assertThat(vectors)
         .hasSize(10)
@@ -265,25 +266,30 @@ public class TestVectorReadWrite {
 
   private static Stream<Arguments> invalidVectorWrites() {
     return Stream.of(
-        Arguments.of("float element", 2, List.of(), "Invalid VECTOR length for v: expected 2, got 0"),
-        Arguments.of("float element", 2, List.of(1.0f), "Invalid VECTOR length for v: expected 2, got 1"),
+        Arguments.of("float element", 2, List.of(), "Invalid FINITE_VECTOR length for v: expected 2, got 0"),
+        Arguments.of(
+            "float element", 2, List.of(1.0f), "Invalid FINITE_VECTOR length for v: expected 2, got 1"),
         Arguments.of(
             "float element",
             2,
             List.of(1.0f, 2.0f, 3.0f),
-            "Invalid VECTOR length for v: expected 2, got 3"),
-        Arguments.of("float element", 1, List.of(Float.NaN), "Non-finite VECTOR element in v"),
-        Arguments.of("double element", 1, List.of(Double.POSITIVE_INFINITY), "Non-finite VECTOR element in v"),
+            "Invalid FINITE_VECTOR length for v: expected 2, got 3"),
+        Arguments.of("float element", 1, List.of(Float.NaN), "Non-finite FINITE_VECTOR element in v"),
+        Arguments.of(
+            "double element",
+            1,
+            List.of(Double.POSITIVE_INFINITY),
+            "Non-finite FINITE_VECTOR element in v"),
         Arguments.of(
             "fixed_len_byte_array(2) element (FLOAT16)",
             1,
             List.of(Binary.fromConstantByteArray(new byte[] {0, (byte) 0xfc})),
-            "Non-finite VECTOR element in v"),
+            "Non-finite FINITE_VECTOR element in v"),
         Arguments.of(
             "fixed_len_byte_array(2) element (FLOAT16)",
             1,
             List.of(Binary.fromConstantByteArray(new byte[] {0})),
-            "Invalid FLOAT16 VECTOR element length: 1"));
+            "Invalid FLOAT16 FINITE_VECTOR element length: 1"));
   }
 
   private void assertInvalidWrite(MessageType schema, Group row, String message) throws IOException {
@@ -301,7 +307,7 @@ public class TestVectorReadWrite {
   @ParameterizedTest
   @MethodSource("invalidVectorWrites")
   public void testInvalidVectorWrite(String element, int length, List<?> values, String message) throws IOException {
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group v (VECTOR(" + length
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group v (FINITE_VECTOR(" + length
         + ")) { repeated group list { required " + element + "; } } }");
     Group row = new SimpleGroupFactory(schema).newGroup();
     Group vector = row.addGroup("v");
@@ -321,7 +327,7 @@ public class TestVectorReadWrite {
   @org.junit.jupiter.api.Test
   public void testMandatoryVectorValidation() throws IOException {
     MessageType missingId = MessageTypeParser.parseMessageType("message m { required int32 id;"
-        + " required group v (VECTOR(2)) { repeated group list { required float element; } } }");
+        + " required group v (FINITE_VECTOR(2)) { repeated group list { required float element; } } }");
     Group missingRow = new SimpleGroupFactory(missingId).newGroup();
     Group v = missingRow.addGroup("v");
     v.addGroup("list").append("element", 1.0f);
@@ -342,16 +348,16 @@ public class TestVectorReadWrite {
   @org.junit.jupiter.api.Test
   public void testVectorReadProjection() throws Exception {
     MessageType list = MessageTypeParser.parseMessageType(
-        schema("required", 5, false).toString().replace("VECTOR(5)", "LIST"));
+        schema("required", 5, false).toString().replace("FINITE_VECTOR(5)", "LIST"));
     MessageType vector = schema("required", 5, false);
     Path path = writeVectors(list, WriterVersion.PARQUET_1_0, false, listRows(list, 4, 6));
     assertVectorRows(readGroups(path, vector), 4, 6);
 
-    rewriteFooter(path, footer -> footer.getSchema().get(1).setLogicalType(LogicalTypes.VECTOR(5)));
+    rewriteFooter(path, footer -> footer.getSchema().get(1).setLogicalType(LogicalTypes.FINITE_VECTOR(5)));
     for (MessageType requested : List.of(vector, list)) {
       assertThatThrownBy(() -> readGroups(path, requested))
           .isInstanceOf(ParquetDecodingException.class)
-          .hasMessage("Invalid VECTOR data for [v, list, element]: expected 5 elements, got 4");
+          .hasMessage("Invalid FINITE_VECTOR data for [v, list, element]: expected 5 elements, got 4");
     }
 
     try (ParquetFileReader reader =
@@ -362,7 +368,7 @@ public class TestVectorReadWrite {
       RecordReader<Group> records = columns.getRecordReader(pages, new GroupRecordConverter(vector));
       assertThatThrownBy(records::read)
           .isInstanceOf(ParquetDecodingException.class)
-          .hasMessage("Invalid VECTOR data for [v, list, element]: expected 5 elements, got 4");
+          .hasMessage("Invalid FINITE_VECTOR data for [v, list, element]: expected 5 elements, got 4");
     }
   }
 
@@ -403,7 +409,7 @@ public class TestVectorReadWrite {
               for (long i = 0; i < pages.getRowCount(); i++) records.read();
             })
             .isInstanceOf(ParquetDecodingException.class)
-            .hasMessage("Invalid VECTOR data for [" + name + ", list, element]: " + reason);
+            .hasMessage("Invalid FINITE_VECTOR data for [" + name + ", list, element]: " + reason);
       }
     }
   }
@@ -497,7 +503,7 @@ public class TestVectorReadWrite {
             }
           })
           .isInstanceOf(ParquetDecodingException.class)
-          .hasMessageContaining("Invalid VECTOR counts for " + expected);
+          .hasMessageContaining("Invalid FINITE_VECTOR counts for " + expected);
     }
   }
 
@@ -543,7 +549,7 @@ public class TestVectorReadWrite {
           }
         })
         .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("Invalid VECTOR counts for "
+        .hasMessage("Invalid FINITE_VECTOR counts for "
             + (nested ? "[outer, v, list, element]" : "[v, list, element]")
             + ": rows=" + headerRows + ", values=" + headerValues + ", nulls=" + headerNulls
             + ", length=" + (nested ? 2 : 5));
@@ -586,6 +592,7 @@ public class TestVectorReadWrite {
           }
         })
         .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("Invalid VECTOR counts for [v, list, element]: rows=2, values=9, nulls=-1, length=5");
+        .hasMessage(
+            "Invalid FINITE_VECTOR counts for [v, list, element]: rows=2, values=9, nulls=-1, length=5");
   }
 }

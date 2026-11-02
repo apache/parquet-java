@@ -54,7 +54,7 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(MessageType messageType) {
-      TypeUtil.checkValidVectorSchema(messageType);
+      TypeUtil.checkValidFiniteVectorSchema(messageType);
       columnIO = new MessageColumnIO(requestedSchema, validating, createdBy);
       visitChildren(columnIO, messageType, requestedSchema);
       columnIO.setLevels();

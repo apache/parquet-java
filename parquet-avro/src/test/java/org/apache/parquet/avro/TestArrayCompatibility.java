@@ -1620,8 +1620,8 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testVectorWithoutAvroSchema(@TempDir java.nio.file.Path dir) throws IOException {
     MessageType schema = MessageTypeParser.parseMessageType("message VectorWithoutAvroSchema {"
-        + " required group v (VECTOR(2)) { repeated group list { required float element; } }"
-        + " optional group o (VECTOR(1)) { repeated group list { required float element; } } }");
+        + " required group v (FINITE_VECTOR(2)) { repeated group list { required float element; } }"
+        + " optional group o (FINITE_VECTOR(1)) { repeated group list { required float element; } } }");
     Path path = new Path(dir.resolve("vector.parquet").toUri());
     SimpleGroupFactory factory = new SimpleGroupFactory(schema);
     Group first = factory.newGroup();

@@ -48,7 +48,7 @@ public class ProtoRecordConverterTest {
   @Test
   public void testVectorRepeatedPrimitive(@TempDir java.nio.file.Path dir) throws IOException {
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group repeatedInt"
-        + " (VECTOR(3)) { repeated group list { required int32 element; } } }");
+        + " (FINITE_VECTOR(3)) { repeated group list { required int32 element; } } }");
     Path path = new Path(dir.resolve("vector.parquet").toUri());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
@@ -74,11 +74,11 @@ public class ProtoRecordConverterTest {
   @Test
   public void testVectorRejectsScalarTarget() {
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group optionalInt32"
-        + " (VECTOR(3)) { repeated group list { required int32 element; } } }");
+        + " (FINITE_VECTOR(3)) { repeated group list { required int32 element; } } }");
     assertThatThrownBy(() -> new ProtoRecordConverter<>(
             new Configuration(), SchemaConverterAllDatatypes.class, schema, Collections.emptyMap()))
         .isInstanceOf(IncompatibleSchemaModificationException.class)
-        .hasMessageContaining("VECTOR field optionalInt32 requires a repeated protobuf field");
+        .hasMessageContaining("FINITE_VECTOR field optionalInt32 requires a repeated protobuf field");
   }
 
   @Test

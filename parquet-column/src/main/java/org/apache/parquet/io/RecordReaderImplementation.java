@@ -34,8 +34,8 @@ import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
@@ -220,12 +220,12 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       this.primitiveField = fieldPath[fieldPath.length - 1];
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
       this.primitiveFieldIndex = indexFieldPath[indexFieldPath.length - 1];
-      VectorLogicalTypeAnnotation vector = null;
+      FiniteVectorLogicalTypeAnnotation vector = null;
       if (fieldPath.length >= 3) {
         LogicalTypeAnnotation logical =
             primitiveColumnIO.getParent().getParent().getType().getLogicalTypeAnnotation();
-        if (logical instanceof VectorLogicalTypeAnnotation) {
-          vector = (VectorLogicalTypeAnnotation) logical;
+        if (logical instanceof FiniteVectorLogicalTypeAnnotation) {
+          vector = (FiniteVectorLogicalTypeAnnotation) logical;
         }
       }
       this.vectorLength = vector == null ? 0 : vector.getNumElements();
@@ -282,7 +282,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
     private ParquetDecodingException invalidVector(String reason) {
       return new ParquetDecodingException(
-          "Invalid VECTOR data for " + Arrays.toString(fieldPath) + ": " + reason);
+          "Invalid FINITE_VECTOR data for " + Arrays.toString(fieldPath) + ": " + reason);
     }
 
     public int getDepth(int definitionLevel) {

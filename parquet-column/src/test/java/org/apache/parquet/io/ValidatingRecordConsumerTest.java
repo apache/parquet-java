@@ -41,8 +41,8 @@ public class ValidatingRecordConsumerTest {
   @ParameterizedTest
   @ValueSource(strings = {"v", "element"})
   public void testEmptyRequiredVectorField(String field) {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message m { required group v (VECTOR(2)) {" + " repeated group list { required float element; } } }");
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group v (FINITE_VECTOR(2)) {"
+        + " repeated group list { required float element; } } }");
     RecordConsumer delegate = mock(RecordConsumer.class);
     ValidatingRecordConsumer c = new ValidatingRecordConsumer(delegate, schema);
     c.startMessage();

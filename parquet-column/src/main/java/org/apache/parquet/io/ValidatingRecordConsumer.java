@@ -32,8 +32,8 @@ import java.util.Arrays;
 import java.util.Deque;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -55,7 +55,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   private Deque<Integer> fields = new ArrayDeque<>();
   private Deque<Integer> previousField = new ArrayDeque<>();
   private Deque<Integer> fieldValueCount = new ArrayDeque<>();
-  private VectorLogicalTypeAnnotation vectorType;
+  private FiniteVectorLogicalTypeAnnotation vectorType;
   private String vectorName;
   private long vectorCount;
   private int vectorDepth;
@@ -65,7 +65,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * @param schema   the schema to validate against
    */
   public ValidatingRecordConsumer(RecordConsumer delegate, MessageType schema) {
-    TypeUtil.checkValidVectorSchema(schema);
+    TypeUtil.checkValidFiniteVectorSchema(schema);
     this.delegate = delegate;
     this.types.push(schema);
   }
@@ -121,7 +121,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     if (fieldValueCount.peek() == 0
         && currentType.isRepetition(Repetition.REQUIRED)
-        && (currentType.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation
+        && (currentType.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation
             || vectorType != null && types.size() == vectorDepth + 1)) {
       throw new InvalidRecordException("required field is missing " + currentType);
     }
@@ -137,20 +137,20 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void startGroup() {
     Type child = types.peek().asGroupType().getType(fields.peek());
-    if (child.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation) {
+    if (child.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation) {
       int count = fieldValueCount.pop() + 1;
       fieldValueCount.push(count);
       if (count > 1) {
         throw new InvalidRecordException("repeated value when the type is not repeated in " + child);
       }
-      vectorType = (VectorLogicalTypeAnnotation) child.getLogicalTypeAnnotation();
+      vectorType = (FiniteVectorLogicalTypeAnnotation) child.getLogicalTypeAnnotation();
       vectorName = child.getName();
       vectorCount = 0;
       vectorDepth = types.size() + 1;
     } else if (vectorType != null && types.size() == vectorDepth) {
       vectorCount++;
       if (vectorCount > vectorType.getNumElements()) {
-        throw new InvalidRecordException("Invalid VECTOR length for " + vectorName + ": expected "
+        throw new InvalidRecordException("Invalid FINITE_VECTOR length for " + vectorName + ": expected "
             + vectorType.getNumElements() + ", got " + vectorCount);
       }
     }
@@ -166,7 +166,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void endGroup() {
     boolean endingVector = vectorType != null && types.size() == vectorDepth;
     if (endingVector && vectorCount != vectorType.getNumElements()) {
-      throw new InvalidRecordException("Invalid VECTOR length for " + vectorName + ": expected "
+      throw new InvalidRecordException("Invalid FINITE_VECTOR length for " + vectorName + ": expected "
           + vectorType.getNumElements() + ", got " + vectorCount);
     }
     delegate.endGroup();
@@ -278,10 +278,10 @@ public class ValidatingRecordConsumer extends RecordConsumer {
         && types.peek().asGroupType().getType(fields.peek()).getLogicalTypeAnnotation()
             instanceof Float16LogicalTypeAnnotation) {
       if (value.length() != 2) {
-        throw new InvalidRecordException("Invalid FLOAT16 VECTOR element length: " + value.length());
+        throw new InvalidRecordException("Invalid FLOAT16 FINITE_VECTOR element length: " + value.length());
       }
       if ((value.get2BytesLittleEndian() & 0x7c00) == 0x7c00) {
-        throw new InvalidRecordException("Non-finite VECTOR element in " + vectorName);
+        throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
       }
     }
     delegate.addBinary(value);
@@ -294,7 +294,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void addFloat(float value) {
     validate(FLOAT);
     if (vectorType != null && !Float.isFinite(value)) {
-      throw new InvalidRecordException("Non-finite VECTOR element in " + vectorName);
+      throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
     }
     delegate.addFloat(value);
   }
@@ -306,7 +306,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void addDouble(double value) {
     validate(DOUBLE);
     if (vectorType != null && !Double.isFinite(value)) {
-      throw new InvalidRecordException("Non-finite VECTOR element in " + vectorName);
+      throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
     }
     delegate.addDouble(value);
   }

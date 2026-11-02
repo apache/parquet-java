@@ -92,7 +92,7 @@ public class TestColumnIO {
   @MethodSource("invalidVectorLevels")
   public void testInvalidVectorLevels(int[] repetition, int[] definition, String reason) throws IOException {
     MessageType schema = MessageTypeParser.parseMessageType("message m { repeated group outer {"
-        + " required group v (VECTOR(2)) { repeated group list { required float element; } } } }");
+        + " required group v (FINITE_VECTOR(2)) { repeated group list { required float element; } } } }");
     ColumnDescriptor descriptor = schema.getColumnDescription(new String[] {"outer", "v", "list", "element"});
     HeapByteBufferAllocator allocator = new HeapByteBufferAllocator();
     try (MemPageStore pages = new MemPageStore(1);

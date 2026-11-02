@@ -70,7 +70,7 @@ public class TestSchemaConverter {
   public void testVectorAsList(String repetition) {
     String children = "repeated group list { required float element; }";
     MessageType vector = MessageTypeParser.parseMessageType(
-        "message m { " + repetition + " group v (VECTOR(5)) { " + children + " } }");
+        "message m { " + repetition + " group v (FINITE_VECTOR(5)) { " + children + " } }");
     MessageType list = MessageTypeParser.parseMessageType(
         "message m { " + repetition + " group v (LIST) { " + children + " } }");
     SchemaMapping mapping = converter.fromParquet(vector);

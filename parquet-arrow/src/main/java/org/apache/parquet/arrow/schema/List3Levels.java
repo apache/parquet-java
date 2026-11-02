@@ -44,7 +44,7 @@ class List3Levels {
   public List3Levels(GroupType list) {
     if (list.getLogicalTypeAnnotation() != LogicalTypeAnnotation.listType()
             && !(list.getLogicalTypeAnnotation()
-                instanceof LogicalTypeAnnotation.VectorLogicalTypeAnnotation)
+                instanceof LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation)
         || list.getFields().size() != 1) {
       throw new IllegalArgumentException("invalid list type: " + list);
     }

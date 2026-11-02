@@ -19,23 +19,23 @@
 package org.apache.parquet.schema;
 
 import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 
 public class TypeUtil {
-  public static boolean checkValidVectorSchema(Type type) {
-    boolean found = type.getLogicalTypeAnnotation() instanceof VectorLogicalTypeAnnotation;
+  public static boolean checkValidFiniteVectorSchema(Type type) {
+    boolean found = type.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation;
     if (found) {
       if (type.isPrimitive()) {
-        throw new InvalidSchemaException("Invalid VECTOR schema: " + type);
+        throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + type);
       }
       checkVector(type.asGroupType());
     } else if (!type.isPrimitive()) {
       for (Type child : type.asGroupType().getFields()) {
-        found |= checkValidVectorSchema(child);
+        found |= checkValidFiniteVectorSchema(child);
       }
     }
     return found;
@@ -43,24 +43,24 @@ public class TypeUtil {
 
   private static void checkVector(GroupType vector) {
     if (vector.getRepetition() == Repetition.REPEATED || vector.getFieldCount() != 1) {
-      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+      throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
     }
     Type listType = vector.getType(0);
     if (listType.isPrimitive()
         || !listType.getName().equals("list")
         || listType.getRepetition() != Repetition.REPEATED
         || listType.getLogicalTypeAnnotation() != null) {
-      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+      throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
     }
     GroupType list = listType.asGroupType();
     if (list.getFieldCount() != 1) {
-      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+      throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
     }
     Type elementType = list.getType(0);
     if (!elementType.isPrimitive()
         || !elementType.getName().equals("element")
         || elementType.getRepetition() != Repetition.REQUIRED) {
-      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+      throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
     }
     PrimitiveType element = elementType.asPrimitiveType();
     PrimitiveTypeName physical = element.getPrimitiveTypeName();
@@ -86,7 +86,7 @@ public class TypeUtil {
         allowed = false;
     }
     if (!allowed) {
-      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector);
+      throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
     }
     try {
       Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(physical, element.getRepetition());
@@ -98,11 +98,11 @@ public class TypeUtil {
       }
       builder.named(element.getName());
     } catch (IllegalArgumentException | IllegalStateException e) {
-      throw new InvalidSchemaException("Invalid VECTOR schema: " + vector, e);
+      throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector, e);
     }
   }
 
-  public static VectorLogicalTypeAnnotation getVectorType(GroupType schema, String[] path) {
+  public static FiniteVectorLogicalTypeAnnotation getFiniteVectorType(GroupType schema, String[] path) {
     if (path.length < 3) {
       return null;
     }
@@ -111,11 +111,13 @@ public class TypeUtil {
       group = group.getType(path[i]).asGroupType();
     }
     LogicalTypeAnnotation logical = group.getLogicalTypeAnnotation();
-    return logical instanceof VectorLogicalTypeAnnotation ? (VectorLogicalTypeAnnotation) logical : null;
+    return logical instanceof FiniteVectorLogicalTypeAnnotation
+        ? (FiniteVectorLogicalTypeAnnotation) logical
+        : null;
   }
 
   public static void checkValidWriteSchema(GroupType schema) {
-    checkValidVectorSchema(schema);
+    checkValidFiniteVectorSchema(schema);
     schema.accept(new TypeVisitor() {
       @Override
       public void visit(GroupType groupType) {

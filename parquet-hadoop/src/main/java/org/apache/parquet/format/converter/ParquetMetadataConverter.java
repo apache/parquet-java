@@ -134,8 +134,8 @@ import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.VectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -420,7 +420,7 @@ public class ParquetMetadataConverter {
     }
 
     @Override
-    public Optional<ConvertedType> visit(VectorLogicalTypeAnnotation vectorLogicalType) {
+    public Optional<ConvertedType> visit(FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
       return of(ConvertedType.LIST);
     }
 
@@ -512,8 +512,8 @@ public class ParquetMetadataConverter {
     }
 
     @Override
-    public Optional<LogicalType> visit(VectorLogicalTypeAnnotation vectorLogicalType) {
-      return of(LogicalTypes.VECTOR(vectorLogicalType.getNumElements()));
+    public Optional<LogicalType> visit(FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
+      return of(LogicalTypes.FINITE_VECTOR(vectorLogicalType.getNumElements()));
     }
 
     @Override
@@ -1346,7 +1346,8 @@ public class ParquetMetadataConverter {
       case ENUM -> LogicalTypeAnnotation.enumType();
       case JSON -> LogicalTypeAnnotation.jsonType();
       case LIST -> LogicalTypeAnnotation.listType();
-      case VECTOR -> LogicalTypeAnnotation.vectorType(type.getVECTOR().getNum_elements());
+      case FINITE__VECTOR -> LogicalTypeAnnotation.finiteVectorType(
+          type.getFINITE_VECTOR().getNum_elements());
       case TIME -> {
         TimeType time = type.getTIME();
         yield LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
@@ -2031,8 +2032,8 @@ public class ParquetMetadataConverter {
   MessageType fromParquetSchema(List<SchemaElement> schema, List<ColumnOrder> columnOrders) {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
-    if (root.isSetLogicalType() && root.logicalType.isSetVECTOR()) {
-      throw new ParquetDecodingException("Invalid VECTOR metadata for " + root.name);
+    if (root.isSetLogicalType() && root.logicalType.isSetFINITE_VECTOR()) {
+      throw new ParquetDecodingException("Invalid FINITE_VECTOR metadata for " + root.name);
     }
     Types.MessageTypeBuilder builder = Types.buildMessage();
     if (root.isSetField_id()) {
@@ -2042,9 +2043,9 @@ public class ParquetMetadataConverter {
     buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
     MessageType messageType = builder.named(root.name);
     try {
-      TypeUtil.checkValidVectorSchema(messageType);
+      TypeUtil.checkValidFiniteVectorSchema(messageType);
     } catch (InvalidSchemaException e) {
-      throw new ParquetDecodingException("Invalid VECTOR schema in file metadata", e);
+      throw new ParquetDecodingException("Invalid FINITE_VECTOR schema in file metadata", e);
     }
     return messageType;
   }
@@ -2057,12 +2058,12 @@ public class ParquetMetadataConverter {
     for (int i = 0; i < childrenCount; i++) {
       SchemaElement schemaElement = schema.next();
       if (schemaElement.isSetLogicalType()
-          && schemaElement.logicalType.isSetVECTOR()
+          && schemaElement.logicalType.isSetFINITE_VECTOR()
           && (schemaElement.type != null
               || schemaElement.converted_type != ConvertedType.LIST
-              || !schemaElement.logicalType.getVECTOR().isSetNum_elements()
-              || schemaElement.logicalType.getVECTOR().getNum_elements() <= 0)) {
-        throw new ParquetDecodingException("Invalid VECTOR metadata for " + schemaElement.name);
+              || !schemaElement.logicalType.getFINITE_VECTOR().isSetNum_elements()
+              || schemaElement.logicalType.getFINITE_VECTOR().getNum_elements() <= 0)) {
+        throw new ParquetDecodingException("Invalid FINITE_VECTOR metadata for " + schemaElement.name);
       }
 
       // Create Parquet Type.

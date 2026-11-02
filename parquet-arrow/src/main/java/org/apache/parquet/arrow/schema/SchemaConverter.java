@@ -489,8 +489,8 @@ public class SchemaConverter {
 
             @Override
             public Optional<TypeMapping> visit(
-                LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
-              TypeUtil.checkValidVectorSchema(type);
+                LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
+              TypeUtil.checkValidFiniteVectorSchema(type);
               return visit(LogicalTypeAnnotation.listType());
             }
 

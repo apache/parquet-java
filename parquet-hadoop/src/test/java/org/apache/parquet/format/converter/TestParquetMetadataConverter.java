@@ -153,7 +153,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class TestParquetMetadataConverter {
   private static MessageType vectorSchema() {
-    return parseMessageType("message m { required group v (VECTOR(5)) { repeated group list {"
+    return parseMessageType("message m { required group v (FINITE_VECTOR(5)) { repeated group list {"
         + " required float element columnorder(TYPE_DEFINED_ORDER); } } }");
   }
 
@@ -161,40 +161,40 @@ public class TestParquetMetadataConverter {
     return Stream.of(
         Arguments.of(
             "missing length",
-            (Consumer<List<SchemaElement>>)
-                wire -> wire.get(1).getLogicalType().getVECTOR().unsetNum_elements(),
-            "Invalid VECTOR metadata for v"),
+            (Consumer<List<SchemaElement>>) wire ->
+                wire.get(1).getLogicalType().getFINITE_VECTOR().unsetNum_elements(),
+            "Invalid FINITE_VECTOR metadata for v"),
         Arguments.of(
             "zero length",
-            (Consumer<List<SchemaElement>>)
-                wire -> wire.get(1).getLogicalType().getVECTOR().setNum_elements(0),
-            "Invalid VECTOR metadata for v"),
+            (Consumer<List<SchemaElement>>) wire ->
+                wire.get(1).getLogicalType().getFINITE_VECTOR().setNum_elements(0),
+            "Invalid FINITE_VECTOR metadata for v"),
         Arguments.of(
             "negative length",
-            (Consumer<List<SchemaElement>>)
-                wire -> wire.get(1).getLogicalType().getVECTOR().setNum_elements(-1),
-            "Invalid VECTOR metadata for v"),
+            (Consumer<List<SchemaElement>>) wire ->
+                wire.get(1).getLogicalType().getFINITE_VECTOR().setNum_elements(-1),
+            "Invalid FINITE_VECTOR metadata for v"),
         Arguments.of(
             "missing converted",
             (Consumer<List<SchemaElement>>) wire -> wire.get(1).unsetConverted_type(),
-            "Invalid VECTOR metadata for v"),
+            "Invalid FINITE_VECTOR metadata for v"),
         Arguments.of(
             "wrong converted",
             (Consumer<List<SchemaElement>>) wire -> wire.get(1).setConverted_type(ConvertedType.MAP),
-            "Invalid VECTOR metadata for v"),
+            "Invalid FINITE_VECTOR metadata for v"),
         Arguments.of(
             "primitive outer",
             (Consumer<List<SchemaElement>>) wire -> wire.get(1).setType(Type.FLOAT),
-            "Invalid VECTOR metadata for v"),
+            "Invalid FINITE_VECTOR metadata for v"),
         Arguments.of(
             "root",
-            (Consumer<List<SchemaElement>>)
-                wire -> wire.get(0).setLogicalType(org.apache.parquet.format.LogicalTypes.VECTOR(5)),
-            "Invalid VECTOR metadata for m"),
+            (Consumer<List<SchemaElement>>) wire ->
+                wire.get(0).setLogicalType(org.apache.parquet.format.LogicalTypes.FINITE_VECTOR(5)),
+            "Invalid FINITE_VECTOR metadata for m"),
         Arguments.of(
             "element name",
             (Consumer<List<SchemaElement>>) wire -> wire.get(3).setName("item"),
-            "Invalid VECTOR schema in file metadata"));
+            "Invalid FINITE_VECTOR schema in file metadata"));
   }
 
   @ParameterizedTest(name = "{0}")

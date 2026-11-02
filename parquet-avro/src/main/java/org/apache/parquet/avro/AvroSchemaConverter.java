@@ -472,7 +472,7 @@ public class AvroSchemaConverter {
                   throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
                 }
                 if (!(logicalTypeAnnotation
-                        instanceof LogicalTypeAnnotation.VectorLogicalTypeAnnotation)
+                        instanceof LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation)
                     && isElementType(repeatedType, parquetGroupType.getName())) {
                   // repeated element types are always required
                   return of(Schema.createArray(convertField(repeatedType, names)));
@@ -489,8 +489,8 @@ public class AvroSchemaConverter {
 
               @Override
               public Optional<Schema> visit(
-                  LogicalTypeAnnotation.VectorLogicalTypeAnnotation vectorLogicalType) {
-                TypeUtil.checkValidVectorSchema(parquetGroupType);
+                  LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
+                TypeUtil.checkValidFiniteVectorSchema(parquetGroupType);
                 return visit(LogicalTypeAnnotation.listType());
               }
 
