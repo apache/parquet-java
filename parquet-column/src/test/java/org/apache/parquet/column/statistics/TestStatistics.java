@@ -36,6 +36,9 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Offset.offset;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.nio.ByteBuffer;
 import java.util.Locale;
@@ -525,11 +528,15 @@ public class TestStatistics {
   public void testBinaryMinMaxForRepeatedSingleConstantInstance() {
     BinaryStatistics stats = new BinaryStatistics();
 
-    Binary value = Binary.fromConstantByteArray(new byte[] {7});
+    // A spy records each call. A comparison calls methods on the value, so no calls means no comparison.
+    Binary value = spy(Binary.fromConstantByteArray(new byte[] {7}));
     stats.updateStats(value);
+    clearInvocations(value);
+
     stats.updateStats(value);
     stats.updateStats(value);
 
+    verifyNoInteractions(value);
     assertThat(stats.genericGetMin()).isSameAs(value);
     assertThat(stats.genericGetMax()).isSameAs(value);
   }
@@ -538,17 +545,17 @@ public class TestStatistics {
   public void testBinaryMinMaxKeepsBoundInstancesForConstantValues() {
     BinaryStatistics stats = new BinaryStatistics();
 
-    Binary low = Binary.fromConstantByteArray(new byte[] {10});
-    Binary high = Binary.fromConstantByteArray(new byte[] {30});
+    Binary low = spy(Binary.fromConstantByteArray(new byte[] {10}));
+    Binary high = spy(Binary.fromConstantByteArray(new byte[] {30}));
     stats.updateStats(low);
     stats.updateStats(high);
-    // The bounds keep the constant instances. An update with a bound instance does not change the bounds.
+    // The bounds keep the constant instances. An update with a bound instance does not compare the values.
     assertThat(stats.genericGetMin()).isSameAs(low);
     assertThat(stats.genericGetMax()).isSameAs(high);
+    clearInvocations(low, high);
     stats.updateStats(low);
-    assertThat(stats.genericGetMin()).isSameAs(low);
-    assertThat(stats.genericGetMax()).isSameAs(high);
     stats.updateStats(high);
+    verifyNoInteractions(low, high);
     assertThat(stats.genericGetMin()).isSameAs(low);
     assertThat(stats.genericGetMax()).isSameAs(high);
     stats.updateStats(Binary.fromConstantByteArray(new byte[] {20}));
