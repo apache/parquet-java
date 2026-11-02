@@ -84,12 +84,12 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
       State currentState = getState(0);
       do {
         ColumnReader columnReader = currentState.column;
-        int d = columnReader.getCurrentDefinitionLevel();
-        currentState.validateVector(d);
+        int depth = columnReader.getCurrentDefinitionLevel();
+        currentState.validateVector(depth);
 
         // currentLevel = depth + 1 at this point
         // set the current value
-        if (d >= currentState.maxDefinitionLevel) {
+        if (depth >= currentState.maxDefinitionLevel) {
           columnReader.skip();
         }
         columnReader.consume();

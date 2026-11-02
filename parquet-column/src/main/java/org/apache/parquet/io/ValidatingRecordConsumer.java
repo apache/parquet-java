@@ -38,7 +38,6 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
-import org.apache.parquet.schema.TypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +64,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * @param schema   the schema to validate against
    */
   public ValidatingRecordConsumer(RecordConsumer delegate, MessageType schema) {
-    TypeUtil.checkValidFiniteVectorSchema(schema);
     this.delegate = delegate;
     this.types.push(schema);
   }

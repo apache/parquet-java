@@ -281,9 +281,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       return null;
     }
     GroupType group = type.asGroupType();
-    if (group.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation
-        || group.getLogicalTypeAnnotation()
-            instanceof LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation) {
+    LogicalTypeAnnotation logicalType = group.getLogicalTypeAnnotation();
+    if (logicalType instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
       if (group.isRepetition(Type.Repetition.REPEATED) || group.getFieldCount() != 1) {
         return false;
       }

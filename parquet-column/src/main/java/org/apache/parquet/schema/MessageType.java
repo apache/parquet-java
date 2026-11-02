@@ -34,6 +34,7 @@ public final class MessageType extends GroupType {
    */
   public MessageType(String name, Type... fields) {
     super(Repetition.REPEATED, name, fields);
+    TypeUtil.checkValidFiniteVectorSchema(this);
   }
 
   /**
@@ -42,6 +43,7 @@ public final class MessageType extends GroupType {
    */
   public MessageType(String name, List<Type> fields) {
     super(Repetition.REPEATED, name, fields);
+    TypeUtil.checkValidFiniteVectorSchema(this);
   }
 
   /**

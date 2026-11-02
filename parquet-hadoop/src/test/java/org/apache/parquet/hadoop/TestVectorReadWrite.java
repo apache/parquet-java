@@ -159,10 +159,12 @@ public class TestVectorReadWrite {
     if (version == WriterVersion.PARQUET_1_0 && !dictionary) {
       Path legacy = new Path(tempDir.resolve("legacy-list.parquet").toUri());
       Files.copy(java.nio.file.Path.of(path.toUri()), java.nio.file.Path.of(legacy.toUri()));
-      rewriteFooter(legacy, footer -> footer.getSchema().stream()
-          .filter(element -> element.isSetLogicalType()
-              && element.getLogicalType().isSetFINITE_VECTOR())
-          .forEach(org.apache.parquet.format.SchemaElement::unsetLogicalType));
+      rewriteFooter(
+          legacy,
+          footer -> footer.getSchema().stream()
+              .filter(element -> element.isSetLogicalType()
+                  && element.getLogicalType().isSetFINITE_VECTOR())
+              .forEach(org.apache.parquet.format.SchemaElement::unsetLogicalType));
       List<org.apache.parquet.format.SchemaElement> vectors = readFooter(legacy).getSchema().stream()
           .filter(element -> element.getConverted_type() == org.apache.parquet.format.ConvertedType.LIST)
           .toList();
@@ -333,6 +335,13 @@ public class TestVectorReadWrite {
     v.addGroup("list").append("element", 1.0f);
     v.addGroup("list").append("element", 2.0f);
     assertInvalidWrite(missingId, missingRow, "required field is missing required int32 id");
+
+    MessageType missingElement = schema("required", 2, false);
+    Group missingElementRow = new SimpleGroupFactory(missingElement).newGroup();
+    Group missingElementVector = missingElementRow.addGroup("v");
+    missingElementVector.addGroup("list").append("element", 1.0f);
+    missingElementVector.addGroup("list");
+    assertInvalidWrite(missingElement, missingElementRow, "required field is missing required float element");
 
     MessageType duplicate = schema("required", 2, false);
     Group duplicateRow = new SimpleGroupFactory(duplicate).newGroup();

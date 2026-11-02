@@ -41,6 +41,16 @@ public class TypeUtil {
     return found;
   }
 
+  public static boolean hasFiniteVector(Type type) {
+    if (type.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation) return true;
+    if (!type.isPrimitive()) {
+      for (Type child : type.asGroupType().getFields()) {
+        if (hasFiniteVector(child)) return true;
+      }
+    }
+    return false;
+  }
+
   private static void checkVector(GroupType vector) {
     if (vector.getRepetition() == Repetition.REPEATED || vector.getFieldCount() != 1) {
       throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
@@ -65,26 +75,16 @@ public class TypeUtil {
     PrimitiveType element = elementType.asPrimitiveType();
     PrimitiveTypeName physical = element.getPrimitiveTypeName();
     LogicalTypeAnnotation logical = element.getLogicalTypeAnnotation();
-    boolean allowed;
-    switch (physical) {
-      case BOOLEAN:
-      case FLOAT:
-      case DOUBLE:
-        allowed = logical == null;
-        break;
-      case INT32:
-      case INT64:
-        allowed = logical == null
+    boolean allowed = switch (physical) {
+      case BOOLEAN, FLOAT, DOUBLE -> logical == null;
+      case INT32, INT64 ->
+        logical == null
             || logical instanceof IntLogicalTypeAnnotation
             || logical instanceof DecimalLogicalTypeAnnotation;
-        break;
-      case FIXED_LEN_BYTE_ARRAY:
-        allowed = logical instanceof Float16LogicalTypeAnnotation
-            || logical instanceof DecimalLogicalTypeAnnotation;
-        break;
-      default:
-        allowed = false;
-    }
+      case FIXED_LEN_BYTE_ARRAY ->
+        logical instanceof Float16LogicalTypeAnnotation || logical instanceof DecimalLogicalTypeAnnotation;
+      default -> false;
+    };
     if (!allowed) {
       throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
     }
@@ -117,7 +117,6 @@ public class TypeUtil {
   }
 
   public static void checkValidWriteSchema(GroupType schema) {
-    checkValidFiniteVectorSchema(schema);
     schema.accept(new TypeVisitor() {
       @Override
       public void visit(GroupType groupType) {

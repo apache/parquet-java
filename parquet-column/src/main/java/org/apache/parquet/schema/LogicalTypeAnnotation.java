@@ -514,7 +514,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof ListLogicalTypeAnnotation;
+      return obj != null && getClass() == obj.getClass();
     }
 
     @Override
@@ -524,7 +524,7 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
-  public static class FiniteVectorLogicalTypeAnnotation extends LogicalTypeAnnotation {
+  public static class FiniteVectorLogicalTypeAnnotation extends ListLogicalTypeAnnotation {
     private final int numElements;
 
     private FiniteVectorLogicalTypeAnnotation(int numElements) {

@@ -67,20 +67,21 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class TestSchemaConverter {
   @ParameterizedTest
   @ValueSource(strings = {"required", "optional"})
-  public void testVectorAsList(String repetition) {
+  public void testVectorAsFixedSizeList(String repetition) {
     String children = "repeated group list { required float element; }";
     MessageType vector = MessageTypeParser.parseMessageType(
         "message m { " + repetition + " group v (FINITE_VECTOR(5)) { " + children + " } }");
-    MessageType list = MessageTypeParser.parseMessageType(
-        "message m { " + repetition + " group v (LIST) { " + children + " } }");
     SchemaMapping mapping = converter.fromParquet(vector);
-    assertThat(mapping.getArrowSchema())
-        .isEqualTo(converter.fromParquet(list).getArrowSchema());
     Field field = mapping.getArrowSchema().findField("v");
-    assertThat(field.getType()).isEqualTo(new ArrowType.List());
+    assertThat(field.getType()).isEqualTo(new ArrowType.FixedSizeList(5));
+    assertThat(field.isNullable()).isEqualTo(repetition.equals("optional"));
     assertThat(field.getChildren()).hasSize(1);
     assertThat(field.getChildren().get(0).getType())
         .isEqualTo(new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE));
+    assertThat(field.getChildren().get(0).isNullable()).isFalse();
+    assertThat(mapping.getParquetSchema()).isEqualTo(vector);
+    assertThat(converter.map(mapping.getArrowSchema(), vector).getParquetSchema())
+        .isEqualTo(vector);
   }
 
   private static Field field(String name, boolean nullable, ArrowType type, Field... children) {

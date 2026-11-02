@@ -1651,6 +1651,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         field("v", array(primitive(Schema.Type.FLOAT))),
         optionalField("o", array(primitive(Schema.Type.FLOAT))));
     assertThat(new AvroSchemaConverter().convert(schema)).isEqualTo(expectedSchema);
+    for (boolean assumeRepeatedIsListElement : new boolean[] {true, false}) {
+      assertThat(new AvroSchemaConverter(assumeRepeatedIsListElement, false).convert(schema))
+          .isEqualTo(expectedSchema);
+    }
     try (AvroParquetReader<GenericRecord> reader = autoDetectReader(path)) {
       assertReaderContains(
           reader,

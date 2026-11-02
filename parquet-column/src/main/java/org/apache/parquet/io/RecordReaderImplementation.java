@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
@@ -35,7 +34,6 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
@@ -196,9 +194,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     private Case[][][] caseLookup;
     private List<Case> definedCases;
     private List<Case> undefinedCases;
-    private final int vectorLength;
-    private final boolean vectorFloat16;
-    private long vectorCount;
+    private final FiniteVectorValidator vectorValidator;
 
     private State(
         int id,
@@ -228,61 +224,15 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
           vector = (FiniteVectorLogicalTypeAnnotation) logical;
         }
       }
-      this.vectorLength = vector == null ? 0 : vector.getNumElements();
-      this.vectorFloat16 = vector != null
-          && primitiveColumnIO.getType().getLogicalTypeAnnotation() instanceof Float16LogicalTypeAnnotation;
+      this.vectorValidator = vector == null ? null : new FiniteVectorValidator(primitiveColumnIO, column, vector);
     }
 
     void validateVector(int d) {
-      if (vectorLength == 0) return;
-      int r = column.getCurrentRepetitionLevel();
-      if (d < 0 || d > maxDefinitionLevel || r < 0 || r > maxRepetitionLevel) {
-        throw invalidVector("invalid levels");
-      }
-      if (vectorCount == 0 && r == maxRepetitionLevel) {
-        throw invalidVector("invalid continuation");
-      }
-      if (d < maxDefinitionLevel) {
-        if (vectorCount > 0) throw invalidVector("null within vector");
-        if (d == maxDefinitionLevel - 1) throw invalidVector("empty vector");
-        return;
-      }
-      vectorCount++;
-      if (vectorCount > vectorLength) {
-        throw invalidVector("expected " + vectorLength + " elements, got " + vectorCount);
-      }
-      if (primitive == PrimitiveTypeName.FLOAT && !Float.isFinite(column.getFloat())
-          || primitive == PrimitiveTypeName.DOUBLE && !Double.isFinite(column.getDouble())) {
-        throw invalidVector("non-finite element");
-      }
-      if (vectorFloat16) {
-        Binary value = column.getBinary();
-        if (value.length() != 2) {
-          throw invalidVector("invalid FLOAT16 element length: " + value.length());
-        }
-        if ((value.get2BytesLittleEndian() & 0x7c00) == 0x7c00) {
-          throw invalidVector("non-finite element");
-        }
-      }
+      if (vectorValidator != null) vectorValidator.validate(d);
     }
 
     void endVector(int nextR) {
-      if (vectorLength == 0) return;
-      if (nextR < 0 || nextR > maxRepetitionLevel) throw invalidVector("invalid levels");
-      if (nextR == maxRepetitionLevel && vectorCount == 0) {
-        throw invalidVector("null within vector");
-      }
-      if (nextR < maxRepetitionLevel && vectorCount > 0) {
-        if (vectorCount != vectorLength) {
-          throw invalidVector("expected " + vectorLength + " elements, got " + vectorCount);
-        }
-        vectorCount = 0;
-      }
-    }
-
-    private ParquetDecodingException invalidVector(String reason) {
-      return new ParquetDecodingException(
-          "Invalid FINITE_VECTOR data for " + Arrays.toString(fieldPath) + ": " + reason);
+      if (vectorValidator != null) vectorValidator.end(nextR);
     }
 
     public int getDepth(int definitionLevel) {

@@ -24,7 +24,6 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.schema.TypeVisitor;
 
 /**
@@ -54,7 +53,6 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(MessageType messageType) {
-      TypeUtil.checkValidFiniteVectorSchema(messageType);
       columnIO = new MessageColumnIO(requestedSchema, validating, createdBy);
       visitChildren(columnIO, messageType, requestedSchema);
       columnIO.setLevels();

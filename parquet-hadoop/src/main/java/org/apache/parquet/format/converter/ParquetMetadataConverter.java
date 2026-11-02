@@ -141,7 +141,6 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.schema.TypeVisitor;
 import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
@@ -1346,8 +1345,8 @@ public class ParquetMetadataConverter {
       case ENUM -> LogicalTypeAnnotation.enumType();
       case JSON -> LogicalTypeAnnotation.jsonType();
       case LIST -> LogicalTypeAnnotation.listType();
-      case FINITE__VECTOR -> LogicalTypeAnnotation.finiteVectorType(
-          type.getFINITE_VECTOR().getNum_elements());
+      case FINITE__VECTOR ->
+        LogicalTypeAnnotation.finiteVectorType(type.getFINITE_VECTOR().getNum_elements());
       case TIME -> {
         TimeType time = type.getTIME();
         yield LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
@@ -2041,13 +2040,11 @@ public class ParquetMetadataConverter {
     }
     Iterator<ColumnOrder> columnOrderIterator = columnOrders == null ? null : columnOrders.iterator();
     buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
-    MessageType messageType = builder.named(root.name);
     try {
-      TypeUtil.checkValidFiniteVectorSchema(messageType);
+      return builder.named(root.name);
     } catch (InvalidSchemaException e) {
       throw new ParquetDecodingException("Invalid FINITE_VECTOR schema in file metadata", e);
     }
-    return messageType;
   }
 
   private void buildChildren(
