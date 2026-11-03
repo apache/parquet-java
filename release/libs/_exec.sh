@@ -70,6 +70,29 @@ function require_env {
   return 0
 }
 
+# Fails when the working tree has uncommitted changes or untracked files.
+# The source tarball is built from the RC tag, but `mvn deploy` packages the
+# working tree into the source-release zip, so leftovers such as a Thrift build
+# would ship in Nexus without being part of the tagged commit.
+function require_clean_worktree {
+  local status
+  if ! status=$(git status --porcelain); then
+    print_error "Could not read the working tree status"
+    return 1
+  fi
+
+  if [[ -n "${status}" ]]; then
+    print_error "Working tree is not clean; refusing to release from it:"
+    local line
+    while IFS= read -r line; do
+      print_error "  ${line}"
+    done <<< "${status}"
+    return 1
+  fi
+
+  return 0
+}
+
 function exec_process {
   local redacted
   redacted=$(_redact_secrets "$@")

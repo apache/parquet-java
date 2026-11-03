@@ -31,6 +31,11 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
+# Build Thrift outside the checkout. The release workflow runs this script in
+# the tree it releases, and `mvn deploy -Papache-release` packages that working
+# tree into the source-release zip, so a Thrift build here would ship with it.
+thrift_build_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/thrift-build.XXXXXX")"
+pushd "$thrift_build_dir" > /dev/null
 for attempt in 1 2 3; do
   if wget -nv -O- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -; then
     break
@@ -45,7 +50,7 @@ cd thrift-${THRIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install
-cd ..
+popd > /dev/null
 branch_specific_script="dev/ci-before_install-${CI_TARGET_BRANCH}.sh"
 if [[ -e "$branch_specific_script" ]]
 then

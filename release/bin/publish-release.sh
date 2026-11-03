@@ -320,7 +320,8 @@ exec_process ./mvnw -pl . versions:set-property \
   -Dproperty=previous.version -DnewVersion="${version}" \
   --batch-mode -q
 
-exec_process git add -A
+# Stage tracked files only: the version bump only edits existing POMs.
+exec_process git add -u
 exec_process git commit -m "Prepare for next development iteration (${next_snapshot})"
 
 # Refuse to push the version bump to anything that doesn't look like a
