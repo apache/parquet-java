@@ -24,7 +24,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableSet;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.List;
@@ -89,7 +88,7 @@ public class Main extends Configured implements Tool {
   @VisibleForTesting
   static final String DEFAULT_PROGRAM_NAME = "parquet";
 
-  private static Set<String> HELP_ARGS = ImmutableSet.of("-h", "-help", "--help", "help");
+  private static Set<String> HELP_ARGS = Set.of("-h", "-help", "--help", "help");
 
   private final Logger console;
   private final Help help;

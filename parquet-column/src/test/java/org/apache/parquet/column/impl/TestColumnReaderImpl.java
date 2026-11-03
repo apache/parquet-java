@@ -31,6 +31,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
@@ -44,6 +45,8 @@ import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class TestColumnReaderImpl {
 
@@ -186,6 +189,65 @@ public class TestColumnReaderImpl {
         });
 
     validateExpectedValuesAndCount(col, pageReader);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "required, PLAIN, RLE",
+    "required, RLE, PLAIN",
+    "required, PLAIN, PLAIN",
+    "required, RLE, RLE",
+    "optional, PLAIN, RLE",
+    "repeated, RLE, RLE"
+  })
+  public void testV1AbsentLevelEncodings(String repetition, Encoding rlEncoding, Encoding dlEncoding)
+      throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { " + repetition + " double foo; }");
+    ColumnDescriptor col = schema.getColumns().get(0);
+    MemPageWriter pageWriter = new MemPageWriter();
+    ColumnWriterV1 writer = new ColumnWriterV1(
+        col,
+        pageWriter,
+        ParquetProperties.builder()
+            .withWriterVersion(PARQUET_1_0)
+            .withDictionaryEncoding(false)
+            .build());
+    for (int i = 0; i < 4; i++) {
+      writer.write(12.5 + i, (i % 2) * col.getMaxRepetitionLevel(), col.getMaxDefinitionLevel());
+      if (i % 2 == 1) {
+        writer.writePage();
+      }
+    }
+    writer.finalizeColumnChunk();
+    writer.close();
+    assertThat(pageWriter.getPages()).hasSize(2);
+    List<DataPage> pages = new ArrayList<>();
+    for (DataPage page : pageWriter.getPages()) {
+      DataPageV1 v1 = (DataPageV1) page;
+      assertThat(v1.getValueEncoding()).isEqualTo(Encoding.PLAIN);
+      if (col.getMaxDefinitionLevel() == 0) {
+        assertThat(v1.getBytes().size()).isEqualTo(2 * Double.BYTES);
+      }
+      pages.add(new DataPageV1(
+          v1.getBytes(),
+          v1.getValueCount(),
+          v1.getUncompressedSize(),
+          v1.getStatistics(),
+          rlEncoding,
+          dlEncoding,
+          v1.getValueEncoding()));
+    }
+    ColumnReader reader = new ColumnReaderImpl(
+        col,
+        new MemPageReader(4, pages.iterator(), null),
+        new PrimitiveConverter() {},
+        VersionParser.parse(Version.FULL_VERSION));
+    for (int i = 0; i < 4; i++) {
+      assertThat(reader.getCurrentRepetitionLevel()).isEqualTo((i % 2) * col.getMaxRepetitionLevel());
+      assertThat(reader.getCurrentDefinitionLevel()).isEqualTo(col.getMaxDefinitionLevel());
+      assertThat(reader.getDouble()).isEqualTo(12.5 + i);
+      reader.consume();
+    }
   }
 
   @Test

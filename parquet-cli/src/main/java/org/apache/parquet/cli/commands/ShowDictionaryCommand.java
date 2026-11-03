@@ -21,10 +21,11 @@ package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.Util;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -66,7 +67,7 @@ public class ShowDictionaryCommand extends BaseCommand {
       MessageType schema = reader.getFileMetaData().getSchema();
       ColumnDescriptor descriptor = Util.descriptor(column, schema);
       PrimitiveType type = Util.primitive(column, schema);
-      Preconditions.checkNotNull(type);
+      Objects.requireNonNull(type);
 
       DictionaryPageReadStore dictionaryReader;
       int rowGroup = 0;
@@ -129,7 +130,6 @@ public class ShowDictionaryCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Show the dictionary for column 'col' from a Parquet file", "-c col sample.parquet");
+    return Arrays.asList("# Show the dictionary for column 'col' from a Parquet file", "-c col sample.parquet");
   }
 }

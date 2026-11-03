@@ -29,14 +29,15 @@ import static org.apache.parquet.cli.Util.shortCodec;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.text.TextStringBuilder;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.rawpages.RawPagesReader;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -98,7 +99,7 @@ public class ShowPagesCommand extends BaseCommand {
     String source = targets.get(0);
     try (ParquetFileReader reader = createParquetFileReader(source)) {
       MessageType schema = reader.getFileMetaData().getSchema();
-      Map<ColumnDescriptor, PrimitiveType> columns = Maps.newLinkedHashMap();
+      Map<ColumnDescriptor, PrimitiveType> columns = new LinkedHashMap<>();
       if (this.columns == null || this.columns.isEmpty()) {
         for (ColumnDescriptor descriptor : schema.getColumns()) {
           columns.put(descriptor, primitive(schema, descriptor.getPath()));
@@ -112,7 +113,7 @@ public class ShowPagesCommand extends BaseCommand {
       CompressionCodecName codec =
           reader.getRowGroups().get(0).getColumns().get(0).getCodec();
       // accumulate formatted lines to print by column
-      Map<String, List<String>> formatted = Maps.newLinkedHashMap();
+      Map<String, List<String>> formatted = new LinkedHashMap<>();
       PageFormatter formatter = new PageFormatter(reader);
       PageReadStore pageStore;
       int rowGroupNum = 0;
@@ -120,7 +121,7 @@ public class ShowPagesCommand extends BaseCommand {
         for (ColumnDescriptor descriptor : columns.keySet()) {
           List<String> lines = formatted.get(columnName(descriptor));
           if (lines == null) {
-            lines = Lists.newArrayList();
+            lines = new ArrayList<>();
             formatted.put(columnName(descriptor), lines);
           }
 
@@ -157,7 +158,7 @@ public class ShowPagesCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList("# Show pages for column 'col' from a Parquet file", "-c col sample.parquet");
+    return Arrays.asList("# Show pages for column 'col' from a Parquet file", "-c col sample.parquet");
   }
 
   private class PageFormatter implements DataPage.Visitor<String> {

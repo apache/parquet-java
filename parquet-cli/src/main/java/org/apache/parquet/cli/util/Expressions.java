@@ -19,9 +19,8 @@
 
 package org.apache.parquet.cli.util;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -30,12 +29,13 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
+import org.apache.parquet.Preconditions;
 
 public class Expressions {
   private static final Pattern NUMERIC_RE = Pattern.compile("^\\d+$");
 
   public static Object select(Schema schema, Object datum, String path) {
-    return select(schema, datum, Lists.newArrayList(parse(path)));
+    return select(schema, datum, new ArrayList<>(Arrays.asList(parse(path))));
   }
 
   @SuppressWarnings("unchecked")
@@ -100,14 +100,14 @@ public class Expressions {
    * @return a filtered schema
    */
   public static Schema filterSchema(Schema schema, String... fieldPaths) {
-    return filterSchema(schema, Lists.newArrayList(fieldPaths));
+    return filterSchema(schema, new ArrayList<>(Arrays.asList(fieldPaths)));
   }
 
   public static Schema filterSchema(Schema schema, List<String> fieldPaths) {
     if (fieldPaths == null) {
       return schema;
     }
-    List<PathExpr> paths = merge(Lists.newArrayList(fieldPaths));
+    List<PathExpr> paths = merge(new ArrayList<>(fieldPaths));
     return filter(schema, paths);
   }
 
@@ -182,7 +182,7 @@ public class Expressions {
   }
 
   private static List<PathExpr> merge(List<String> fields) {
-    List<PathExpr> paths = Lists.newArrayList();
+    List<PathExpr> paths = new ArrayList<>();
     for (String field : fields) {
       merge(paths, parse(field));
     }
@@ -212,7 +212,7 @@ public class Expressions {
 
     switch (schema.getType()) {
       case RECORD:
-        List<Schema.Field> fields = Lists.newArrayList();
+        List<Schema.Field> fields = new ArrayList<>();
         for (PathExpr expr : exprs) {
           Schema.Field field = schema.getField(expr.value);
           Preconditions.checkArgument(
@@ -237,7 +237,7 @@ public class Expressions {
           }
         }
 
-        List<Schema> schemas = Lists.newArrayList();
+        List<Schema> schemas = new ArrayList<>();
         for (PathExpr expr : exprs) {
           schemas.add(filter(schema, expr));
         }
@@ -332,7 +332,7 @@ public class Expressions {
     }
 
     static PathExpr deref(String value, PathExpr child) {
-      return new PathExpr(Type.DEREF, value, Lists.newArrayList(child));
+      return new PathExpr(Type.DEREF, value, new ArrayList<>(Arrays.asList(child)));
     }
 
     static PathExpr field(String value) {
@@ -340,7 +340,7 @@ public class Expressions {
     }
 
     static PathExpr field(String value, PathExpr child) {
-      return new PathExpr(Type.FIELD, value, Lists.newArrayList(child));
+      return new PathExpr(Type.FIELD, value, new ArrayList<>(Arrays.asList(child)));
     }
 
     private final Type type;
@@ -350,7 +350,7 @@ public class Expressions {
     PathExpr(Type type, String value) {
       this.type = type;
       this.value = value;
-      this.children = Lists.newArrayList();
+      this.children = new ArrayList<>();
     }
 
     PathExpr(Type type, String value, List<PathExpr> children) {
@@ -381,11 +381,7 @@ public class Expressions {
 
     @Override
     public String toString() {
-      return MoreObjects.toStringHelper(this)
-          .add("type", type)
-          .add("value", value)
-          .add("children", children)
-          .toString();
+      return "PathExpr{type=" + type + ", value=" + value + ", children=" + children + "}";
     }
   }
 }

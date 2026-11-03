@@ -23,15 +23,15 @@ import static org.apache.parquet.cli.Util.humanReadable;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.commons.text.TextStringBuilder;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -142,7 +142,7 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Show size statistics for a Parquet file",
         "sample.parquet",
         "# Show size statistics for selected columns",

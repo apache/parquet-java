@@ -382,13 +382,71 @@ public class TestHadoop2ByteBufferReads {
   @Test
   public void testCreateStreamNoByteBufferReadable() {
     final SeekableInputStream s = wrap(new FSDataInputStream(new MockHadoopInputStream()));
-    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H1SeekableInputStream.class);
+    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H2SeekableInputStream.class);
   }
 
   @Test
   public void testDoubleWrapNoByteBufferReadable() {
     final SeekableInputStream s = wrap(new FSDataInputStream(new FSDataInputStream(new MockHadoopInputStream())));
-    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H1SeekableInputStream.class);
+    assertThat(s).as("Wrong wrapper: " + s).isInstanceOf(H2SeekableInputStream.class);
+  }
+
+  /**
+   * A stream which is not ByteBufferReadable must fall back to byte-array reads
+   * rather than calling {@code FSDataInputStream.read(ByteBuffer)}, which would
+   * throw UnsupportedOperationException.
+   */
+  @Test
+  public void testHeapReadNoByteBufferReadable() throws Exception {
+    final SeekableInputStream s = wrap(new FSDataInputStream(new MockHadoopInputStream()));
+    final ByteBuffer readBuffer = ByteBuffer.allocate(20);
+
+    assertThat(s.read(readBuffer)).isEqualTo(10);
+    assertThat(readBuffer.position()).isEqualTo(10);
+    readBuffer.flip();
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
+  }
+
+  @Test
+  public void testDirectReadNoByteBufferReadable() throws Exception {
+    final SeekableInputStream s = wrap(new FSDataInputStream(new MockHadoopInputStream()));
+    final ByteBuffer readBuffer = ByteBuffer.allocateDirect(20);
+
+    assertThat(s.read(readBuffer)).isEqualTo(10);
+    assertThat(readBuffer.position()).isEqualTo(10);
+    readBuffer.flip();
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
+  }
+
+  @Test
+  public void testHeapReadFullyNoByteBufferReadable() throws Exception {
+    final SeekableInputStream s = wrap(new FSDataInputStream(new MockHadoopInputStream(2, 3)));
+    final ByteBuffer readBuffer = ByteBuffer.allocate(10);
+
+    s.readFully(readBuffer);
+    assertThat(readBuffer.position()).isEqualTo(10);
+    readBuffer.flip();
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
+  }
+
+  @Test
+  public void testDirectReadFullyNoByteBufferReadable() throws Exception {
+    final SeekableInputStream s =
+        wrap(new FSDataInputStream(new FSDataInputStream(new MockHadoopInputStream(2, 3))));
+    final ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
+
+    s.readFully(readBuffer);
+    assertThat(readBuffer.position()).isEqualTo(10);
+    readBuffer.flip();
+    assertThat(readBuffer).as("Buffer contents should match").isEqualTo(ByteBuffer.wrap(TEST_ARRAY));
+  }
+
+  @Test
+  public void testReadFullyPastEOFNoByteBufferReadable() {
+    final SeekableInputStream s = wrap(new FSDataInputStream(new MockHadoopInputStream()));
+    final ByteBuffer readBuffer = ByteBuffer.allocate(20);
+
+    assertThatThrownBy(() -> s.readFully(readBuffer)).isInstanceOf(EOFException.class);
   }
 
   @Test

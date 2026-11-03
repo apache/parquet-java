@@ -587,8 +587,9 @@ public class RewriteOptions {
           renameColumns == null
               ? new HashMap<>()
               : renameColumns.entrySet().stream()
-                  .collect(Collectors.toMap(x -> x.getKey().trim(), x -> x.getValue()
-                      .trim())),
+                  .collect(Collectors.toMap(
+                      x -> x.getKey().trim(),
+                      x -> x.getValue().trim())),
           encryptColumns,
           fileEncryptionProperties,
           indexCacheStrategy,

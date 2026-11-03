@@ -562,8 +562,8 @@ public class KeyToolkit {
         if (null == kmsClientClass) {
           throw new ParquetCryptoRuntimeException("Unspecified " + KMS_CLIENT_CLASS_PROPERTY_NAME);
         }
-        kmsClient = (KmsClient) kmsClientClass.newInstance();
-      } catch (InstantiationException | IllegalAccessException | BadConfigurationException e) {
+        kmsClient = (KmsClient) kmsClientClass.getDeclaredConstructor().newInstance();
+      } catch (ReflectiveOperationException | BadConfigurationException e) {
         throw new ParquetCryptoRuntimeException("Could not instantiate KmsClient class: " + kmsClientClass, e);
       }
     }

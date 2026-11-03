@@ -263,27 +263,35 @@ step_summary "### Nexus Deployment"
 settings_file=$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/parquet-release-settings.XXXXXX")
 generate_maven_settings "${settings_file}"
 
-maven_deploy "${settings_file}"
+staging_description="Apache Parquet ${version} RC${rc_number}"
 
-step_summary "Deployed artifacts to Apache Nexus staging"
-
-# Find and close the staging repo. Verify it actually contains the
-# artifacts we just deployed before closing -- another concurrent run
-# could have created the only open repo we see, and closing the wrong
-# one would corrupt that release.
-nexus_find_open_staging_repo "${NEXUS_PROFILE_NAME}"
-
-if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-  if ! nexus_check_staging_artifact "${staging_repo_id}" "${version}"; then
-    print_error "Open staging repo ${staging_repo_id} does not contain ${version} artifacts."
-    print_error "Refusing to close it -- another release may be in flight. Investigate Nexus before retrying."
-    exit 1
+if ! maven_deploy "${settings_file}" "${staging_description}"; then
+  if maven_find_created_staging_repos; then
+    print_error "Deploy failed after creating staging repository ${created_staging_repo_ids[*]}; check whether it is still in Nexus and drop it before retrying."
+    step_summary "Deploy **FAILED** after creating staging repository \`${created_staging_repo_ids[*]}\`; check Nexus for leftovers"
+  else
+    step_summary "Deploy **FAILED** before a staging repository was created"
   fi
+  exit 1
 fi
 
-nexus_close_staging_repo "${staging_repo_id}" "Apache Parquet ${version} RC${rc_number}"
+if ! maven_read_staging_repo_id; then
+  if maven_find_created_staging_repos; then
+    print_error "Deploy succeeded but the staging repository ID could not be read; the deploy log reports creating ${created_staging_repo_ids[*]}."
+    step_summary "Deploy succeeded but the staging repository ID could not be read; deploy log reports \`${created_staging_repo_ids[*]}\`"
+  else
+    print_error "Deploy succeeded but no staging repository was found; nexus-staging-maven-plugin may not have run, so check Nexus for an implicitly created repository."
+    step_summary "Deploy succeeded but no staging repository was found; check Nexus for an implicitly created repository"
+  fi
+  exit 1
+fi
 
-step_summary "Closed staging repository: \`${staging_repo_id}\`"
+if ! nexus_verify_staging_repo "${staging_repo_id}" "${version}" "${rc_number}"; then
+  step_summary "Verification **FAILED** for staging repository \`${staging_repo_id}\`"
+  exit 1
+fi
+
+step_summary "Deployed, closed and verified staging repository: \`${staging_repo_id}\`"
 
 maven_cleanup_settings "${settings_file}"
 

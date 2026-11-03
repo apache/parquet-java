@@ -118,17 +118,17 @@ public final class FutureIO {
   @SuppressWarnings("ChainOfInstanceofChecks")
   public static IOException unwrapInnerException(final Throwable e) {
     Throwable cause = e.getCause();
-    if (cause instanceof IOException) {
-      return (IOException) cause;
-    } else if (cause instanceof UncheckedIOException) {
+    if (cause instanceof IOException ioException) {
+      return ioException;
+    } else if (cause instanceof UncheckedIOException uncheckedIOException) {
       // this is always an IOException
-      return ((UncheckedIOException) cause).getCause();
+      return uncheckedIOException.getCause();
     } else if (cause instanceof CompletionException || cause instanceof ExecutionException) {
       return unwrapInnerException(cause);
-    } else if (cause instanceof RuntimeException) {
-      throw (RuntimeException) cause;
-    } else if (cause instanceof Error) {
-      throw (Error) cause;
+    } else if (cause instanceof RuntimeException runtimeException) {
+      throw runtimeException;
+    } else if (cause instanceof Error error) {
+      throw error;
     } else if (cause != null) {
       // other type: wrap with a new IOE
       return new IOException(cause);

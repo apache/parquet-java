@@ -22,12 +22,11 @@ package org.apache.parquet.cli.commands;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.internal.Lists;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Set;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.csv.AvroCSV;
 import org.apache.parquet.cli.csv.CSVProperties;
@@ -101,9 +100,9 @@ public class CSVSchemaCommand extends BaseCommand {
         .charset(charsetName)
         .build();
 
-    Set<String> required = ImmutableSet.of();
+    Set<String> required = Set.of();
     if (requiredFields != null) {
-      required = ImmutableSet.copyOf(requiredFields);
+      required = Set.copyOf(requiredFields);
     }
 
     // assume fields are nullable by default, users can easily change this
