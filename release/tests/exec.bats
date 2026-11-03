@@ -192,3 +192,51 @@ setup() {
   run require_env
   [ "$status" -eq 0 ]
 }
+
+# ---- require_clean_worktree ----
+
+_init_test_repo() {
+  cd "$(mktemp -d)"
+  git init -q
+  echo "ignored/" > .gitignore
+  echo "1" > tracked.txt
+  git add .gitignore tracked.txt
+  git commit -q -m "init"
+}
+
+@test "require_clean_worktree: succeeds on a clean tree" {
+  _init_test_repo
+  run require_clean_worktree
+  [ "$status" -eq 0 ]
+}
+
+@test "require_clean_worktree: ignores gitignored files" {
+  _init_test_repo
+  mkdir ignored
+  touch ignored/build.o
+  run require_clean_worktree
+  [ "$status" -eq 0 ]
+}
+
+@test "require_clean_worktree: fails and names an untracked directory" {
+  _init_test_repo
+  mkdir -p thrift-0.25.0/compiler
+  touch thrift-0.25.0/compiler/t_audit.o
+  run require_clean_worktree
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"thrift-0.25.0/"* ]]
+}
+
+@test "require_clean_worktree: fails on an uncommitted change" {
+  _init_test_repo
+  echo "2" > tracked.txt
+  run require_clean_worktree
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"tracked.txt"* ]]
+}
+
+@test "require_clean_worktree: fails outside a git repository" {
+  cd "$(mktemp -d)"
+  run require_clean_worktree
+  [ "$status" -eq 1 ]
+}

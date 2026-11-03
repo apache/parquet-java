@@ -237,9 +237,15 @@ else
   set_pom_version "${version}"
   step_summary "Updated POM version: \`${current_pom_version}\` -> \`${version}\`"
 
-  # Commit version changes
-  exec_process git add -A
+  # Commit version changes. Stage tracked files only: set_pom_version only
+  # edits existing POMs, and anything untracked must not land in the release.
+  exec_process git add -u
   exec_process git commit -m "Set version to ${version} for release"
+fi
+
+if ! require_clean_worktree; then
+  step_summary "Working tree check: **FAILED** (see the job log for the offending paths)"
+  exit 1
 fi
 
 # ---------------------------------------------------------------------------
