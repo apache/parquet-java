@@ -21,7 +21,7 @@ package org.apache.parquet.io;
 import org.apache.parquet.ParquetRuntimeException;
 
 /**
- * thrown when a decoding problem occurred
+ * thrown when an encoding problem occurred
  */
 public class ParquetEncodingException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
