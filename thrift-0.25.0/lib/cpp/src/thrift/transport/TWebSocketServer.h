@@ -1,0 +1,479 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef _THRIFT_TRANSPORT_TWEBSOCKETSERVER_H_
+#define _THRIFT_TRANSPORT_TWEBSOCKETSERVER_H_ 1
+
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+
+#include <openssl/sha.h>
+
+#include <thrift/config.h>
+#include <thrift/protocol/TProtocol.h>
+#include <thrift/transport/TSocket.h>
+#include <thrift/transport/THttpServer.h>
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#include <shlwapi.h>
+#define THRIFT_strncasecmp(str1, str2, len) _strnicmp(str1, str2, len)
+#define THRIFT_strcasestr(haystack, needle) StrStrIA(haystack, needle)
+#else
+#define THRIFT_strncasecmp(str1, str2, len) strncasecmp(str1, str2, len)
+#define THRIFT_strcasestr(haystack, needle) strcasestr(haystack, needle)
+#endif
+#if defined(__CYGWIN__)
+#include <alloca.h>
+#endif
+
+using std::string;
+
+namespace apache {
+namespace thrift {
+namespace transport {
+
+std::string base64Encode(unsigned char* data, int length);
+
+template <bool binary>
+class TWebSocketServer : public THttpServer {
+public:
+  TWebSocketServer(std::shared_ptr<TTransport> transport, std::shared_ptr<TConfiguration> config = nullptr)
+    : THttpServer(transport, config) {
+      resetHandshake();
+  }
+
+  ~TWebSocketServer() override = default;
+
+  // The readAll() inherited from TVirtualTransport<THttpTransport> reads
+  // through THttpTransport::read() and never sees a WebSocket frame, so a
+  // caller holding the concrete type would bypass the framing below. This one
+  // does what a call through TTransport does.
+  uint32_t readAll(uint8_t* buf, uint32_t len) { return readAll_virt(buf, len); }
+
+  uint32_t readAll_virt(uint8_t* buf, uint32_t len) override {
+    // If we do not have a good handshake, the client will attempt one.
+    if (!handshakeComplete()) {
+      resetHandshake();
+      THttpServer::read(buf, len);
+      // If we did not get everything we expected, the handshake failed
+      // and we need to send a 400 response back.
+      if (!handshakeComplete()) {
+        sendBadRequest();
+        return 0;
+      }
+      // Otherwise, send back the 101 response.
+      THttpServer::flush();
+    }
+
+    // Deliver the number of bytes the caller asked for, drawing on the read
+    // buffer and reading further frames when it runs dry, and raise at end of
+    // stream. That is the contract readAll carries everywhere, the same one the
+    // base transport and the other bindings meet. A frame carries its own
+    // WebSocket framing, so a single frame's payload may be smaller than one
+    // caller's request.
+    uint32_t have = 0;
+    while (have < len) {
+      auto avail = readBuffer_.available_read();
+      if (avail == 0) {
+        if (!readFrame()) {
+          // End of stream. With nothing handed over yet, this is the clean end
+          // of the message the caller was waiting for, reported as it always
+          // has been by a read count of zero. Part way through a request it is
+          // a message that stops short, and readAll does not hand back part of
+          // one -- it delivers the whole request or it raises.
+          if (have == 0) {
+            return 0;
+          }
+          throw TTransportException(TTransportException::END_OF_FILE, "No more data to read.");
+        }
+        continue;
+      }
+      uint32_t give = (std::min)(len - have, avail);
+      have += readBuffer_.read(buf + have, give);
+    }
+    return have;
+  }
+
+  void flush() override {
+    resetConsumedMessageSize();
+    uint8_t* buffer;
+    uint32_t length;
+    writeBuffer_.getBuffer(&buffer, &length);
+    writeFrameHeader(Opcode::Continuation, length);
+    transport_->write(buffer, length);
+    transport_->flush();
+    writeBuffer_.resetBuffer();
+  }
+
+protected:
+  std::string getHeader(uint32_t len) override {
+    THRIFT_UNUSED_VARIABLE(len);
+    std::ostringstream h;
+    h << "HTTP/1.1 101 Switching Protocols" << CRLF << "Server: Thrift/" << PACKAGE_VERSION << CRLF
+      << "Upgrade: websocket" << CRLF << "Connection: Upgrade" << CRLF
+      << "Sec-WebSocket-Accept: " << acceptKey_ << CRLF << CRLF;
+    return h.str();
+  }
+
+  // sz is the length of the name the peer sent, so comparing only that many
+  // characters accepted every name that is a prefix of one below: "U:", "C:"
+  // and "S:" were enough to satisfy the handshake, and "S:" reached the key
+  // arm because it is tested before the version one.
+  static bool headerNameIs(const char* header, size_t sz, const char* name) {
+    return sz == strlen(name) && THRIFT_strncasecmp(header, name, sz) == 0;
+  }
+
+  void parseHeader(char* header) override {
+    char* colon = strchr(header, ':');
+    if (colon == nullptr) {
+      return;
+    }
+    size_t sz = colon - header;
+    char* value = colon + 1;
+
+    if (headerNameIs(header, sz, "Upgrade")) {
+      if (THRIFT_strcasestr(value, "websocket") != nullptr) {
+        upgrade_ = true;
+      }
+    } else if (headerNameIs(header, sz, "Connection")) {
+      if (THRIFT_strcasestr(value, "Upgrade") != nullptr) {
+        connection_ = true;
+      }
+    } else if (headerNameIs(header, sz, "Sec-WebSocket-Key")) {
+      // value + 1 dropped the space that a header usually has after the colon,
+      // and read past the terminator when it did not: "Sec-WebSocket-Key:" on
+      // its own leaves *value at '\0'.  Skip the optional whitespace instead.
+      const char* key = value;
+      while (*key == ' ' || *key == '\t') {
+        ++key;
+      }
+      std::string toHash = key;
+      toHash += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+      unsigned char hash[20];
+      SHA1((const unsigned char*)toHash.c_str(), toHash.length(), hash);
+      acceptKey_ = base64Encode(hash, 20);
+      secWebSocketKey_ = true;
+    } else if (headerNameIs(header, sz, "Sec-WebSocket-Version")) {
+      if (THRIFT_strcasestr(value, "13") != nullptr) {
+        secWebSocketVersion_ = true;
+      }
+    }
+  }
+
+  bool parseStatusLine(char* status) override {
+    char* method = status;
+
+    char* path = strchr(method, ' ');
+    if (path == nullptr) {
+      throw TTransportException(string("Bad Status: ") + status);
+    }
+
+    *path = '\0';
+    while (*(++path) == ' ') {
+    };
+
+    char* http = strchr(path, ' ');
+    if (http == nullptr) {
+      throw TTransportException(string("Bad Status: ") + status);
+    }
+    *http = '\0';
+
+    if (strcmp(method, "GET") == 0) {
+      // GET method ok, looking for content.
+      return true;
+    }
+    throw TTransportException(string("Bad Status (unsupported method): ") + status);
+  }
+
+private:
+  enum class CloseCode : uint16_t {
+    NormalClosure = 1000,
+    GoingAway = 1001,
+    ProtocolError = 1002,
+    UnsupportedDataType = 1003,
+    NoStatusCode = 1005,
+    AbnormalClosure = 1006,
+    InvalidData = 1007,
+    PolicyViolation = 1008,
+    MessageTooBig = 1009,
+    ExtensionExpected = 1010,
+    UnexpectedError = 1011,
+    NotSecure = 1015
+  };
+
+  enum class Opcode : uint8_t {
+    Continuation = 0x0,
+    Text = 0x1,
+    Binary = 0x2,
+    Close = 0x8,
+    Ping = 0x9,
+    Pong = 0xA
+  };
+
+  void failConnection(CloseCode reason) {
+    writeFrameHeader(Opcode::Close, sizeof(uint16_t));
+    auto buffer = htons(static_cast<uint16_t>(reason));
+    transport_->write(reinterpret_cast<const uint8_t*>(&buffer), 2);
+    transport_->flush();
+    transport_->close();
+  }
+
+  bool handshakeComplete() {
+    return upgrade_ && connection_ && secWebSocketKey_ && secWebSocketVersion_;
+  }
+
+  void pong() {
+    // RFC 6455 5.5.3: the Pong carries the Ping's payload, which is what the
+    // read buffer holds at this point, and the header has to say so -- a peer
+    // told the frame is empty reads the payload as the next frame header.
+    uint8_t* buffer;
+    uint32_t size;
+    readBuffer_.getBuffer(&buffer, &size);
+    writeFrameHeader(Opcode::Pong, size);
+    transport_->write(buffer, size);
+    transport_->flush();
+  }
+
+  bool readFrame() {
+    // Loop rather than recurse: a Ping carries nothing for the caller, so the
+    // reader has to go on to the next frame to satisfy it, and a peer may send
+    // as many Pings as it likes. Re-entering readFrame() for each one cost a
+    // stack frame per seven bytes on the wire.
+    while (true) {
+      uint8_t headerBuffer[8];
+
+      auto read = transport_->read(headerBuffer, 2);
+      if (read < 2) {
+        return false;
+      }
+      // Since Thrift has its own message end marker and we read frame by frame,
+      // it doesn't really matter if the frame is marked as FIN.
+      // Capture it only for debugging only.
+      auto fin = (headerBuffer[0] & 0x80) != 0;
+      THRIFT_UNUSED_VARIABLE(fin);
+
+      // RSV1, RSV2, RSV3
+      if ((headerBuffer[0] & 0x70) != 0) {
+        failConnection(CloseCode::ProtocolError);
+        throw TTransportException(TTransportException::CORRUPTED_DATA,
+                                  "Reserved bits must be zeroes");
+      }
+
+      auto opcode = (Opcode)(headerBuffer[0] & 0x0F);
+
+      // Mask
+      if ((headerBuffer[1] & 0x80) == 0) {
+        failConnection(CloseCode::ProtocolError);
+        throw TTransportException(TTransportException::CORRUPTED_DATA,
+                                  "Messages from the client must be masked");
+      }
+
+      // Read the length
+      uint64_t payloadLength = headerBuffer[1] & 0x7F;
+      if (payloadLength == 126) {
+        read = transport_->read(headerBuffer, 2);
+        if (read < 2) {
+          return false;
+        }
+        payloadLength = ntohs(*reinterpret_cast<uint16_t*>(headerBuffer));
+      } else if (payloadLength == 127) {
+        read = transport_->read(headerBuffer, 8);
+        if (read < 8) {
+          return false;
+        }
+        payloadLength = THRIFT_ntohll(*reinterpret_cast<uint64_t*>(headerBuffer));
+        if ((payloadLength & 0x8000000000000000) != 0) {
+          failConnection(CloseCode::ProtocolError);
+          throw TTransportException(
+              TTransportException::CORRUPTED_DATA,
+              "The most significant bit of the payload length must be zero");
+        }
+      }
+
+      // The read buffer below is sized from this number before a single payload
+      // byte has arrived, so the frame header on its own decides how much memory
+      // the server commits unless something bounds it. Hold it to the configured
+      // maximum frame size, the same ceiling TFramedTransport applies to its own
+      // frames. The UINT32_MAX arm stays for its own reason: size_t is narrower
+      // than the length field on a 32-bit system.
+      //
+      // The cast is safe because the first arm has already ruled out anything
+      // wider than 32 bits by the time the second is evaluated.
+      if (payloadLength > UINT32_MAX
+          || static_cast<int64_t>(payloadLength) > getConfiguration()->getMaxFrameSize()) {
+        failConnection(CloseCode::MessageTooBig);
+        return false;
+      }
+
+      auto length = static_cast<uint32_t>(payloadLength);
+
+      // The masking key is part of the header of every frame whose MASK bit is
+      // set, whatever the payload length, and a client frame without MASK was
+      // already refused above. Reading it only for a frame that carries a
+      // payload leaves four bytes behind, and the next header is then parsed
+      // out of the masking key.
+      read = transport_->read(headerBuffer, 4);
+      if (read < 4) {
+        return false;
+      }
+
+      if (length > 0) {
+        readBuffer_.resetBuffer(length);
+        uint8_t* buffer = readBuffer_.getWritePtr(length);
+        // Wait for the whole payload. A single read returns whatever one recv()
+        // produced, so anything the network split across segments used to be
+        // reported as end of stream and the frame lost. Waiting is only safe
+        // because length has been held to the configured maximum frame size
+        // above; TFramedTransport reads its own frames the same way.
+        try {
+          transport_->readAll(buffer, length);
+        } catch (const TTransportException& e) {
+          if (e.getType() == TTransportException::END_OF_FILE) {
+            // The peer went away part-way through the frame. That is what the
+            // caller has always been told about a payload that does not turn up.
+            return false;
+          }
+          throw;
+        }
+        readBuffer_.wroteBytes(length);
+      
+        // Unmask the data
+        for (size_t i = 0; i < length; i++) {
+          buffer[i] ^= headerBuffer[i % 4];
+        }
+
+        T_DEBUG("FIN=%d, Opcode=%X, length=%d, payload=%s", fin, opcode, length,
+                binary ? readBuffer_.toHexString() : cast(string) readBuffer_);
+      } else {
+        // Nothing for the caller, and nothing for pong() to echo back either.
+        readBuffer_.resetBuffer();
+      }
+
+      switch (opcode) {
+      case Opcode::Close:
+        if (length >= 2) {
+          uint8_t buffer[2];
+          readBuffer_.read(buffer, 2);
+          CloseCode closeCode = static_cast<CloseCode>(ntohs(*reinterpret_cast<uint16_t*>(buffer)));
+          THRIFT_UNUSED_VARIABLE(closeCode);
+          string closeReason = readBuffer_.readAsString(length - 2);
+          T_DEBUG("Connection closed: %d %s", closeCode, closeReason);
+        }
+        transport_->close();
+        return false;
+      case Opcode::Ping:
+        pong();
+        continue;
+      default:
+        return true;
+      }
+    }
+  }
+
+  void resetHandshake() {
+    connection_ = false;
+    secWebSocketKey_ = false;
+    secWebSocketVersion_ = false;
+    upgrade_ = false;
+  }
+
+  void sendBadRequest() {
+    std::ostringstream h;
+    h << "HTTP/1.1 400 Bad Request" << CRLF << "Server: Thrift/" << PACKAGE_VERSION << CRLF << CRLF;
+    std::string header = h.str();
+    transport_->write(reinterpret_cast<const uint8_t*>(header.data()), static_cast<uint32_t>(header.length()));
+    transport_->flush();
+    transport_->close();
+  }
+
+  void writeFrameHeader(Opcode opcode, uint32_t length) {
+    uint32_t headerSize = 1;
+    if (length < 126) {
+      ++headerSize;
+    } else if (length < 65536) {
+      headerSize += 3;
+    } else {
+      headerSize += 9;
+    }
+    // The server does not mask the response
+
+    uint8_t* header = static_cast<uint8_t*>(alloca(headerSize));
+    if (opcode == Opcode::Continuation) {
+      opcode = binary ? Opcode::Binary : Opcode::Text;
+    }
+    header[0] = static_cast<uint8_t>(opcode) | 0x80;
+    if (length < 126) {
+      header[1] = static_cast<uint8_t>(length);
+    } else if (length < 65536) {
+      header[1] = 126;
+      *reinterpret_cast<uint16_t*>(header + 2) = htons(length);
+    } else {
+      header[1] = 127;
+      *reinterpret_cast<uint64_t*>(header + 2) = THRIFT_htonll(length);
+    }
+
+    transport_->write(header, headerSize);
+  }
+
+  // Add constant here to avoid a linker error on Windows
+  constexpr static const char* CRLF = "\r\n";
+  std::string acceptKey_;
+  bool connection_;
+  bool secWebSocketKey_;
+  bool secWebSocketVersion_;
+  bool upgrade_;
+};
+
+/**
+ * Wraps a transport into binary WebSocket protocol
+ */
+class TBinaryWebSocketServerTransportFactory : public TTransportFactory {
+public:
+  TBinaryWebSocketServerTransportFactory() = default;
+
+  ~TBinaryWebSocketServerTransportFactory() override = default;
+
+  /**
+   * Wraps the transport into a buffered one.
+   */
+  std::shared_ptr<TTransport> getTransport(std::shared_ptr<TTransport> trans) override {
+    return std::shared_ptr<TTransport>(new TWebSocketServer<true>(trans, trans->getConfiguration()));
+  }
+};
+
+/**
+ * Wraps a transport into text WebSocket protocol
+ */
+class TTextWebSocketServerTransportFactory : public TTransportFactory {
+public:
+  TTextWebSocketServerTransportFactory() = default;
+
+  ~TTextWebSocketServerTransportFactory() override = default;
+
+  /**
+   * Wraps the transport into a buffered one.
+   */
+  std::shared_ptr<TTransport> getTransport(std::shared_ptr<TTransport> trans) override {
+    return std::shared_ptr<TTransport>(new TWebSocketServer<false>(trans, trans->getConfiguration()));
+  }
+};
+} // namespace transport
+} // namespace thrift
+} // namespace apache
+#endif

@@ -1,0 +1,444 @@
+# frozen_string_literal: true
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# this require is to make generated struct definitions happy
+require "set"
+require "thrift/exceptions"
+
+module Thrift
+  class ProtocolException < Exception
+    UNKNOWN = 0
+    INVALID_DATA = 1
+    NEGATIVE_SIZE = 2
+    SIZE_LIMIT = 3
+    BAD_VERSION = 4
+    NOT_IMPLEMENTED = 5
+    DEPTH_LIMIT = 6
+
+    attr_reader :type
+
+    def initialize(type = UNKNOWN, message = nil)
+      super(message)
+      @type = type
+    end
+  end
+
+  class BaseProtocol
+    MAX_CONTAINER_SIZE = (1 << 31) - 1
+
+    # The longest string or binary field BinaryProtocol and CompactProtocol read
+    # by default: the frame size limit the framed transports apply. A string's
+    # length is the read size handed to the transport, and an unframed transport
+    # has no frame to bound it. Pass max_string_size: nil to read strings of any
+    # length.
+    DEFAULT_MAX_STRING_SIZE = 16_384_000
+
+    attr_reader :trans
+
+    def initialize(trans)
+      @trans = trans
+    end
+
+    def native?
+      false
+    end
+
+    # Raises a SIZE_LIMIT ProtocolException when a declared string length is over
+    # the protocol's max_string_size.
+    def check_string_size(size)
+      max = @max_string_size
+      return if max.nil? || size <= max
+
+      raise ProtocolException.new(ProtocolException::SIZE_LIMIT, "String size #{size} larger than the maximum #{max}")
+    end
+
+    def self.validate_max_string_size(max_string_size)
+      return if max_string_size.nil? || (max_string_size.is_a?(Integer) && max_string_size > 0)
+
+      raise ArgumentError, "max_string_size must be nil or a positive Integer"
+    end
+
+    def write_message_begin(name, type, seqid)
+      raise NotImplementedError
+    end
+
+    def write_message_end; nil; end
+
+    def write_struct_begin(name)
+      raise NotImplementedError
+    end
+
+    def write_struct_end; nil; end
+
+    def write_field_begin(name, type, id)
+      raise NotImplementedError
+    end
+
+    def write_field_end; nil; end
+
+    def write_field_stop
+      raise NotImplementedError
+    end
+
+    def write_map_begin(ktype, vtype, size)
+      raise NotImplementedError
+    end
+
+    def write_map_end; nil; end
+
+    def write_list_begin(etype, size)
+      raise NotImplementedError
+    end
+
+    def write_list_end; nil; end
+
+    def write_set_begin(etype, size)
+      raise NotImplementedError
+    end
+
+    def write_set_end; nil; end
+
+    def write_bool(bool)
+      raise NotImplementedError
+    end
+
+    def write_byte(byte)
+      raise NotImplementedError
+    end
+
+    def write_i16(i16)
+      raise NotImplementedError
+    end
+
+    def write_i32(i32)
+      raise NotImplementedError
+    end
+
+    def write_i64(i64)
+      raise NotImplementedError
+    end
+
+    def write_double(dub)
+      raise NotImplementedError
+    end
+
+    # Writes a Thrift String. The String passed will be transcoded to UTF-8.
+    #
+    # str - The String to write.
+    #
+    # Raises EncodingError if the transcoding to UTF-8 fails.
+    #
+    # Returns nothing.
+    def write_string(str)
+      raise NotImplementedError
+    end
+
+    # Writes a Thrift Binary (Thrift String with no encoding). The String passed
+    # will forced into BINARY encoding.
+    #
+    # buf - The String to write.
+    #
+    # Returns nothing.
+    def write_binary(buf)
+      raise NotImplementedError
+    end
+
+    # Writes a UUID as 16 bytes.
+    #
+    # uuid - The UUID string to write (e.g. "550e8400-e29b-41d4-a716-446655440000").
+    #
+    # Returns nothing.
+    def write_uuid(uuid)
+      raise NotImplementedError
+    end
+
+    def read_message_begin
+      raise NotImplementedError
+    end
+
+    def read_message_end; nil; end
+
+    def read_struct_begin
+      raise NotImplementedError
+    end
+
+    def read_struct_end; nil; end
+
+    def read_field_begin
+      raise NotImplementedError
+    end
+
+    def read_field_end; nil; end
+
+    def read_map_begin
+      raise NotImplementedError
+    end
+
+    def read_map_end; nil; end
+
+    def read_list_begin
+      raise NotImplementedError
+    end
+
+    def read_list_end; nil; end
+
+    def read_set_begin
+      raise NotImplementedError
+    end
+
+    def read_set_end; nil; end
+
+    def read_bool
+      raise NotImplementedError
+    end
+
+    def read_byte
+      raise NotImplementedError
+    end
+
+    def read_i16
+      raise NotImplementedError
+    end
+
+    def read_i32
+      raise NotImplementedError
+    end
+
+    def read_i64
+      raise NotImplementedError
+    end
+
+    def read_double
+      raise NotImplementedError
+    end
+
+    # Reads a Thrift String. All Strings will be returned with an Encoding of UTF-8.
+    #
+    # Returns a String.
+    def read_string
+      raise NotImplementedError
+    end
+
+    # Reads a Thrift Binary (Thrift String without encoding). All Strings will be returned
+    # with an Encoding of BINARY.
+    #
+    # Returns a String.
+    def read_binary
+      raise NotImplementedError
+    end
+
+    # Reads a UUID as 16 bytes and returns it as a string.
+    #
+    # Returns a String (e.g. "550e8400-e29b-41d4-a716-446655440000").
+    def read_uuid
+      raise NotImplementedError
+    end
+
+    def skip_string
+      read_string
+    end
+
+    # Writes a field based on the field information, field ID and value.
+    #
+    # field_info - A Hash containing the definition of the field:
+    #              :name   - The name of the field.
+    #              :type   - The type of the field, which must be a Thrift::Types constant.
+    #              :binary - A Boolean flag that indicates if Thrift::Types::STRING is a binary string (string without encoding).
+    # fid        - The ID of the field.
+    # value      - The field's value to write; object type varies based on :type.
+    # remaining_depth - The optional recursion budget of the enclosing struct.
+    #
+    # Returns nothing.
+    def write_field(field_info, fid, value, remaining_depth = nil)
+      unless field_info.is_a?(Hash)
+        field_info = {name: field_info, type: fid}
+        fid = value
+        value = remaining_depth
+        remaining_depth = nil
+      end
+
+      write_field_begin(field_info[:name], field_info[:type], fid)
+      write_type(field_info, value, remaining_depth)
+      write_field_end
+    end
+
+    # Writes a field value based on the field information.
+    #
+    # field_info - A Hash containing the definition of the field:
+    #              :type   - The Thrift::Types constant that determines how the value is written.
+    #              :binary - A Boolean flag that indicates if Thrift::Types::STRING is a binary string (string without encoding).
+    # value      - The field's value to write; object type varies based on field_info[:type].
+    # remaining_depth - The optional recursion budget of the enclosing struct.
+    #
+    # Returns nothing.
+    def write_type(field_info, value, remaining_depth = nil)
+      # if field_info is a Integer, assume it is a Thrift::Types constant
+      # convert it into a field_info Hash for backwards compatibility
+      if field_info.is_a? Integer
+        field_info = {type: field_info}
+      end
+
+      case field_info[:type]
+      when Types::BOOL
+        write_bool(value)
+      when Types::BYTE
+        write_byte(value)
+      when Types::DOUBLE
+        write_double(value)
+      when Types::I16
+        write_i16(value)
+      when Types::I32
+        write_i32(value)
+      when Types::I64
+        write_i64(value)
+      when Types::STRING
+        if field_info[:binary]
+          write_binary(value)
+        else
+          write_string(value)
+        end
+      when Types::UUID
+        write_uuid(value)
+      when Types::STRUCT
+        if remaining_depth
+          value.write(self, remaining_depth - 1)
+        else
+          value.write(self)
+        end
+      else
+        raise NotImplementedError
+      end
+    end
+
+    # Reads a field value based on the field information.
+    #
+    # field_info - A Hash containing the pertinent data to write:
+    #              :type   - The Thrift::Types constant that determines how the value is written.
+    #              :binary - A flag that indicates if Thrift::Types::STRING is a binary string (string without encoding).
+    #
+    # Returns the value read; object type varies based on field_info[:type].
+    def read_type(field_info)
+      # if field_info is a Integer, assume it is a Thrift::Types constant
+      # convert it into a field_info Hash for backwards compatibility
+      if field_info.is_a? Integer
+        field_info = {type: field_info}
+      end
+
+      case field_info[:type]
+      when Types::BOOL
+        read_bool
+      when Types::BYTE
+        read_byte
+      when Types::DOUBLE
+        read_double
+      when Types::I16
+        read_i16
+      when Types::I32
+        read_i32
+      when Types::I64
+        read_i64
+      when Types::STRING
+        if field_info[:binary]
+          read_binary
+        else
+          read_string
+        end
+      when Types::UUID
+        read_uuid
+      else
+        raise NotImplementedError
+      end
+    end
+
+    def skip(type, max_depth = 64)
+      raise ProtocolException.new(ProtocolException::DEPTH_LIMIT, "Maximum skip depth exceeded") if max_depth <= 0
+      case type
+      when Types::BOOL
+        read_bool
+      when Types::BYTE
+        read_byte
+      when Types::I16
+        read_i16
+      when Types::I32
+        read_i32
+      when Types::I64
+        read_i64
+      when Types::DOUBLE
+        read_double
+      when Types::STRING
+        skip_string
+      when Types::UUID
+        read_uuid
+      when Types::STRUCT
+        read_struct_begin
+        while true
+          _, type, _ = read_field_begin
+          break if type == Types::STOP
+          skip(type, max_depth - 1)
+          read_field_end
+        end
+        read_struct_end
+      when Types::MAP
+        ktype, vtype, size = read_map_begin
+        validate_container_size(size)
+        size.times do
+          skip(ktype, max_depth - 1)
+          skip(vtype, max_depth - 1)
+        end
+        read_map_end
+      when Types::SET
+        etype, size = read_set_begin
+        validate_container_size(size)
+        size.times do
+          skip(etype, max_depth - 1)
+        end
+        read_set_end
+      when Types::LIST
+        etype, size = read_list_begin
+        validate_container_size(size)
+        size.times do
+          skip(etype, max_depth - 1)
+        end
+        read_list_end
+      else
+        raise ProtocolException.new(ProtocolException::INVALID_DATA, "Invalid data")
+      end
+    end
+
+    def validate_container_size(size)
+      raise ProtocolException.new(ProtocolException::NEGATIVE_SIZE, "Negative size") unless size >= 0
+      raise ProtocolException.new(ProtocolException::SIZE_LIMIT, "Container size limit exceeded") if size > MAX_CONTAINER_SIZE
+    end
+
+    def to_s
+      trans.to_s
+    end
+  end
+
+  class BaseProtocolFactory
+    def get_protocol(trans)
+      raise NotImplementedError
+    end
+
+    def to_s
+      "base"
+    end
+  end
+end

@@ -1,0 +1,578 @@
+# frozen_string_literal: true
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+require "spec_helper"
+require "timeout"
+
+describe "NonblockingServer" do
+  class Handler
+    def initialize
+      @queue = Queue.new
+    end
+
+    attr_accessor :server
+
+    def greeting(english)
+      if english
+        SpecNamespace::Hello.new
+      else
+        SpecNamespace::Hello.new(greeting: "Aloha!")
+      end
+    end
+
+    def block
+      @queue.pop
+    end
+
+    def unblock(n)
+      n.times { @queue.push true }
+    end
+
+    def sleep(time)
+      Kernel.sleep time
+    end
+
+    def shutdown
+      @server.shutdown(0, false)
+    end
+  end
+
+  class SpecTransport < Thrift::BaseTransport
+    def initialize(transport, queue)
+      @transport = transport
+      @queue = queue
+      @flushed = false
+    end
+
+    def open?
+      @transport.open?
+    end
+
+    def open
+      @transport.open
+    end
+
+    def close
+      @transport.close
+    end
+
+    def read(sz)
+      @transport.read(sz)
+    end
+
+    def write(buf, sz = nil)
+      @transport.write(buf, sz)
+    end
+
+    def flush
+      @queue.push :flushed unless @flushed or @queue.nil?
+      @flushed = true
+      @transport.flush
+    end
+  end
+
+  class SpecServerSocket < Thrift::ServerSocket
+    def initialize(host, port, queue)
+      super(host, port)
+      @queue = queue
+    end
+
+    def listen
+      super
+      @queue.push :listen
+    end
+  end
+
+  describe Thrift::NonblockingServer do
+    before(:each) do
+      @port = available_port
+      handler = Handler.new
+      processor = SpecNamespace::NonblockingService::Processor.new(handler)
+      queue = Queue.new
+      @transport = SpecServerSocket.new("localhost", @port, queue)
+      transport_factory = Thrift::FramedTransportFactory.new
+      logger = Logger.new(STDERR)
+      logger.level = Logger::WARN
+      @server = Thrift::NonblockingServer.new(processor, @transport, transport_factory, nil, 5, logger)
+      handler.server = @server
+      @server_thread = Thread.new(Thread.current) do |master_thread|
+        @server.serve
+      rescue => e
+        p e
+        puts e.backtrace * "\n"
+        master_thread.raise e
+      end
+      queue.pop
+      wait_until_listening(@transport, @server_thread)
+
+      @clients = []
+      @catch_exceptions = false
+    end
+
+    after(:each) do
+      @clients.each { |client, trans| trans.close }
+      @server.shutdown(1, false) if @server
+      @server_thread.join(2) if @server_thread
+      @server_thread.kill if @server_thread && @server_thread.alive?
+      @server_thread.join(2) if @server_thread
+      @transport.close if @transport
+    end
+
+    def setup_client(queue = nil)
+      transport = SpecTransport.new(Thrift::FramedTransport.new(Thrift::Socket.new("localhost", @port)), queue)
+      protocol = Thrift::BinaryProtocol.new(transport)
+      client = SpecNamespace::NonblockingService::Client.new(protocol)
+      transport.open
+      @clients << [client, transport]
+      client
+    end
+
+    def setup_client_thread(result)
+      queue = Queue.new
+      Thread.new do
+        client = setup_client
+        while (cmd = queue.pop)
+          msg, *args = cmd
+          case msg
+          when :block
+            result << client.block
+          when :unblock
+            client.unblock(args.first)
+          when :hello
+            result << client.greeting(true) # ignore result
+          when :sleep
+            client.sleep(args[0] || 0.5)
+            result << :slept
+          when :shutdown
+            client.shutdown
+          when :exit
+            result << :done
+            break
+          end
+        end
+        @clients.each { |c, t| t.close and break if c == client } # close the transport
+      rescue => e
+        raise e unless @catch_exceptions
+      end
+      queue
+    end
+
+    it "should handle basic message passing" do
+      client = setup_client
+      expect(client.greeting(true)).to eq(SpecNamespace::Hello.new)
+      expect(client.greeting(false)).to eq(SpecNamespace::Hello.new(greeting: "Aloha!"))
+      @server.shutdown
+    end
+
+    it "should handle concurrent clients" do
+      queue = Queue.new
+      trans_queue = Queue.new
+      4.times do
+        Thread.new(Thread.current) do |main_thread|
+          queue.push setup_client(trans_queue).block
+        rescue => e
+          main_thread.raise e
+        end
+      end
+      4.times { trans_queue.pop }
+      setup_client.unblock(4)
+      4.times { expect(queue.pop).to be_truthy }
+      @server.shutdown
+    end
+
+    it "should handle messages from more than 5 long-lived connections" do
+      queues = []
+      result = Queue.new
+      7.times do |i|
+        queues << setup_client_thread(result)
+        Thread.pass if i == 4 # give the server time to accept connections
+      end
+      client = setup_client
+      # block 4 connections
+      4.times { |i| queues[i] << :block }
+      queues[4] << :hello
+      queues[5] << :hello
+      queues[6] << :hello
+      3.times { expect(result.pop).to eq(SpecNamespace::Hello.new) }
+      expect(client.greeting(true)).to eq(SpecNamespace::Hello.new)
+      queues[5] << [:unblock, 4]
+      4.times { expect(result.pop).to be_truthy }
+      queues[2] << :hello
+      expect(result.pop).to eq(SpecNamespace::Hello.new)
+      expect(client.greeting(false)).to eq(SpecNamespace::Hello.new(greeting: "Aloha!"))
+      7.times { queues.shift << :exit }
+      expect(client.greeting(true)).to eq(SpecNamespace::Hello.new)
+      @server.shutdown
+    end
+
+    it "should close a connection whose frame is over the maximum" do
+      socket = TCPSocket.new("localhost", @port)
+      begin
+        socket.write([Thrift::FramedTransport::DEFAULT_MAX_FRAME_SIZE + 1].pack("N") + ("x" * 1024))
+        closed = Timeout.timeout(5) do
+          socket.read(1).nil?
+        rescue Errno::ECONNRESET
+          true
+        end
+        expect(closed).to be(true)
+      ensure
+        socket.close
+      end
+    end
+
+    it "should shut down when asked" do
+      # connect first to ensure it's running
+      client = setup_client
+      client.greeting(false) # force a message pass
+      @server.shutdown
+      expect(@server_thread.join(2)).to be_an_instance_of(Thread)
+    end
+
+    it "should continue processing active messages when shutting down" do
+      result = Queue.new
+      client = setup_client_thread(result)
+      client << :sleep
+      sleep 0.1 # give the server time to start processing the client's message
+      @server.shutdown
+      expect(@server_thread.join(2)).to be_an_instance_of(Thread)
+      expect(result.pop).to eq(:slept)
+    end
+
+    it "should kill active messages when they don't expire while shutting down" do
+      result = Queue.new
+      client = setup_client_thread(result)
+      client << [:sleep, 10.0]
+      sleep 0.1 # start processing the client's message
+      @server.shutdown(1)
+      @catch_exceptions = true
+      expect(@server_thread.join(3)).not_to be_nil
+      expect(result).to be_empty
+    end
+
+    it "should allow shutting down in response to a message" do
+      client = setup_client
+      expect(client.greeting(true)).to eq(SpecNamespace::Hello.new)
+      client.shutdown
+      expect(@server_thread.join(2)).not_to be_nil
+    end
+  end
+
+  describe "NonblockingServer accept errors" do
+    it "preserves the original error when OpenSSL is not loaded" do
+      hide_const("OpenSSL")
+      error = RuntimeError.new("plain accept failed")
+      server_transport = double(
+        "server transport",
+        listen: nil,
+        closed?: false,
+        close: nil,
+      )
+      allow(server_transport).to receive(:accept).and_raise(error)
+      io_manager = double("IOManager", ensure_closed: nil)
+      server = Thrift::NonblockingServer.new(
+        double("processor"),
+        server_transport,
+        nil,
+        nil,
+        1,
+        Logger.new(IO::NULL),
+      )
+      allow(server).to receive(:start_io_manager).and_return(io_manager)
+      allow(server).to receive(:select).and_return([[server_transport], nil, nil])
+
+      expect { server.serve }.to raise_error(error)
+    end
+  end
+
+  describe "NonblockingServer max_frame_size" do
+    def build_server(**options)
+      Thrift::NonblockingServer.new(
+        double("processor"), double("server_transport"), nil, nil, 1, Logger.new(IO::NULL),
+        **options,
+      )
+    end
+
+    it "is validated" do
+      [0, -1, Thrift::FramedTransport::HARD_MAX_FRAME_SIZE + 1].each do |bad|
+        expect { build_server(max_frame_size: bad) }.to raise_error(ArgumentError, /max_frame_size/)
+      end
+    end
+
+    it "is handed to the IOManager" do
+      server = build_server(max_frame_size: 100)
+      allow(Thrift::NonblockingServer::IOManager).to receive(:new).and_return(double("IOManager", spawn: nil))
+
+      server.send(:start_io_manager)
+
+      expect(Thrift::NonblockingServer::IOManager).to have_received(:new)
+        .with(anything, anything, anything, anything, 1, anything, max_frame_size: 100)
+    end
+  end
+
+  describe Thrift::NonblockingServer::IOManager do
+    def build_io_manager(**options)
+      logger = Logger.new(IO::NULL)
+      logger.level = Logger::FATAL
+      Thrift::NonblockingServer::IOManager.new(
+        double("processor"),
+        double("server_transport"),
+        Thrift::BaseTransportFactory.new,
+        Thrift::BinaryProtocolFactory.new,
+        1,
+        logger,
+        **options,
+      )
+    end
+
+    it "closes tracked connections and signal pipes during forced cleanup" do
+      io_manager = build_io_manager
+      connection = double("connection", close: nil)
+      pipe_a = double("pipe_a", closed?: false, close: nil)
+      pipe_b = double("pipe_b", closed?: false, close: nil)
+
+      io_manager.instance_variable_set(:@connections, [connection])
+      io_manager.instance_variable_set(:@buffers, { connection => "frame" })
+      io_manager.instance_variable_set(:@signal_pipes, [pipe_a, pipe_b])
+      io_manager.instance_variable_set(:@worker_threads, [])
+
+      io_manager.ensure_closed
+
+      expect(connection).to have_received(:close)
+      expect(pipe_a).to have_received(:close)
+      expect(pipe_b).to have_received(:close)
+      expect(io_manager.instance_variable_get(:@connections)).to be_empty
+      expect(io_manager.instance_variable_get(:@buffers)).to be_empty
+    end
+
+    it "continues closing remaining signal pipes when one close raises" do
+      io_manager = build_io_manager
+      pipe_a = double("pipe_a", closed?: false)
+      pipe_b = double("pipe_b", closed?: false, close: nil)
+
+      allow(pipe_a).to receive(:close).and_raise(IOError)
+
+      io_manager.instance_variable_set(:@signal_pipes, [pipe_a, pipe_b])
+      io_manager.instance_variable_set(:@worker_threads, [])
+
+      io_manager.send(:close_signal_pipes)
+
+      expect(pipe_a).to have_received(:close)
+      expect(pipe_b).to have_received(:close)
+    end
+
+    it "drops removed connections from bookkeeping" do
+      io_manager = build_io_manager
+      connection = double("connection", close: nil)
+
+      io_manager.instance_variable_set(:@connections, [connection])
+      io_manager.instance_variable_set(:@buffers, { connection => "frame" })
+
+      io_manager.send(:remove_connection, connection)
+
+      expect(io_manager.instance_variable_get(:@connections)).to be_empty
+      expect(io_manager.instance_variable_get(:@buffers)).to be_empty
+    end
+
+    # The IOManager reads the four-byte size of a frame itself and collects
+    # that many bytes before a worker sees the frame, so the maximum has to be
+    # applied here, to the declared size, and not only by the FramedTransport
+    # the worker later reads the collected frame through.
+    def connection_sending(bytes)
+      connection = double("connection", close: nil)
+      allow(connection).to receive(:read).and_return(bytes)
+      connection
+    end
+
+    def read_from(io_manager, connection)
+      io_manager.instance_variable_set(:@connections, [connection])
+      io_manager.send(:read_connection, connection)
+    end
+
+    def frames_queued(io_manager)
+      queue = io_manager.instance_variable_get(:@worker_queue)
+      Array.new(queue.size) { queue.pop }
+    end
+
+    it "closes a connection whose frame is over the default maximum, before collecting it" do
+      io_manager = build_io_manager
+      connection = connection_sending([Thrift::FramedTransport::DEFAULT_MAX_FRAME_SIZE + 1].pack("N") + ("x" * 64))
+
+      read_from(io_manager, connection)
+
+      expect(connection).to have_received(:close)
+      expect(io_manager.instance_variable_get(:@connections)).to be_empty
+      expect(io_manager.instance_variable_get(:@buffers)).to be_empty
+      expect(frames_queued(io_manager)).to be_empty
+    end
+
+    it "closes a connection whose frame is over a given maximum, even once the whole frame has arrived" do
+      io_manager = build_io_manager(max_frame_size: 100)
+      connection = connection_sending([101].pack("N") + ("x" * 101))
+
+      read_from(io_manager, connection)
+
+      expect(connection).to have_received(:close)
+      expect(io_manager.instance_variable_get(:@buffers)).to be_empty
+      expect(frames_queued(io_manager)).to be_empty
+    end
+
+    it "still hands a frame at the maximum to the workers" do
+      io_manager = build_io_manager(max_frame_size: 100)
+      frame = [100].pack("N") + ("y" * 100)
+      connection = connection_sending(frame)
+
+      read_from(io_manager, connection)
+
+      expect(connection).not_to have_received(:close)
+      expect(io_manager.instance_variable_get(:@connections)).to eq([connection])
+      expect(frames_queued(io_manager)).to eq([[:frame, connection, frame]])
+    end
+
+    it "still hands an ordinary frame to the workers" do
+      io_manager = build_io_manager
+      frame = [13].pack("N") + ("z" * 13)
+      connection = connection_sending(frame)
+
+      read_from(io_manager, connection)
+
+      expect(connection).not_to have_received(:close)
+      expect(frames_queued(io_manager)).to eq([[:frame, connection, frame]])
+    end
+  end
+
+  describe "#{Thrift::NonblockingServer} with TLS transport" do
+    let(:client_timeout) { Thrift::BaseServerTransport::DEFAULT_CLIENT_TIMEOUT }
+
+    before(:each) do
+      @port = available_port
+      handler = Handler.new
+      processor = SpecNamespace::NonblockingService::Processor.new(handler)
+      @transport = Thrift::SSLServerSocket.new(
+        "localhost",
+        @port,
+        create_server_ssl_context,
+        client_timeout: client_timeout,
+      )
+      transport_factory = Thrift::FramedTransportFactory.new
+      logger = Logger.new(STDERR)
+      logger.level = Logger::WARN
+      @server = Thrift::NonblockingServer.new(processor, @transport, transport_factory, nil, 5, logger)
+      handler.server = @server
+
+      @server_thread = Thread.new(Thread.current) do |master_thread|
+        @server.serve
+      rescue => e
+        master_thread.raise e
+      end
+
+      @clients = []
+      wait_until_listening(@transport, @server_thread)
+    end
+
+    after(:each) do
+      @clients.each(&:close)
+      @server.shutdown if @server && @server_thread&.alive?
+      @server_thread.join(2) if @server_thread
+      @transport.close if @transport
+    end
+
+    it "should handle requests over TLS" do
+      expect(@server_thread).to be_alive
+
+      client = setup_tls_client
+      expect(client.greeting(true)).to eq(SpecNamespace::Hello.new)
+
+      @server.shutdown
+      expect(@server_thread.join(2)).to be_an_instance_of(Thread)
+    end
+
+    context "when a TLS handshake times out" do
+      let(:client_timeout) { 0.1 }
+
+      it "continues accepting connections" do
+        stalled_client = TCPSocket.new("localhost", @port)
+
+        expect(Timeout.timeout(1) { stalled_client.read(1) }).to be_nil
+        expect(@server_thread).to be_alive
+
+        client = setup_tls_client
+        expect(client.greeting(true)).to eq(SpecNamespace::Hello.new)
+      ensure
+        stalled_client&.close
+      end
+    end
+
+    def setup_tls_client
+      transport = Thrift::FramedTransport.new(
+        Thrift::SSLSocket.new("localhost", @port, nil, create_client_ssl_context),
+      )
+      protocol = Thrift::BinaryProtocol.new(transport)
+      client = SpecNamespace::NonblockingService::Client.new(protocol)
+      transport.open
+      @clients << transport
+      client
+    end
+
+    def ssl_keys_dir
+      File.expand_path("../../../test/keys", __dir__)
+    end
+
+    def create_server_ssl_context
+      OpenSSL::SSL::SSLContext.new.tap do |ctx|
+        ctx.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        if ctx.respond_to?(:min_version=) && OpenSSL::SSL.const_defined?(:TLS1_2_VERSION)
+          ctx.min_version = OpenSSL::SSL::TLS1_2_VERSION
+        end
+        ctx.ca_file = File.join(ssl_keys_dir, "CA.pem")
+        ctx.cert = OpenSSL::X509::Certificate.new(File.read(File.join(ssl_keys_dir, "server.crt")))
+        ctx.cert_store = OpenSSL::X509::Store.new
+        ctx.cert_store.add_file(File.join(ssl_keys_dir, "client.pem"))
+        ctx.key = OpenSSL::PKey::RSA.new(File.read(File.join(ssl_keys_dir, "server.key")))
+      end
+    end
+
+    def create_client_ssl_context
+      OpenSSL::SSL::SSLContext.new.tap do |ctx|
+        ctx.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        if ctx.respond_to?(:min_version=) && OpenSSL::SSL.const_defined?(:TLS1_2_VERSION)
+          ctx.min_version = OpenSSL::SSL::TLS1_2_VERSION
+        end
+        ctx.ca_file = File.join(ssl_keys_dir, "CA.pem")
+        ctx.cert = OpenSSL::X509::Certificate.new(File.read(File.join(ssl_keys_dir, "client.crt")))
+        ctx.cert_store = OpenSSL::X509::Store.new
+        ctx.cert_store.add_file(File.join(ssl_keys_dir, "server.pem"))
+        ctx.key = OpenSSL::PKey::RSA.new(File.read(File.join(ssl_keys_dir, "client.key")))
+      end
+    end
+  end
+
+  def wait_until_listening(server_transport, server_thread)
+    Timeout.timeout(2) do
+      until server_transport.handle
+        raise "Server thread exited unexpectedly" unless server_thread.alive?
+        sleep 0.01
+      end
+    end
+  end
+
+  def available_port
+    TCPServer.open("localhost", 0) { |server| server.addr[1] }
+  end
+end

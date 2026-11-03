@@ -1,0 +1,365 @@
+<?php
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+declare(strict_types=1);
+
+namespace Test\Thrift\Unit\Lib\Transport;
+
+use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Constraint\Constraint;
+use PHPUnit\Framework\Attributes\DataProvider;
+use ReflectionProperty;
+use Thrift\Exception\TTransportException;
+use Thrift\Transport\TFramedTransport;
+use Thrift\Transport\TMemoryBuffer;
+use Thrift\Transport\TTransport;
+
+class TFramedTransportTest extends TestCase
+{
+    public function testIsOpen()
+    {
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport);
+
+        $transport
+            ->expects($this->once())
+            ->method('isOpen')
+            ->willReturn(true);
+
+        $this->assertTrue($framedTransport->isOpen());
+    }
+
+    public function testOpen()
+    {
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport);
+
+        $transport
+            ->expects($this->once())
+            ->method('open');
+
+        $this->assertNull($framedTransport->open());
+    }
+
+    public function testClose()
+    {
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport);
+
+        $transport
+            ->expects($this->once())
+            ->method('close');
+
+        $this->assertNull($framedTransport->close());
+    }
+
+    public function testPutBack()
+    {
+        $transport = $this->createStub(TTransport::class);
+        $framedTransport = new TFramedTransport($transport);
+        $framedTransport->putBack('test');
+
+        $this->assertEquals('test', (new ReflectionProperty($framedTransport, 'rBuf'))->getValue($framedTransport));
+
+        $framedTransport->putBack('abcde');
+        $this->assertEquals(
+            'abcdetest',
+            (new ReflectionProperty($framedTransport, 'rBuf'))->getValue($framedTransport)
+        );
+    }
+
+    #[DataProvider('readDataProvider')]
+    public function testRead(
+        $readAllowed,
+        $readBuffer,
+        $lowLevelTransportReadResult,
+        $lowLevelTransportReadAllParams,
+        $lowLevelTransportReadAllResult,
+        $readLength,
+        $expectedReadResult
+    ) {
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport, $readAllowed);
+        $framedTransport->putBack($readBuffer);
+
+        $transport
+            ->expects($readAllowed ? $this->never() : $this->once())
+            ->method('read')
+            ->with($readLength)
+            ->willReturn($lowLevelTransportReadResult);
+
+        $transport
+            ->expects($this->exactly(count($lowLevelTransportReadAllParams)))
+            ->method('readAll')
+            ->willReturnCallback(function (...$args) use ($lowLevelTransportReadAllParams, $lowLevelTransportReadAllResult) {
+                static $iteration = 0;
+                $expected = $lowLevelTransportReadAllParams[$iteration];
+                foreach ($expected as $i => $exp) {
+                    if ($exp instanceof Constraint) {
+                        $this->assertThat($args[$i], $exp);
+                    } else {
+                        $this->assertSame($exp, $args[$i]);
+                    }
+                }
+
+                return $lowLevelTransportReadAllResult[$iteration++];
+            });
+
+        $this->assertEquals($expectedReadResult, $framedTransport->read($readLength));
+    }
+
+    public static function readDataProvider()
+    {
+        yield 'read not allowed' => [
+            'readAllowed' => false,
+            'readBuffer' => '',
+            'lowLevelTransportReadResult' => '12345',
+            'lowLevelTransportReadAllParams' => [],
+            'lowLevelTransportReadAllResult' => [],
+            'readLength' => 5,
+            'expectedReadResult' => '12345',
+        ];
+        yield 'read fully buffered item' => [
+            'readAllowed' => true,
+            'readBuffer' => '',
+            'lowLevelTransportReadResult' => '',
+            'lowLevelTransportReadAllParams' => [[4], [5]],
+            'lowLevelTransportReadAllResult' => [pack('N', '5'), '12345'],
+            'readLength' => 5,
+            'expectedReadResult' => '12345',
+        ];
+        yield 'read partly buffered item' => [
+            'readAllowed' => true,
+            'readBuffer' => '',
+            'lowLevelTransportReadResult' => '',
+            'lowLevelTransportReadAllParams' => [[4], [10]],
+            'lowLevelTransportReadAllResult' => [pack('N', '10'), '1234567890'],
+            'readLength' => 5,
+            'expectedReadResult' => '12345',
+        ];
+    }
+
+    public function testReadRejectsFrameLargerThanConfiguredMax()
+    {
+        $limit = 100;
+        $declared = $limit + 1;
+
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport, true, true, $limit);
+
+        // Only the 4-byte length is read; the check fires before the body,
+        // so the declared body bytes are never requested.
+        $transport
+            ->expects($this->once())
+            ->method('readAll')
+            ->with(4)
+            ->willReturn(pack('N', $declared));
+
+        try {
+            $framedTransport->read(5);
+            $this->fail('Expected a TTransportException for an oversized frame');
+        } catch (TTransportException $e) {
+            $this->assertStringContainsString((string) $declared, $e->getMessage());
+            $this->assertStringContainsString((string) $limit, $e->getMessage());
+            $this->assertSame(TTransportException::SIZE_LIMIT, $e->getCode());
+        }
+    }
+
+    public function testReadRejectsFrameLargerThanDefaultMax()
+    {
+        $declared = TFramedTransport::DEFAULT_MAX_FRAME_SIZE + 1;
+
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport);
+
+        $transport
+            ->expects($this->once())
+            ->method('readAll')
+            ->with(4)
+            ->willReturn(pack('N', $declared));
+
+        try {
+            $framedTransport->read(5);
+            $this->fail('Expected a TTransportException for a frame over the default limit');
+        } catch (TTransportException $e) {
+            $this->assertStringContainsString((string) $declared, $e->getMessage());
+            $this->assertSame(TTransportException::SIZE_LIMIT, $e->getCode());
+        }
+    }
+
+    public function testReadAcceptsFrameAtConfiguredMax()
+    {
+        $limit = 100;
+        $body = str_repeat('x', $limit);
+
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport, true, true, $limit);
+
+        // A frame exactly at the limit is read in full: the 4-byte length,
+        // then the declared number of body bytes.
+        $transport
+            ->expects($this->exactly(2))
+            ->method('readAll')
+            ->willReturnCallback(function ($len) use ($limit, $body) {
+                static $iteration = 0;
+                $iteration++;
+                if ($iteration === 1) {
+                    $this->assertSame(4, $len);
+                    return pack('N', $limit);
+                }
+                $this->assertSame($limit, $len);
+                return $body;
+            });
+
+        $this->assertSame($body, $framedTransport->read($limit));
+    }
+
+    #[DataProvider('writeDataProvider')]
+    public function testWrite(
+        $writeAllowed,
+        $writeData,
+        $writeLength,
+        $expectedWriteBufferValue
+    ) {
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport, true, $writeAllowed);
+
+        $transport
+            ->expects($writeAllowed ? $this->never() : $this->once())
+            ->method('write')
+            ->with('12345');
+
+        $framedTransport->write($writeData, $writeLength);
+
+        $this->assertEquals(
+            $expectedWriteBufferValue,
+            (new ReflectionProperty($framedTransport, 'wBuf'))->getValue($framedTransport)
+        );
+    }
+
+    public static function writeDataProvider()
+    {
+        yield 'write not allowed' => [
+            'writeAllowed' => false,
+            'writeData' => '12345',
+            'writeLength' => 5,
+            'expectedWriteBufferValue' => '',
+        ];
+        yield 'write full' => [
+            'writeAllowed' => true,
+            'writeData' => '12345',
+            'writeLength' => 5,
+            'expectedWriteBufferValue' => '12345',
+        ];
+        yield 'write partly' => [
+            'writeAllowed' => true,
+            'writeData' => '1234567890',
+            'writeLength' => 5,
+            'expectedWriteBufferValue' => '12345',
+        ];
+    }
+
+    #[DataProvider('flushDataProvider')]
+    public function testFlush(
+        $writeAllowed,
+        $writeBuffer,
+        $lowLevelTransportWrite
+    ) {
+        $transport = $this->createMock(TTransport::class);
+        $framedTransport = new TFramedTransport($transport, true, $writeAllowed);
+        (new ReflectionProperty($framedTransport, 'wBuf'))->setValue($framedTransport, $writeBuffer);
+
+        $transport
+            ->expects($this->once())
+            ->method('flush');
+
+        $transport
+            ->expects($writeAllowed && !empty($writeBuffer) ? $this->once() : $this->never())
+            ->method('write')
+            ->with($lowLevelTransportWrite);
+
+        $this->assertNull($framedTransport->flush());
+    }
+
+    public static function flushDataProvider()
+    {
+        yield 'write not allowed' => [
+            'writeAllowed' => false,
+            'writeBuffer' => '12345',
+            'lowLevelTransportWrite' => '',
+        ];
+        yield 'empty buffer' => [
+            'writeAllowed' => true,
+            'writeBuffer' => '',
+            'lowLevelTransportWrite' => '',
+        ];
+        yield 'write full' => [
+            'writeAllowed' => true,
+            'writeBuffer' => '12345',
+            'lowLevelTransportWrite' => pack('N', strlen('12345')) . '12345',
+        ];
+    }
+
+    /**
+     * A read returns at most the bytes left in the current frame and fetches
+     * the next frame only once the current one is used up.
+     */
+    public function testReadsOfAssortedSizesFollowTheFrames()
+    {
+        $frames = ['a', '', 'bc', str_repeat('d', 300), 'efghijk', str_repeat('l', 5000), 'mn'];
+        $wire = '';
+        foreach ($frames as $frame) {
+            $wire .= pack('N', strlen($frame)) . $frame;
+        }
+        $framedTransport = new TFramedTransport(new TMemoryBuffer($wire));
+
+        $sizes = [1, 2, 3, 5, 7, 64, 1000, 4096];
+        $pending = $frames;
+        $frame = '';
+        $reads = 0;
+        while ($pending !== [] || $frame !== '') {
+            if ($frame === '') {
+                $frame = array_shift($pending);
+            }
+            $len = $sizes[$reads++ % count($sizes)];
+            $expected = substr($frame, 0, $len);
+            $frame = substr($frame, strlen($expected));
+            $this->assertSame($expected, $framedTransport->read($len), "read #$reads of $len bytes");
+        }
+
+        $framedTransport = new TFramedTransport(new TMemoryBuffer($wire));
+        $this->assertSame(implode('', $frames), $framedTransport->readAll(strlen(implode('', $frames))));
+    }
+
+    public function testPutBackPrecedesTheRestOfTheFrame()
+    {
+        $wire = pack('N', 6) . 'abcdef' . pack('N', 2) . 'gh';
+        $framedTransport = new TFramedTransport(new TMemoryBuffer($wire));
+
+        $this->assertSame('abc', $framedTransport->read(3));
+        $framedTransport->putBack('XY');
+        $this->assertSame('XYd', $framedTransport->read(3));
+        $this->assertSame('ef', $framedTransport->read(10));
+        $framedTransport->putBack('Z');
+        $this->assertSame('Z', $framedTransport->read(10));
+        $this->assertSame('gh', $framedTransport->read(10));
+    }
+}

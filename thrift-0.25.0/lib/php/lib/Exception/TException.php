@@ -1,0 +1,425 @@
+<?php
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ * @package thrift
+ */
+
+declare(strict_types=1);
+
+namespace Thrift\Exception;
+
+use Thrift\Base\TBase;
+use Thrift\Protocol\TProtocol;
+use Thrift\Type\TType;
+
+/**
+ * NOTE(mcslee): This currently contains a ton of duplicated code from TBase
+ * because we need to save CPU cycles and this is not yet in an extension.
+ * Ideally we'd multiply-inherit TException from both Exception and Base, but
+ * that's not possible in PHP and there are no modules either, so for now we
+ * apologetically take a trip to HackTown.
+ *
+ * Can be called with standard Exception constructor (message, code) or with
+ * Thrift Base object constructor (spec, vals).
+ *
+ * @param string|array|null $p1 Message (string) or type-spec (array)
+ * @param int|array          $p2 Code (integer) or values (array)
+ */
+#[\AllowDynamicProperties]
+class TException extends \Exception
+{
+    /**
+     * @param string|array<int, array<string, mixed>>|null $p1
+     * @param int|array<string, mixed>                     $p2
+     */
+    public function __construct(string|array|null $p1 = null, int|array $p2 = 0)
+    {
+        if (is_array($p1) && is_array($p2)) {
+            $spec = $p1;
+            $vals = $p2;
+            foreach ($spec as $fid => $fspec) {
+                $var = $fspec['var'];
+                if (isset($vals[$var])) {
+                    $this->$var = $vals[$var];
+                }
+            }
+        } else {
+            parent::__construct($p1 ?? '', $p2);
+        }
+    }
+
+    /** @var array<int, string> */
+    public static array $tmethod = [
+        TType::BOOL => 'Bool',
+        TType::BYTE => 'Byte',
+        TType::I16 => 'I16',
+        TType::I32 => 'I32',
+        TType::I64 => 'I64',
+        TType::DOUBLE => 'Double',
+        TType::STRING => 'String',
+        TType::UUID => 'Uuid',
+    ];
+
+    /**
+     * @param array<string, mixed> $spec
+     */
+    private function readMap(mixed &$var, array $spec, TProtocol $input): int
+    {
+        $xfer = 0;
+        $ktype = $spec['ktype'];
+        $vtype = $spec['vtype'];
+        $kread = $vread = null;
+        if (isset(TBase::$tmethod[$ktype])) {
+            $kread = 'read' . TBase::$tmethod[$ktype];
+        } else {
+            $kspec = $spec['key'];
+        }
+        if (isset(TBase::$tmethod[$vtype])) {
+            $vread = 'read' . TBase::$tmethod[$vtype];
+        } else {
+            $vspec = $spec['val'];
+        }
+        $var = [];
+        $_ktype = $_vtype = $size = 0;
+        $xfer += $input->readMapBegin($_ktype, $_vtype, $size);
+        for ($i = 0; $i < $size; ++$i) {
+            $key = $val = null;
+            if ($kread !== null) {
+                $xfer += $input->$kread($key);
+            } else {
+                switch ($ktype) {
+                    case TType::STRUCT:
+                        $class = $kspec['class'];
+                        $key = new $class();
+                        $xfer += $key->read($input);
+                        break;
+                    case TType::MAP:
+                        $xfer += $this->readMap($key, $kspec, $input);
+                        break;
+                    case TType::LST:
+                        $xfer += $this->readList($key, $kspec, $input, false);
+                        break;
+                    case TType::SET:
+                        $xfer += $this->readList($key, $kspec, $input, true);
+                        break;
+                }
+            }
+            if ($vread !== null) {
+                $xfer += $input->$vread($val);
+            } else {
+                switch ($vtype) {
+                    case TType::STRUCT:
+                        $class = $vspec['class'];
+                        $val = new $class();
+                        $xfer += $val->read($input);
+                        break;
+                    case TType::MAP:
+                        $xfer += $this->readMap($val, $vspec, $input);
+                        break;
+                    case TType::LST:
+                        $xfer += $this->readList($val, $vspec, $input, false);
+                        break;
+                    case TType::SET:
+                        $xfer += $this->readList($val, $vspec, $input, true);
+                        break;
+                }
+            }
+            $var[$key] = $val;
+        }
+        $xfer += $input->readMapEnd();
+
+        return $xfer;
+    }
+
+    /**
+     * @param array<string, mixed> $spec
+     */
+    private function readList(mixed &$var, array $spec, TProtocol $input, bool $set = false): int
+    {
+        $xfer = 0;
+        $etype = $spec['etype'];
+        $eread = $vread = null;
+        if (isset(TBase::$tmethod[$etype])) {
+            $eread = 'read' . TBase::$tmethod[$etype];
+        } else {
+            $espec = $spec['elem'];
+        }
+        $var = [];
+        $_etype = $size = 0;
+        if ($set) {
+            $xfer += $input->readSetBegin($_etype, $size);
+        } else {
+            $xfer += $input->readListBegin($_etype, $size);
+        }
+        for ($i = 0; $i < $size; ++$i) {
+            $elem = null;
+            if ($eread !== null) {
+                $xfer += $input->$eread($elem);
+            } else {
+                $espec = $spec['elem'];
+                switch ($etype) {
+                    case TType::STRUCT:
+                        $class = $espec['class'];
+                        $elem = new $class();
+                        $xfer += $elem->read($input);
+                        break;
+                    case TType::MAP:
+                        $xfer += $this->readMap($elem, $espec, $input);
+                        break;
+                    case TType::LST:
+                        $xfer += $this->readList($elem, $espec, $input, false);
+                        break;
+                    case TType::SET:
+                        $xfer += $this->readList($elem, $espec, $input, true);
+                        break;
+                }
+            }
+            if ($set) {
+                $var[$elem] = true;
+            } else {
+                $var [] = $elem;
+            }
+        }
+        if ($set) {
+            $xfer += $input->readSetEnd();
+        } else {
+            $xfer += $input->readListEnd();
+        }
+
+        return $xfer;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $spec
+     */
+    protected function readStruct(string $class, array $spec, TProtocol $input): int
+    {
+        $xfer = 0;
+        $fname = null;
+        $ftype = 0;
+        $fid = 0;
+        $input->incrementRecursionDepth();
+        try {
+            $xfer += $input->readStructBegin($fname);
+            while (true) {
+                $xfer += $input->readFieldBegin($fname, $ftype, $fid);
+                if ($ftype == TType::STOP) {
+                    break;
+                }
+                if (isset($spec[$fid])) {
+                    $fspec = $spec[$fid];
+                    $var = $fspec['var'];
+                    if ($ftype == $fspec['type']) {
+                        $xfer = 0;
+                        if (isset(TBase::$tmethod[$ftype])) {
+                            $func = 'read' . TBase::$tmethod[$ftype];
+                            $xfer += $input->$func($this->$var);
+                        } else {
+                            switch ($ftype) {
+                                case TType::STRUCT:
+                                    $class = $fspec['class'];
+                                    $this->$var = new $class();
+                                    $xfer += $this->$var->read($input);
+                                    break;
+                                case TType::MAP:
+                                    $xfer += $this->readMap($this->$var, $fspec, $input);
+                                    break;
+                                case TType::LST:
+                                    $xfer += $this->readList($this->$var, $fspec, $input, false);
+                                    break;
+                                case TType::SET:
+                                    $xfer += $this->readList($this->$var, $fspec, $input, true);
+                                    break;
+                            }
+                        }
+                    } else {
+                        $xfer += $input->skip($ftype);
+                    }
+                } else {
+                    $xfer += $input->skip($ftype);
+                }
+                $xfer += $input->readFieldEnd();
+            }
+            $xfer += $input->readStructEnd();
+        } finally {
+            $input->decrementRecursionDepth();
+        }
+
+        return $xfer;
+    }
+
+    /**
+     * @param array<int|string, mixed> $var
+     * @param array<string, mixed>     $spec
+     */
+    private function writeMap(array $var, array $spec, TProtocol $output): int
+    {
+        $xfer = 0;
+        $ktype = $spec['ktype'];
+        $vtype = $spec['vtype'];
+        $kwrite = $vwrite = null;
+        if (isset(TBase::$tmethod[$ktype])) {
+            $kwrite = 'write' . TBase::$tmethod[$ktype];
+        } else {
+            $kspec = $spec['key'];
+        }
+        if (isset(TBase::$tmethod[$vtype])) {
+            $vwrite = 'write' . TBase::$tmethod[$vtype];
+        } else {
+            $vspec = $spec['val'];
+        }
+        $xfer += $output->writeMapBegin($ktype, $vtype, count($var));
+        foreach ($var as $key => $val) {
+            if (isset($kwrite)) {
+                $xfer += $output->$kwrite($key);
+            } else {
+                switch ($ktype) {
+                    case TType::STRUCT:
+                        $xfer += $key->write($output);
+                        break;
+                    case TType::MAP:
+                        $xfer += $this->writeMap($key, $kspec, $output);
+                        break;
+                    case TType::LST:
+                        $xfer += $this->writeList($key, $kspec, $output, false);
+                        break;
+                    case TType::SET:
+                        $xfer += $this->writeList($key, $kspec, $output, true);
+                        break;
+                }
+            }
+            if (isset($vwrite)) {
+                $xfer += $output->$vwrite($val);
+            } else {
+                switch ($vtype) {
+                    case TType::STRUCT:
+                        $xfer += $val->write($output);
+                        break;
+                    case TType::MAP:
+                        $xfer += $this->writeMap($val, $vspec, $output);
+                        break;
+                    case TType::LST:
+                        $xfer += $this->writeList($val, $vspec, $output, false);
+                        break;
+                    case TType::SET:
+                        $xfer += $this->writeList($val, $vspec, $output, true);
+                        break;
+                }
+            }
+        }
+        $xfer += $output->writeMapEnd();
+
+        return $xfer;
+    }
+
+    /**
+     * @param array<int|string, mixed> $var
+     * @param array<string, mixed>     $spec
+     */
+    private function writeList(array $var, array $spec, TProtocol $output, bool $set = false): int
+    {
+        $xfer = 0;
+        $etype = $spec['etype'];
+        $ewrite = null;
+        if (isset(TBase::$tmethod[$etype])) {
+            $ewrite = 'write' . TBase::$tmethod[$etype];
+        } else {
+            $espec = $spec['elem'];
+        }
+        if ($set) {
+            $xfer += $output->writeSetBegin($etype, count($var));
+        } else {
+            $xfer += $output->writeListBegin($etype, count($var));
+        }
+        foreach ($var as $key => $val) {
+            $elem = $set ? $key : $val;
+            if (isset($ewrite)) {
+                $xfer += $output->$ewrite($elem);
+            } else {
+                switch ($etype) {
+                    case TType::STRUCT:
+                        $xfer += $elem->write($output);
+                        break;
+                    case TType::MAP:
+                        $xfer += $this->writeMap($elem, $espec, $output);
+                        break;
+                    case TType::LST:
+                        $xfer += $this->writeList($elem, $espec, $output, false);
+                        break;
+                    case TType::SET:
+                        $xfer += $this->writeList($elem, $espec, $output, true);
+                        break;
+                }
+            }
+        }
+        if ($set) {
+            $xfer += $output->writeSetEnd();
+        } else {
+            $xfer += $output->writeListEnd();
+        }
+
+        return $xfer;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $spec
+     */
+    protected function writeStruct(string $class, array $spec, TProtocol $output): int
+    {
+        $xfer = 0;
+        $output->incrementRecursionDepth();
+        try {
+            $xfer += $output->writeStructBegin($class);
+            foreach ($spec as $fid => $fspec) {
+                $var = $fspec['var'];
+                if ($this->$var !== null) {
+                    $ftype = $fspec['type'];
+                    $xfer += $output->writeFieldBegin($var, $ftype, $fid);
+                    if (isset(TBase::$tmethod[$ftype])) {
+                        $func = 'write' . TBase::$tmethod[$ftype];
+                        $xfer += $output->$func($this->$var);
+                    } else {
+                        switch ($ftype) {
+                            case TType::STRUCT:
+                                $xfer += $this->$var->write($output);
+                                break;
+                            case TType::MAP:
+                                $xfer += $this->writeMap($this->$var, $fspec, $output);
+                                break;
+                            case TType::LST:
+                                $xfer += $this->writeList($this->$var, $fspec, $output, false);
+                                break;
+                            case TType::SET:
+                                $xfer += $this->writeList($this->$var, $fspec, $output, true);
+                                break;
+                        }
+                    }
+                    $xfer += $output->writeFieldEnd();
+                }
+            }
+            $xfer += $output->writeFieldStop();
+            $xfer += $output->writeStructEnd();
+        } finally {
+            $output->decrementRecursionDepth();
+        }
+
+        return $xfer;
+    }
+}

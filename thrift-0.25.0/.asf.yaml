@@ -1,0 +1,57 @@
+# ASF Configuration for Apache Thrift
+# See https://github.com/apache/infrastructure-asfyaml/blob/main/README.md
+notifications:
+  commits: commits@thrift.apache.org
+  issues: notifications@thrift.apache.org
+  pullrequests_status: notifications@thrift.apache.org
+  pullrequests_comment: notifications@thrift.apache.org
+  jira_options: link label worklog
+
+github:
+  description: "Apache Thrift"
+  homepage: https://thrift.apache.org/
+  rulesets:
+    - name: "Default Branch Protection"
+      type: branch
+      branches:
+        includes:
+          - "~DEFAULT_BRANCH"
+          - "release/*"
+          - "rel/*"
+          - "0.*"      # existing release branches are all 0.xx.xx
+        excludes: []
+      bypass_teams:
+        - root
+      restrict_deletion: true
+      restrict_force_push: true
+  autolink_jira:
+    - THRIFT
+  enabled_merge_buttons:
+    squash: true
+    rebase: true
+    # Linear history and squashed commits are preferred.
+    # See https://thrift.apache.org/docs/HowToContribute
+    merge: false
+  pull_requests:
+    # allow auto-merge => We ALWAYS want a human reviewer acting intentionally on any PR
+    allow_auto_merge: false
+    # enable updating head branches of pull requests => that sometimes gives weird history even on rebase, not recommended
+    allow_update_branch: false
+    # auto-delete head branches after being merged => highly useful
+    del_branch_on_merge: true
+  copilot_code_review:
+    # lets find out how good it is
+    enabled: true
+    review_drafts: false
+    review_on_push: true
+  features:
+    # We use thrift-website repo for documentation
+    # See https://github.com/apache/thrift-website
+    wiki: false
+    # We use Jira for issue tracking and projects
+    # See https://issues.apache.org/jira/browse/THRIFT
+    issues: false
+    projects: false
+    # We use mailing lists for discussions
+    # See https://thrift.apache.org/mailing
+    discussions: false

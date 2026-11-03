@@ -1,0 +1,93 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package thrift
+
+import (
+	"bytes"
+	"testing"
+)
+
+func TestCompactProtocolVarintRejectsOverlong(t *testing.T) {
+	// 11 continuation bytes (bit 7 set), no terminating byte
+	payload := bytes.Repeat([]byte{0x80}, 11)
+	trans := NewTMemoryBufferLen(len(payload))
+	trans.Write(payload)
+	p := NewTCompactProtocol(trans)
+	_, err := p.readVarint64()
+	if err == nil {
+		t.Fatal("expected error for varint over 10 bytes, got nil")
+	}
+}
+
+func TestCompactProtocolVarintAcceptsValid10Byte(t *testing.T) {
+	// 9 continuation bytes followed by a terminating byte
+	payload := append(bytes.Repeat([]byte{0x80}, 9), 0x01)
+	trans := NewTMemoryBufferLen(len(payload))
+	trans.Write(payload)
+	p := NewTCompactProtocol(trans)
+	_, err := p.readVarint64()
+	if err != nil {
+		t.Fatalf("unexpected error for valid 10-byte varint: %v", err)
+	}
+}
+
+func TestReadWriteCompactProtocol(t *testing.T) {
+	ReadWriteProtocolTest(t, NewTCompactProtocolFactory())
+
+	transports := []TTransport{
+		NewTMemoryBuffer(),
+		NewStreamTransportRW(bytes.NewBuffer(make([]byte, 0, 16384))),
+		NewTFramedTransport(NewTMemoryBuffer()),
+	}
+
+	newTZlibTransport := func(trans TTransport, level int) *TZlibTransport {
+		t.Helper()
+		zlibTrans, err := NewTZlibTransport(trans, level)
+		if err != nil {
+			t.Fatalf("NewTZlibTransport returned error: %v", err)
+		}
+		return zlibTrans
+	}
+
+	zlib0 := newTZlibTransport(NewTMemoryBuffer(), 0)
+	zlib6 := newTZlibTransport(NewTMemoryBuffer(), 6)
+	zlib9 := newTZlibTransport(NewTFramedTransport(NewTMemoryBuffer()), 9)
+	transports = append(transports, zlib0, zlib6, zlib9)
+
+	for _, trans := range transports {
+		p := NewTCompactProtocol(trans)
+		ReadWriteBool(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteByte(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteI16(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteI32(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteI64(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteDouble(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteString(t, p, trans)
+		p = NewTCompactProtocol(trans)
+		ReadWriteBinary(t, p, trans)
+		trans.Close()
+	}
+}

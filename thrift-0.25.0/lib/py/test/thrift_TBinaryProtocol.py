@@ -1,0 +1,372 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+import struct
+import unittest
+import uuid
+
+import _import_local_thrift  # noqa
+from thrift.Thrift import TApplicationException
+from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.transport import TTransport
+
+
+def testNaked(type, data):
+    buf = TTransport.TMemoryBuffer()
+    transport = TTransport.TBufferedTransportFactory().getTransport(buf)
+    protocol = TBinaryProtocol(transport)
+    if type.capitalize() == 'Byte':
+        protocol.writeByte(data)
+
+    if type.capitalize() == 'I16':
+        protocol.writeI16(data)
+
+    if type.capitalize() == 'I32':
+        protocol.writeI32(data)
+
+    if type.capitalize() == 'I64':
+        protocol.writeI64(data)
+
+    if type.capitalize() == 'String':
+        protocol.writeString(data)
+
+    if type.capitalize() == 'Double':
+        protocol.writeDouble(data)
+
+    if type.capitalize() == 'Binary':
+        protocol.writeBinary(data)
+
+    if type.capitalize() == 'Bool':
+        protocol.writeBool(data)
+
+    if type.capitalize() == 'Uuid':
+        protocol.writeUuid(data)
+
+    transport.flush()
+    data_r = buf.getvalue()
+    buf = TTransport.TMemoryBuffer(data_r)
+    transport = TTransport.TBufferedTransportFactory().getTransport(buf)
+    protocol = TBinaryProtocol(transport)
+    if type.capitalize() == 'Byte':
+        return protocol.readByte()
+
+    if type.capitalize() == 'I16':
+        return protocol.readI16()
+
+    if type.capitalize() == 'I32':
+        return protocol.readI32()
+
+    if type.capitalize() == 'I64':
+        return protocol.readI64()
+
+    if type.capitalize() == 'String':
+        return protocol.readString()
+
+    if type.capitalize() == 'Double':
+        return protocol.readDouble()
+
+    if type.capitalize() == 'Binary':
+        return protocol.readBinary()
+
+    if type.capitalize() == 'Bool':
+        return protocol.readBool()
+
+    if type.capitalize() == 'Uuid':
+        return protocol.readUuid()
+
+
+def testField(type, data):
+    TType = {"Bool": 2, "Byte": 3, "Binary": 5, "I16": 6, "I32": 8, "I64": 10, "Double": 11, "String": 12, "Uuid": 13}
+    buf = TTransport.TMemoryBuffer()
+    transport = TTransport.TBufferedTransportFactory().getTransport(buf)
+    protocol = TBinaryProtocol(transport)
+    protocol.writeStructBegin('struct')
+    protocol.writeFieldBegin("field", TType[type.capitalize()], 10)
+    if type.capitalize() == 'Byte':
+        protocol.writeByte(data)
+
+    if type.capitalize() == 'I16':
+        protocol.writeI16(data)
+
+    if type.capitalize() == 'I32':
+        protocol.writeI32(data)
+
+    if type.capitalize() == 'I64':
+        protocol.writeI64(data)
+
+    if type.capitalize() == 'String':
+        protocol.writeString(data)
+
+    if type.capitalize() == 'Double':
+        protocol.writeDouble(data)
+
+    if type.capitalize() == 'Binary':
+        protocol.writeBinary(data)
+
+    if type.capitalize() == 'Bool':
+        protocol.writeBool(data)
+
+    if type.capitalize() == 'Uuid':
+        protocol.writeUuid(data)
+
+    protocol.writeFieldEnd()
+    protocol.writeStructEnd()
+
+    transport.flush()
+    data_r = buf.getvalue()
+
+    buf = TTransport.TMemoryBuffer(data_r)
+    transport = TTransport.TBufferedTransportFactory().getTransport(buf)
+    protocol = TBinaryProtocol(transport)
+    protocol.readStructBegin()
+    protocol.readFieldBegin()
+    if type.capitalize() == 'Byte':
+        return protocol.readByte()
+
+    if type.capitalize() == 'I16':
+        return protocol.readI16()
+
+    if type.capitalize() == 'I32':
+        return protocol.readI32()
+
+    if type.capitalize() == 'I64':
+        return protocol.readI64()
+
+    if type.capitalize() == 'String':
+        return protocol.readString()
+
+    if type.capitalize() == 'Double':
+        return protocol.readDouble()
+
+    if type.capitalize() == 'Binary':
+        return protocol.readBinary()
+
+    if type.capitalize() == 'Bool':
+        return protocol.readBool()
+
+    if type.capitalize() == 'Uuid':
+        return protocol.readUuid()
+
+    protocol.readFieldEnd()
+    protocol.readStructEnd()
+
+
+APPLICATION_EXCEPTION_THRIFT_SPEC = (
+    None,
+    (1, 11, "message", "UTF8", None),
+    (2, 8, "type", None, None),
+)
+
+
+def testMessage(data, strict=True):
+    message = {}
+    message['name'] = data[0]
+    message['type'] = data[1]
+    message['seqid'] = data[2]
+
+    strictRead, strictWrite = True, True
+    if not strict:
+        strictRead, strictWrite = False, False
+
+    buf = TTransport.TMemoryBuffer()
+    transport = TTransport.TBufferedTransportFactory().getTransport(buf)
+    protocol = TBinaryProtocol(transport, strictRead=strictRead, strictWrite=strictWrite)
+    protocol.writeMessageBegin(message['name'], message['type'], message['seqid'])
+    protocol.writeMessageEnd()
+
+    transport.flush()
+    data_r = buf.getvalue()
+
+    buf = TTransport.TMemoryBuffer(data_r)
+    transport = TTransport.TBufferedTransportFactory().getTransport(buf)
+    protocol = TBinaryProtocol(transport, strictRead=strictRead, strictWrite=strictWrite)
+    result = protocol.readMessageBegin()
+    protocol.readMessageEnd()
+    return result
+
+
+class TestTBinaryProtocol(unittest.TestCase):
+
+    def setUp(self):
+        try:
+            from thrift.protocol import fastbinary  # noqa: F401
+            self._has_fastbinary = True
+        except ImportError:
+            self._has_fastbinary = False
+
+    def test_TBinaryProtocol_write_read(self):
+        try:
+            testNaked('Byte', 123)
+            for i in range(0, 128):
+                self.assertEqual(i, testField('Byte', i))
+                self.assertEqual(-i, testField('Byte', -i))
+
+            self.assertEqual(0, testNaked("I16", 0))
+            self.assertEqual(1, testNaked("I16", 1))
+            self.assertEqual(15000, testNaked("I16", 15000))
+            self.assertEqual(0x7fff, testNaked("I16", 0x7fff))
+            self.assertEqual(-1, testNaked("I16", -1))
+            self.assertEqual(-15000, testNaked("I16", -15000))
+            self.assertEqual(-0x7fff, testNaked("I16", -0x7fff))
+            self.assertEqual(32767, testNaked("I16", 32767))
+            self.assertEqual(-32768, testNaked("I16", -32768))
+
+            self.assertEqual(0, testField("I16", 0))
+            self.assertEqual(1, testField("I16", 1))
+            self.assertEqual(7, testField("I16", 7))
+            self.assertEqual(150, testField("I16", 150))
+            self.assertEqual(15000, testField("I16", 15000))
+            self.assertEqual(0x7fff, testField("I16", 0x7fff))
+            self.assertEqual(-1, testField("I16", -1))
+            self.assertEqual(-7, testField("I16", -7))
+            self.assertEqual(-150, testField("I16", -150))
+            self.assertEqual(-15000, testField("I16", -15000))
+            self.assertEqual(-0xfff, testField("I16", -0xfff))
+
+            self.assertEqual(0, testNaked("I32", 0))
+            self.assertEqual(1, testNaked("I32", 1))
+            self.assertEqual(15000, testNaked("I32", 15000))
+            self.assertEqual(0xffff, testNaked("I32", 0xffff))
+            self.assertEqual(-1, testNaked("I32", -1))
+            self.assertEqual(-15000, testNaked("I32", -15000))
+            self.assertEqual(-0xffff, testNaked("I32", -0xffff))
+            self.assertEqual(2147483647, testNaked("I32", 2147483647))
+            self.assertEqual(-2147483647, testNaked("I32", -2147483647))
+
+            self.assertEqual(0, testField("I32", 0))
+            self.assertEqual(1, testField("I32", 1))
+            self.assertEqual(7, testField("I32", 7))
+            self.assertEqual(150, testField("I32", 150))
+            self.assertEqual(15000, testField("I32", 15000))
+            self.assertEqual(31337, testField("I32", 31337))
+            self.assertEqual(0xffff, testField("I32", 0xffff))
+            self.assertEqual(0xffffff, testField("I32", 0xffffff))
+            self.assertEqual(-1, testField("I32", -1))
+            self.assertEqual(-7, testField("I32", -7))
+            self.assertEqual(-150, testField("I32", -150))
+            self.assertEqual(-15000, testField("I32", -15000))
+            self.assertEqual(-0xffff, testField("I32", -0xffff))
+            self.assertEqual(-0xffffff, testField("I32", -0xffffff))
+
+            self.assertEqual(9223372036854775807, testNaked("I64", 9223372036854775807))
+            self.assertEqual(-9223372036854775807, testNaked("I64", -9223372036854775807))
+            self.assertEqual(-0, testNaked("I64", 0))
+
+            self.assertEqual(True, testNaked("Bool", True))
+            self.assertEqual(3.14159261, testNaked("Double", 3.14159261))
+            self.assertEqual("hello thrift", testNaked("String", "hello thrift"))
+            self.assertEqual(True, testField('Bool', True))
+            self.assertEqual(3.1415926, testNaked("Double", 3.1415926))
+            self.assertEqual("hello thrift", testNaked("String", "hello thrift"))
+            self.assertEqual(uuid.UUID('{00010203-0405-0607-0809-0a0b0c0d0e0f}'), testNaked("Uuid", uuid.UUID('{00010203-0405-0607-0809-0a0b0c0d0e0f}')))
+            self.assertEqual(uuid.UUID('{00010203-0405-0607-0809-0a0b0c0d0e0f}'), testField("Uuid", uuid.UUID('{00010203-0405-0607-0809-0a0b0c0d0e0f}')))
+
+            TMessageType = {"T_CALL": 1, "T_REPLY": 2, "T_EXCEPTION": 3, "T_ONEWAY": 4}
+            test_data = [("short message name", TMessageType['T_CALL'], 0),
+                         ("1", TMessageType['T_REPLY'], 12345),
+                         ("loooooooooooooooooooooooooooooooooong", TMessageType['T_EXCEPTION'], 1 << 16),
+                         ("one way push", TMessageType['T_ONEWAY'], 12),
+                         ("Janky", TMessageType['T_CALL'], 0)]
+
+            for dt in test_data:
+                result = testMessage(dt)
+                self.assertEqual(result[0], dt[0])
+                self.assertEqual(result[1], dt[1])
+                self.assertEqual(result[2], dt[2])
+
+        except Exception as e:
+            print("Assertion fail")
+            raise e
+
+    def test_accelerated_utf8_roundtrip_on_application_exception(self):
+        if not self._has_fastbinary:
+            self.skipTest("C extension not available")
+
+        original = TApplicationException(
+            type=TApplicationException.PROTOCOL_ERROR,
+            message=(u"snowman-\u2603-rocket-\U0001F680-" * 32),
+        )
+
+        typeargs = [TApplicationException, APPLICATION_EXCEPTION_THRIFT_SPEC]
+
+        otrans = TTransport.TMemoryBuffer()
+        oproto = TBinaryProtocolAcceleratedFactory(fallback=False).getProtocol(otrans)
+        oproto.trans.write(oproto._fast_encode(original, typeargs))
+
+        itrans = TTransport.TMemoryBuffer(otrans.getvalue())
+        iproto = TBinaryProtocolAcceleratedFactory(fallback=False).getProtocol(itrans)
+        decoded = iproto._fast_decode(None, iproto, typeargs)
+
+        self.assertEqual(decoded.message, original.message)
+        self.assertEqual(decoded.type, original.type)
+
+    def test_TBinaryProtocol_no_strict_write_read(self):
+        TMessageType = {"T_CALL": 1, "T_REPLY": 2, "T_EXCEPTION": 3, "T_ONEWAY": 4}
+        test_data = [("short message name", TMessageType['T_CALL'], 0),
+                     ("1", TMessageType['T_REPLY'], 12345),
+                     ("loooooooooooooooooooooooooooooooooong", TMessageType['T_EXCEPTION'], 1 << 16),
+                     ("one way push", TMessageType['T_ONEWAY'], 12),
+                     ("Janky", TMessageType['T_CALL'], 0)]
+
+        try:
+            for dt in test_data:
+                result = testMessage(dt, strict=False)
+                self.assertEqual(result[0], dt[0])
+                self.assertEqual(result[1], dt[1])
+                self.assertEqual(result[2], dt[2])
+        except Exception as e:
+            print("Assertion fail")
+            raise e
+
+
+def _craft_nested_structs(depth):
+    buf = bytearray()
+    for _ in range(depth):
+        buf += bytes([0x0c])           # TType.STRUCT = 12
+        buf += struct.pack('>h', 1)    # field ID 1
+    for _ in range(depth + 1):
+        buf += bytes([0x00])           # STOP per level + innermost
+    return bytes(buf)
+
+
+class TestSkipDepthLimit(unittest.TestCase):
+
+    def _make_proto(self, payload):
+        trans = TTransport.TMemoryBuffer(payload)
+        return TBinaryProtocol(trans)
+
+    def test_skip_rejects_deeply_nested_struct(self):
+        from thrift.Thrift import TType
+        payload = _craft_nested_structs(64)
+        proto = self._make_proto(payload)
+        with self.assertRaises(TProtocolException) as ctx:
+            proto.skip(TType.STRUCT)
+        self.assertEqual(ctx.exception.type, TProtocolException.DEPTH_LIMIT)
+
+    def test_skip_accepts_struct_within_depth_limit(self):
+        from thrift.Thrift import TType
+        payload = _craft_nested_structs(63)
+        proto = self._make_proto(payload)
+        proto.skip(TType.STRUCT)  # must not raise
+
+
+if __name__ == '__main__':
+    unittest.main()

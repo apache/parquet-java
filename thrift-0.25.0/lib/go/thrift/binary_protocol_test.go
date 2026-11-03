@@ -1,0 +1,295 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package thrift
+
+import (
+	"bytes"
+	"context"
+	"math"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+func TestReadWriteBinaryProtocol(t *testing.T) {
+	ReadWriteProtocolTest(t, NewTBinaryProtocolFactoryDefault())
+}
+
+const (
+	safeReadBytesSource = `
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer sit amet
+tincidunt nibh. Phasellus vel convallis libero, sit amet posuere quam. Nullam
+blandit velit at nibh fringilla, sed egestas erat dapibus. Sed hendrerit
+tincidunt accumsan. Curabitur consectetur bibendum dui nec hendrerit. Fusce quis
+turpis nec magna efficitur volutpat a ut nibh. Vestibulum odio risus, tristique
+a nisi et, congue mattis mi. Vivamus a nunc justo. Mauris molestie sagittis
+magna, hendrerit auctor lectus egestas non. Phasellus pretium, odio sit amet
+bibendum feugiat, velit nunc luctus erat, ac bibendum mi dui molestie nulla.
+Nullam fermentum magna eu elit vehicula tincidunt. Etiam ornare laoreet
+dignissim. Ut sed nunc ac neque vulputate fermentum. Morbi volutpat dapibus
+magna, at porttitor quam facilisis a. Donec eget fermentum risus. Aliquam erat
+volutpat.
+
+Phasellus molestie id ante vel iaculis. Fusce eget quam nec quam viverra laoreet
+vitae a dui. Mauris blandit blandit dui, iaculis interdum diam mollis at. Morbi
+vel sem et.
+`
+	safeReadBytesSourceLen = len(safeReadBytesSource)
+)
+
+// The size asked for must decide the allocation exactly: reading n bytes must
+// not leave a buffer with capacity for more. See THRIFT-5828.
+func TestSafeReadBytesDoesNotOverAllocate(t *testing.T) {
+	for _, size := range []int{bytes.MinRead + 1, 4096, 32 * 1024} {
+		t.Run(strconv.Itoa(size), func(t *testing.T) {
+			buf, err := safeReadBytes(int32(size), bytes.NewReader(make([]byte, size)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(buf) != size {
+				t.Fatalf("read %d bytes, want %d", len(buf), size)
+			}
+			if cap(buf) != size {
+				t.Errorf("read %d bytes into a buffer of capacity %d, want capacity %d", len(buf), cap(buf), size)
+			}
+		})
+	}
+}
+
+// A size the sender made up must not decide the allocation either: only the
+// data that actually arrives may.
+func TestSafeReadBytesLargeSizeShortData(t *testing.T) {
+	const dataSize = 1024
+
+	buf, err := safeReadBytes(math.MaxInt32, bytes.NewReader(make([]byte, dataSize)))
+	if err == nil {
+		t.Error("expected an error when the data ends early, got nil")
+	}
+	if len(buf) != dataSize {
+		t.Errorf("read %d bytes, want %d", len(buf), dataSize)
+	}
+	if max := 2 * dataSize; cap(buf) > max {
+		t.Errorf("allocated %d bytes for %d bytes of data, want at most %d", cap(buf), dataSize, max)
+	}
+}
+
+func TestSafeReadBytes(t *testing.T) {
+	srcData := []byte(safeReadBytesSource)
+
+	for _, c := range []struct {
+		label     string
+		askedSize int32
+		dataSize  int
+	}{
+		{
+			label:     "tiny",
+			askedSize: 8,
+			dataSize:  8,
+		},
+		{
+			label:     "normal",
+			askedSize: 100,
+			dataSize:  100,
+		},
+		{
+			label:     "max-askedSize",
+			askedSize: math.MaxInt32,
+			dataSize:  safeReadBytesSourceLen,
+		},
+	} {
+		t.Run(c.label, func(t *testing.T) {
+			data := bytes.NewReader(srcData[:c.dataSize])
+			buf, err := safeReadBytes(c.askedSize, data)
+			if len(buf) != c.dataSize {
+				t.Errorf(
+					"Expected to read %d bytes, got %d",
+					c.dataSize,
+					len(buf),
+				)
+			}
+			if c.dataSize < bytes.MinRead && cap(buf) != c.dataSize {
+				t.Errorf("Expected to allocate %d bytes for read, allocated %d", c.dataSize, cap(buf))
+			}
+			if !strings.HasPrefix(safeReadBytesSource, string(buf)) {
+				t.Errorf("Unexpected read data: %q", buf)
+			}
+			if int32(c.dataSize) < c.askedSize {
+				// We expect error in this case
+				if err == nil {
+					t.Errorf(
+						"Expected error when dataSize %d < askedSize %d, got nil",
+						c.dataSize,
+						c.askedSize,
+					)
+				}
+			} else {
+				// We expect no error in this case
+				if err != nil {
+					t.Errorf(
+						"Expected no error when dataSize %d >= askedSize %d, got: %v",
+						c.dataSize,
+						c.askedSize,
+						err,
+					)
+				}
+			}
+		})
+	}
+}
+
+func generateSafeReadBytesBenchmark(askedSize int32, dataSize int) func(b *testing.B) {
+	return func(b *testing.B) {
+		data := make([]byte, dataSize)
+		for b.Loop() {
+			safeReadBytes(askedSize, bytes.NewReader(data))
+		}
+	}
+}
+
+func TestSafeReadBytesAlloc(t *testing.T) {
+	if testing.Short() {
+		// NOTE: Since this test runs a benchmark test, it takes at
+		// least 1 second.
+		//
+		// In general we try to avoid unit tests taking that long to run,
+		// but it's to verify a security issue so we made an exception
+		// here:
+		// https://issues.apache.org/jira/browse/THRIFT-5322
+		t.Skip("skipping test in short mode.")
+	}
+
+	const (
+		askedSize = int32(math.MaxInt32)
+		dataSize  = 4096
+	)
+
+	// The purpose of this test is that in the case a string header says
+	// that it has a string askedSize bytes long, the implementation should
+	// not just allocate askedSize bytes upfront. So when there're actually
+	// not enough data to be read (dataSize), the actual allocated bytes
+	// should be somewhere between dataSize and askedSize.
+	//
+	// Different approachs could have different memory overheads, so this
+	// target is arbitrary in nature. But when dataSize is small enough
+	// compare to askedSize, half the askedSize is a good and safe target.
+	const target = int64(askedSize) / 2
+
+	bm := testing.Benchmark(generateSafeReadBytesBenchmark(askedSize, dataSize))
+	actual := bm.AllocedBytesPerOp()
+	if actual > target {
+		t.Errorf(
+			"Expected allocated bytes per op to be <= %d, got %d",
+			target,
+			actual,
+		)
+	} else {
+		t.Logf("Allocated bytes: %d B/op", actual)
+	}
+}
+
+func BenchmarkSafeReadBytes(b *testing.B) {
+	for _, c := range []struct {
+		label     string
+		askedSize int32
+		dataSize  int
+	}{
+		{
+			label:     "normal",
+			askedSize: 100,
+			dataSize:  100,
+		},
+		{
+			label:     "exact-32k",
+			askedSize: 32 * 1024,
+			dataSize:  32 * 1024,
+		},
+		{
+			label:     "max-askedSize",
+			askedSize: math.MaxInt32,
+			dataSize:  4096,
+		},
+	} {
+		b.Run(c.label, generateSafeReadBytesBenchmark(c.askedSize, c.dataSize))
+	}
+}
+
+// readRequestCountingTransport wraps a TTransport and records how many bytes
+// the reads from it ask for, whether or not they are there to be read.
+type readRequestCountingTransport struct {
+	TTransport
+	requested int
+}
+
+func (t *readRequestCountingTransport) Read(buf []byte) (int, error) {
+	t.requested += len(buf)
+	return t.TTransport.Read(buf)
+}
+
+// A message header without a version starts with the name, as a length and
+// the bytes. The length is held to the maximum message size like that of any
+// other string, before any of the name is read.
+func TestBinaryProtocolNonStrictMessageNameSize(t *testing.T) {
+	const maxSize = 1024
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		label string
+		size  int
+	}{
+		{label: "at-limit", size: maxSize},
+		{label: "over-limit", size: 2 * maxSize},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			name := strings.Repeat("n", tc.size)
+			buf := NewTMemoryBuffer()
+			writer := NewTBinaryProtocolConf(buf, &TConfiguration{
+				TBinaryStrictWrite: BoolPtr(false),
+			})
+			if err := writer.WriteMessageBegin(ctx, name, CALL, 1); err != nil {
+				t.Fatal(err)
+			}
+
+			trans := &readRequestCountingTransport{TTransport: buf}
+			reader := NewTBinaryProtocolConf(trans, &TConfiguration{
+				MaxMessageSize: maxSize,
+			})
+			readName, typeID, seqID, err := reader.ReadMessageBegin(ctx)
+			if tc.size <= maxSize {
+				if err != nil {
+					t.Fatalf("ReadMessageBegin with a name of %d bytes failed: %v", tc.size, err)
+				}
+				if readName != name || typeID != CALL || seqID != 1 {
+					t.Fatalf(
+						"ReadMessageBegin returned a name of %d bytes, type %v, sequence id %d, want %d bytes, %v, 1",
+						len(readName), typeID, seqID, tc.size, CALL,
+					)
+				}
+				return
+			}
+			if trans.requested != 4 {
+				t.Errorf(
+					"ReadMessageBegin asked the transport for %d bytes, want 4: the name's length and none of the name",
+					trans.requested,
+				)
+			}
+			requireSizeLimit(t, err, "ReadMessageBegin")
+		})
+	}
+}

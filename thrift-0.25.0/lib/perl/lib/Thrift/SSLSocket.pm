@@ -1,0 +1,140 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+use 5.10.0;
+use strict;
+use warnings;
+
+use Thrift;
+use Thrift::Socket;
+
+use IO::Socket::SSL;
+
+package Thrift::SSLSocket;
+use base qw( Thrift::Socket );
+use version 0.77; our $VERSION = version->declare("$Thrift::VERSION");
+
+#
+# Construction and usage
+#
+# my $opts = {}
+# my $socket = Thrift::SSLSocket->new(\%opts);
+#
+# options:
+#
+# Any option from Socket.pm is valid, and then:
+#
+# ca          => certificate authority file (PEM file) to authenticate the
+#                server against; if not specified then the server is not
+#                authenticated
+# cert        => certificate to use as the client; if not specified then
+#                the client does not present one but still connects using
+#                secure protocol
+# ciphers     => allowed cipher list
+#                (see http://www.openssl.org/docs/apps/ciphers.html#CIPHER_STRINGS)
+# key         => certificate key for "cert" option
+# verify      => whether to authenticate the server; defaults to true. The
+#                server's certificate chain is verified against "ca" when it
+#                is given and against the system trust store otherwise, and
+#                the host name is checked against the certificate. Set this
+#                to a false value to accept any certificate, which leaves the
+#                connection open to interception and is only appropriate on a
+#                network you already trust.
+# version     => acceptable SSL/TLS versions - if not specified then the
+#                default is to use SSLv23 handshake but only negotiate
+#                at TLSv1.0 or later
+#
+
+sub new
+{
+    my $classname = shift;
+    my $self      = $classname->SUPER::new(@_);
+
+    return bless($self, $classname);
+}
+
+sub __open
+{
+    my $self = shift;
+    my $opts = {PeerAddr      => $self->{host},
+                PeerPort      => $self->{port},
+                Proto         => 'tcp',
+                Timeout       => $self->{sendTimeout} / 1000};
+
+    $opts->{SSL_ca_file}      = $self->{ca}      if defined $self->{ca};
+    $opts->{SSL_cert_file}    = $self->{cert}    if defined $self->{cert};
+    $opts->{SSL_cipher_list}  = $self->{ciphers} if defined $self->{ciphers};
+    $opts->{SSL_key_file}     = $self->{key}     if defined $self->{key};
+    $opts->{SSL_use_cert}     = (defined $self->{cert}) ? 1 : 0;
+    $opts->{SSL_version}      = (defined $self->{version}) ? $self->{version} : 'SSLv23:!SSLv3:!SSLv2';
+
+    # Leave verification to IO::Socket::SSL unless the caller opted out. Its
+    # default is to verify the chain -- against SSL_ca_file when one is given
+    # and against the system trust store otherwise -- and to check the host
+    # name against the certificate, which it derives from PeerAddr. Setting
+    # SSL_verify_mode here at all would replace that, so it is set only to
+    # turn verification off on request.
+    if (exists $self->{verify} && !$self->{verify}) {
+        $opts->{SSL_verify_mode} = IO::Socket::SSL::SSL_VERIFY_NONE;
+    }
+
+    return IO::Socket::SSL->new(%$opts);
+}
+
+sub __close
+{
+    my $self = shift;
+    my $sock = ($self->{handle}->handles())[0];
+    if ($sock) {
+      $sock->close(SSL_no_shutdown => 1);
+    }
+}
+
+sub __recv
+{
+  my $self = shift;
+  my $sock = shift;
+  my $len = shift;
+  my $buf = undef;
+  if ($sock) {
+    sysread($sock, $buf, $len);
+  }
+  return $buf;
+}
+
+sub __send
+{
+    my $self = shift;
+    my $sock = shift;
+    # Writes the buffer in place, see Thrift::Socket::__send
+    return syswrite($sock, $_[0]);
+}
+
+sub __wait
+{
+    my $self = shift;
+    my $sock = ($self->{handle}->handles())[0];
+    if ($sock and $sock->pending() eq 0) {
+        return $self->SUPER::__wait();
+    }
+    return $sock;
+}
+
+
+1;
