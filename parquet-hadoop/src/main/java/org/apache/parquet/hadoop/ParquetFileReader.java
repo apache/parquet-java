@@ -57,7 +57,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -415,7 +414,7 @@ public class ParquetFileReader implements Closeable {
               throw new RuntimeException(e);
             }
           })
-          .collect(Collectors.toList());
+          .toList();
     } else {
       return Collections.singletonList(fileStatus);
     }
