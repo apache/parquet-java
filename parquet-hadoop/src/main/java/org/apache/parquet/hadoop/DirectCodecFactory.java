@@ -541,7 +541,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
               if (LOG.isDebugEnabled()) {
                 LOG.debug(String.format(
                     BYTE_BUF_IMPL_NOT_FOUND_MSG,
-                    "compressor",
+                    "direct decompressor",
                     codec.getClass().getName()));
               }
             }
