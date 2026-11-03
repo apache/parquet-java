@@ -180,26 +180,30 @@ public class TestContentDefinedChunking {
   /** The list vector of TestContentDefinedChunker, through a writer that holds back group nulls. */
   @Test
   public void listWrittenByRecordsMatchesArrowCpp() throws IOException {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message t { optional group v (LIST) { repeated group list { optional int64 element; } } }");
-    Path file = path("list");
-    try (ParquetWriter<Group> writer = builder(file, schema)
-        .withContentDefinedChunking(options(64 * 1024, 256 * 1024, 0))
-        .build()) {
-      SimpleGroupFactory f = new SimpleGroupFactory(schema);
-      for (long x : lcg(200_000)) {
-        Group row = f.newGroup();
-        if (Long.remainderUnsigned(x, 11) != 0) {
-          Group list = row.addGroup("v");
-          for (int k = 0; k < Long.remainderUnsigned(x, 4); k++) {
-            list.addGroup("list").append("element", x >>> (16 * k));
-          }
-        }
-        writer.write(row);
-      }
-    }
+    assertThat(pageCounts(writeLists("list", UnaryOperator.identity()), 0))
+        .containsExactlyElementsOf(OPTIONAL_LIST_OF_INT64_PAGES);
+  }
 
-    assertThat(pageCounts(file, 0)).containsExactlyElementsOf(OPTIONAL_LIST_OF_INT64_PAGES);
+  /**
+   * The page size check schedule of the column write store, which also decides when the held back group
+   * nulls reach the column writers, moves no page boundary: each column writer applies the page size
+   * limit itself, inside chunks and keeping every chunk boundary.
+   */
+  @Test
+  public void pageSizeCheckScheduleMovesNoPageBoundary() throws IOException {
+    List<Long> chunks = pageEnds(pageCountsByRowGroup(writeLists("chunks", UnaryOperator.identity()), 0));
+    List<Long> scheduled =
+        pageEnds(pageCountsByRowGroup(writeLists("scheduled", b -> b.withPageSize(16 * 1024)), 0));
+    List<Long> everyRecord = pageEnds(pageCountsByRowGroup(
+        writeLists(
+            "every-record",
+            b -> b.withPageSize(16 * 1024)
+                .withMinRowCountForPageSizeCheck(1)
+                .withMaxRowCountForPageSizeCheck(1)),
+        0));
+
+    assertThat(scheduled).containsAll(chunks).hasSizeGreaterThan(2 * chunks.size());
+    assertThat(everyRecord).containsExactlyElementsOf(scheduled);
   }
 
   @Test
@@ -294,6 +298,29 @@ public class TestContentDefinedChunking {
         }
         if (schema.containsField("name")) {
           row.append("name", name(id));
+        }
+        writer.write(row);
+      }
+    }
+    return file;
+  }
+
+  /** The list vector of TestContentDefinedChunker: up to three elements a row, about one row in eleven null. */
+  private Path writeLists(String label, UnaryOperator<ExampleParquetWriter.Builder> configure) throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message t { optional group v (LIST) { repeated group list { optional int64 element; } } }");
+    Path file = path(label);
+    try (ParquetWriter<Group> writer = configure
+        .apply(builder(file, schema).withContentDefinedChunking(options(64 * 1024, 256 * 1024, 0)))
+        .build()) {
+      SimpleGroupFactory f = new SimpleGroupFactory(schema);
+      for (long x : lcg(200_000)) {
+        Group row = f.newGroup();
+        if (Long.remainderUnsigned(x, 11) != 0) {
+          Group list = row.addGroup("v");
+          for (int k = 0; k < Long.remainderUnsigned(x, 4); k++) {
+            list.addGroup("list").append("element", x >>> (16 * k));
+          }
         }
         writer.write(row);
       }
