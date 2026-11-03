@@ -23,12 +23,12 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -97,7 +97,7 @@ public class TransCompressionCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
+    return Arrays.asList(
         "# Translate the compression from one to another", " input.parquet -o output.parquet -c ZSTD");
   }
 }

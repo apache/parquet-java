@@ -20,18 +20,17 @@
 package org.apache.parquet.cli.util;
 
 import com.fasterxml.jackson.databind.node.NullNode;
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileStream;
@@ -40,6 +39,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroSchemaConverter;
 import org.apache.parquet.cli.json.AvroJson;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -238,7 +238,7 @@ public class Schemas {
       } else {
         boolean notMerged = true;
         // combine a union with a non-union by checking if each type will merge
-        List<Schema> types = Lists.newArrayList();
+        List<Schema> types = new ArrayList<>();
         Iterator<Schema> schemas = left.getTypes().iterator();
         // try to merge each type and stop when one succeeds
         while (schemas.hasNext()) {
@@ -268,7 +268,7 @@ public class Schemas {
       return union(right, left);
     }
 
-    return Schema.createUnion(ImmutableList.of(left, right));
+    return Schema.createUnion(List.of(left, right));
   }
 
   /**
@@ -285,7 +285,7 @@ public class Schemas {
    * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    */
   private static Schema mergeOnly(Schema left, Schema right) {
-    if (Objects.equal(left, right)) {
+    if (Objects.equals(left, right)) {
       return left;
     }
 
@@ -325,7 +325,7 @@ public class Schemas {
             && right.getName() == null
             && fieldSimilarity(left, right) < SIMILARITY_THRESH) {
           return null;
-        } else if (!Objects.equal(left.getName(), right.getName())) {
+        } else if (!Objects.equals(left.getName(), right.getName())) {
           return null;
         }
 
@@ -345,17 +345,17 @@ public class Schemas {
         return Schema.createArray(mergeOrUnion(left.getElementType(), right.getElementType()));
 
       case ENUM:
-        if (!Objects.equal(left.getName(), right.getName())) {
+        if (!Objects.equals(left.getName(), right.getName())) {
           return null;
         }
-        Set<String> symbols = Sets.newLinkedHashSet();
+        Set<String> symbols = new LinkedHashSet<>();
         symbols.addAll(left.getEnumSymbols());
         symbols.addAll(right.getEnumSymbols());
         return Schema.createEnum(
             left.getName(),
             coalesce(left.getDoc(), right.getDoc()),
             coalesce(left.getNamespace(), right.getNamespace()),
-            ImmutableList.copyOf(symbols));
+            List.copyOf(symbols));
 
       default:
         // all primitives are handled before the switch by the equality check.
@@ -383,14 +383,14 @@ public class Schemas {
     }
 
     if (schema.getType() != Schema.Type.UNION) {
-      return Schema.createUnion(ImmutableList.of(NULL, schema));
+      return Schema.createUnion(List.of(NULL, schema));
     }
 
     if (schema.getTypes().get(0).getType() == Schema.Type.NULL) {
       return schema;
     }
 
-    List<Schema> types = Lists.newArrayList();
+    List<Schema> types = new ArrayList<>();
     types.add(NULL);
     for (Schema type : schema.getTypes()) {
       if (type.getType() != Schema.Type.NULL) {
@@ -402,7 +402,7 @@ public class Schemas {
   }
 
   private static List<Schema.Field> mergeFields(Schema left, Schema right) {
-    List<Schema.Field> fields = Lists.newArrayList();
+    List<Schema.Field> fields = new ArrayList<>();
     for (Schema.Field leftField : left.getFields()) {
       Schema.Field rightField = right.getField(leftField.name());
       if (rightField != null) {
@@ -455,14 +455,16 @@ public class Schemas {
     // check whether the unnamed records appear to be the same record
     Set<String> leftNames = names(left.getFields());
     Set<String> rightNames = names(right.getFields());
-    int common = Sets.intersection(leftNames, rightNames).size();
+    Set<String> commonNames = new HashSet<>(leftNames);
+    commonNames.retainAll(rightNames);
+    int common = commonNames.size();
     float leftRatio = ((float) common) / ((float) leftNames.size());
     float rightRatio = ((float) common) / ((float) rightNames.size());
     return hmean(leftRatio, rightRatio);
   }
 
   private static Set<String> names(Collection<Schema.Field> fields) {
-    Set<String> names = Sets.newHashSet();
+    Set<String> names = new HashSet<>();
     for (Schema.Field field : fields) {
       names.add(field.name());
     }

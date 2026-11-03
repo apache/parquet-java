@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.util.Objects;
 import org.apache.parquet.Preconditions;
 
 /**
@@ -25,7 +26,7 @@ import org.apache.parquet.Preconditions;
  */
 public class SnappyUtil {
   public static void validateBuffer(byte[] buffer, int off, int len) {
-    Preconditions.checkNotNull(buffer, "buffer");
+    Objects.requireNonNull(buffer, "buffer");
     Preconditions.checkArgument(
         off >= 0 && len >= 0 && off <= buffer.length - len,
         "Invalid buffer offset or length: buffer.length=%s off=%s len=%s",

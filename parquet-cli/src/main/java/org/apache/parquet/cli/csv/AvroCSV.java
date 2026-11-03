@@ -24,12 +24,11 @@ import static java.lang.Math.min;
 import au.com.bytecode.opencsv.CSVParser;
 import au.com.bytecode.opencsv.CSVReader;
 import com.google.common.base.CharMatcher;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -42,7 +41,7 @@ public class AvroCSV {
   private static final Pattern DOUBLE = Pattern.compile("\\d*\\.\\d*[dD]?");
   private static final Pattern FLOAT = Pattern.compile("\\d*\\.\\d*[fF]?");
   private static final int DEFAULT_INFER_LINES = 25;
-  private static final Set<String> NO_REQUIRED_FIELDS = ImmutableSet.of();
+  private static final Set<String> NO_REQUIRED_FIELDS = Set.of();
   // As per the Avro specs mentioned here -http://avro.apache.org/docs/1.7.5/spec.html
   // It should start with [A-Za-z_] and subsequently contain only [A-Za-z0-9_]
   private static final Pattern AVRO_COMPATIBLE = Pattern.compile("^[A-Za-z_][A-Za-z\\d_]*$");
@@ -218,7 +217,7 @@ public class AvroCSV {
   private static Schema schema(Schema.Type type, boolean makeNullable) {
     Schema schema = Schema.create(type == null ? Schema.Type.STRING : type);
     if (makeNullable || type == null) {
-      schema = Schema.createUnion(Lists.newArrayList(Schema.create(Schema.Type.NULL), schema));
+      schema = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.NULL), schema));
     }
     return schema;
   }

@@ -34,19 +34,15 @@ import com.fasterxml.jackson.databind.node.NumericNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Function;
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +50,7 @@ import java.util.Set;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.cli.util.RecordException;
 import org.apache.parquet.cli.util.RuntimeIOException;
 import org.apache.parquet.cli.util.Schemas;
@@ -117,7 +114,7 @@ public class AvroJson {
 
       case MAP:
         RecordException.check(datum.isObject(), "Cannot convert non-object to map: %s", datum);
-        Map<String, Object> map = Maps.newLinkedHashMap();
+        Map<String, Object> map = new LinkedHashMap<>();
         Iterator<Map.Entry<String, JsonNode>> iter = datum.fields();
         while (iter.hasNext()) {
           Map.Entry<String, JsonNode> entry = iter.next();
@@ -127,7 +124,7 @@ public class AvroJson {
 
       case ARRAY:
         RecordException.check(datum.isArray(), "Cannot convert to array: %s", datum);
-        List<Object> list = Lists.newArrayListWithExpectedSize(datum.size());
+        List<Object> list = new ArrayList<>(datum.size());
         for (JsonNode element : datum) {
           list.add(convertToAvro(model, element, schema.getElementType()));
         }
@@ -217,8 +214,8 @@ public class AvroJson {
   }
 
   private static Schema resolveUnion(JsonNode datum, Collection<Schema> schemas) {
-    Set<Schema.Type> primitives = Sets.newHashSet();
-    List<Schema> others = Lists.newArrayList();
+    Set<Schema.Type> primitives = new HashSet<>();
+    List<Schema> others = new ArrayList<>();
     for (Schema schema : schemas) {
       if (PRIMITIVES.containsKey(schema.getType())) {
         primitives.add(schema.getType());
@@ -260,14 +257,13 @@ public class AvroJson {
 
   // this does not contain string, bytes, or fixed because the datum type
   // doesn't necessarily determine the schema.
-  private static ImmutableMap<Schema.Type, Schema> PRIMITIVES = ImmutableMap.<Schema.Type, Schema>builder()
-      .put(Schema.Type.NULL, Schema.create(Schema.Type.NULL))
-      .put(Schema.Type.BOOLEAN, Schema.create(Schema.Type.BOOLEAN))
-      .put(Schema.Type.INT, Schema.create(Schema.Type.INT))
-      .put(Schema.Type.LONG, Schema.create(Schema.Type.LONG))
-      .put(Schema.Type.FLOAT, Schema.create(Schema.Type.FLOAT))
-      .put(Schema.Type.DOUBLE, Schema.create(Schema.Type.DOUBLE))
-      .build();
+  private static Map<Schema.Type, Schema> PRIMITIVES = Map.of(
+      Schema.Type.NULL, Schema.create(Schema.Type.NULL),
+      Schema.Type.BOOLEAN, Schema.create(Schema.Type.BOOLEAN),
+      Schema.Type.INT, Schema.create(Schema.Type.INT),
+      Schema.Type.LONG, Schema.create(Schema.Type.LONG),
+      Schema.Type.FLOAT, Schema.create(Schema.Type.FLOAT),
+      Schema.Type.DOUBLE, Schema.create(Schema.Type.DOUBLE));
 
   private static Schema closestPrimitive(Set<Schema.Type> possible, Schema.Type... types) {
     for (Schema.Type type : types) {
@@ -392,7 +388,6 @@ public class AvroJson {
 
   private static class JsonSchemaVisitor extends JsonTreeVisitor<Schema> {
 
-    private static final Joiner DOT = Joiner.on('.');
     private final String name;
     private boolean objectsToRecords = true;
 
@@ -408,7 +403,7 @@ public class AvroJson {
     @Override
     public Schema object(ObjectNode object, Map<String, Schema> fields) {
       if (objectsToRecords || recordLevels.size() < 1) {
-        List<Schema.Field> recordFields = Lists.newArrayListWithExpectedSize(fields.size());
+        List<Schema.Field> recordFields = new ArrayList<>(fields.size());
 
         for (Map.Entry<String, Schema> entry : fields.entrySet()) {
           recordFields.add(new Schema.Field(
@@ -422,7 +417,7 @@ public class AvroJson {
         if (recordLevels.size() < 1) {
           recordSchema = Schema.createRecord(name, null, null, false);
         } else {
-          recordSchema = Schema.createRecord(DOT.join(recordLevels), null, null, false);
+          recordSchema = Schema.createRecord(String.join(".", recordLevels), null, null, false);
         }
 
         recordSchema.setFields(recordFields);
@@ -434,7 +429,7 @@ public class AvroJson {
           case 0:
             return Schema.createMap(Schema.create(Schema.Type.NULL));
           case 1:
-            return Schema.createMap(Iterables.getOnlyElement(fields.values()));
+            return Schema.createMap(fields.values().iterator().next());
           default:
             return Schema.createMap(Schemas.mergeOrUnion(fields.values()));
         }
@@ -448,7 +443,7 @@ public class AvroJson {
         case 0:
           return Schema.createArray(Schema.create(Schema.Type.NULL));
         case 1:
-          return Schema.createArray(Iterables.getOnlyElement(elementSchemas));
+          return Schema.createArray(elementSchemas.get(0));
         default:
           return Schema.createArray(Schemas.mergeOrUnion(elementSchemas));
       }
@@ -501,7 +496,7 @@ public class AvroJson {
         Preconditions.checkArgument(node instanceof ObjectNode, "Expected instance of ObjectNode: %s", node);
 
         // use LinkedHashMap to preserve field order
-        Map<String, T> fields = Maps.newLinkedHashMap();
+        Map<String, T> fields = new LinkedHashMap<>();
 
         Iterator<Map.Entry<String, JsonNode>> iter = node.fields();
         while (iter.hasNext()) {
@@ -517,7 +512,7 @@ public class AvroJson {
       case ARRAY:
         Preconditions.checkArgument(node instanceof ArrayNode, "Expected instance of ArrayNode: %s", node);
 
-        List<T> elements = Lists.newArrayListWithExpectedSize(node.size());
+        List<T> elements = new ArrayList<>(node.size());
 
         for (JsonNode element : node) {
           elements.add(visit(element, visitor));
@@ -560,7 +555,7 @@ public class AvroJson {
   }
 
   private abstract static class JsonTreeVisitor<T> {
-    protected LinkedList<String> recordLevels = Lists.newLinkedList();
+    protected LinkedList<String> recordLevels = new LinkedList<>();
 
     public T object(ObjectNode object, Map<String, T> fields) {
       return null;

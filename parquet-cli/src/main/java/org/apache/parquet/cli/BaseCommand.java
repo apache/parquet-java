@@ -21,7 +21,6 @@ package org.apache.parquet.cli;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
 import java.io.File;
@@ -32,8 +31,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,11 +50,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.avro.AvroReadSupport;
 import org.apache.parquet.cli.json.AvroJsonReader;
 import org.apache.parquet.cli.util.Formats;
-import org.apache.parquet.cli.util.GetClassLoader;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.cli.util.SeekableFSDataInputStream;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
@@ -313,7 +312,7 @@ public abstract class BaseCommand implements Command, Configurable {
    * @throws MalformedURLException if  a jar or path is invalid
    */
   protected static ClassLoader loaderFor(List<String> jars, List<String> paths) throws MalformedURLException {
-    return AccessController.doPrivileged(new GetClassLoader(urls(jars, paths)));
+    return newClassLoader(urls(jars, paths));
   }
 
   /**
@@ -324,7 +323,7 @@ public abstract class BaseCommand implements Command, Configurable {
    * @throws MalformedURLException if a URL is invalid
    */
   protected static ClassLoader loaderForJars(List<String> jars) throws MalformedURLException {
-    return AccessController.doPrivileged(new GetClassLoader(urls(jars, null)));
+    return newClassLoader(urls(jars, null));
   }
 
   /**
@@ -335,7 +334,12 @@ public abstract class BaseCommand implements Command, Configurable {
    * @throws MalformedURLException if a path is invalid
    */
   protected static ClassLoader loaderForPaths(List<String> paths) throws MalformedURLException {
-    return AccessController.doPrivileged(new GetClassLoader(urls(null, paths)));
+    return newClassLoader(urls(null, paths));
+  }
+
+  private static ClassLoader newClassLoader(List<URL> urls) {
+    return new URLClassLoader(
+        urls.toArray(new URL[0]), Thread.currentThread().getContextClassLoader());
   }
 
   private static List<URL> urls(List<String> jars, List<String> dirs) throws MalformedURLException {

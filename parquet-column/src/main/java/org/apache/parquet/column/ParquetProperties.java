@@ -258,17 +258,12 @@ public class ParquetProperties {
   }
 
   public boolean isByteStreamSplitEnabled(ColumnDescriptor column) {
-    switch (column.getPrimitiveType().getPrimitiveTypeName()) {
-      case FLOAT:
-      case DOUBLE:
-        return byteStreamSplitEnabled.getValue(column) != ByteStreamSplitMode.NONE;
-      case INT32:
-      case INT64:
-      case FIXED_LEN_BYTE_ARRAY:
-        return byteStreamSplitEnabled.getValue(column) == ByteStreamSplitMode.EXTENDED;
-      default:
-        return false;
-    }
+    return switch (column.getPrimitiveType().getPrimitiveTypeName()) {
+      case FLOAT, DOUBLE -> byteStreamSplitEnabled.getValue(column) != ByteStreamSplitMode.NONE;
+      case INT32, INT64, FIXED_LEN_BYTE_ARRAY ->
+        byteStreamSplitEnabled.getValue(column) == ByteStreamSplitMode.EXTENDED;
+      default -> false;
+    };
   }
 
   /**
@@ -354,27 +349,21 @@ public class ParquetProperties {
 
   public ColumnWriteStore newColumnWriteStore(MessageType schema, PageWriteStore pageStore) {
     validateAlp(schema);
-    switch (writerVersion) {
-      case PARQUET_1_0:
-        return new ColumnWriteStoreV1(schema, pageStore, this);
-      case PARQUET_2_0:
-        return new ColumnWriteStoreV2(schema, pageStore, this);
-      default:
-        throw new IllegalArgumentException("unknown version " + writerVersion);
-    }
+    return switch (writerVersion) {
+      case PARQUET_1_0 -> new ColumnWriteStoreV1(schema, pageStore, this);
+      case PARQUET_2_0 -> new ColumnWriteStoreV2(schema, pageStore, this);
+      default -> throw new IllegalArgumentException("unknown version " + writerVersion);
+    };
   }
 
   public ColumnWriteStore newColumnWriteStore(
       MessageType schema, PageWriteStore pageStore, BloomFilterWriteStore bloomFilterWriteStore) {
     validateAlp(schema);
-    switch (writerVersion) {
-      case PARQUET_1_0:
-        return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this);
-      case PARQUET_2_0:
-        return new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriteStore, this);
-      default:
-        throw new IllegalArgumentException("unknown version " + writerVersion);
-    }
+    return switch (writerVersion) {
+      case PARQUET_1_0 -> new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this);
+      case PARQUET_2_0 -> new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriteStore, this);
+      default -> throw new IllegalArgumentException("unknown version " + writerVersion);
+    };
   }
 
   public int getMinRowCountForPageSizeCheck() {

@@ -83,8 +83,9 @@ public interface EncryptionPropertiesFactory {
     }
 
     try {
-      return (EncryptionPropertiesFactory) encryptionPropertiesFactoryClass.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
+      return (EncryptionPropertiesFactory)
+          encryptionPropertiesFactoryClass.getDeclaredConstructor().newInstance();
+    } catch (ReflectiveOperationException e) {
       throw new BadConfigurationException(
           "could not instantiate encryptionPropertiesFactoryClass class: " + encryptionPropertiesFactoryClass,
           e);
