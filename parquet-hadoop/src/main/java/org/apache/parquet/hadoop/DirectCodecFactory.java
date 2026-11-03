@@ -291,8 +291,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
       // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
-      if (decompressor instanceof Decompressor decompressor) {
-        decompressor.reset();
+      if (decompressor instanceof Decompressor resettable) {
+        resettable.reset();
       }
       super.decompress(input, compressedSize, output, decompressedSize);
     }
