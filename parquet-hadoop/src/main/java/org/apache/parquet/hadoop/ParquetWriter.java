@@ -455,6 +455,8 @@ public class ParquetWriter<T> implements Closeable {
   }
 
   /**
+   * After a successful close, this is the final file size including the footer.
+   *
    * @return the total size of data written to the file and buffered in memory
    */
   public long getDataSize() {
