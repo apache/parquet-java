@@ -176,6 +176,18 @@ if ! git rev-parse "${rc_tag}" >/dev/null 2>&1; then
   exit 1
 fi
 
+# The workflow is dispatched from master, which is where these scripts live,
+# so switch to the release branch before comparing it with the RC tag. This
+# runs in dry-run mode too: it is local, and the checks below depend on it.
+release_branch="${BRANCH_PREFIX}${major}.${minor}.x"
+if [[ "$(git branch --show-current)" != "${release_branch}" ]]; then
+  print_info "Switching to ${release_branch}..."
+  if ! git checkout "${release_branch}"; then
+    print_error "Could not check out release branch ${release_branch}"
+    exit 1
+  fi
+fi
+
 rc_commit=$(git rev-list -1 "${rc_tag}")
 current_commit=$(git rev-parse HEAD)
 
@@ -314,6 +326,7 @@ next_snapshot="${next_dev_version}-SNAPSHOT"
 print_info "Bumping version to ${next_snapshot}..."
 
 set_pom_version "${next_snapshot}"
+set_pom_scm_tag "HEAD"
 
 # Update previous.version property
 exec_process ./mvnw -pl . versions:set-property \
@@ -333,7 +346,7 @@ expected_branch="${BRANCH_PREFIX}${major}.${minor}.x"
 if [[ "${current_branch}" != "${expected_branch}" ]]; then
   print_error "Refusing to push version bump: current branch is '${current_branch}'"
   print_error "Expected to be on release branch '${expected_branch}' for version ${version}."
-  print_error "Run the publish workflow with that branch selected, or check out '${expected_branch}' locally."
+  print_error "The script checks out '${expected_branch}' before publishing; something switched branches since then."
   exit 1
 fi
 # Also confirm the format independently in case someone has named a
