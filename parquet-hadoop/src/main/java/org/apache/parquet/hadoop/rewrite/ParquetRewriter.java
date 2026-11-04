@@ -87,6 +87,7 @@ import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -274,22 +275,32 @@ public class ParquetRewriter implements Closeable {
   private MessageType getSchemaWithRenamedColumns(MessageType schema) {
     List<Type> fields = schema.getFields().stream()
         .map(type -> {
-          if (!renamedColumns.containsKey(type.getName())) {
+          String newName = renamedColumns.get(type.getName());
+          if (newName == null) {
             return type;
-          } else if (type.isPrimitive()) {
-            return new PrimitiveType(
-                type.getRepetition(),
-                type.asPrimitiveType().getPrimitiveTypeName(),
-                renamedColumns.get(type.getName()));
-          } else {
-            return new GroupType(
-                type.getRepetition(),
-                renamedColumns.get(type.getName()),
-                type.asGroupType().getFields());
           }
+          return renameType(type, newName);
         })
         .collect(Collectors.toList());
     return new MessageType(schema.getName(), fields);
+  }
+
+  private static Type renameType(Type type, String newName) {
+    Types.Builder<?, ? extends Type> builder;
+    if (type.isPrimitive()) {
+      PrimitiveType primitive = type.asPrimitiveType();
+      builder = Types.primitive(primitive.getPrimitiveTypeName(), primitive.getRepetition())
+          .length(primitive.getTypeLength())
+          .columnOrder(primitive.columnOrder());
+    } else {
+      builder = Types.buildGroup(type.getRepetition())
+          .addFields(type.asGroupType().getFields().toArray(Type[]::new));
+    }
+    builder.as(type.getLogicalTypeAnnotation());
+    if (type.getId() != null) {
+      builder.id(type.getId().intValue());
+    }
+    return builder.named(newName);
   }
 
   private Map<String, String> getExtraMetadata(RewriteOptions options) {
@@ -482,14 +493,11 @@ public class ParquetRewriter implements Closeable {
   }
 
   private PrimitiveType normalizeNameInType(PrimitiveType type) {
-    if (renamedColumns.isEmpty()) {
+    String newName = renamedColumns.get(type.getName());
+    if (newName == null) {
       return type;
-    } else {
-      return new PrimitiveType(
-          type.getRepetition(),
-          type.asPrimitiveType().getPrimitiveTypeName(),
-          renamedColumns.getOrDefault(type.getName(), type.getName()));
     }
+    return renameType(type, newName).asPrimitiveType();
   }
 
   private void processBlock(
