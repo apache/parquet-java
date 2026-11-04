@@ -135,7 +135,7 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
     Map<ColumnPath, IndexStore> store = new HashMap<>();
     for (ColumnChunkMetaData column : block.getColumns()) {
       ColumnPath path = column.getPath();
-      if (paths.contains(path)) {
+      if (paths.contains(path) && (path.size() != 1 || !store.containsKey(path))) {
         store.put(path, new IndexStoreImpl(column));
       }
     }
