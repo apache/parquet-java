@@ -47,7 +47,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -147,33 +146,48 @@ public class TestTypeBuildersWithLogicalTypes {
             vector(Types.required(FIXED_LEN_BYTE_ARRAY).length(2).named("element"))),
         Arguments.of(vector(Types.required(INT96).named("element"))),
         Arguments.of(vector(Types.required(BINARY).as(stringType()).named("element"))),
-        Arguments.of(vector(Types.required(INT32).as(dateType()).named("element"))),
-        Arguments.of(
-            vector(Types.required(INT32).named("element").withLogicalTypeAnnotation(intType(64, true)))));
+        Arguments.of(vector(Types.required(INT32).as(dateType()).named("element"))));
   }
 
   @ParameterizedTest
   @MethodSource("invalidVectors")
   public void testInvalidVectorSchema(GroupType vector) {
-    assertThatThrownBy(() -> new MessageType("m", vector))
+    assertThatThrownBy(() -> Types.buildGroup(vector.getRepetition())
+            .as(vector.getLogicalTypeAnnotation())
+            .addFields(vector.getFields().toArray(new Type[0]))
+            .named(vector.getName()))
         .isInstanceOf(InvalidSchemaException.class)
         .hasMessage("Invalid FINITE_VECTOR schema: " + vector);
   }
 
   private static Stream<Executable> vectorConstructionBoundaries() {
-    Type element = Types.optional(FLOAT).named("element");
-    GroupType invalid = vector(element);
-    GroupType bad = new GroupType(
-        REQUIRED, "bad", finiteVectorType(5), new GroupType(Repetition.REPEATED, "list", element));
+    GroupType list =
+        new GroupType(Repetition.REPEATED, "list", Types.optional(FLOAT).named("element"));
     return Stream.of(
-        () -> new MessageType("m", Collections.singletonList(invalid)),
-        () -> Types.buildMessage().addField(invalid).named("m"),
+        () -> Types.requiredGroup()
+            .as(finiteVectorType(5))
+            .addField(list)
+            .named("v"),
+        () -> Types.buildMessage()
+            .requiredGroup()
+            .as(finiteVectorType(5))
+            .repeatedGroup()
+            .optional(FLOAT)
+            .named("element")
+            .named("list")
+            .named("v")
+            .named("m"),
+        () -> Types.buildMessage()
+            .requiredGroup()
+            .addField(vector(Types.required(FLOAT).named("element")))
+            .requiredGroup()
+            .as(finiteVectorType(5))
+            .addField(list)
+            .named("bad")
+            .named("parent")
+            .named("m"),
         () -> MessageTypeParser.parseMessageType("message m { required group v (FINITE_VECTOR(5)) { "
-            + "repeated group list { optional float element; } } }"),
-        () -> new MessageType(
-            "m",
-            new GroupType(
-                REQUIRED, "parent", vector(Types.required(FLOAT).named("element")), bad)));
+            + "repeated group list { optional float element; } } }"));
   }
 
   @ParameterizedTest

@@ -2039,8 +2039,8 @@ public class ParquetMetadataConverter {
       builder.id(root.field_id);
     }
     Iterator<ColumnOrder> columnOrderIterator = columnOrders == null ? null : columnOrders.iterator();
-    buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
     try {
+      buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
       return builder.named(root.name);
     } catch (InvalidSchemaException e) {
       throw new ParquetDecodingException("Invalid FINITE_VECTOR schema in file metadata", e);
