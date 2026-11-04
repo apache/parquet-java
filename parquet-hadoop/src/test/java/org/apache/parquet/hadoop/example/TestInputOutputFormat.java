@@ -55,7 +55,6 @@ import org.apache.parquet.hadoop.api.DelegatingWriteSupport;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -140,7 +139,7 @@ public class TestInputOutputFormat {
 
     protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Group>.Context context)
         throws java.io.IOException, InterruptedException {
-      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
+      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(context.getConfiguration()));
     }
 
     protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Void, Group>.Context context)

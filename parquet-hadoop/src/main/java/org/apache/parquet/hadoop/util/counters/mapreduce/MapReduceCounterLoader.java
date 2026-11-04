@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.util.counters.mapreduce;
 
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.hadoop.util.counters.CounterLoader;
 import org.apache.parquet.hadoop.util.counters.ICounter;
@@ -37,8 +36,8 @@ public class MapReduceCounterLoader implements CounterLoader {
 
   @Override
   public ICounter getCounterByNameAndFlag(String groupName, String counterName, String counterFlag) {
-    if (ContextUtil.getConfiguration(context).getBoolean(counterFlag, true)) {
-      return new MapReduceCounterAdapter(ContextUtil.getCounter(context, groupName, counterName));
+    if (context.getConfiguration().getBoolean(counterFlag, true)) {
+      return new MapReduceCounterAdapter(context.getCounter(groupName, counterName));
     } else {
       return new BenchmarkCounter.NullCounter();
     }

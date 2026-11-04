@@ -22,7 +22,6 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
-import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Protocol Buffer Parquet files.
@@ -38,7 +37,7 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 public class ProtoParquetOutputFormat<T extends MessageOrBuilder> extends ParquetOutputFormat<T> {
 
   public static void setProtobufClass(Job job, Class<? extends Message> protoClass) {
-    ProtoWriteSupport.setSchema(ContextUtil.getConfiguration(job), protoClass);
+    ProtoWriteSupport.setSchema(job.getConfiguration(), protoClass);
   }
 
   public ProtoParquetOutputFormat(Class<? extends Message> msg) {
