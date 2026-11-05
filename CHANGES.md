@@ -686,7 +686,7 @@ Release Notes - Parquet - Version 1.10.0
 *   [PARQUET-1115](https://issues.apache.org/jira/browse/PARQUET-1115) \- Warn users when misusing parquet-tools merge
 *   [PARQUET-1135](https://issues.apache.org/jira/browse/PARQUET-1135) \- upgrade thrift and protobuf dependencies
 *   [PARQUET-1142](https://issues.apache.org/jira/browse/PARQUET-1142) \- Avoid leaking Hadoop API to downstream libraries
-*   [PARQUET-1149](https://issues.apache.org/jira/browse/PARQUET-1149) \- Upgrade Avro dependancy to 1.8.2
+*   [PARQUET-1149](https://issues.apache.org/jira/browse/PARQUET-1149) \- Upgrade Avro dependency to 1.8.2
 *   [PARQUET-1170](https://issues.apache.org/jira/browse/PARQUET-1170) \- Logical-type-based toString for proper representeation in tools/logs
 *   [PARQUET-1183](https://issues.apache.org/jira/browse/PARQUET-1183) \- AvroParquetWriter needs OutputFile based Builder
 *   [PARQUET-1197](https://issues.apache.org/jira/browse/PARQUET-1197) \- Log rat failures
