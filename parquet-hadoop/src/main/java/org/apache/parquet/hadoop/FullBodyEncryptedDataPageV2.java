@@ -28,30 +28,19 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.statistics.Statistics;
 
 /**
- * A still encrypted {@link DataPageV2} whose entire page body is, or if its layout is {@link
- * Layout#AMBIGUOUS} may be, a single encrypted module.
- *
- * <p>Parquet Modular Encryption encrypts the "data page" module, which for a DataPageV2 page is
- * the concatenation {@code [repetition levels | definition levels | (compressed) values]}. This is
- * what Arrow C++ and arrow-rs write, and what parquet-java writes since 1.19.0. Earlier
- * parquet-java versions left the levels in plaintext and encrypted only the values; those pages
- * are still read as plain {@link DataPageV2} pages whose levels are already separated out.
- *
- * <p>The page body can only be decrypted, and thereby split into levels and values, once the page
- * AAD is known. That happens in {@code ColumnChunkPageReader}. Until then the whole encrypted
- * module is held as the {@link #getData() data} of this page, and the repetition and definition
- * levels are empty: they must not be used before the page has been decrypted. The sizes of the
- * levels, which the page header carries, are kept separately.
+ * An encrypted DataPageV2 whose body, levels included, is one encrypted module. The body is held as
+ * {@link #getData()} and the levels are empty until {@code ColumnChunkPageReader} decrypts the page
+ * and splits the body using the level lengths.
  */
 final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
 
   /** How the body of an encrypted DataPageV2 page that has levels is laid out. */
   enum Layout {
-    /** The whole body is one encrypted module, as in the specification. */
+    /** {@code [module of levels and values]} */
     SINGLE_MODULE,
-    /** The levels are in plaintext, followed by an encrypted module of the values. */
+    /** {@code [plaintext levels][module of values]} */
     PLAINTEXT_LEVELS,
-    /** The body fits both layouts, which can only be told apart by trying to decrypt it. */
+    /** Both length checks match; only decryption can tell. */
     AMBIGUOUS
   }
 
@@ -60,11 +49,10 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
   private final DataPageV2 plaintextLevelsLayoutPage;
 
   /**
-   * @param encryptedBody the encrypted page body, in the serialized form of an encrypted module:
-   *                      {@code length (4 bytes) | nonce | ciphertext [| tag]}
-   * @param uncompressedSize the uncompressed page size of the page header, levels included
-   * @param plaintextLevelsLayoutPage the same page with the levels separated out, if the page
-   *                                  body is {@link Layout#AMBIGUOUS}, otherwise null
+   * @param encryptedBody {@code length (4 bytes, LE) | nonce | ciphertext [| tag]}
+   * @param uncompressedSize uncompressed page size, levels included
+   * @param plaintextLevelsLayoutPage the page split as {@link Layout#PLAINTEXT_LEVELS}, if the layout is
+   *     {@link Layout#AMBIGUOUS}; otherwise null
    */
   FullBodyEncryptedDataPageV2(
       int rowCount,
@@ -102,43 +90,27 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
     return definitionLevelsByteLength;
   }
 
-  /**
-   * @return the page as it would be if its body had the {@link Layout#PLAINTEXT_LEVELS} layout, to
-   *         fall back to when decrypting it as a single module fails. Null unless the layout of the
-   *         page body is {@link Layout#AMBIGUOUS}.
-   */
+  /** @return the page split as {@link Layout#PLAINTEXT_LEVELS}, or null if the layout is not ambiguous */
   DataPageV2 getPlaintextLevelsLayoutPage() {
     return plaintextLevelsLayoutPage;
   }
 
   /**
-   * Tells which of the two layouts the body of an encrypted DataPageV2 page has. It must only be
-   * called for a page that has repetition or definition levels: without levels both layouts are
-   * byte-for-byte identical.
-   *
-   * <p>An encrypted module starts with its own length, a 4 byte little endian integer holding the
-   * size of the rest of the module. Each layout therefore announces itself:
+   * Detects the layout of the body of a page that has levels. A module starts with the length of the
+   * rest of the module as a 4 byte LE int, so:
    *
    * <ul>
-   *   <li>if the page body is a single module, the first four bytes hold the size of the body minus
-   *       four;
-   *   <li>if the levels are stored in plaintext, the module of the values starts right after the
-   *       levels, and the four bytes there hold the size of the body, minus the size of the levels,
-   *       minus four.
+   *   <li>{@link Layout#SINGLE_MODULE}: the int at offset 0 is {@code size - 4}
+   *   <li>{@link Layout#PLAINTEXT_LEVELS}: the int at offset {@code levelsByteLength} is {@code size -
+   *       levelsByteLength - 4}
+   *   <li>{@link Layout#AMBIGUOUS}: both hold
    * </ul>
    *
-   * <p>A page body that is a single module has a random nonce and ciphertext after its length, so
-   * it matches the second condition only by a coincidence of about one in 2^32, a little more often if
-   * the levels take fewer than four bytes, as the four bytes then overlap the length of the module. A page body that has
-   * plaintext levels starts with RLE encoded levels, so it matches the first condition only if
-   * those happen to spell out the size of the page. When both conditions are met, the layout can
-   * only be found by decrypting the page, see {@link Layout#AMBIGUOUS}. When neither is met the page
-   * is corrupt, and it is treated as a single module so that decryption reports the problem.
+   * If neither holds, the page is corrupt and {@link Layout#SINGLE_MODULE} is returned, so that
+   * decryption fails.
    *
-   * @param pageBody the page body, as sized by the {@code compressed_page_size} of the page header
-   * @param levelsByteLength the size of the repetition and definition levels, which is above zero
-   * @return the layout of the page body
-   * @throws IOException if the page body cannot be read
+   * @param pageBody the page body, of {@code compressed_page_size} bytes
+   * @param levelsByteLength the length of the repetition and definition levels, above zero
    */
   static Layout detectLayout(BytesInput pageBody, int levelsByteLength) throws IOException {
     long size = pageBody.size();

@@ -93,35 +93,22 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Interoperability of the encryption of DataPageV2 pages that have repetition or definition levels.
+ * Encryption of DataPageV2 pages with repetition or definition levels (apache/parquet-java#3934).
  *
- * <p>The page body of such a page, the levels included, is a single encrypted "data page" module.
- * Arrow C++ and arrow-rs write it that way, and so does parquet-java. Earlier parquet-java versions
- * left the levels in plaintext and encrypted only the values (apache/parquet-java#3934), so files
- * in both layouts exist. These tests make sure that
+ * <p>Fixtures in {@code src/test/resources/encryption/datapagev2}:
  *
  * <ul>
- *   <li>parquet-java writes only the single module layout, which an independent decoder written
- *       from the specification confirms, also when it rewrites files;
- *   <li>parquet-java reads the files that Arrow wrote, which the {@code arrow-v2-*} fixtures are;
- *   <li>parquet-java still reads the files that it wrote in the old layout, which the {@code
- *       java-legacy-v2-*} fixtures are. They were written by parquet-java 1.19.0-SNAPSHOT at commit
- *       e265ac7f5, just before the layout changed, with the footer key as the key of all columns,
- *       the same rows as {@link DataPageV2EncryptionTestData#row(int)}, 100 rows per page and
- *       {@code ExampleParquetWriter} with {@code WriterVersion.PARQUET_2_0}. To regenerate them,
- *       check out that commit, and write the rows with the {@code writeWithParquetJava} method of
- *       this class for each cipher and codec. The Arrow files come from {@code
- *       generate_arrow_fixtures.py}, which sits next to them.
+ *   <li>{@code arrow-v2-*}: written by {@code generate_arrow_fixtures.py} (pyarrow).
+ *   <li>{@code java-legacy-v2-*}: written with {@link #writeWithParquetJava} at commit e265ac7f5,
+ *       before the levels were encrypted. To regenerate, check out that commit and run it for each
+ *       cipher and codec.
  * </ul>
  */
 public class TestDataPageV2EncryptionInterop {
 
   private static final String FIXTURES = "/encryption/datapagev2/";
 
-  /**
-   * Matches the second half of the rows. With 100 rows per page, the first two pages cannot hold a
-   * match and are skipped, so the rows that are read start at the third page.
-   */
+  /** {@code seq >= 250} lets the first two pages (rows 0-199) be skipped. */
   private static final int FIRST_ROW_OF_PAGE_WITH_SEQ_250 = 200;
 
   private static final FilterCompat.Filter SEQ_AT_LEAST_250 =
@@ -133,8 +120,7 @@ public class TestDataPageV2EncryptionInterop {
   @BeforeEach
   @AfterEach
   public void clearKmsClients() {
-    // The KMS clients are cached by instance id, across the tests of a JVM, and the Arrow fixtures use
-    // the default one
+    // KMS clients are cached per JVM by instance id, and the Arrow fixtures use the default id
     KeyToolkit.removeCacheEntriesForAllTokens();
   }
 
@@ -183,7 +169,6 @@ public class TestDataPageV2EncryptionInterop {
   @ParameterizedTest(name = "{0}, directMemory={1}")
   @MethodSource("arrowFixtures")
   public void readsFilesWrittenByArrow(String fixture, boolean directMemory) throws Exception {
-    // The keys of the Arrow files are wrapped by the KMS client that generate_arrow_fixtures.py mirrors
     Configuration conf = new Configuration();
     conf.set(
         EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
@@ -203,7 +188,6 @@ public class TestDataPageV2EncryptionInterop {
   @ParameterizedTest(name = "{0}")
   @MethodSource("legacyFixtureNames")
   public void legacyFixturesHaveThePlaintextLevelsLayout(String fixture) throws Exception {
-    // The test above only proves the legacy code path is covered if the fixtures really are legacy files
     List<DecodedPage> pages = decodeDataPagesV2(fixture(fixture), FOOTER_KEY, false);
 
     assertThat(pages).isNotEmpty();
@@ -247,7 +231,7 @@ public class TestDataPageV2EncryptionInterop {
   @Test
   public void detectsTamperingWithTheLevels() throws Exception {
     Path file = writeFileWithTamperedLevels();
-    // The page checksum would notice the change first, which is not what this test is about
+    // Otherwise the page checksum fails first
     Configuration withoutChecksums = new Configuration();
     withoutChecksums.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
 
@@ -271,15 +255,12 @@ public class TestDataPageV2EncryptionInterop {
         .hasMessage("could not verify page integrity, CRC checksum verification failed");
   }
 
-  /**
-   * Writes a file of which the first byte of the levels of the first DataPageV2 page was changed. When
-   * the levels were stored in plaintext, changing them went unnoticed by the decryption.
-   */
+  /** Writes a file with one bit of the levels of the first DataPageV2 page flipped. */
   private Path writeFileWithTamperedLevels() throws Exception {
     Path file = writeWithParquetJava(ParquetCipher.AES_GCM_V1, CompressionCodecName.UNCOMPRESSED);
     DecodedPage page = decodeDataPagesV2(file, FOOTER_KEY, false).get(0);
 
-    // Flip a bit of the first byte of the ciphertext, which is the first byte of the levels
+    // First ciphertext byte, which is the first byte of the levels
     File source = new File(file.toUri());
     try (RandomAccessFile raf = new RandomAccessFile(source, "rw")) {
       long position = page.bodyOffset + Integer.BYTES + AesCipher.NONCE_LENGTH;
@@ -288,7 +269,7 @@ public class TestDataPageV2EncryptionInterop {
       raf.seek(position);
       raf.write(original ^ 0x01);
     }
-    // Drop the local filesystem CRC side-file so the tampered bytes reach the Parquet reader.
+    // Otherwise the local filesystem rejects the file
     Files.deleteIfExists(new File(source.getParent(), "." + source.getName() + ".crc").toPath());
     return file;
   }
@@ -376,19 +357,13 @@ public class TestDataPageV2EncryptionInterop {
         .containsExactlyElementsOf(expectedRows().subList(FIRST_ROW_OF_PAGE_WITH_SEQ_250, NUM_ROWS));
   }
 
-  /**
-   * A page of the legacy layout whose plaintext levels happen to start with what the length of a
-   * module that covers the page body would be, so that the layout cannot be told from the page body
-   * alone. With AES_GCM_V1 the tag check settles it, AES_GCM_CTR_V1 is not authenticated, and the
-   * legacy layout is read.
-   */
+  /** A legacy page whose first 4 level bytes equal {@code bodySize - 4}, so it is {@code AMBIGUOUS}. */
   @ParameterizedTest(name = "{0}, directMemory={1}")
   @MethodSource("ciphersAndMemoryModes")
   public void readsALegacyPageThatLooksLikeASingleModule(ParquetCipher cipher, boolean directMemory)
       throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message schema { optional int32 v; }");
-    // Definition levels: a bit-packed run of one group of 8 values of which the first is defined, and
-    // two more bytes, which the reader does not look at. Read as an integer they are 0x0103 = 259
+    // Bit-packed run of 8 levels, only the first defined, plus 2 unread bytes; as an LE int 0x0103 = 259
     byte[] levels = {0x03, 0x01, 0x00, 0x00};
     int bodySize = 259 + Integer.BYTES;
     int moduleSize = bodySize - levels.length;
@@ -416,7 +391,7 @@ public class TestDataPageV2EncryptionInterop {
     writer.start();
     writer.startBlock(8);
     writer.startColumn(column, 8, CompressionCodecName.UNCOMPRESSED);
-    // What parquet-java used to write: the levels as they are, in front of the encrypted values
+    // Legacy layout: plaintext levels, then the encrypted values
     writer.writeDataPageV2(
         8,
         7,
@@ -443,7 +418,7 @@ public class TestDataPageV2EncryptionInterop {
     assertThat(rows.subList(1, 8)).allSatisfy(row -> assertThat(row).doesNotContain("v:"));
   }
 
-  /** Writes a DataPageV2 file with 100 rows per page, encrypted with the footer key if there is a cipher. */
+  /** Writes 100 rows per page; encrypts all columns with the footer key if {@code cipher} is set. */
   private Path writeWithParquetJava(ParquetCipher cipher, CompressionCodecName codec) throws IOException {
     return writeWithParquetJava(cipher, codec, ParquetWriter.DEFAULT_BLOCK_SIZE);
   }
@@ -478,7 +453,7 @@ public class TestDataPageV2EncryptionInterop {
         .toURI());
   }
 
-  /** What the reference decoder found out about one DataPageV2 page that has levels. */
+  /** A DataPageV2 with levels, as found by {@link #decodeDataPagesV2}. */
   private static final class DecodedPage {
     private final String column;
     private final int repetitionLevelsLength;
@@ -517,20 +492,13 @@ public class TestDataPageV2EncryptionInterop {
   }
 
   /**
-   * A decoder of the encrypted DataPageV2 pages of a file, written from the Parquet encryption
-   * specification and sharing nothing with the reader of parquet-java except the cipher
-   * implementations: it parses and decrypts the page headers itself, takes the data page module
-   * from the page body, and decrypts it with the AAD of the specification.
-   *
-   * <p>As the specification has the page body start with the length of the encrypted module, the body
-   * is a single module when the first four bytes hold the body length minus four. Otherwise the
-   * levels are in plaintext and the module of the values follows them. That is enough for the files
-   * of these tests, which have no page for which both could be true.
+   * Decodes the DataPageV2 pages of a file without the parquet-java page reader: parses and decrypts
+   * the page headers, then decrypts the page body as one module if its first 4 bytes are {@code
+   * size - 4}, otherwise the bytes after the levels.
    *
    * @param file file with an encrypted footer, whose encrypted columns all use {@code columnKey}
-   * @param onlyEncryptedColumns true to skip the columns that are not encrypted, for a file where
-   *     only some of the columns are; false if all of the columns are encrypted
-   * @return the pages that have repetition or definition levels, in file order
+   * @param onlyEncryptedColumns whether to skip columns that are not encrypted
+   * @return the pages that have levels, in file order
    */
   private static List<DecodedPage> decodeDataPagesV2(Path file, byte[] columnKey, boolean onlyEncryptedColumns)
       throws IOException {
@@ -596,7 +564,6 @@ public class TestDataPageV2EncryptionInterop {
               boolean singleModule =
                   BytesUtils.readIntLittleEndian(body, 0) == body.length - Integer.BYTES;
               byte[] module = singleModule ? body : Arrays.copyOfRange(body, levels, body.length);
-              // Either way, what is decrypted starts with its own length
               assertThat(BytesUtils.readIntLittleEndian(module, 0))
                   .isEqualTo(module.length - Integer.BYTES);
               byte[] pageAAD = AesCipher.createModuleAAD(

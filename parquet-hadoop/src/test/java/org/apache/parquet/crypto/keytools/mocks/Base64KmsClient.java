@@ -24,10 +24,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.keytools.KmsClient;
 
-/**
- * A KMS client that "wraps" a key by base64 encoding it. It is not secure, it only exists to read
- * the fixtures written by {@code generate_arrow_fixtures.py}, whose key wrapping it mirrors.
- */
+/** Wraps keys by base64 encoding them, like the KMS client of {@code generate_arrow_fixtures.py}. */
 public class Base64KmsClient implements KmsClient {
 
   @Override

@@ -38,22 +38,15 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
 /**
- * Deterministic data, schema and keys shared by the DataPageV2 encryption tests and by the scripts
- * that generated the fixture files under {@code src/test/resources/encryption/datapagev2}.
- *
- * <p>The schema deliberately mixes a required column (no repetition / definition levels), optional
- * columns (definition levels only) and a nested list (repetition and definition levels), because
- * the layout of an encrypted DataPageV2 only differs between implementations when a page has
- * non-empty levels.
- *
- * <p>The row generator must stay in sync with {@code generate_arrow_fixtures.py} in the fixtures
- * directory.
+ * Schema, rows and keys of the DataPageV2 encryption tests and fixtures. {@code seq} is required (no
+ * levels), {@code id} and {@code name} are optional (definition levels), {@code tags} is a list
+ * (repetition and definition levels).
  */
 final class DataPageV2EncryptionTestData {
 
   public static final int NUM_ROWS = 500;
 
-  /** The footer key; with uniform encryption it is also used for all of the columns. */
+  /** Footer key, also the key of all columns with uniform encryption. */
   public static final byte[] FOOTER_KEY = "0123456789abcdef".getBytes(StandardCharsets.UTF_8);
 
   public static final byte[] FOOTER_KEY_METADATA = "footkey".getBytes(StandardCharsets.UTF_8);
@@ -102,12 +95,11 @@ final class DataPageV2EncryptionTestData {
     return rows;
   }
 
-  /** Key of the columns that are encrypted with their own key, in the tests that do that. */
   public static final byte[] COLUMN_KEY = "fedcba9876543210".getBytes(StandardCharsets.UTF_8);
 
   public static final byte[] COLUMN_KEY_METADATA = "colkey".getBytes(StandardCharsets.UTF_8);
 
-  /** Decryption properties for the files that were written with {@link #FOOTER_KEY} and {@link #COLUMN_KEY}. */
+  /** Resolves the key metadata of {@link #FOOTER_KEY} and {@link #COLUMN_KEY}. */
   public static FileDecryptionProperties decryptionProperties() {
     return FileDecryptionProperties.builder()
         .withKeyRetriever(keyMetadata -> {
@@ -125,13 +117,11 @@ final class DataPageV2EncryptionTestData {
   }
 
   /**
-   * Reads all of the rows of a file, rendered as strings, with the verification of the page checksums
-   * switched on.
+   * Reads all rows as strings. Page checksums are verified unless {@code conf} disables it.
    *
-   * @param conf may hold the configuration of a decryption properties factory, and whether to verify the
-   *     page checksums, which is the default; it is not modified
-   * @param decryption the decryption properties, or null to take them from the configuration
-   * @param directMemory whether to read the file into direct buffers and decrypt it off-heap
+   * @param conf not modified
+   * @param decryption the decryption properties, or null to use the ones configured in {@code conf}
+   * @param directMemory whether to read into direct buffers and decrypt off heap
    */
   public static List<String> readRows(
       Path file, Configuration conf, FileDecryptionProperties decryption, boolean directMemory)
@@ -139,11 +129,7 @@ final class DataPageV2EncryptionTestData {
     return readRows(file, conf, decryption, directMemory, FilterCompat.NOOP);
   }
 
-  /**
-   * Like {@link #readRows(Path, Configuration, FileDecryptionProperties, boolean)}, for the rows that
-   * pass the filter. With a filter, the pages that cannot hold matching rows are skipped by way of the
-   * offset index.
-   */
+  /** Like {@link #readRows(Path, Configuration, FileDecryptionProperties, boolean)}, filtered by page. */
   public static List<String> readRows(
       Path file,
       Configuration conf,
@@ -157,12 +143,11 @@ final class DataPageV2EncryptionTestData {
         ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED,
         conf.getBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true));
     if (filter != FilterCompat.NOOP) {
-      // Without this the rows of the pages that are read would be filtered too, which hides whether
-      // the pages that cannot hold matching rows were skipped
+      // Return every row of the pages that are read, so the test can see which pages were skipped
       readConf.setBoolean(ParquetInputFormat.RECORD_FILTERING_ENABLED, false);
     }
     List<String> rows = new ArrayList<>();
-    // Closing the allocator fails the test if the reader leaks a buffer
+    // close() fails on leaked buffers
     try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
         directMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator())) {
       ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), file)

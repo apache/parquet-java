@@ -1169,10 +1169,8 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Writes a single v2 data page. The repetition and definition levels and the data bytes are written
-   * as given: nothing is encrypted. The page of an encrypted column has its levels in the encrypted
-   * page body, so the data bytes of such a page must not be encrypted by the caller; use the overload
-   * that takes a page block encryptor.
+   * Writes a single v2 data page. The levels and data bytes are written as given, without encryption.
+   * For encrypted columns, use the overload that takes a page block encryptor.
    *
    * @param rowCount             count of rows
    * @param nullCount            count of nulls
@@ -1262,10 +1260,8 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Writes a single v2 data page. The repetition and definition levels and the data bytes are written
-   * as given: nothing is encrypted. The page of an encrypted column has its levels in the encrypted
-   * page body, so the data bytes of such a page must not be encrypted by the caller; use the overload
-   * that takes a page block encryptor.
+   * Writes a single v2 data page. The levels and data bytes are written as given, without encryption.
+   * For encrypted columns, use the overload that takes a page block encryptor.
    *
    * @param rowCount               count of rows
    * @param nullCount              count of nulls
@@ -1361,10 +1357,8 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Writes a single v2 data page. The repetition and definition levels are written as given, in
-   * front of the data bytes, and the data bytes are written as given too: they are not encrypted.
-   * To write the page of an encrypted column, whose levels are part of the encrypted page body, use
-   * the overload that takes a page block encryptor.
+   * Writes a single v2 data page. The levels and data bytes are written as given, without encryption.
+   * For encrypted columns, use the overload that takes a page block encryptor.
    *
    * @param rowCount count of rows
    * @param nullCount count of nulls
@@ -1413,14 +1407,8 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Writes a single v2 data page of a column that is encrypted, if a page block encryptor is given.
-   *
-   * <p>With Parquet Modular Encryption the data page module of a v2 page is the whole page body: the
-   * repetition levels, the definition levels and the (possibly compressed) data are encrypted
-   * together, as one module. Without a page block encryptor this method behaves like {@link
-   * #writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int,
-   * Statistics, BlockCipher.Encryptor, byte[], SizeStatistics)}, which writes the levels as given and
-   * does not encrypt the data.
+   * Writes a single v2 data page. If {@code pageBlockEncryptor} is not null, the repetition levels,
+   * definition levels and data bytes are encrypted together as one module.
    *
    * @param rowCount count of rows
    * @param nullCount count of nulls
@@ -1428,7 +1416,7 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param repetitionLevels repetition level bytes
    * @param definitionLevels definition level bytes
    * @param dataEncoding encoding for data
-   * @param bytes data bytes, not encrypted
+   * @param bytes data bytes, not yet encrypted
    * @param compressed whether the data bytes is compressed
    * @param uncompressedDataSize the size of uncompressed data
    * @param statistics the statistics of the page
@@ -1436,9 +1424,8 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
    * @param pageBlockEncryptor encryptor for the page body, or null if the column is not encrypted
-   * @param dataPageAAD AAD of the data page module of this page, that is with the ordinal of the page,
-   *                    see {@link AesCipher#quickUpdatePageAAD}; it is required with a page block
-   *                    encryptor, and ignored without one
+   * @param dataPageAAD data page AAD, updated for this page's ordinal; required if
+   *                    {@code pageBlockEncryptor} is not null
    * @throws IOException if any I/O error occurs during writing the file
    */
   public void writeDataPageV2(
@@ -1482,9 +1469,7 @@ public class ParquetFileWriter implements AutoCloseable {
         sizeStatistics);
   }
 
-  /**
-   * @param pageBody the bytes that follow the page header, in the order they are written
-   */
+  /** @param pageBody the bytes written after the page header */
   private void writeDataPageV2Body(
       int rowCount,
       int nullCount,

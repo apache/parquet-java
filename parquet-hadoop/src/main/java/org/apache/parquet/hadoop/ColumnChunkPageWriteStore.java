@@ -317,8 +317,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         compressedData = compressor.compress(data);
         compressed = true;
       }
-      // The bytes that follow the page header. With encryption, the levels and the values of a v2 page
-      // are encrypted together, as the one "data page" module of the page.
+      // When encrypted, the levels and the values are encrypted together as one module
       List<BytesInput> pageBody = new ArrayList<>(3);
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);

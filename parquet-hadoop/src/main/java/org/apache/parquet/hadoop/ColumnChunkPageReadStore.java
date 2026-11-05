@@ -221,69 +221,142 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         @Override
         public DataPage visit(DataPageV2 dataPageV2) {
           if (dataPageV2 instanceof FullBodyEncryptedDataPageV2) {
-            return readFullBodyEncryptedPageV2((FullBodyEncryptedDataPageV2) dataPageV2, currentPageIndex);
+            return readPageV2WithEncryptedLevels(
+                (FullBodyEncryptedDataPageV2) dataPageV2, currentPageIndex);
           }
-          return readPageV2(dataPageV2, currentPageIndex);
+          return readPageV2WithPlaintextLevels(dataPageV2, currentPageIndex);
         }
       });
     }
 
     /**
-     * Decrypts, if needed, and decompresses a DataPageV2 whose repetition and definition levels are
-     * separate from the data: the levels are plaintext and only the values are encrypted.
+     * Reads a page whose levels are not encrypted. If the column is encrypted, only the values are an
+     * encrypted module.
      */
-    private DataPageV2 readPageV2(DataPageV2 dataPageV2, int currentPageIndex) {
-      if (!dataPageV2.isCompressed() && offsetIndex == null && null == blockDecryptor) {
-        return dataPageV2;
+    private DataPageV2 readPageV2WithPlaintextLevels(DataPageV2 page, int currentPageIndex) {
+      if (!page.isCompressed() && offsetIndex == null && null == blockDecryptor) {
+        return page;
       }
-      BytesInput pageBytes = dataPageV2.getData();
+      boolean offHeap = decryptsOffHeap();
+      BytesInput values = page.getData();
       try {
-        if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
-          ByteBuffer byteBuffer = pageBytes.toByteBuffer(releaser);
-          if (!byteBuffer.isDirect()) {
-            throw new ParquetDecodingException("Expected a direct buffer");
-          }
-          if (blockDecryptor != null) {
-            byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
-          }
-          long compressedSize = byteBuffer.limit();
-          if (dataPageV2.isCompressed()) {
-            int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
-                - dataPageV2.getDefinitionLevels().size()
-                - dataPageV2.getRepetitionLevels().size());
-            ByteBuffer decompressedBuffer = options.getAllocator().allocate(uncompressedSize);
-            releaser.releaseLater(decompressedBuffer);
-            long start = System.nanoTime();
-            decompressor.decompress(byteBuffer, (int) compressedSize, decompressedBuffer, uncompressedSize);
-            setDecompressMetrics(pageBytes, start);
-            decompressedBuffer.flip();
-            pageBytes = BytesInput.from(decompressedBuffer);
-          } else {
-            pageBytes = BytesInput.from(byteBuffer);
-          }
-        } else {
-          if (null != blockDecryptor) {
-            pageBytes = BytesInput.from(blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
-          }
-          if (dataPageV2.isCompressed()) {
-            int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
-                - dataPageV2.getDefinitionLevels().size()
-                - dataPageV2.getRepetitionLevels().size());
-            long start = System.nanoTime();
-            pageBytes = BytesInput.copy(decompressor.decompress(pageBytes, uncompressedSize));
-            setDecompressMetrics(pageBytes, start);
-          }
+        if (null != blockDecryptor) {
+          values = BytesInput.from(decryptDataPageModule(values, offHeap));
+        } else if (offHeap) {
+          values = BytesInput.from(toDirectBuffer(values));
+        }
+        if (page.isCompressed()) {
+          int levelsByteLength =
+              Math.toIntExact(page.getRepetitionLevels().size()
+                  + page.getDefinitionLevels().size());
+          values = decompressValues(values, valuesUncompressedSize(page, levelsByteLength), offHeap);
         }
       } catch (IOException e) {
         throw new ParquetDecodingException("could not decompress page", e);
       }
-
       return uncompressedPageV2(
-          dataPageV2,
-          dataPageV2.getRepetitionLevels(),
-          dataPageV2.getDefinitionLevels(),
-          pageBytes,
-          currentPageIndex);
+          page, page.getRepetitionLevels(), page.getDefinitionLevels(), values, currentPageIndex);
+    }
+
+    /**
+     * Reads a page whose levels and values are one encrypted module. If the layout is ambiguous, the page
+     * is decrypted as one module first, and read with plaintext levels if the GCM tag check fails. CTR
+     * has no tag, so ambiguous CTR pages are read with plaintext levels.
+     */
+    private DataPageV2 readPageV2WithEncryptedLevels(FullBodyEncryptedDataPageV2 page, int currentPageIndex) {
+      DataPageV2 plaintextLevelsPage = page.getPlaintextLevelsLayoutPage();
+      if (plaintextLevelsPage == null) {
+        return decryptPageV2WithEncryptedLevels(page, currentPageIndex, decryptsOffHeap());
+      }
+      if (blockDecryptor instanceof AesCtrDecryptor) {
+        return readPageV2WithPlaintextLevels(plaintextLevelsPage, currentPageIndex);
+      }
+      try {
+        // Not off heap: decrypting in place would overwrite the bytes the fallback reads
+        return decryptPageV2WithEncryptedLevels(page, currentPageIndex, false);
+      } catch (TagVerificationException notASingleModule) {
+        LOG.debug(
+            "DataPageV2 body is not a single encrypted module, reading it with plaintext levels",
+            notASingleModule);
+        try {
+          return readPageV2WithPlaintextLevels(plaintextLevelsPage, currentPageIndex);
+        } catch (TagVerificationException notPlaintextLevelsEither) {
+          notPlaintextLevelsEither.addSuppressed(notASingleModule);
+          throw notPlaintextLevelsEither;
+        }
+      }
+    }
+
+    /** Decrypts the body, splits it into levels and values, and decompresses the values. */
+    private DataPageV2 decryptPageV2WithEncryptedLevels(
+        FullBodyEncryptedDataPageV2 page, int currentPageIndex, boolean offHeap) {
+      int repetitionLevelsByteLength = page.getRepetitionLevelsByteLength();
+      int definitionLevelsByteLength = page.getDefinitionLevelsByteLength();
+      int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
+      try {
+        ByteBuffer body = decryptDataPageModule(page.getData(), offHeap);
+        checkDecryptedPageSize(body.limit(), levelsByteLength);
+        BytesInput repetitionLevels = BytesInput.from(body.slice(0, repetitionLevelsByteLength));
+        BytesInput definitionLevels =
+            BytesInput.from(body.slice(repetitionLevelsByteLength, definitionLevelsByteLength));
+        BytesInput values = BytesInput.from(body.slice(levelsByteLength, body.limit() - levelsByteLength));
+        if (page.isCompressed()) {
+          values = decompressValues(values, valuesUncompressedSize(page, levelsByteLength), offHeap);
+        }
+        return uncompressedPageV2(page, repetitionLevels, definitionLevels, values, currentPageIndex);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not decompress page", e);
+      }
+    }
+
+    private void checkDecryptedPageSize(int decryptedSize, int levelsByteLength) {
+      if (decryptedSize < levelsByteLength) {
+        throw new ParquetDecodingException("Decrypted DataPageV2 body has " + decryptedSize
+            + " bytes, which is less than the " + levelsByteLength
+            + " bytes of repetition and definition levels in the page header");
+      }
+    }
+
+    private static int valuesUncompressedSize(DataPageV2 page, int levelsByteLength) {
+      return Math.toIntExact(page.getUncompressedSize() - levelsByteLength);
+    }
+
+    private boolean decryptsOffHeap() {
+      return options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer();
+    }
+
+    /** Decrypts in place if off heap, otherwise into a new heap buffer. */
+    private ByteBuffer decryptDataPageModule(BytesInput module, boolean offHeap) throws IOException {
+      if (offHeap) {
+        return blockDecryptor.decrypt(toDirectBuffer(module), dataPageAAD);
+      }
+      return ByteBuffer.wrap(blockDecryptor.decrypt(module.toByteArray(), dataPageAAD));
+    }
+
+    private ByteBuffer toDirectBuffer(BytesInput bytes) {
+      ByteBuffer buffer = bytes.toByteBuffer(releaser);
+      if (!buffer.isDirect()) {
+        throw new ParquetDecodingException("Expected a direct buffer");
+      }
+      return buffer;
+    }
+
+    private BytesInput decompressValues(BytesInput compressed, int uncompressedSize, boolean offHeap)
+        throws IOException {
+      long start = System.nanoTime();
+      BytesInput decompressed;
+      if (offHeap) {
+        ByteBuffer input = toDirectBuffer(compressed);
+        ByteBuffer output = options.getAllocator().allocate(uncompressedSize);
+        releaser.releaseLater(output);
+        decompressor.decompress(input, input.limit(), output, uncompressedSize);
+        output.flip();
+        decompressed = BytesInput.from(output);
+      } else {
+        decompressed = BytesInput.copy(decompressor.decompress(compressed, uncompressedSize));
+      }
+      setDecompressMetrics(compressed, start);
+      return decompressed;
     }
 
     private DataPageV2 uncompressedPageV2(
@@ -319,112 +392,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         decompressedPage.setCrc(source.getCrc().getAsInt());
       }
       return decompressedPage;
-    }
-
-    /**
-     * Reads a DataPageV2 whose body, repetition and definition levels included, was found to be one
-     * encrypted module.
-     *
-     * <p>If the layout of the page body could not be determined from the page alone, it may also be a
-     * page of the layout that earlier parquet-java versions wrote, with plaintext levels. Both
-     * layouts are tried then, the one of the specification first. AES_GCM_V1 is authenticated, so a
-     * page of the other layout fails the tag check. AES_GCM_CTR_V1 is not authenticated, and cannot
-     * tell the layouts apart. A page body of the specification layout, which starts with a random
-     * nonce, looks like one of the legacy layout only by a coincidence of about one in 2^32 on average,
-     * a little more often if the levels take fewer than four bytes. The legacy layout is preferred for
-     * that cipher.
-     */
-    private DataPageV2 readFullBodyEncryptedPageV2(FullBodyEncryptedDataPageV2 page, int currentPageIndex) {
-      DataPageV2 plaintextLevelsPage = page.getPlaintextLevelsLayoutPage();
-      if (plaintextLevelsPage == null) {
-        return readSingleEncryptedModulePageV2(page, currentPageIndex, false);
-      }
-      if (blockDecryptor instanceof AesCtrDecryptor) {
-        return readPageV2(plaintextLevelsPage, currentPageIndex);
-      }
-      try {
-        // Decrypting on the heap leaves the encrypted buffers untouched for the second attempt
-        return readSingleEncryptedModulePageV2(page, currentPageIndex, true);
-      } catch (TagVerificationException notASingleModule) {
-        LOG.debug(
-            "DataPageV2 body is not a single encrypted module, reading it with plaintext levels",
-            notASingleModule);
-        try {
-          return readPageV2(plaintextLevelsPage, currentPageIndex);
-        } catch (TagVerificationException notPlaintextLevelsEither) {
-          notPlaintextLevelsEither.addSuppressed(notASingleModule);
-          throw notPlaintextLevelsEither;
-        }
-      }
-    }
-
-    /**
-     * Decrypts a DataPageV2 whose body, repetition and definition levels included, is one encrypted
-     * module, splits the levels from the values, and decompresses the values.
-     */
-    private DataPageV2 readSingleEncryptedModulePageV2(
-        FullBodyEncryptedDataPageV2 page, int currentPageIndex, boolean forceHeap) {
-      final int repetitionLevelsByteLength = page.getRepetitionLevelsByteLength();
-      final int definitionLevelsByteLength = page.getDefinitionLevelsByteLength();
-      final int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
-      final int valuesUncompressedSize = Math.toIntExact(page.getUncompressedSize() - levelsByteLength);
-      BytesInput repetitionLevels;
-      BytesInput definitionLevels;
-      BytesInput values;
-      try {
-        BytesInput encryptedBody = page.getData();
-        if (!forceHeap && options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
-          ByteBuffer encrypted = encryptedBody.toByteBuffer(releaser);
-          if (!encrypted.isDirect()) {
-            throw new ParquetDecodingException("Expected a direct buffer");
-          }
-          // The decrypted bytes are laid out as [repetition levels | definition levels | values]
-          ByteBuffer decrypted = blockDecryptor.decrypt(encrypted, dataPageAAD);
-          checkDecryptedPageSize(decrypted.limit(), levelsByteLength);
-          repetitionLevels = BytesInput.from(decrypted.slice(0, repetitionLevelsByteLength));
-          definitionLevels =
-              BytesInput.from(decrypted.slice(repetitionLevelsByteLength, definitionLevelsByteLength));
-          ByteBuffer valuesBuffer = decrypted.slice(levelsByteLength, decrypted.limit() - levelsByteLength);
-          if (page.isCompressed()) {
-            ByteBuffer decompressedBuffer = options.getAllocator().allocate(valuesUncompressedSize);
-            releaser.releaseLater(decompressedBuffer);
-            // The decompressor consumes the buffer, so the compressed size is taken before it runs
-            BytesInput compressedValues = BytesInput.from(valuesBuffer.duplicate());
-            long start = System.nanoTime();
-            decompressor.decompress(
-                valuesBuffer, valuesBuffer.limit(), decompressedBuffer, valuesUncompressedSize);
-            setDecompressMetrics(compressedValues, start);
-            decompressedBuffer.flip();
-            values = BytesInput.from(decompressedBuffer);
-          } else {
-            values = BytesInput.from(valuesBuffer);
-          }
-        } else {
-          byte[] decrypted = blockDecryptor.decrypt(encryptedBody.toByteArray(), dataPageAAD);
-          checkDecryptedPageSize(decrypted.length, levelsByteLength);
-          repetitionLevels = BytesInput.from(decrypted, 0, repetitionLevelsByteLength);
-          definitionLevels =
-              BytesInput.from(decrypted, repetitionLevelsByteLength, definitionLevelsByteLength);
-          values = BytesInput.from(decrypted, levelsByteLength, decrypted.length - levelsByteLength);
-          if (page.isCompressed()) {
-            long start = System.nanoTime();
-            BytesInput compressedValues = values;
-            values = BytesInput.copy(decompressor.decompress(compressedValues, valuesUncompressedSize));
-            setDecompressMetrics(compressedValues, start);
-          }
-        }
-      } catch (IOException e) {
-        throw new ParquetDecodingException("could not decompress page", e);
-      }
-      return uncompressedPageV2(page, repetitionLevels, definitionLevels, values, currentPageIndex);
-    }
-
-    private void checkDecryptedPageSize(int decryptedSize, int levelsByteLength) {
-      if (decryptedSize < levelsByteLength) {
-        throw new ParquetDecodingException("Decrypted DataPageV2 body has " + decryptedSize
-            + " bytes, which is less than the " + levelsByteLength
-            + " bytes of repetition and definition levels in the page header");
-      }
     }
 
     private void setDecompressMetrics(BytesInput bytes, long start) {

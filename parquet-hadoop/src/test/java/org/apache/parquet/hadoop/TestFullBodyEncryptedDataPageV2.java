@@ -30,10 +30,10 @@ import org.junit.jupiter.api.Test;
 
 public class TestFullBodyEncryptedDataPageV2 {
 
-  /** RLE encoded levels: a bit-packed run of one group, 0xff, followed by an RLE run of 8 values of 1. */
+  /** A bit-packed run of 8 levels, then an RLE run of 8 levels. */
   private static final byte[] LEVELS = {0x03, (byte) 0xff, 0x10, 0x01};
 
-  /** The serialized form of an encrypted module: its length, then that many bytes. */
+  /** {@code contentLength} as a 4 byte LE int, followed by that many bytes. */
   private static byte[] module(int contentLength) {
     ByteBuffer module = ByteBuffer.allocate(Integer.BYTES + contentLength).order(ByteOrder.LITTLE_ENDIAN);
     module.putInt(contentLength);
@@ -77,7 +77,7 @@ public class TestFullBodyEncryptedDataPageV2 {
   @Test
   public void bodyWithPlaintextLevelsIsRecognizedWhenTheModuleLengthIsNotInOneBuffer() throws IOException {
     byte[] body = concat(LEVELS, module(300));
-    // The split is inside the length of the module
+    // Split inside the module length
     ByteBuffer first = ByteBuffer.wrap(body, 0, LEVELS.length + 2).slice();
     ByteBuffer second = ByteBuffer.wrap(body, LEVELS.length + 2, body.length - LEVELS.length - 2)
         .slice();
@@ -88,7 +88,7 @@ public class TestFullBodyEncryptedDataPageV2 {
 
   @Test
   public void bodyThatFitsBothLayoutsIsAmbiguous() throws IOException {
-    // Plaintext levels that start like the length of a module that spans the whole body
+    // Levels whose first 4 bytes are bodySize - 4
     byte[] module = module(50);
     int bodySize = LEVELS.length + module.length;
     byte[] levels = ByteBuffer.allocate(LEVELS.length)
@@ -116,7 +116,7 @@ public class TestFullBodyEncryptedDataPageV2 {
         .isEqualTo(Layout.SINGLE_MODULE);
     assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(new byte[] {1, 2, 3}), 1))
         .isEqualTo(Layout.SINGLE_MODULE);
-    // The levels take all of the body
+    // Body is only levels
     assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(LEVELS), LEVELS.length))
         .isEqualTo(Layout.SINGLE_MODULE);
   }

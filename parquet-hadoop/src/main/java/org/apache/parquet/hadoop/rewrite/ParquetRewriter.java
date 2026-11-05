@@ -738,8 +738,7 @@ public class ParquetRewriter implements Closeable {
           BytesInput dlLevels = readBlockAllocate(dlLength, reader);
           int payLoadLength = pageHeader.getCompressed_page_size() - rlLength - dlLength;
           int rawDataLength = pageHeader.getUncompressed_page_size() - rlLength - dlLength;
-          // The payload is not encrypted here: for an encrypted column the writer encrypts it together
-          // with the levels.
+          // Not encrypted here: the writer encrypts the levels and the payload together
           pageLoad = processPageLoad(
               reader,
               headerV2.is_compressed,

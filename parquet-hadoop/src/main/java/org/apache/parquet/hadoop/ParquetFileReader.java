@@ -2275,12 +2275,9 @@ public class ParquetFileReader implements Closeable {
     }
 
     /**
-     * Reads the DataPageV2 page of which the header has just been read. The page of an encrypted column
-     * that has repetition or definition levels is read as a {@link FullBodyEncryptedDataPageV2} if its
-     * body is, or may be, one encrypted module that also covers the levels, which is the layout of the Parquet
-     * encryption specification, written by Arrow and by parquet-java since 1.19.0. Files written by
-     * earlier parquet-java versions have the levels in plaintext in front of the module of the
-     * values; these pages are read as plain {@link DataPageV2} pages that are still encrypted.
+     * Reads a DataPageV2 body. For an encrypted column with levels, returns a {@link
+     * FullBodyEncryptedDataPageV2} if the levels are inside the encrypted module, or a {@link
+     * DataPageV2} with the plaintext levels split out otherwise.
      */
     private DataPageV2 readDataPageV2(PageHeader pageHeader, PrimitiveType type, boolean encryptedColumn)
         throws IOException {
