@@ -67,6 +67,28 @@ import org.junit.jupiter.api.Test;
 
 public class TestParquetParser {
   @Test
+  public void testFILEAnnotation() {
+    String schema = "message FileMessage {\n"
+        + "  optional group file (FILE) {\n"
+        + "    optional binary uri (STRING);\n"
+        + "  }\n"
+        + "}\n";
+    MessageType expected = Types.buildMessage()
+        .optionalGroup()
+        .as(LogicalTypeAnnotation.fileType())
+        .optional(BINARY)
+        .as(stringType())
+        .named("uri")
+        .named("file")
+        .named("FileMessage");
+
+    MessageType parsed = parseMessageType(schema);
+
+    assertThat(parsed).isEqualTo(expected);
+    assertThat(parseMessageType(parsed.toString())).isEqualTo(expected);
+  }
+
+  @Test
   public void testPaperExample() {
     String example = "message Document {\n" + "  required int64 DocId;\n"
         + "  optional group Links {\n"

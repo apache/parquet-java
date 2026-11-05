@@ -22,6 +22,7 @@ import static java.util.Arrays.asList;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -116,10 +117,16 @@ public class GroupType extends Type {
   GroupType(
       Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, List<Type> fields, ID id) {
     super(name, repetition, logicalTypeAnnotation, id);
-    this.fields = fields;
+    if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+      // Keep the validated schema immutable so readers and writers need not revalidate every value.
+      this.fields = Collections.unmodifiableList(new ArrayList<>(fields));
+      ((LogicalTypeAnnotation.FileLogicalTypeAnnotation) logicalTypeAnnotation).validateFields(name, this.fields);
+    } else {
+      this.fields = fields;
+    }
     this.indexByName = new HashMap<>();
-    for (int i = 0; i < fields.size(); i++) {
-      indexByName.put(fields.get(i).getName(), i);
+    for (int i = 0; i < this.fields.size(); i++) {
+      indexByName.put(this.fields.get(i).getName(), i);
     }
   }
 
@@ -135,6 +142,7 @@ public class GroupType extends Type {
   /**
    * @param newFields a list of types to use as fields in a copy of this group
    * @return a group with the same attributes and new fields.
+   * @throws IllegalArgumentException if the new fields do not conform to this group's FILE annotation
    */
   public GroupType withNewFields(List<Type> newFields) {
     return new GroupType(getRepetition(), getName(), getLogicalTypeAnnotation(), newFields, getId());
