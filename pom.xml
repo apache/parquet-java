@@ -38,7 +38,7 @@
     <connection>scm:git:git@github.com:apache/parquet-java.git</connection>
     <url>scm:git:git@github.com:apache/parquet-java.git</url>
     <developerConnection>scm:git:git@github.com:apache/parquet-java.git</developerConnection>
-    <tag>apache-parquet-1.18.0-rc2</tag>
+    <tag>apache-parquet-1.18.2-rc2</tag>
   </scm>
 
   <licenses>
