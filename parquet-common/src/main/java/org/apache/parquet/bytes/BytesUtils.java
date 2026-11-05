@@ -51,6 +51,16 @@ public class BytesUtils {
   }
 
   /**
+   * give the number of bits needed to encode a long given the max value
+   *
+   * @param bound max long that we want to encode
+   * @return the number of bits required
+   */
+  public static int getWidthFromMaxLong(long bound) {
+    return 64 - Long.numberOfLeadingZeros(bound);
+  }
+
+  /**
    * reads an int in little endian at the given position
    *
    * @param in     a byte buffer
@@ -64,6 +74,29 @@ public class BytesUtils {
     int ch2 = in.get(offset + 2) & 0xff;
     int ch1 = in.get(offset + 3) & 0xff;
     return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+  }
+
+  /**
+   * reads an unsigned byte at the given position
+   *
+   * @param in     a byte buffer
+   * @param offset an offset into the byte buffer
+   * @return the byte at position offset, from 0 to 255
+   */
+  public static int readUnsignedByte(ByteBuffer in, int offset) {
+    return in.get(offset) & 0xff;
+  }
+
+  /**
+   * reads an unsigned short in little endian at the given position, regardless of the buffer's byte
+   * order
+   *
+   * @param in     a byte buffer
+   * @param offset an offset into the byte buffer
+   * @return the short at position offset read using little endian byte order, from 0 to 65535
+   */
+  public static int readUnsignedShortLittleEndian(ByteBuffer in, int offset) {
+    return (in.get(offset) & 0xff) | ((in.get(offset + 1) & 0xff) << 8);
   }
 
   /**
