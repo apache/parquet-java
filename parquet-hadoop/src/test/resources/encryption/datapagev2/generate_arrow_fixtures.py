@@ -40,7 +40,6 @@ import pyarrow.parquet as pq
 import pyarrow.parquet.encryption as pe
 
 NUM_ROWS = 500
-FOOTER_KEY = b"0123456789abcdef"
 FOOTER_KEY_ID = "footkey"
 
 

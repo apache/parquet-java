@@ -317,11 +317,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         compressedData = compressor.compress(data);
         compressed = true;
       }
-      // The bytes that follow the page header. The "data page" module of Parquet Modular Encryption
-      // is the whole page body of a DataPageV2 page, so when the column is encrypted the repetition
-      // and definition levels are encrypted together with the values, as one module. This is the
-      // layout of the specification and the one written by Arrow C++ and arrow-rs; the levels
-      // must not be left in plaintext.
+      // The bytes that follow the page header. With encryption, the levels and the values of a v2 page
+      // are encrypted together, as the one "data page" module of the page.
       List<BytesInput> pageBody = new ArrayList<>(3);
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);

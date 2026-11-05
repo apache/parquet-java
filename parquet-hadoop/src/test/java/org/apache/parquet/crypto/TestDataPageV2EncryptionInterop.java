@@ -35,10 +35,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,18 +49,28 @@ import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
+import org.apache.parquet.crypto.keytools.mocks.Base64KmsClient;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.FileCryptoMetaData;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetFileWriter;
+import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -68,7 +80,12 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.rewrite.ParquetRewriter;
 import org.apache.parquet.hadoop.rewrite.RewriteOptions;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -91,15 +108,35 @@ import org.junit.jupiter.params.provider.MethodSource;
  *       java-legacy-v2-*} fixtures are. They were written by parquet-java 1.19.0-SNAPSHOT at commit
  *       e265ac7f5, just before the layout changed, with the footer key as the key of all columns,
  *       the same rows as {@link DataPageV2EncryptionTestData#row(int)}, 100 rows per page and
- *       {@code ExampleParquetWriter} with {@code WriterVersion.PARQUET_2_0}.
+ *       {@code ExampleParquetWriter} with {@code WriterVersion.PARQUET_2_0}. To regenerate them,
+ *       check out that commit, and write the rows with the {@code writeWithParquetJava} method of
+ *       this class for each cipher and codec. The Arrow files come from {@code
+ *       generate_arrow_fixtures.py}, which sits next to them.
  * </ul>
  */
 public class TestDataPageV2EncryptionInterop {
 
   private static final String FIXTURES = "/encryption/datapagev2/";
 
+  /**
+   * Matches the second half of the rows. With 100 rows per page, the first two pages cannot hold a
+   * match and are skipped, so the rows that are read start at the third page.
+   */
+  private static final int FIRST_ROW_OF_PAGE_WITH_SEQ_250 = 200;
+
+  private static final FilterCompat.Filter SEQ_AT_LEAST_250 =
+      FilterCompat.get(FilterApi.gtEq(FilterApi.longColumn("seq"), 250L));
+
   @TempDir
   private java.nio.file.Path tempDir;
+
+  @BeforeEach
+  @AfterEach
+  public void clearKmsClients() {
+    // The KMS clients are cached by instance id, across the tests of a JVM, and the Arrow fixtures use
+    // the default one
+    KeyToolkit.removeCacheEntriesForAllTokens();
+  }
 
   static Stream<Arguments> fixturesAndMemoryModes(String prefix) {
     List<Arguments> arguments = new ArrayList<>();
@@ -119,6 +156,17 @@ public class TestDataPageV2EncryptionInterop {
 
   static Stream<Arguments> legacyFixtures() {
     return fixturesAndMemoryModes("java-legacy-v2-");
+  }
+
+  static Stream<String> legacyFixtureNames() {
+    return Stream.of("aes-gcm-v1", "aes-gcm-ctr-v1")
+        .flatMap(cipher -> Stream.of("uncompressed", "snappy")
+            .map(codec -> "java-legacy-v2-" + cipher + "-" + codec + ".parquet"));
+  }
+
+  static Stream<Arguments> ciphersAndMemoryModes() {
+    return Stream.of(ParquetCipher.values())
+        .flatMap(cipher -> Stream.of(Arguments.of(cipher, false), Arguments.of(cipher, true)));
   }
 
   static Stream<Arguments> ciphersAndCodecs() {
@@ -152,9 +200,9 @@ public class TestDataPageV2EncryptionInterop {
         .containsExactlyElementsOf(expectedRows());
   }
 
-  @ParameterizedTest(name = "{0}, directMemory={1}")
-  @MethodSource("legacyFixtures")
-  public void legacyFixturesHaveThePlaintextLevelsLayout(String fixture, boolean directMemory) throws Exception {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("legacyFixtureNames")
+  public void legacyFixturesHaveThePlaintextLevelsLayout(String fixture) throws Exception {
     // The test above only proves the legacy code path is covered if the fixtures really are legacy files
     List<DecodedPage> pages = decodeDataPagesV2(fixture(fixture), FOOTER_KEY, false);
 
@@ -171,6 +219,9 @@ public class TestDataPageV2EncryptionInterop {
     List<DecodedPage> pages = decodeDataPagesV2(file, FOOTER_KEY, false);
 
     assertThat(pages).isNotEmpty();
+    assertThat(pages).extracting(page -> page.column).containsOnly("id", "name", "tags.list.element");
+    assertThat(pages)
+        .anySatisfy(page -> assertThat(page.repetitionLevelsLength).isPositive());
     for (DecodedPage page : pages) {
       assertThat(page.singleModule)
           .as("the levels of %s must be inside the encrypted page body", page)
@@ -195,13 +246,42 @@ public class TestDataPageV2EncryptionInterop {
 
   @Test
   public void detectsTamperingWithTheLevels() throws Exception {
+    Path file = writeFileWithTamperedLevels();
+    // The page checksum would notice the change first, which is not what this test is about
+    Configuration withoutChecksums = new Configuration();
+    withoutChecksums.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+
+    assertThatThrownBy(() -> readRows(file, withoutChecksums, decryptionProperties(), false))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Can not read value at 0 in block -1")
+        .cause()
+        .isInstanceOf(TagVerificationException.class)
+        .hasMessage("GCM tag check failed");
+  }
+
+  @Test
+  public void pageChecksumDetectsTamperingWithTheLevels() throws Exception {
+    Path file = writeFileWithTamperedLevels();
+
+    assertThatThrownBy(() -> readRows(file, new Configuration(), decryptionProperties(), false))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("Can not read value at 0 in block -1")
+        .cause()
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("could not verify page integrity, CRC checksum verification failed");
+  }
+
+  /**
+   * Writes a file of which the first byte of the levels of the first DataPageV2 page was changed. When
+   * the levels were stored in plaintext, changing them went unnoticed by the decryption.
+   */
+  private Path writeFileWithTamperedLevels() throws Exception {
     Path file = writeWithParquetJava(ParquetCipher.AES_GCM_V1, CompressionCodecName.UNCOMPRESSED);
     DecodedPage page = decodeDataPagesV2(file, FOOTER_KEY, false).get(0);
 
-    // Flip a bit of the first byte of the ciphertext, which is the first byte of the levels. When the
-    // levels were stored in plaintext, changing them went unnoticed.
+    // Flip a bit of the first byte of the ciphertext, which is the first byte of the levels
     File source = new File(file.toUri());
-    try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(source, "rw")) {
+    try (RandomAccessFile raf = new RandomAccessFile(source, "rw")) {
       long position = page.bodyOffset + Integer.BYTES + AesCipher.NONCE_LENGTH;
       raf.seek(position);
       int original = raf.read();
@@ -210,12 +290,7 @@ public class TestDataPageV2EncryptionInterop {
     }
     // Drop the local filesystem CRC side-file so the tampered bytes reach the Parquet reader.
     Files.deleteIfExists(new File(source.getParent(), "." + source.getName() + ".crc").toPath());
-
-    assertThatThrownBy(() -> readRows(file, new Configuration(), decryptionProperties(), false))
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessageContaining("Can not read value at 0 in block -1")
-        .hasRootCauseInstanceOf(TagVerificationException.class)
-        .hasRootCauseMessage("GCM tag check failed");
+    return file;
   }
 
   @ParameterizedTest(name = "{0}, {1}")
@@ -251,6 +326,9 @@ public class TestDataPageV2EncryptionInterop {
 
     List<DecodedPage> pages = decodeDataPagesV2(rewritten, COLUMN_KEY, true);
     assertThat(pages).isNotEmpty();
+    assertThat(pages).extracting(page -> page.column).containsOnly("id", "name", "tags.list.element");
+    assertThat(pages)
+        .anySatisfy(page -> assertThat(page.repetitionLevelsLength).isPositive());
     assertThat(pages).allSatisfy(page -> assertThat(page.singleModule).isTrue());
     assertThat(readRows(rewritten, new Configuration(), decryptionProperties(), false))
         .containsExactlyElementsOf(expectedRows());
@@ -258,13 +336,127 @@ public class TestDataPageV2EncryptionInterop {
         .containsExactlyElementsOf(expectedRows());
   }
 
+  @ParameterizedTest(name = "{0}, {1}")
+  @MethodSource("ciphersAndCodecs")
+  public void readsWhatItWritesInSeveralRowGroups(ParquetCipher cipher, CompressionCodecName codec) throws Exception {
+    Path file = writeWithParquetJava(cipher, codec, 4096);
+
+    try (ParquetFileReader reader = ParquetFileReader.open(
+        HadoopInputFile.fromPath(file, new Configuration()),
+        ParquetReadOptions.builder()
+            .withDecryption(decryptionProperties())
+            .build())) {
+      assertThat(reader.getFooter().getBlocks()).hasSizeGreaterThan(1);
+    }
+    assertThat(decodeDataPagesV2(file, FOOTER_KEY, false))
+        .allSatisfy(page -> assertThat(page.singleModule).isTrue());
+    assertThat(readRows(file, new Configuration(), decryptionProperties(), false))
+        .containsExactlyElementsOf(expectedRows());
+    assertThat(readRows(file, new Configuration(), decryptionProperties(), true))
+        .containsExactlyElementsOf(expectedRows());
+  }
+
+  @ParameterizedTest(name = "{0}, {1}")
+  @MethodSource("ciphersAndCodecs")
+  public void skipsPagesOfWhatItWrites(ParquetCipher cipher, CompressionCodecName codec) throws Exception {
+    Path file = writeWithParquetJava(cipher, codec);
+
+    assertThat(readRows(file, new Configuration(), decryptionProperties(), false, SEQ_AT_LEAST_250))
+        .containsExactlyElementsOf(expectedRows().subList(FIRST_ROW_OF_PAGE_WITH_SEQ_250, NUM_ROWS));
+    assertThat(readRows(file, new Configuration(), decryptionProperties(), true, SEQ_AT_LEAST_250))
+        .containsExactlyElementsOf(expectedRows().subList(FIRST_ROW_OF_PAGE_WITH_SEQ_250, NUM_ROWS));
+  }
+
+  @ParameterizedTest(name = "{0}, directMemory={1}")
+  @MethodSource("legacyFixtures")
+  public void skipsPagesOfFilesWrittenByEarlierParquetJavaVersions(String fixture, boolean directMemory)
+      throws Exception {
+    assertThat(readRows(
+            fixture(fixture), new Configuration(), decryptionProperties(), directMemory, SEQ_AT_LEAST_250))
+        .containsExactlyElementsOf(expectedRows().subList(FIRST_ROW_OF_PAGE_WITH_SEQ_250, NUM_ROWS));
+  }
+
+  /**
+   * A page of the legacy layout whose plaintext levels happen to start with what the length of a
+   * module that covers the page body would be, so that the layout cannot be told from the page body
+   * alone. With AES_GCM_V1 the tag check settles it, AES_GCM_CTR_V1 is not authenticated, and the
+   * legacy layout is read.
+   */
+  @ParameterizedTest(name = "{0}, directMemory={1}")
+  @MethodSource("ciphersAndMemoryModes")
+  public void readsALegacyPageThatLooksLikeASingleModule(ParquetCipher cipher, boolean directMemory)
+      throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message schema { optional int32 v; }");
+    // Definition levels: a bit-packed run of one group of 8 values of which the first is defined, and
+    // two more bytes, which the reader does not look at. Read as an integer they are 0x0103 = 259
+    byte[] levels = {0x03, 0x01, 0x00, 0x00};
+    int bodySize = 259 + Integer.BYTES;
+    int moduleSize = bodySize - levels.length;
+    int overhead = Integer.BYTES
+        + AesCipher.NONCE_LENGTH
+        + (cipher == ParquetCipher.AES_GCM_V1 ? AesCipher.GCM_TAG_LENGTH : 0);
+    byte[] values = new byte[moduleSize - overhead];
+    System.arraycopy(BytesUtils.intToBytes(12345), 0, values, 0, Integer.BYTES);
+
+    Path file = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
+    ParquetFileWriter writer = new ParquetFileWriter(
+        HadoopOutputFile.fromPath(file, new Configuration()),
+        schema,
+        ParquetFileWriter.Mode.CREATE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        FileEncryptionProperties.builder(FOOTER_KEY)
+            .withFooterKeyMetadata(FOOTER_KEY_METADATA)
+            .withAlgorithm(cipher)
+            .build(),
+        ParquetProperties.builder().build());
+    ColumnDescriptor column = schema.getColumns().get(0);
+    InternalColumnEncryptionSetup setup = writer.getEncryptor().getColumnSetup(ColumnPath.get("v"), true, 0);
+    byte[] fileAAD = writer.getEncryptor().getFileAAD();
+    writer.start();
+    writer.startBlock(8);
+    writer.startColumn(column, 8, CompressionCodecName.UNCOMPRESSED);
+    // What parquet-java used to write: the levels as they are, in front of the encrypted values
+    writer.writeDataPageV2(
+        8,
+        7,
+        8,
+        BytesInput.empty(),
+        BytesInput.from(levels),
+        Encoding.PLAIN,
+        BytesInput.from(setup.getDataEncryptor()
+            .encrypt(values, AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 0, 0, 0))),
+        false,
+        values.length,
+        Statistics.createStats(column.getPrimitiveType()),
+        setup.getMetaDataEncryptor(),
+        AesCipher.createModuleAAD(fileAAD, ModuleType.DataPageHeader, 0, 0, 0),
+        null);
+    writer.endColumn();
+    writer.endBlock();
+    writer.end(Collections.emptyMap());
+
+    List<String> rows = readRows(file, new Configuration(), decryptionProperties(), directMemory);
+
+    assertThat(rows).hasSize(8);
+    assertThat(rows.get(0)).contains("v: 12345");
+    assertThat(rows.subList(1, 8)).allSatisfy(row -> assertThat(row).doesNotContain("v:"));
+  }
+
   /** Writes a DataPageV2 file with 100 rows per page, encrypted with the footer key if there is a cipher. */
   private Path writeWithParquetJava(ParquetCipher cipher, CompressionCodecName codec) throws IOException {
+    return writeWithParquetJava(cipher, codec, ParquetWriter.DEFAULT_BLOCK_SIZE);
+  }
+
+  private Path writeWithParquetJava(ParquetCipher cipher, CompressionCodecName codec, long rowGroupSize)
+      throws IOException {
     Path file = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(file)
         .withType(SCHEMA)
         .withWriterVersion(WriterVersion.PARQUET_2_0)
         .withCompressionCodec(codec)
+        .withRowGroupSize(rowGroupSize)
+        .withMinRowCountForPageSizeCheck(10)
         .withPageRowCountLimit(100);
     if (cipher != null) {
       builder.withEncryption(FileEncryptionProperties.builder(FOOTER_KEY)
@@ -332,7 +524,8 @@ public class TestDataPageV2EncryptionInterop {
    *
    * <p>As the specification has the page body start with the length of the encrypted module, the body
    * is a single module when the first four bytes hold the body length minus four. Otherwise the
-   * levels are in plaintext and the module of the values follows them.
+   * levels are in plaintext and the module of the values follows them. That is enough for the files
+   * of these tests, which have no page for which both could be true.
    *
    * @param file file with an encrypted footer, whose encrypted columns all use {@code columnKey}
    * @param onlyEncryptedColumns true to skip the columns that are not encrypted, for a file where
@@ -388,8 +581,8 @@ public class TestDataPageV2EncryptionInterop {
                     -1);
             PageHeader header = Util.readPageHeader(in, headerDecryptor, headerAAD);
             long bodyOffset = bytes.length - in.available();
-            byte[] body = new byte[header.getCompressed_page_size()];
-            in.read(body);
+            byte[] body = in.readNBytes(header.getCompressed_page_size());
+            assertThat(body).hasSize(header.getCompressed_page_size());
             if (!dictionaryPageRead) {
               dictionaryPageRead = true;
               continue;

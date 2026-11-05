@@ -738,8 +738,8 @@ public class ParquetRewriter implements Closeable {
           BytesInput dlLevels = readBlockAllocate(dlLength, reader);
           int payLoadLength = pageHeader.getCompressed_page_size() - rlLength - dlLength;
           int rawDataLength = pageHeader.getUncompressed_page_size() - rlLength - dlLength;
-          // The page body of an encrypted DataPageV2 is encrypted as a whole, levels included, so the
-          // payload is not encrypted here but together with the levels below.
+          // The payload is not encrypted here: for an encrypted column the writer encrypts it together
+          // with the levels.
           pageLoad = processPageLoad(
               reader,
               headerV2.is_compressed,
@@ -767,40 +767,22 @@ public class ParquetRewriter implements Closeable {
           }
           readValues += headerV2.getNum_values();
           readRows += headerV2.getNum_rows();
-          if (encryptColumn) {
-            BytesInput encryptedPageBody = BytesInput.from(dataEncryptor.encrypt(
-                BytesInput.concat(rlLevels, dlLevels, BytesInput.from(pageLoad))
-                    .toByteArray(),
-                dataPageAAD));
-            writer.writeEncryptedDataPageV2(
-                headerV2.getNum_rows(),
-                headerV2.getNum_nulls(),
-                headerV2.getNum_values(),
-                rlLength,
-                dlLength,
-                converter.getEncoding(headerV2.getEncoding()),
-                encryptedPageBody,
-                headerV2.is_compressed,
-                rawDataLength,
-                statistics,
-                metaEncryptor,
-                dataPageHeaderAAD,
-                null);
-          } else {
-            writer.writeDataPageV2(
-                headerV2.getNum_rows(),
-                headerV2.getNum_nulls(),
-                headerV2.getNum_values(),
-                rlLevels,
-                dlLevels,
-                converter.getEncoding(headerV2.getEncoding()),
-                BytesInput.from(pageLoad),
-                headerV2.is_compressed,
-                rawDataLength,
-                statistics,
-                metaEncryptor,
-                dataPageHeaderAAD);
-          }
+          writer.writeDataPageV2(
+              headerV2.getNum_rows(),
+              headerV2.getNum_nulls(),
+              headerV2.getNum_values(),
+              rlLevels,
+              dlLevels,
+              converter.getEncoding(headerV2.getEncoding()),
+              BytesInput.from(pageLoad),
+              headerV2.is_compressed,
+              rawDataLength,
+              statistics,
+              metaEncryptor,
+              dataPageHeaderAAD,
+              null,
+              encryptColumn ? dataEncryptor : null,
+              dataPageAAD);
           pageOrdinal++;
           break;
         default:

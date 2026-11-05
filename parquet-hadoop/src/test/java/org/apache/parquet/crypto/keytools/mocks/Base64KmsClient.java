@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.parquet.crypto;
+package org.apache.parquet.crypto.keytools.mocks;
 
 import java.util.Base64;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.keytools.KmsClient;
 
 /**

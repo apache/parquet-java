@@ -27,8 +27,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
@@ -47,7 +49,7 @@ import org.apache.parquet.schema.MessageTypeParser;
  * <p>The row generator must stay in sync with {@code generate_arrow_fixtures.py} in the fixtures
  * directory.
  */
-public final class DataPageV2EncryptionTestData {
+final class DataPageV2EncryptionTestData {
 
   public static final int NUM_ROWS = 500;
 
@@ -123,27 +125,58 @@ public final class DataPageV2EncryptionTestData {
   }
 
   /**
-   * Reads all of the rows of a file, rendered as strings.
+   * Reads all of the rows of a file, rendered as strings, with the verification of the page checksums
+   * switched on.
    *
-   * @param conf may hold the configuration of a decryption properties factory
+   * @param conf may hold the configuration of a decryption properties factory, and whether to verify the
+   *     page checksums, which is the default; it is not modified
    * @param decryption the decryption properties, or null to take them from the configuration
    * @param directMemory whether to read the file into direct buffers and decrypt it off-heap
    */
   public static List<String> readRows(
       Path file, Configuration conf, FileDecryptionProperties decryption, boolean directMemory)
       throws IOException {
-    conf.setBoolean(ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED, directMemory);
-    ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), file)
-        .withConf(conf)
-        .withAllocator(directMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator());
-    if (decryption != null) {
-      builder.withDecryption(decryption);
+    return readRows(file, conf, decryption, directMemory, FilterCompat.NOOP);
+  }
+
+  /**
+   * Like {@link #readRows(Path, Configuration, FileDecryptionProperties, boolean)}, for the rows that
+   * pass the filter. With a filter, the pages that cannot hold matching rows are skipped by way of the
+   * offset index.
+   */
+  public static List<String> readRows(
+      Path file,
+      Configuration conf,
+      FileDecryptionProperties decryption,
+      boolean directMemory,
+      FilterCompat.Filter filter)
+      throws IOException {
+    Configuration readConf = new Configuration(conf);
+    readConf.setBoolean(ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED, directMemory);
+    readConf.setBoolean(
+        ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED,
+        conf.getBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true));
+    if (filter != FilterCompat.NOOP) {
+      // Without this the rows of the pages that are read would be filtered too, which hides whether
+      // the pages that cannot hold matching rows were skipped
+      readConf.setBoolean(ParquetInputFormat.RECORD_FILTERING_ENABLED, false);
     }
     List<String> rows = new ArrayList<>();
-    try (ParquetReader<Group> reader = builder.build()) {
-      Group group;
-      while ((group = reader.read()) != null) {
-        rows.add(group.toString());
+    // Closing the allocator fails the test if the reader leaks a buffer
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
+        directMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator())) {
+      ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), file)
+          .withConf(readConf)
+          .withFilter(filter)
+          .withAllocator(allocator);
+      if (decryption != null) {
+        builder.withDecryption(decryption);
+      }
+      try (ParquetReader<Group> reader = builder.build()) {
+        Group group;
+        while ((group = reader.read()) != null) {
+          rows.add(group.toString());
+        }
       }
     }
     return rows;
