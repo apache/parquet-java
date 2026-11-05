@@ -221,31 +221,55 @@ step_summary "> it is a mechanical version bump on top of the verified"
 step_summary "> commit above."
 
 # ---------------------------------------------------------------------------
-# Step 4: Set POM versions (only on rc0 or if version doesn't match)
+# Step 4: Set POM version and SCM tag (whenever either doesn't match)
 # ---------------------------------------------------------------------------
 step_summary ""
 step_summary "### Version Update"
 
 current_pom_version=$(get_current_pom_version || echo "unknown")
+current_scm_tag=$(get_current_pom_scm_tag || echo "unknown")
 print_info "Current POM version: ${current_pom_version}"
+print_info "Current POM SCM tag: ${current_scm_tag}"
 
-if [[ "${current_pom_version}" == "${version}" ]]; then
-  print_info "POM version already set to ${version}, skipping version update"
-  step_summary "POM version already at \`${version}\`, no update needed"
+if [[ "${current_pom_version}" == "${version}" && "${current_scm_tag}" == "${rc_tag}" ]]; then
+  print_info "POM version and SCM tag already set for ${rc_tag}, skipping update"
+  step_summary "POM version already at \`${version}\` and SCM tag at \`${rc_tag}\`, no update needed"
 else
-  print_info "Setting POM version to ${version}..."
-  set_pom_version "${version}"
-  step_summary "Updated POM version: \`${current_pom_version}\` -> \`${version}\`"
+  if [[ "${current_pom_version}" != "${version}" ]]; then
+    print_info "Setting POM version to ${version}..."
+    set_pom_version "${version}"
+    step_summary "Updated POM version: \`${current_pom_version}\` -> \`${version}\`"
+  fi
 
-  # Commit version changes. Stage tracked files only: set_pom_version only
-  # edits existing POMs, and anything untracked must not land in the release.
+  # Each RC needs its own tag here, so this also runs on rc1+ when the
+  # version is already set. Whatever the branch carried is overwritten.
+  if [[ "${current_scm_tag}" != "${rc_tag}" ]]; then
+    print_info "Setting POM SCM tag to ${rc_tag}..."
+    set_pom_scm_tag "${rc_tag}"
+    step_summary "Updated POM SCM tag: \`${current_scm_tag}\` -> \`${rc_tag}\`"
+  fi
+
+  # Commit version changes. Stage tracked files only: the version and SCM tag
+  # updates only edit existing POMs, and anything untracked must not land in
+  # the release.
   exec_process git add -u
-  exec_process git commit -m "Set version to ${version} for release"
+  exec_process git commit -m "Set version to ${version} for release (${rc_tag})"
 fi
 
 if ! require_clean_worktree; then
   step_summary "Working tree check: **FAILED** (see the job log for the offending paths)"
   exit 1
+fi
+
+# The staged POMs are what Maven Central publishes, so refuse to tag and
+# deploy a commit whose <scm><tag> doesn't name this RC.
+if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+  committed_scm_tag=$(get_current_pom_scm_tag || echo "unknown")
+  if [[ "${committed_scm_tag}" != "${rc_tag}" ]]; then
+    print_error "POM SCM tag is '${committed_scm_tag}', expected '${rc_tag}'"
+    step_summary "SCM tag check: **FAILED** (\`${committed_scm_tag}\` != \`${rc_tag}\`)"
+    exit 1
+  fi
 fi
 
 # ---------------------------------------------------------------------------

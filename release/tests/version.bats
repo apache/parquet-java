@@ -175,6 +175,43 @@ setup() {
   [[ "$output" == *"2.0.0-SNAPSHOT"* ]]
 }
 
+# ---- set_pom_scm_tag ----
+
+@test "set_pom_scm_tag: passes correct args to mvnw in dry-run" {
+  DRY_RUN=1
+  run set_pom_scm_tag "apache-parquet-1.18.2-rc1"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-pl . versions:set-scm-tag"* ]]
+  [[ "$output" == *"-DnewTag=apache-parquet-1.18.2-rc1"* ]]
+  [[ "$output" == *"-DgenerateBackupPoms=false"* ]]
+}
+
+@test "set_pom_scm_tag: accepts HEAD for the next development iteration" {
+  DRY_RUN=1
+  run set_pom_scm_tag "HEAD"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-DnewTag=HEAD"* ]]
+}
+
+# ---- get_current_pom_scm_tag ----
+
+@test "get_current_pom_scm_tag: evaluates project.scm.tag on the root POM" {
+  local tmpbin
+  tmpbin=$(mktemp -d)
+  cat > "${tmpbin}/mvnw" << 'SCRIPT'
+#!/bin/bash
+if [[ "$*" == *"-pl . help:evaluate -Dexpression=project.scm.tag"* ]]; then
+  echo "apache-parquet-1.18.0-rc2"
+fi
+SCRIPT
+  chmod +x "${tmpbin}/mvnw"
+  cd "${tmpbin}"
+  local result
+  result=$(get_current_pom_scm_tag)
+  [ "$result" = "apache-parquet-1.18.0-rc2" ]
+  rm -rf "${tmpbin}"
+}
+
 # ---- find_latest_rc_number ----
 
 @test "find_latest_rc_number: returns highest RC number" {

@@ -91,3 +91,13 @@ function set_pom_version {
 function get_current_pom_version {
   ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null
 }
+
+# Only the root POM declares <scm>; every module inherits its tag.
+function set_pom_scm_tag {
+  local tag="$1"
+  exec_process ./mvnw -pl . versions:set-scm-tag -DnewTag="${tag}" -DgenerateBackupPoms=false --batch-mode -q
+}
+
+function get_current_pom_scm_tag {
+  ./mvnw -pl . help:evaluate -Dexpression=project.scm.tag -q -DforceStdout 2>/dev/null
+}
