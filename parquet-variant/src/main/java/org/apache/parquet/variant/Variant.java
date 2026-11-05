@@ -63,16 +63,48 @@ public final class Variant {
   private VariantUtil.ArrayInfo cachedArrayInfo;
 
   /**
+   * Lazy cache for the parsed array offset; saved when {@link #cachedArrayInfo} is saved.
+   */
+  private int cachedArrayEndOffset;
+
+  /**
+   * Child depth of this Variant relative to the top-level value (0 = top-level).
+   * Arrays and short strings are children here, along with nested variants.
+   */
+  private final int depth;
+
+  /**
    * The threshold to switch from linear search to binary search when looking up a field by key in
    * an object. This is a performance optimization to avoid the overhead of binary search for a
    * short list.
    */
   static final int BINARY_SEARCH_THRESHOLD = 32;
 
+  /**
+   * Create a Variant from a tuple of (value, metadata) byte arrays.
+   * Includes validation of the version and the top-level structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(byte[] value, byte[] metadata) {
     this(value, 0, value.length, metadata, 0, metadata.length);
   }
 
+  /**
+   * Create a Variant from a subset of the (value, metadata) buffers
+   * supplied.
+   * Includes validation of the version and the toplevel structure.
+   * @param value value buffer
+   * @param valuePos offset where the value data begins
+   * @param valueLength length of value data
+   * @param metadata metadata buffer
+   * @param metadataPos offset where the metadata begins.
+   * @param metadataLength length of the metadata.
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(byte[] value, int valuePos, int valueLength, byte[] metadata, int metadataPos, int metadataLength) {
     this(ByteBuffer.wrap(value, valuePos, valueLength), ByteBuffer.wrap(metadata, metadataPos, metadataLength));
   }
@@ -81,43 +113,58 @@ public final class Variant {
     this(value, metadata.getEncodedBuffer());
   }
 
+  /**
+   * Create a Variant from a tuple of (value, metadata) buffers.
+   * Includes validation of the version and the toplevel structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(ByteBuffer value, ByteBuffer metadata) {
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-
-    // There is currently only one allowed version.
-    if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
-      throw new UnsupportedOperationException(String.format(
-          "Unsupported variant metadata version: %d",
-          metadata.get(metadata.position()) & VariantUtil.VERSION_MASK));
-    }
+    this.depth = 0;
+    // A metadata buffer must contain at least the version byte
+    Preconditions.checkArgument(this.metadata.remaining() >= 1, "variant metadata is empty");
+    // There is no checking of version until a policy of how to handle mismatched versions
+    // is defined.
 
     // Pre-compute dictionary size for lazy metadata cache allocation.
     int pos = this.metadata.position();
     int metaOffsetSize = ((this.metadata.get(pos) >> 6) & 0x3) + 1;
-    if (this.metadata.remaining() > 1) {
-      Preconditions.checkArgument(
-          this.metadata.remaining() >= 1 + metaOffsetSize,
-          "variant metadata truncated: offsetSize=" + metaOffsetSize);
-      this.dictSize = VariantUtil.readUnsignedLittleEndian(this.metadata, pos + 1, metaOffsetSize);
-      long dictTableEnd = 1L + metaOffsetSize + ((long) this.dictSize + 1) * metaOffsetSize;
-      Preconditions.checkArgument(
-          dictTableEnd <= this.metadata.remaining(),
-          "variant metadata dictionary extends past buffer: dictSize=" + this.dictSize);
-    } else {
-      this.dictSize = 0;
-    }
+    Preconditions.checkArgument(
+        this.metadata.remaining() >= 1 + metaOffsetSize,
+        "variant metadata truncated: offsetSize=" + metaOffsetSize);
+    this.dictSize = VariantUtil.readUnsignedLittleEndian(this.metadata, pos + 1, metaOffsetSize);
+    long dictTableEnd = 1L + metaOffsetSize + ((long) this.dictSize + 1) * metaOffsetSize;
+    Preconditions.checkArgument(
+        dictTableEnd <= this.metadata.remaining(),
+        "variant metadata dictionary extends past buffer: dictSize=" + this.dictSize);
     this.metadataCache = null;
+    VariantUtil.validateValueShallow(this.value, dictSize);
   }
 
   /**
-   * Package-private constructor that shares pre-parsed metadata state from a parent Variant.
+   * Package-private constructor that shares pre-parsed metadata state from a parent Variant, performing shallow validation of the structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @param metadataCache shared metadata cache.
+   * @param dictSize shared dictionary size.
+   * @param depth depth of this variant in a recursive structure.
+   * @throws IllegalArgumentException if the depth of variants is too high or the structure
+   * invalid in some other form.
    */
-  Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize) {
+  Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize, int depth) {
+    Preconditions.checkArgument(
+        depth <= VariantUtil.MAX_VARIANT_DEPTH,
+        "variant nesting depth exceeds maximum %s",
+        VariantUtil.MAX_VARIANT_DEPTH);
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadataCache = metadataCache;
     this.dictSize = dictSize;
+    this.depth = depth;
+    VariantUtil.validateValueShallow(this.value, dictSize);
   }
 
   public ByteBuffer getValueBuffer() {
@@ -371,14 +418,18 @@ public final class Variant {
     int dataStart = value.position() + info.dataStartOffset;
     int offset =
         VariantUtil.readUnsignedLittleEndian(value, offsetStart + info.offsetSize * index, info.offsetSize);
+    int endOffset = arrayEndOffset();
+    Preconditions.checkArgument(
+        offset <= endOffset, "variant array child offset out of range: %s (end offset %s)", offset, endOffset);
     return childVariant(VariantUtil.slice(value, dataStart + offset));
   }
 
   /**
    * Creates a child Variant that shares this instance's metadata cache.
+   * @throws IllegalArgumentException validation error during construction.
    */
   private Variant childVariant(ByteBuffer childValue) {
-    return new Variant(childValue, metadata, metadataCache, dictSize);
+    return new Variant(childValue, metadata, metadataCache, dictSize, depth + 1);
   }
 
   /**
@@ -422,7 +473,20 @@ public final class Variant {
     if (info == null) {
       info = VariantUtil.getArrayInfo(value);
       cachedArrayInfo = info;
+      cachedArrayEndOffset = VariantUtil.readUnsignedLittleEndian(
+          value,
+          value.position() + info.offsetStartOffset + info.offsetSize * info.numElements,
+          info.offsetSize);
     }
     return info;
+  }
+
+  /**
+   * Return the array end offset, parsing it on deman.
+   * @return array end offset.
+   */
+  private int arrayEndOffset() {
+    arrayInfo();
+    return cachedArrayEndOffset;
   }
 }
