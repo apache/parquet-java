@@ -90,6 +90,14 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public int read(ByteBuffer out) {
+    if (!out.hasRemaining()) {
+      return 0;
+    }
+
+    if (buffer.remaining() <= 0) {
+      return -1;
+    }
+
     int bytesToCopy;
     ByteBuffer copyBuffer;
     if (buffer.remaining() <= out.remaining()) {
@@ -105,7 +113,6 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     }
 
     out.put(copyBuffer);
-    out.flip();
 
     return bytesToCopy;
   }

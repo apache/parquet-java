@@ -100,6 +100,14 @@ public class ByteBufferInputStream extends InputStream {
     }
   }
 
+  /**
+   * Copies bytes from this stream into {@code out}, reading at most {@code out.remaining()} bytes. The position of
+   * {@code out} is advanced by the number of bytes copied and its limit is unchanged.
+   *
+   * @param out the buffer to copy bytes into
+   * @return the number of bytes copied, {@code 0} if {@code out} has no remaining space, or {@code -1} if this stream
+   *     is exhausted
+   */
   public int read(ByteBuffer out) {
     return delegate.read(out);
   }
