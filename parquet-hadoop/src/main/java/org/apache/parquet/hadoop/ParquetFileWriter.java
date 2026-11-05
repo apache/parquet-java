@@ -28,6 +28,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -1353,7 +1355,9 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Writes a single v2 data page
+   * Writes a single v2 data page. The repetition and definition levels are written as given, in
+   * front of the data bytes. To write the page of an encrypted column, whose levels are part of the
+   * encrypted page body, use {@link #writeEncryptedDataPageV2}.
    *
    * @param rowCount count of rows
    * @param nullCount count of nulls
@@ -1385,16 +1389,107 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
+    writeDataPageV2Body(
+        rowCount,
+        nullCount,
+        valueCount,
+        toIntWithCheck(repetitionLevels.size(), "page repetition levels"),
+        toIntWithCheck(definitionLevels.size(), "page definition levels"),
+        dataEncoding,
+        Arrays.asList(repetitionLevels, definitionLevels, bytes),
+        compressed,
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        sizeStatistics);
+  }
+
+  /**
+   * Writes a single v2 data page of an encrypted column, for a caller that has already encrypted
+   * the page body.
+   *
+   * <p>With Parquet Modular Encryption the data page module of a v2 page is the whole page body,
+   * so the encrypted page body holds the repetition levels, the definition levels and the values,
+   * in that order. The levels must not be written in plaintext in front of the encrypted values,
+   * which is what {@link #writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding,
+   * BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics)} does with
+   * the bytes it is given.
+   *
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
+   * @param repetitionLevelsByteLength length of the repetition levels, before encryption
+   * @param definitionLevelsByteLength length of the definition levels, before encryption
+   * @param dataEncoding encoding for data
+   * @param encryptedPageBody the encrypted concatenation of repetition levels, definition levels and
+   *                          (possibly compressed) data, as serialized by the page block encryptor
+   * @param compressed whether the data bytes were compressed before they were encrypted
+   * @param uncompressedDataSize the size of the uncompressed data, without the levels
+   * @param statistics the statistics of the page
+   * @param metadataBlockEncryptor encryptor for the page header
+   * @param pageHeaderAAD pageHeader AAD
+   * @param sizeStatistics size statistics for the page
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeEncryptedDataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      int repetitionLevelsByteLength,
+      int definitionLevelsByteLength,
+      Encoding dataEncoding,
+      BytesInput encryptedPageBody,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
+      throws IOException {
+    writeDataPageV2Body(
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevelsByteLength,
+        definitionLevelsByteLength,
+        dataEncoding,
+        Collections.singletonList(encryptedPageBody),
+        compressed,
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        sizeStatistics);
+  }
+
+  /**
+   * @param pageBody the bytes that follow the page header, in the order they are written
+   */
+  private void writeDataPageV2Body(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      int rlByteLength,
+      int dlByteLength,
+      Encoding dataEncoding,
+      List<BytesInput> pageBody,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
+      throws IOException {
     withAbortOnFailure(() -> {
       state = state.write();
-      int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
-      int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
+      long pageBodySize = 0;
+      for (BytesInput part : pageBody) {
+        pageBodySize += part.size();
+      }
+      int compressedSize = toIntWithCheck(pageBodySize, "page");
 
-      int compressedSize =
-          toIntWithCheck(bytes.size() + repetitionLevels.size() + definitionLevels.size(), "page");
-
-      int uncompressedSize =
-          toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
+      int uncompressedSize = toIntWithCheck((long) uncompressedDataSize + rlByteLength + dlByteLength, "page");
 
       long beforeHeader = out.getPos();
       if (currentChunkFirstDataPage < 0) {
@@ -1403,14 +1498,10 @@ public class ParquetFileWriter implements AutoCloseable {
 
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        if (repetitionLevels.size() > 0) {
-          crcUpdate(repetitionLevels);
-        }
-        if (definitionLevels.size() > 0) {
-          crcUpdate(definitionLevels);
-        }
-        if (bytes.size() > 0) {
-          crcUpdate(bytes);
+        for (BytesInput part : pageBody) {
+          if (part.size() > 0) {
+            crcUpdate(part);
+          }
         }
         metadataConverter.writeDataPageV2Header(
             uncompressedSize,
@@ -1451,7 +1542,7 @@ public class ParquetFileWriter implements AutoCloseable {
       currentEncodings.add(dataEncoding);
       encodingStatsBuilder.addDataEncoding(dataEncoding);
 
-      BytesInput.concat(repetitionLevels, definitionLevels, bytes).writeAllTo(out);
+      BytesInput.concat(pageBody).writeAllTo(out);
 
       offsetIndexBuilder.add(
           toIntWithCheck(out.getPos() - beforeHeader, "page"),
