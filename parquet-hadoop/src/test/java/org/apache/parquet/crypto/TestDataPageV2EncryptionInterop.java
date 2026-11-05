@@ -40,7 +40,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +50,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -82,8 +80,6 @@ import org.apache.parquet.hadoop.rewrite.RewriteOptions;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,6 +98,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  *   <li>{@code java-legacy-v2-*}: written with {@link #writeWithParquetJava} at commit e265ac7f5,
  *       before the levels were encrypted. To regenerate, check out that commit and run it for each
  *       cipher and codec.
+ *   <li>{@code legacy-v2-ambiguous-*}: one hand-built legacy page, see {@link
+ *       #readsALegacyPageThatLooksLikeASingleModule}. Written with a {@code ParquetFileWriter} overload
+ *       that has since been removed.
  * </ul>
  */
 public class TestDataPageV2EncryptionInterop {
@@ -150,9 +149,10 @@ public class TestDataPageV2EncryptionInterop {
             .map(codec -> "java-legacy-v2-" + cipher + "-" + codec + ".parquet"));
   }
 
-  static Stream<Arguments> ciphersAndMemoryModes() {
-    return Stream.of(ParquetCipher.values())
-        .flatMap(cipher -> Stream.of(Arguments.of(cipher, false), Arguments.of(cipher, true)));
+  static Stream<Arguments> ambiguousFixtures() {
+    return Stream.of("aes-gcm-v1", "aes-gcm-ctr-v1")
+        .flatMap(cipher -> Stream.of(false, true)
+            .map(directMemory -> Arguments.of("legacy-v2-ambiguous-" + cipher + ".parquet", directMemory)));
   }
 
   static Stream<Arguments> ciphersAndCodecs() {
@@ -357,65 +357,54 @@ public class TestDataPageV2EncryptionInterop {
         .containsExactlyElementsOf(expectedRows().subList(FIRST_ROW_OF_PAGE_WITH_SEQ_250, NUM_ROWS));
   }
 
-  /** A legacy page whose first 4 level bytes equal {@code bodySize - 4}, so it is {@code AMBIGUOUS}. */
+  /**
+   * {@code legacy-v2-ambiguous-*}: one legacy page of 8 optional int32 values, only the first (12345)
+   * defined. Its 4 bytes of definition levels, {@code 03 01 00 00}, are a bit-packed run of 8 levels
+   * plus 2 unread bytes, and read as an LE int they equal {@code bodySize - 4}, so the layout is {@code
+   * AMBIGUOUS}.
+   */
   @ParameterizedTest(name = "{0}, directMemory={1}")
-  @MethodSource("ciphersAndMemoryModes")
-  public void readsALegacyPageThatLooksLikeASingleModule(ParquetCipher cipher, boolean directMemory)
-      throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType("message schema { optional int32 v; }");
-    // Bit-packed run of 8 levels, only the first defined, plus 2 unread bytes; as an LE int 0x0103 = 259
-    byte[] levels = {0x03, 0x01, 0x00, 0x00};
-    int bodySize = 259 + Integer.BYTES;
-    int moduleSize = bodySize - levels.length;
-    int overhead = Integer.BYTES
-        + AesCipher.NONCE_LENGTH
-        + (cipher == ParquetCipher.AES_GCM_V1 ? AesCipher.GCM_TAG_LENGTH : 0);
-    byte[] values = new byte[moduleSize - overhead];
-    System.arraycopy(BytesUtils.intToBytes(12345), 0, values, 0, Integer.BYTES);
-
-    Path file = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
-    ParquetFileWriter writer = new ParquetFileWriter(
-        HadoopOutputFile.fromPath(file, new Configuration()),
-        schema,
-        ParquetFileWriter.Mode.CREATE,
-        ParquetWriter.DEFAULT_BLOCK_SIZE,
-        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
-        FileEncryptionProperties.builder(FOOTER_KEY)
-            .withFooterKeyMetadata(FOOTER_KEY_METADATA)
-            .withAlgorithm(cipher)
-            .build(),
-        ParquetProperties.builder().build());
-    ColumnDescriptor column = schema.getColumns().get(0);
-    InternalColumnEncryptionSetup setup = writer.getEncryptor().getColumnSetup(ColumnPath.get("v"), true, 0);
-    byte[] fileAAD = writer.getEncryptor().getFileAAD();
-    writer.start();
-    writer.startBlock(8);
-    writer.startColumn(column, 8, CompressionCodecName.UNCOMPRESSED);
-    // Legacy layout: plaintext levels, then the encrypted values
-    writer.writeDataPageV2(
-        8,
-        7,
-        8,
-        BytesInput.empty(),
-        BytesInput.from(levels),
-        Encoding.PLAIN,
-        BytesInput.from(setup.getDataEncryptor()
-            .encrypt(values, AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 0, 0, 0))),
-        false,
-        values.length,
-        Statistics.createStats(column.getPrimitiveType()),
-        setup.getMetaDataEncryptor(),
-        AesCipher.createModuleAAD(fileAAD, ModuleType.DataPageHeader, 0, 0, 0),
-        null);
-    writer.endColumn();
-    writer.endBlock();
-    writer.end(Collections.emptyMap());
-
-    List<String> rows = readRows(file, new Configuration(), decryptionProperties(), directMemory);
+  @MethodSource("ambiguousFixtures")
+  public void readsALegacyPageThatLooksLikeASingleModule(String fixture, boolean directMemory) throws Exception {
+    List<String> rows = readRows(fixture(fixture), new Configuration(), decryptionProperties(), directMemory);
 
     assertThat(rows).hasSize(8);
     assertThat(rows.get(0)).contains("v: 12345");
     assertThat(rows.subList(1, 8)).allSatisfy(row -> assertThat(row).doesNotContain("v:"));
+  }
+
+  @Test
+  public void writerRejectsAnEncryptedPageHeaderWithoutAnEncryptedPageBody() throws Exception {
+    Path file = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
+    try (ParquetFileWriter writer = new ParquetFileWriter(
+        HadoopOutputFile.fromPath(file, new Configuration()),
+        SCHEMA,
+        ParquetFileWriter.Mode.CREATE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        null,
+        ParquetProperties.builder().build())) {
+      BlockCipher.Encryptor headerEncryptor = ModuleCipherFactory.getEncryptor(AesMode.GCM, FOOTER_KEY);
+
+      assertThatThrownBy(() -> writer.writeDataPageV2(
+              1,
+              0,
+              1,
+              BytesInput.empty(),
+              BytesInput.from(new byte[] {0x02, 0x01}),
+              Encoding.PLAIN,
+              BytesInput.from(new byte[4]),
+              false,
+              4,
+              Statistics.createStats(SCHEMA.getType("id").asPrimitiveType()),
+              headerEncryptor,
+              new byte[0],
+              null,
+              null,
+              null))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Both the page header and the page body of an encrypted column must be encrypted");
+    }
   }
 
   /** Writes 100 rows per page; encrypts all columns with the footer key if {@code cipher} is set. */

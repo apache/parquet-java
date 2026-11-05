@@ -780,7 +780,7 @@ public class ParquetRewriter implements Closeable {
               metaEncryptor,
               dataPageHeaderAAD,
               null,
-              encryptColumn ? dataEncryptor : null,
+              dataEncryptor,
               dataPageAAD);
           pageOrdinal++;
           break;

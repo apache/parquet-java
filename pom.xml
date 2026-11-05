@@ -670,6 +670,12 @@
               <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.RowRanges$Range</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter</exclude>
+              <!-- GH-3934: these overloads encrypted the page header but left the levels of an encrypted
+                column in plaintext. Use the overload that takes a page block encryptor. -->
+              <exclude>org.apache.parquet.hadoop.ParquetFileWriter#writeDataPageV2(int,int,int,org.apache.parquet.bytes.BytesInput,org.apache.parquet.bytes.BytesInput,org.apache.parquet.column.Encoding,org.apache.parquet.bytes.BytesInput,int,org.apache.parquet.column.statistics.Statistics,org.apache.parquet.format.BlockCipher$Encryptor,byte[])</exclude>
+              <exclude>org.apache.parquet.hadoop.ParquetFileWriter#writeDataPageV2(int,int,int,org.apache.parquet.bytes.BytesInput,org.apache.parquet.bytes.BytesInput,org.apache.parquet.column.Encoding,org.apache.parquet.bytes.BytesInput,boolean,int,org.apache.parquet.column.statistics.Statistics,org.apache.parquet.format.BlockCipher$Encryptor,byte[])</exclude>
+              <exclude>org.apache.parquet.hadoop.ParquetFileWriter#writeDataPageV2(int,int,int,org.apache.parquet.bytes.BytesInput,org.apache.parquet.bytes.BytesInput,org.apache.parquet.column.Encoding,org.apache.parquet.bytes.BytesInput,int,org.apache.parquet.column.statistics.Statistics,org.apache.parquet.format.BlockCipher$Encryptor,byte[],org.apache.parquet.column.statistics.SizeStatistics)</exclude>
+              <exclude>org.apache.parquet.hadoop.ParquetFileWriter#writeDataPageV2(int,int,int,org.apache.parquet.bytes.BytesInput,org.apache.parquet.bytes.BytesInput,org.apache.parquet.column.Encoding,org.apache.parquet.bytes.BytesInput,boolean,int,org.apache.parquet.column.statistics.Statistics,org.apache.parquet.format.BlockCipher$Encryptor,byte[],org.apache.parquet.column.statistics.SizeStatistics)</exclude>
             </excludes>
           </parameter>
         </configuration>
