@@ -62,6 +62,13 @@ public abstract class LogicalTypeAnnotation {
         return listType();
       }
     },
+    FINITE_VECTOR {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        Preconditions.checkArgument(params.size() == 1, "Expecting 1 parameter for FINITE_VECTOR: %s", params);
+        return finiteVectorType(Integer.parseInt(params.get(0)));
+      }
+    },
     VARIANT {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -314,6 +321,10 @@ public abstract class LogicalTypeAnnotation {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
+  public static FiniteVectorLogicalTypeAnnotation finiteVectorType(int numElements) {
+    return new FiniteVectorLogicalTypeAnnotation(numElements);
+  }
+
   public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
     return new VariantLogicalTypeAnnotation(specVersion);
   }
@@ -503,13 +514,57 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof ListLogicalTypeAnnotation;
+      return obj != null && getClass() == obj.getClass();
     }
 
     @Override
     public int hashCode() {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
+    }
+  }
+
+  public static class FiniteVectorLogicalTypeAnnotation extends ListLogicalTypeAnnotation {
+    private final int numElements;
+
+    private FiniteVectorLogicalTypeAnnotation(int numElements) {
+      Preconditions.checkArgument(numElements > 0, "Invalid FINITE_VECTOR length: %s", numElements);
+      this.numElements = numElements;
+    }
+
+    public int getNumElements() {
+      return numElements;
+    }
+
+    @Override
+    public OriginalType toOriginalType() {
+      return OriginalType.LIST;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.FINITE_VECTOR;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      return "(" + numElements + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof FiniteVectorLogicalTypeAnnotation
+          && numElements == ((FiniteVectorLogicalTypeAnnotation) obj).numElements;
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * getClass().hashCode() + numElements;
     }
   }
 
@@ -1533,6 +1588,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
       return empty();
     }
 

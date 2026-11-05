@@ -32,6 +32,8 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
@@ -192,6 +194,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     private Case[][][] caseLookup;
     private List<Case> definedCases;
     private List<Case> undefinedCases;
+    private final FiniteVectorValidator vectorValidator;
 
     private State(
         int id,
@@ -213,6 +216,23 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       this.primitiveField = fieldPath[fieldPath.length - 1];
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
       this.primitiveFieldIndex = indexFieldPath[indexFieldPath.length - 1];
+      FiniteVectorLogicalTypeAnnotation vector = null;
+      if (fieldPath.length >= 3) {
+        LogicalTypeAnnotation logical =
+            primitiveColumnIO.getParent().getParent().getType().getLogicalTypeAnnotation();
+        if (logical instanceof FiniteVectorLogicalTypeAnnotation) {
+          vector = (FiniteVectorLogicalTypeAnnotation) logical;
+        }
+      }
+      this.vectorValidator = vector == null ? null : new FiniteVectorValidator(primitiveColumnIO, column, vector);
+    }
+
+    void validateVector(int d) {
+      if (vectorValidator != null) vectorValidator.validate(d);
+    }
+
+    void endVector(int nextR) {
+      if (vectorValidator != null) vectorValidator.end(nextR);
     }
 
     public int getDepth(int definitionLevel) {
@@ -413,6 +433,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     do {
       ColumnReader columnReader = currentState.column;
       int d = columnReader.getCurrentDefinitionLevel();
+      currentState.validateVector(d);
       // creating needed nested groups until the current field (opening tags)
       int depth = currentState.definitionLevelToDepth[d];
       for (; currentLevel <= depth; ++currentLevel) {
@@ -427,6 +448,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       columnReader.consume();
 
       int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
+      currentState.endVector(nextR);
       // level to go to close current groups
       int next = currentState.nextLevel[nextR];
       for (; currentLevel > next; currentLevel--) {

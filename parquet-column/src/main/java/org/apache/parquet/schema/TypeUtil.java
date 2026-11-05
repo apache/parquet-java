@@ -18,7 +18,33 @@
  */
 package org.apache.parquet.schema;
 
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
+
 public class TypeUtil {
+  public static boolean hasFiniteVector(Type type) {
+    if (type.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation) return true;
+    if (!type.isPrimitive()) {
+      for (Type child : type.asGroupType().getFields()) {
+        if (hasFiniteVector(child)) return true;
+      }
+    }
+    return false;
+  }
+
+  public static FiniteVectorLogicalTypeAnnotation getFiniteVectorType(GroupType schema, String[] path) {
+    if (path.length < 3) {
+      return null;
+    }
+    GroupType group = schema;
+    for (int i = 0; i < path.length - 2; i++) {
+      group = group.getType(path[i]).asGroupType();
+    }
+    LogicalTypeAnnotation logical = group.getLogicalTypeAnnotation();
+    return logical instanceof FiniteVectorLogicalTypeAnnotation
+        ? (FiniteVectorLogicalTypeAnnotation) logical
+        : null;
+  }
+
   public static void checkValidWriteSchema(GroupType schema) {
     schema.accept(new TypeVisitor() {
       @Override

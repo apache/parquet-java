@@ -470,7 +470,7 @@ public class AvroSchemaConverter {
                 if (!repeatedType.isRepetition(REPEATED)) {
                   throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
                 }
-                if (isElementType(repeatedType, parquetGroupType.getName())) {
+                if (isElementType(repeatedType, parquetGroupType)) {
                   // repeated element types are always required
                   return of(Schema.createArray(convertField(repeatedType, names)));
                 } else {
@@ -482,6 +482,12 @@ public class AvroSchemaConverter {
                     return of(Schema.createArray(convertField(elementType, names)));
                   }
                 }
+              }
+
+              @Override
+              public Optional<Schema> visit(
+                  LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
+                return visit(LogicalTypeAnnotation.listType());
               }
 
               @Override
@@ -654,7 +660,9 @@ public class AvroSchemaConverter {
    * the same. This ensures that the LIST rules are followed when there is no
    * schema and that a schema can be provided to override the default behavior.
    */
-  private boolean isElementType(Type repeatedType, String parentName) {
+  private boolean isElementType(Type repeatedType, GroupType parent) {
+    if (parent.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation)
+      return false;
     return (
     // can't be a synthetic layer because it would be invalid
     repeatedType.isPrimitive()
@@ -663,7 +671,7 @@ public class AvroSchemaConverter {
         ||
         // known patterns without the synthetic layer
         repeatedType.getName().equals("array")
-        || repeatedType.getName().equals(parentName + "_tuple")
+        || repeatedType.getName().equals(parent.getName() + "_tuple")
         ||
         // default assumption
         assumeRepeatedIsListElement);

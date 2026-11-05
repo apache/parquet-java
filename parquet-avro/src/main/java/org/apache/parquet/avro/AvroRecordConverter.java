@@ -1000,7 +1000,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
    * determined by checking whether the type can be a synthetic group and by
    * checking whether a potential synthetic group matches the expected schema.
    * <p>
-   * Unlike {@link AvroSchemaConverter#isElementType(Type, String)}, this
+   * Unlike AvroSchemaConverter.isElementType, this
    * method never guesses because the expected schema is known.
    *
    * @param repeatedType  a type that may be the element type
