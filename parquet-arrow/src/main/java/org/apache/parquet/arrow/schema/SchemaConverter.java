@@ -366,7 +366,10 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping visit(ArrowType.FixedSizeBinary fixedSizeBinary) {
-        return primitive(BINARY);
+        // Parquet fixed-length byte arrays cannot have zero width.
+        return fixedSizeBinary.getByteWidth() == 0
+            ? primitive(BINARY)
+            : primitiveFLBA(fixedSizeBinary.getByteWidth(), null);
       }
 
       private TypeMapping mapping(PrimitiveType parquetType) {
@@ -657,7 +660,7 @@ public class SchemaConverter {
               throws RuntimeException {
             LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
             if (logicalTypeAnnotation == null) {
-              return field(new ArrowType.Binary());
+              return field(new ArrowType.FixedSizeBinary(type.getTypeLength()));
             }
 
             return logicalTypeAnnotation
