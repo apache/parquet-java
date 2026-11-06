@@ -2302,7 +2302,13 @@ public class ParquetFileReader implements Closeable {
               "could not verify page integrity, CRC checksum verification failed",
               pageBody);
         }
-        switch (FullBodyEncryptedDataPageV2.detectLayout(pageBody, levelsByteLength)) {
+        FullBodyEncryptedDataPageV2.Layout layout =
+            FullBodyEncryptedDataPageV2.detectLayout(pageBody, levelsByteLength);
+        if (layout == FullBodyEncryptedDataPageV2.Layout.AMBIGUOUS) {
+          layout = FullBodyEncryptedDataPageV2.layoutWrittenBy(
+              getFileMetaData().getCreatedBy());
+        }
+        switch (layout) {
           case PLAINTEXT_LEVELS:
             return pageWithPlaintextLevels(pageHeader, pageBody, encoding, statistics);
           case SINGLE_MODULE:

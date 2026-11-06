@@ -25,15 +25,27 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
+import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.MessageColumnIO;
+import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
@@ -161,6 +173,49 @@ final class DataPageV2EncryptionTestData {
         Group group;
         while ((group = reader.read()) != null) {
           rows.add(group.toString());
+        }
+      }
+    }
+    return rows;
+  }
+
+  /** Reads all rows as strings, with {@code createdBy} in place of the {@code created_by} of the file. */
+  public static List<String> readRowsWrittenBy(Path file, String createdBy, boolean directMemory) throws IOException {
+    Configuration conf = new Configuration();
+    InputFile inputFile = HadoopInputFile.fromPath(file, conf);
+    List<String> rows = new ArrayList<>();
+    // close() fails on leaked buffers
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
+        directMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator())) {
+      ParquetReadOptions options = HadoopReadOptions.builder(conf, file)
+          .withDecryption(decryptionProperties())
+          .withAllocator(allocator)
+          .useOffHeapDecryptBuffer(directMemory)
+          .build();
+      ParquetMetadata footer;
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options)) {
+        footer = reader.getFooter();
+      }
+      FileMetaData fileMetaData = footer.getFileMetaData();
+      ParquetMetadata writtenBy = new ParquetMetadata(
+          new FileMetaData(
+              fileMetaData.getSchema(),
+              fileMetaData.getKeyValueMetaData(),
+              createdBy,
+              fileMetaData.getEncryptionType(),
+              fileMetaData.getFileDecryptor()),
+          footer.getBlocks());
+      MessageType schema = fileMetaData.getSchema();
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+      try (ParquetFileReader reader =
+          new ParquetFileReader(inputFile, writtenBy, options, inputFile.newStream())) {
+        PageReadStore rowGroup;
+        while ((rowGroup = reader.readNextRowGroup()) != null) {
+          RecordReader<Group> records = columnIO.getRecordReader(rowGroup, new GroupRecordConverter(schema));
+          for (long i = 0; i < rowGroup.getRowCount(); i++) {
+            rows.add(records.read().toString());
+          }
+          rowGroup.close();
         }
       }
     }

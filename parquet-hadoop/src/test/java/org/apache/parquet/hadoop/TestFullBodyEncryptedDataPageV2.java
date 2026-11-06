@@ -27,6 +27,8 @@ import java.nio.ByteOrder;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.FullBodyEncryptedDataPageV2.Layout;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class TestFullBodyEncryptedDataPageV2 {
 
@@ -119,5 +121,31 @@ public class TestFullBodyEncryptedDataPageV2 {
     // Body is only levels
     assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(LEVELS), LEVELS.length))
         .isEqualTo(Layout.SINGLE_MODULE);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "'parquet-mr version 1.18.0 (build abc)', PLAINTEXT_LEVELS",
+    "'parquet-mr version 1.8.1', PLAINTEXT_LEVELS",
+    "'parquet-mr version 1.18.0-SNAPSHOT (build abc)', PLAINTEXT_LEVELS",
+    "'parquet-mr version 1.19.0 (build abc)', SINGLE_MODULE",
+    "'parquet-mr version 1.20.1', SINGLE_MODULE",
+    "'parquet-mr version 2.0.0-SNAPSHOT', SINGLE_MODULE",
+    "'parquet-cpp-arrow version 24.0.0', SINGLE_MODULE",
+    "'parquet-rs version 57.0.0', SINGLE_MODULE",
+    "'parquet-mr version 1.19.0-SNAPSHOT (build abc)', AMBIGUOUS",
+    "'parquet-mr version 1.19.0rc1', AMBIGUOUS",
+    "'parquet-mr version', AMBIGUOUS",
+    "'parquet-mr version not-a-version', AMBIGUOUS",
+    "'not a created_by', AMBIGUOUS",
+    "'', AMBIGUOUS",
+  })
+  public void layoutWrittenByFollowsTheWriterVersion(String createdBy, Layout expected) {
+    assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(createdBy)).isEqualTo(expected);
+  }
+
+  @Test
+  public void layoutWrittenByAnUnknownWriterIsAmbiguous() {
+    assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(null)).isEqualTo(Layout.AMBIGUOUS);
   }
 }

@@ -20,6 +20,11 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import org.apache.parquet.SemanticVersion;
+import org.apache.parquet.Strings;
+import org.apache.parquet.VersionParser;
+import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -40,9 +45,11 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
     SINGLE_MODULE,
     /** {@code [plaintext levels][module of values]} */
     PLAINTEXT_LEVELS,
-    /** Both length checks match; only decryption can tell. */
+    /** Both length checks match, and {@code created_by} does not tell; only decryption can tell. */
     AMBIGUOUS
   }
+
+  private static final SemanticVersion SINGLE_MODULE_SINCE = new SemanticVersion(1, 19, 0);
 
   private final int repetitionLevelsByteLength;
   private final int definitionLevelsByteLength;
@@ -129,6 +136,39 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
       return Layout.AMBIGUOUS;
     }
     return plaintextLevels ? Layout.PLAINTEXT_LEVELS : Layout.SINGLE_MODULE;
+  }
+
+  /**
+   * Returns the layout written by the application in {@code created_by}: {@link
+   * Layout#PLAINTEXT_LEVELS} for parquet-java before 1.19.0, {@link Layout#SINGLE_MODULE} for later
+   * versions and other applications, and {@link Layout#AMBIGUOUS} if {@code created_by} is missing,
+   * cannot be parsed, or is a 1.19.0 pre-release.
+   */
+  static Layout layoutWrittenBy(String createdBy) {
+    if (Strings.isNullOrEmpty(createdBy)) {
+      return Layout.AMBIGUOUS;
+    }
+    ParsedVersion writer;
+    try {
+      writer = VersionParser.parse(createdBy);
+    } catch (VersionParseException | RuntimeException e) {
+      return Layout.AMBIGUOUS;
+    }
+    if (!"parquet-mr".equals(writer.application)) {
+      return Layout.SINGLE_MODULE;
+    }
+    if (!writer.hasSemanticVersion()) {
+      return Layout.AMBIGUOUS;
+    }
+    SemanticVersion version = writer.getSemanticVersion();
+    int cmp = new SemanticVersion(version.major, version.minor, version.patch).compareTo(SINGLE_MODULE_SINCE);
+    if (cmp < 0) {
+      return Layout.PLAINTEXT_LEVELS;
+    }
+    if (cmp == 0 && (version.prerelease || version.pre != null)) {
+      return Layout.AMBIGUOUS;
+    }
+    return Layout.SINGLE_MODULE;
   }
 
   private static int readLength(BytesInput pageBody, int offset) throws IOException {

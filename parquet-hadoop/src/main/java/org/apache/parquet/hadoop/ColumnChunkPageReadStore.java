@@ -263,9 +263,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     /**
-     * Reads a page whose levels and values are one encrypted module. If the layout is ambiguous, the page
-     * is decrypted as one module first, and read with plaintext levels if the GCM tag check fails. CTR
-     * has no tag, so ambiguous CTR pages are read with plaintext levels.
+     * Reads a page whose levels and values are one encrypted module. If the layout is ambiguous and the
+     * writer of the file is unknown, the page is decrypted as one module first, and read with plaintext
+     * levels if the GCM tag check fails. CTR has no tag, so such CTR pages are read with plaintext
+     * levels.
      */
     private DataPageV2 readPageV2WithEncryptedLevels(FullBodyEncryptedDataPageV2 page, int currentPageIndex) {
       DataPageV2 plaintextLevelsPage = page.getPlaintextLevelsLayoutPage();

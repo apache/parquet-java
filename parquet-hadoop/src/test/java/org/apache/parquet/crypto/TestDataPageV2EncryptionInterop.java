@@ -28,6 +28,7 @@ import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.SCHEMA;
 import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.decryptionProperties;
 import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.expectedRows;
 import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.readRows;
+import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.readRowsWrittenBy;
 import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.row;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,6 +88,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Encryption of DataPageV2 pages with repetition or definition levels (apache/parquet-java#3934).
@@ -371,6 +373,29 @@ public class TestDataPageV2EncryptionInterop {
     assertThat(rows).hasSize(8);
     assertThat(rows.get(0)).contains("v: 12345");
     assertThat(rows.subList(1, 8)).allSatisfy(row -> assertThat(row).doesNotContain("v:"));
+  }
+
+  @ParameterizedTest(name = "{0}, directMemory={1}")
+  @MethodSource("ambiguousFixtures")
+  public void readsAnAmbiguousPageWithPlaintextLevelsIfTheFileIsFromParquetJava118(
+      String fixture, boolean directMemory) throws Exception {
+    List<String> rows = readRowsWrittenBy(fixture(fixture), "parquet-mr version 1.18.0 (build abc)", directMemory);
+
+    assertThat(rows).hasSize(8);
+    assertThat(rows.get(0)).contains("v: 12345");
+    assertThat(rows.subList(1, 8)).allSatisfy(row -> assertThat(row).doesNotContain("v:"));
+  }
+
+  @ParameterizedTest(name = "directMemory={0}")
+  @ValueSource(booleans = {false, true})
+  public void readsAnAmbiguousPageAsASingleModuleIfTheFileIsFromAnotherWriter(boolean directMemory) {
+    // The fixture has plaintext levels, so reading it as a single module fails the GCM tag check
+    assertThatThrownBy(() -> readRowsWrittenBy(
+            fixture("legacy-v2-ambiguous-aes-gcm-v1.parquet"),
+            "parquet-cpp-arrow version 24.0.0",
+            directMemory))
+        .isInstanceOf(TagVerificationException.class)
+        .hasMessage("GCM tag check failed");
   }
 
   @Test
