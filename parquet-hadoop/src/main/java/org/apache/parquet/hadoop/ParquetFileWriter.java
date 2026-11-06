@@ -1236,7 +1236,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD          pageHeader AAD
    * @throws IOException if any I/O error occurs during writing the file
-   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics, BlockCipher.Encryptor, byte[])} instead
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
   @Deprecated
   public void writeDataPageV2(
@@ -1289,7 +1291,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD          pageHeader AAD
    * @throws IOException if any I/O error occurs during writing the file
-   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics, BlockCipher.Encryptor, byte[])} instead
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
   @Deprecated
   public void writeDataPageV2(
@@ -1343,7 +1347,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
    * @throws IOException if any I/O error occurs during writing the file
-   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics, BlockCipher.Encryptor, byte[])} instead
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
   @Deprecated
   public void writeDataPageV2(
@@ -1398,7 +1404,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
    * @throws IOException if any I/O error occurs during writing the file
-   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics, BlockCipher.Encryptor, byte[])} instead
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
   @Deprecated
   public void writeDataPageV2(
