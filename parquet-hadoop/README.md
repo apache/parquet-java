@@ -451,11 +451,10 @@ Note: nested column names must be specified as full dot-separated paths for each
 
 **Property:** `parquet.encryption.algorithm`  
 **Description:** Parquet encryption algorithm. Can be `AES_GCM_V1` or `AES_GCM_CTR_V1`.  
-Since 1.19.0, the repetition and definition levels of the DataPageV2 pages of an encrypted column are encrypted
-together with the values, as the Parquet encryption specification has it and as Arrow does. Earlier versions left
-those levels in plaintext. 1.19.0 reads files of both kinds, but 1.18 and earlier cannot read the DataPageV2 pages
-that 1.19.0 writes for encrypted columns that have levels: with `AES_GCM_V1` they fail to decrypt the page, with
-`AES_GCM_CTR_V1` they decode garbage levels.  
+Since 1.19.0, DataPageV2 pages of encrypted columns encrypt the repetition and definition levels with the values,
+as the specification requires. Earlier versions wrote the levels in plaintext. Version 1.19.0 reads both layouts.
+Versions 1.18 and earlier cannot read the new pages. With `AES_GCM_V1`, decryption fails. With `AES_GCM_CTR_V1`,
+the levels are incorrect.  
 **Default value:** `AES_GCM_V1`
 
 ---
