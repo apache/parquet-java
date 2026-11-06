@@ -123,6 +123,36 @@ public class TestParquetProperties {
   }
 
   @Test
+  public void pageCompressThreshold_rejectsValuesOutsideRatioRange() {
+    assertThrows(IllegalArgumentException.class, () -> ParquetProperties.builder()
+        .withPageCompressThreshold(-0.01));
+    assertThrows(IllegalArgumentException.class, () -> ParquetProperties.builder()
+        .withPageCompressThreshold(1.01));
+    assertThrows(IllegalArgumentException.class, () -> ParquetProperties.builder()
+        .withPageCompressThreshold(Double.NaN));
+    assertThrows(IllegalArgumentException.class, () -> ParquetProperties.builder()
+        .withPageCompressThreshold(Double.POSITIVE_INFINITY));
+  }
+
+  @Test
+  public void pageCompressThreshold_acceptsRatioBoundaries() {
+    assertEquals(
+        0.0,
+        ParquetProperties.builder()
+            .withPageCompressThreshold(0.0)
+            .build()
+            .pageCompressThreshold(),
+        0.0);
+    assertEquals(
+        1.0,
+        ParquetProperties.builder()
+            .withPageCompressThreshold(1.0)
+            .build()
+            .pageCompressThreshold(),
+        0.0);
+  }
+
+  @Test
   public void copyBuilder_preservesColumnCodecAndLevel() {
     ParquetProperties original = ParquetProperties.builder()
         .withCompressionCodec("col_a", ZSTD)
