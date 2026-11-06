@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
  * </pre>
  * <p>
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
- * Note that we explicitely disallow custom Codecs
+ * Note that we explicitly disallow custom Codecs
  * <pre>
  * mapred.output.compress=true
  * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec # the codec must be one of Snappy, GZip or LZO
