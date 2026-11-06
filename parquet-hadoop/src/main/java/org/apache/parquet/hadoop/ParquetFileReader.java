@@ -2215,34 +2215,7 @@ public class ParquetFileReader implements Closeable {
             break;
           case DATA_PAGE_V2:
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
-            int dataSize = compressedPageSize
-                - dataHeaderV2.getRepetition_levels_byte_length()
-                - dataHeaderV2.getDefinition_levels_byte_length();
-            final BytesInput repetitionLevels =
-                this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length());
-            final BytesInput definitionLevels =
-                this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length());
-            final BytesInput values = this.readAsBytesInput(dataSize);
-            if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-              verifyCrc(
-                  pageHeader.getCrc(),
-                  "could not verify page integrity, CRC checksum verification failed",
-                  repetitionLevels,
-                  definitionLevels,
-                  values);
-            }
-            DataPageV2 dataPageV2 = new DataPageV2(
-                dataHeaderV2.getNum_rows(),
-                dataHeaderV2.getNum_nulls(),
-                dataHeaderV2.getNum_values(),
-                repetitionLevels,
-                definitionLevels,
-                converter.getEncoding(dataHeaderV2.getEncoding()),
-                values,
-                uncompressedPageSize,
-                converter.fromParquetStatistics(
-                    getFileMetaData().getCreatedBy(), dataHeaderV2.getStatistics(), type),
-                dataHeaderV2.isIs_compressed());
+            DataPageV2 dataPageV2 = readDataPageV2(pageHeader, type, null != pageBlockDecryptor);
             // Copy crc to new page, used for testing
             if (pageHeader.isSetCrc()) {
               dataPageV2.setCrc(pageHeader.getCrc());
@@ -2292,6 +2265,135 @@ public class ParquetFileReader implements Closeable {
       }
 
       return offsetIndex.getPageOrdinal(dataPageCountReadSoFar);
+    }
+
+    /**
+     * Reads a DataPageV2 body. For an encrypted column with levels, returns a {@link
+     * FullBodyEncryptedDataPageV2} if the levels may be inside the encrypted module, or a {@link
+     * DataPageV2} with the plaintext levels split out otherwise.
+     */
+    private DataPageV2 readDataPageV2(PageHeader pageHeader, PrimitiveType type, boolean encryptedColumn)
+        throws IOException {
+      DataPageHeaderV2 header = pageHeader.getData_page_header_v2();
+      int compressedPageSize = pageHeader.getCompressed_page_size();
+      int uncompressedPageSize = pageHeader.getUncompressed_page_size();
+      int repetitionLevelsByteLength = header.getRepetition_levels_byte_length();
+      int definitionLevelsByteLength = header.getDefinition_levels_byte_length();
+      org.apache.parquet.column.Encoding encoding = converter.getEncoding(header.getEncoding());
+      org.apache.parquet.column.statistics.Statistics<?> statistics =
+          converter.fromParquetStatistics(getFileMetaData().getCreatedBy(), header.getStatistics(), type);
+
+      if (encryptedColumn && repetitionLevelsByteLength + definitionLevelsByteLength != 0) {
+        if (repetitionLevelsByteLength < 0
+            || definitionLevelsByteLength < 0
+            || (long) repetitionLevelsByteLength + definitionLevelsByteLength
+                > Math.min(compressedPageSize, uncompressedPageSize)) {
+          throw new ParquetDecodingException("Invalid DataPageV2 header in column " + descriptor.col
+              + ": repetition levels of " + repetitionLevelsByteLength
+              + " bytes and definition levels of "
+              + definitionLevelsByteLength + " bytes in a page of " + compressedPageSize
+              + " bytes, of " + uncompressedPageSize + " bytes uncompressed");
+        }
+        int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
+        BytesInput pageBody = this.readAsBytesInput(compressedPageSize);
+        if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+          verifyCrc(
+              pageHeader.getCrc(),
+              "could not verify page integrity, CRC checksum verification failed",
+              pageBody);
+        }
+        FullBodyEncryptedDataPageV2.Layout layout =
+            FullBodyEncryptedDataPageV2.detectLayout(pageBody, levelsByteLength);
+        if (layout == FullBodyEncryptedDataPageV2.Layout.AMBIGUOUS) {
+          layout = FullBodyEncryptedDataPageV2.layoutWrittenBy(
+              getFileMetaData().getCreatedBy());
+        }
+        switch (layout) {
+          case PLAINTEXT_LEVELS:
+            return pageWithPlaintextLevels(pageHeader, pageBody, encoding, statistics);
+          case SINGLE_MODULE:
+            return fullBodyEncryptedPage(pageHeader, pageBody, encoding, statistics, null);
+          case AMBIGUOUS:
+          default:
+            return fullBodyEncryptedPage(
+                pageHeader,
+                pageBody,
+                encoding,
+                statistics,
+                pageWithPlaintextLevels(pageHeader, pageBody, encoding, statistics));
+        }
+      }
+
+      int dataSize = compressedPageSize - repetitionLevelsByteLength - definitionLevelsByteLength;
+      BytesInput repetitionLevels = this.readAsBytesInput(repetitionLevelsByteLength);
+      BytesInput definitionLevels = this.readAsBytesInput(definitionLevelsByteLength);
+      BytesInput values = this.readAsBytesInput(dataSize);
+      if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+        verifyCrc(
+            pageHeader.getCrc(),
+            "could not verify page integrity, CRC checksum verification failed",
+            repetitionLevels,
+            definitionLevels,
+            values);
+      }
+      return new DataPageV2(
+          header.getNum_rows(),
+          header.getNum_nulls(),
+          header.getNum_values(),
+          repetitionLevels,
+          definitionLevels,
+          encoding,
+          values,
+          uncompressedPageSize,
+          statistics,
+          header.isIs_compressed());
+    }
+
+    /** Splits the levels off the front of a page body whose levels are not encrypted. */
+    private DataPageV2 pageWithPlaintextLevels(
+        PageHeader pageHeader,
+        BytesInput pageBody,
+        org.apache.parquet.column.Encoding encoding,
+        org.apache.parquet.column.statistics.Statistics<?> statistics)
+        throws IOException {
+      DataPageHeaderV2 header = pageHeader.getData_page_header_v2();
+      ByteBufferInputStream pageBodyStream = pageBody.toInputStream();
+      return new DataPageV2(
+          header.getNum_rows(),
+          header.getNum_nulls(),
+          header.getNum_values(),
+          BytesInput.from(pageBodyStream.sliceBuffers(header.getRepetition_levels_byte_length())),
+          BytesInput.from(pageBodyStream.sliceBuffers(header.getDefinition_levels_byte_length())),
+          encoding,
+          BytesInput.from(pageBodyStream.remainingBuffers()),
+          pageHeader.getUncompressed_page_size(),
+          statistics,
+          header.isIs_compressed());
+    }
+
+    /**
+     * @param plaintextLevelsPage the same page read as {@link #pageWithPlaintextLevels}, if the layout is
+     *     ambiguous; null otherwise
+     */
+    private FullBodyEncryptedDataPageV2 fullBodyEncryptedPage(
+        PageHeader pageHeader,
+        BytesInput pageBody,
+        org.apache.parquet.column.Encoding encoding,
+        org.apache.parquet.column.statistics.Statistics<?> statistics,
+        DataPageV2 plaintextLevelsPage) {
+      DataPageHeaderV2 header = pageHeader.getData_page_header_v2();
+      return new FullBodyEncryptedDataPageV2(
+          header.getNum_rows(),
+          header.getNum_nulls(),
+          header.getNum_values(),
+          encoding,
+          pageBody,
+          header.getRepetition_levels_byte_length(),
+          header.getDefinition_levels_byte_length(),
+          pageHeader.getUncompressed_page_size(),
+          statistics,
+          header.isIs_compressed(),
+          plaintextLevelsPage);
     }
 
     /**
