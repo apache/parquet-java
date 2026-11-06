@@ -64,7 +64,7 @@ final class DataPageV2EncryptionTestData {
 
   private DataPageV2EncryptionTestData() {}
 
-  /** Builds row {@code i}. Must match {@code row(i)} in {@code generate_arrow_fixtures.py}. */
+  /** Builds row {@code i}, as stored in the {@code arrow-v2-*} fixtures. */
   public static Group row(int i) {
     Group group = new SimpleGroupFactory(SCHEMA).newGroup();
     group.add("seq", (long) i);

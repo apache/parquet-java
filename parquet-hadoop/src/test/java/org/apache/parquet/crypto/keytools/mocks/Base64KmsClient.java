@@ -24,7 +24,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.keytools.KmsClient;
 
-/** Wraps keys by base64 encoding them, like the KMS client of {@code generate_arrow_fixtures.py}. */
+/** Wraps keys by base64 encoding them, like the KMS client that wrote the {@code arrow-v2-*} fixtures. */
 public class Base64KmsClient implements KmsClient {
 
   @Override

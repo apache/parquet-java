@@ -94,7 +94,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * <p>Fixtures in {@code src/test/resources/encryption/datapagev2}:
  *
  * <ul>
- *   <li>{@code arrow-v2-*}: written by {@code generate_arrow_fixtures.py} (pyarrow).
+ *   <li>{@code arrow-v2-*}: written by Arrow C++ (pyarrow 24.0.0).
  *   <li>{@code java-legacy-v2-*}: written with {@link #writeWithParquetJava} at commit e265ac7f5,
  *       before the levels were encrypted. To regenerate, check out that commit and run it for each
  *       cipher and codec.
