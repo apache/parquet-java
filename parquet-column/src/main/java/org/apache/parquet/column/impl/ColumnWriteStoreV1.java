@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.impl;
 
+import java.util.List;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriteStore;
@@ -45,12 +46,23 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
     super(schema, pageWriteStore, bloomFilterWriteStore, props);
   }
 
+  /** EXPERIMENTAL: A store continuing the content defined chunking of the file's {@code chunkers}. */
+  public ColumnWriteStoreV1(
+      MessageType schema,
+      PageWriteStore pageWriteStore,
+      BloomFilterWriteStore bloomFilterWriteStore,
+      ParquetProperties props,
+      List<ContentDefinedChunker> chunkers) {
+    super(schema, pageWriteStore, bloomFilterWriteStore, props, chunkers);
+  }
+
   @Override
   ColumnWriterBase createColumnWriter(
       ColumnDescriptor path,
       PageWriter pageWriter,
       BloomFilterWriter bloomFilterWriter,
+      ContentDefinedChunker chunker,
       ParquetProperties props) {
-    return new ColumnWriterV1(path, pageWriter, bloomFilterWriter, props);
+    return new ColumnWriterV1(path, pageWriter, bloomFilterWriter, chunker, props);
   }
 }
