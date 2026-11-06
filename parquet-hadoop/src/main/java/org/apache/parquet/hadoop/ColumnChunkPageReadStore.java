@@ -232,6 +232,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     /**
      * Reads a page whose levels are not encrypted. If the column is encrypted, only the values are an
      * encrypted module.
+     *
+     * <p>An encrypted page with plaintext levels does not follow the Parquet encryption spec, which
+     * encrypts the levels and the values as one module. Such pages are written only by parquet-java
+     * 1.18.0 and earlier, and are read here for backward compatibility only.
      */
     private DataPageV2 readPageV2WithPlaintextLevels(DataPageV2 page, int currentPageIndex) {
       if (!page.isCompressed() && offsetIndex == null && null == blockDecryptor) {

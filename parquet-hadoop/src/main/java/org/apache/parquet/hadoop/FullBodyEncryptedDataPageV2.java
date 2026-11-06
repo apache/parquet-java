@@ -95,6 +95,14 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
     return plaintextLevelsLayoutPage;
   }
 
+  @Override
+  public void setCrc(int crc) {
+    super.setCrc(crc);
+    if (plaintextLevelsLayoutPage != null) {
+      plaintextLevelsLayoutPage.setCrc(crc);
+    }
+  }
+
   /**
    * Detects the layout of the body of a page that has levels. A module starts with the length of the
    * rest of the module as a 4 byte LE int, so:

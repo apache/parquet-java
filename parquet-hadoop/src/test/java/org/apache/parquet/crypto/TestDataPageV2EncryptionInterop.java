@@ -99,8 +99,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  *       before the levels were encrypted. To regenerate, check out that commit and run it for each
  *       cipher and codec.
  *   <li>{@code legacy-v2-ambiguous-*}: one hand-built legacy page, see {@link
- *       #readsALegacyPageThatLooksLikeASingleModule}. Written with a {@code ParquetFileWriter} overload
- *       that has since been removed.
+ *       #readsALegacyPageThatLooksLikeASingleModule}. Written with a deprecated {@code
+ *       ParquetFileWriter.writeDataPageV2} overload that takes only a page header encryptor.
  * </ul>
  */
 public class TestDataPageV2EncryptionInterop {
