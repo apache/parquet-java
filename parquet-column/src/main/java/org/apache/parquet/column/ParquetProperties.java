@@ -953,7 +953,8 @@ public class ParquetProperties {
     /**
      * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, such as
      * {@link CdcOptions#DEFAULT}, or disable it with {@code null}. Disabled by default. The page size
-     * and row count limits still apply. Column write stores must then be made with
+     * and row count limits still apply as without it, so page size cuts follow the page size check
+     * schedule and may move after an edit. Column write stores must then be made with
      * {@link ParquetProperties#newColumnWriteStore(MessageType, PageWriteStore, BloomFilterWriteStore,
      * List)}, passing every row group of a file the chunkers {@link ContentDefinedChunker#forColumns}
      * made for it.

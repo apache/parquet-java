@@ -30,10 +30,10 @@ import org.apache.parquet.schema.MessageType;
 
 /**
  * Decides the content defined chunk boundaries of one leaf column for a whole file. The column writer
- * asks {@code startsNewChunk} with each triplet before writing it, which rolls the triplet into the
- * hash and answers whether it starts a new chunk, and ends its page there; the page limits end pages as
- * they do without content defined chunking. A no-op chunker, {@link #noop()}, stands in while content defined chunking is
- * disabled.
+ * asks {@code startsNewChunk} with each triplet before writing it; the chunker rolls the triplet into
+ * its hash and answers whether a chunk starts there, and the writer then ends its page. The page limits
+ * end pages as they do without content defined chunking. A no-op chunker, {@link #noop()}, stands in
+ * while content defined chunking is disabled.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
  * whose boundaries it must reproduce. Not thread safe.

@@ -68,9 +68,7 @@ public class TestContentDefinedChunker {
   public void producesBoundariesWithinTheSizeEnvelope() {
     long[] values = newLongs(20_000, 1);
     ContentDefinedChunker chunker = chunkerFor(options(512, 4096, 0));
-    List<Integer> sizes = chunkSizes(values.length, i -> {
-      return chunker.startsNewChunk(values[i], 0, 0);
-    });
+    List<Integer> sizes = chunkSizes(values.length, i -> chunker.startsNewChunk(values[i], 0, 0));
 
     assertThat(sizes.subList(0, sizes.size() - 1))
         .allSatisfy(size -> assertThat(size * 8).isBetween(512, 4096))
@@ -125,26 +123,20 @@ public class TestContentDefinedChunker {
 
   @Test
   public void chunksIntegers() {
-    assertThat(chunkSizes(120, i -> {
-          return chunker.startsNewChunk(i * 0x9E3779B1, 0, 0);
-        }))
+    assertThat(chunkSizes(120, i -> chunker.startsNewChunk(i * 0x9E3779B1, 0, 0)))
         .containsExactly(9, 9, 13, 16, 2, 9, 12, 11, 15, 11, 10, 3);
   }
 
   /** Quiet NaNs, which {@code Float.intBitsToFloat} keeps on every platform. */
   @Test
   public void floatsHashRawBitsIncludingNanPayloads() {
-    assertThat(chunkSizes(120, i -> {
-          return chunker.startsNewChunk(Float.intBitsToFloat(0x7FC00001 + i), 0, 0);
-        }))
+    assertThat(chunkSizes(120, i -> chunker.startsNewChunk(Float.intBitsToFloat(0x7FC00001 + i), 0, 0)))
         .containsExactly(12, 11, 9, 16, 11, 12, 10, 12, 10, 14, 3);
   }
 
   @Test
   public void doublesHashRawBitsIncludingNanPayloads() {
-    assertThat(chunkSizes(120, i -> {
-          return chunker.startsNewChunk(Double.longBitsToDouble(0x7FF8000000000001L + i), 0, 0);
-        }))
+    assertThat(chunkSizes(120, i -> chunker.startsNewChunk(Double.longBitsToDouble(0x7FF8000000000001L + i), 0, 0)))
         .containsExactly(7, 8, 2, 8, 8, 1, 8, 8, 1, 8, 8, 8, 8, 1, 8, 1, 8, 8, 4, 7);
   }
 

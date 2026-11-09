@@ -228,9 +228,13 @@ public class TestColumnWriterChunking {
         .hasSizeGreaterThan(5);
   }
 
-  /** Without chunking the column writers end no page: the store checks the page size every 1000 records. */
+  /**
+   * Without chunking the column writers end no page, also before a null: the store checks the page
+   * size every 1000 records.
+   */
   @Test
   public void withoutChunkingOnlyTheStoreEndsPages() {
+    MessageType optional = MessageTypeParser.parseMessageType("message m { optional int64 v; }");
     ParquetProperties props = ParquetProperties.builder()
         .withDictionaryEncoding(false)
         .withPageSize(1024)
@@ -238,15 +242,23 @@ public class TestColumnWriterChunking {
         .withMaxRowCountForPageSizeCheck(1000)
         .estimateRowCountForPageSizeCheck(false)
         .build();
+    ObjIntConsumer<ColumnWriter> record = (writer, i) -> {
+      if (i % 2 == 0) {
+        writer.writeNull(0, 0);
+      } else {
+        writer.write((long) i, 0, 1);
+      }
+    };
 
-    assertThat(valueCounts(writePages(REQUIRED, props, 10_000, (writer, i) -> writer.write((long) i, 0, 0))))
+    assertThat(valueCounts(writePages(optional, props, 10_000, record)))
         .hasSize(10)
         .containsOnly(1000);
   }
 
   /**
    * A page limit reached where a chunk ends still consumes the boundary, so that every later chunk
-   * ends where it would without the limit.
+   * ends where it would without the limit; the row count limit counts from the start of each page,
+   * also of a page a chunk started.
    */
   @Test
   public void pageLimitsMoveNoChunkBoundary() {
@@ -254,12 +266,22 @@ public class TestColumnWriterChunking {
     ObjIntConsumer<ColumnWriter> record = (writer, i) -> writer.write(values[i], 0, 0);
     ParquetProperties limited = ParquetProperties.copy(unboundedProps(OPTIONS))
         .withPageRowCountLimit(7)
+        .withMinRowCountForPageSizeCheck(1)
         .build();
     Set<Integer> chunkEnds = pageEnds(writePages(REQUIRED, unboundedProps(OPTIONS), values.length, record));
+    List<Integer> expected = new ArrayList<>();
+    int start = 0;
+    for (int end : chunkEnds) {
+      for (int cut = start + 7; cut < end; cut += 7) {
+        expected.add(cut);
+      }
+      expected.add(end);
+      start = end;
+    }
 
     assertThat(chunkEnds).hasSizeGreaterThan(20);
     assertThat(pageEnds(writePages(REQUIRED, limited, values.length, record)))
-        .containsAll(chunkEnds);
+        .containsExactlyElementsOf(expected);
   }
 
   /**
@@ -267,13 +289,16 @@ public class TestColumnWriterChunking {
    * pages are those written without it.
    */
   @ParameterizedTest
-  @CsvSource({"100, 1073741823, 67108864", "2147483647, 5000, 67108864", "2147483647, 1073741823, 4096"})
+  @CsvSource({"100, 1073741823, 67108864", "2147483647, 4500, 67108864", "2147483647, 1073741823, 4096"})
   public void pageLimitsApplyAsWithoutChunking(int rowCountLimit, int valueCountThreshold, int pageSize) {
     ParquetProperties.Builder limits = ParquetProperties.builder()
         .withDictionaryEncoding(false)
         .withPageRowCountLimit(rowCountLimit)
         .withPageValueCountThreshold(valueCountThreshold)
-        .withPageSize(pageSize);
+        .withPageSize(pageSize)
+        .withMinRowCountForPageSizeCheck(1000)
+        .withMaxRowCountForPageSizeCheck(1000)
+        .estimateRowCountForPageSizeCheck(false);
     long[] values = newLongs(30_000, 51);
     ObjIntConsumer<ColumnWriter> record = (writer, i) -> writer.write(values[i], 0, 0);
     List<Integer> without = valueCounts(writePages(REQUIRED, limits.build(), values.length, record));
@@ -307,23 +332,12 @@ public class TestColumnWriterChunking {
 
   private static void write(ColumnWriter writer, PrimitiveTypeName type, long value) {
     switch (type) {
-      case INT32:
-        writer.write((int) value, 0, 0);
-        break;
-      case INT64:
-        writer.write(value, 0, 0);
-        break;
-      case FLOAT:
-        writer.write(Float.intBitsToFloat((int) value), 0, 0);
-        break;
-      case DOUBLE:
-        writer.write(Double.longBitsToDouble(value), 0, 0);
-        break;
-      case BOOLEAN:
-        writer.write((value & 1) == 0, 0, 0);
-        break;
-      default:
-        writer.write(Binary.fromConstantByteArray(BytesUtils.longToBytes(value)), 0, 0);
+      case INT32 -> writer.write((int) value, 0, 0);
+      case INT64 -> writer.write(value, 0, 0);
+      case FLOAT -> writer.write(Float.intBitsToFloat((int) value), 0, 0);
+      case DOUBLE -> writer.write(Double.longBitsToDouble(value), 0, 0);
+      case BOOLEAN -> writer.write((value & 1) == 0, 0, 0);
+      default -> writer.write(Binary.fromConstantByteArray(BytesUtils.longToBytes(value)), 0, 0);
     }
   }
 

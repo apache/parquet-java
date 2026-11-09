@@ -287,8 +287,10 @@ true if the reader is using a `DirectByteBufferAllocator`
 **Property:** `parquet.page.content-defined-chunking.enabled`  
 **Description:** EXPERIMENTAL: Whether data pages also end at boundaries derived from a rolling hash of the
 column's values, so that files sharing a run of values share byte-identical pages a content addressable storage
-system can deduplicate, as Arrow C++ and arrow-rs write them. The files need no reader support.
-The page size and row count limits still end pages inside chunks, as they do without it.  
+system can deduplicate, with the same chunking as Arrow C++ and arrow-rs. The files need no reader support.
+The page size and row count limits still end pages inside chunks, as they do without it. Row count cuts are counted
+from the page start and repeat after an edit, while page size cuts follow the page size check schedule and may move,
+so pages the page size limit splits deduplicate less.  
 **Default value:** `false`
 
 ---
