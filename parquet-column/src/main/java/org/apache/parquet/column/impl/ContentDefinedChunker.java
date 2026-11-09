@@ -29,10 +29,11 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Decides the content defined data page boundaries of one leaf column for a whole file. The column
- * writer asks {@code needNewPage} before writing each triplet, which this chunker answers by rolling
- * the triplet into its hash; a no-op chunker, {@link #noop()}, stands in while content defined
- * chunking is disabled.
+ * Decides the content defined chunk boundaries of one leaf column for a whole file. The column writer
+ * asks {@code startsNewChunk} with each triplet before writing it, which rolls the triplet into the
+ * hash and answers whether it starts a new chunk, and ends its page there; the page limits end pages as
+ * they do without content defined chunking. A no-op chunker, {@link #noop()}, stands in while content defined chunking is
+ * disabled.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
  * whose boundaries it must reproduce. Not thread safe.
@@ -46,9 +47,6 @@ public class ContentDefinedChunker {
   private final long rollingHashMask;
   private final int maxDef;
   private final int maxRep;
-  private final long pageSizeThreshold;
-  private final int pageValueCountThreshold;
-  private final int pageRowCountLimit;
 
   private long rollingHash;
   private boolean hasMatched;
@@ -69,7 +67,7 @@ public class ContentDefinedChunker {
         .collect(Collectors.toList());
   }
 
-  /** The chunker of a column without content defined chunking, which never ends a page. */
+  /** The chunker of a column without content defined chunking, which never ends a chunk. */
   static ContentDefinedChunker noop() {
     return NOOP;
   }
@@ -81,9 +79,6 @@ public class ContentDefinedChunker {
     this.rollingHashMask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
     this.maxDef = path.getMaxDefinitionLevel();
     this.maxRep = path.getMaxRepetitionLevel();
-    this.pageSizeThreshold = props.getPageSizeThreshold();
-    this.pageValueCountThreshold = props.getPageValueCountThreshold();
-    this.pageRowCountLimit = props.getPageRowCountLimit();
   }
 
   /** Only for {@link NoopChunker}, which uses none of the state. */
@@ -93,9 +88,6 @@ public class ContentDefinedChunker {
     this.rollingHashMask = 0;
     this.maxDef = 0;
     this.maxRep = 0;
-    this.pageSizeThreshold = 0;
-    this.pageValueCountThreshold = 0;
-    this.pageRowCountLimit = 0;
   }
 
   /**
@@ -141,44 +133,60 @@ public class ContentDefinedChunker {
     return -1L << (Long.SIZE - effectiveBits);
   }
 
-  void roll(int value, int repetitionLevel, int definitionLevel) {
+  /**
+   * Rolls a triplet into the hash and answers whether it starts a new chunk, which only the first
+   * triplet of a record can; see {@link #needNewChunk()}.
+   *
+   * @param value the value of the triplet
+   * @param repetitionLevel the repetition level of the triplet
+   * @param definitionLevel the definition level of the triplet
+   * @return whether a chunk ends before the triplet
+   */
+  boolean startsNewChunk(int value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(value, 4);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(long value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(long value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(value, 8);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(float value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(float value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     // Raw bits: floatToIntBits canonicalizes NaN payloads and would diverge from the references.
     roll(Float.floatToRawIntBits(value), 4);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(double value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(double value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(Double.doubleToRawLongBits(value), 8);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(boolean value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(boolean value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     // One byte per boolean, not one bit, as the references hash it.
     roll(value ? 1 : 0, 1);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(Binary value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(Binary value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(value);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
   /**
    * Rolls the triplet of a null, which has no value to hash even when {@code definitionLevel ==
-   * maxDef}, as an omitted top-level required field does.
+   * maxDef}, as an omitted top-level required field does, and answers whether a chunk ends before it.
    */
-  void rollNull(int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
   /**
@@ -192,63 +200,6 @@ public class ContentDefinedChunker {
     if (maxRep > 0) {
       roll(repetitionLevel, 2);
     }
-  }
-
-  /**
-   * Whether the column writer should end its page before this triplet, which it asks before writing
-   * each one; {@code needNewPage(repetitionLevel, definitionLevel, writer)} asks for a null.
-   */
-  boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    rollNull(repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  /**
-   * At a record start, if a chunk ends there or a page limit is reached, counted from the page start
-   * so that it cuts in the same places after an edit. Asking consumes a match, so a match inside a
-   * record carries over to the next record start. A boundary on the first value of a page has no page
-   * to end.
-   */
-  private boolean pageEndsBefore(int repetitionLevel, ColumnWriterBase writer) {
-    if (repetitionLevel != 0) {
-      return false;
-    }
-    boolean chunkBoundary = needNewChunk();
-    return writer.getValueCount() > 0
-        && (chunkBoundary
-            || writer.getPageRowCount() >= pageRowCountLimit
-            || writer.getValueCount() >= pageValueCountThreshold
-            || writer.getCurrentPageBufferedSize() >= pageSizeThreshold);
   }
 
   /** Arrow C++ {@code Roll<kByteWidth>}: the {@code byteWidth} low-order bytes, little-endian. */
@@ -288,11 +239,13 @@ public class ContentDefinedChunker {
   }
 
   /**
-   * Arrow C++ {@code NeedNewChunk}: a chunk ends after eight matches, each against the next gear
-   * hash table, which approximates a normal chunk size distribution; or at {@code maxChunkSize}.
-   * Neither resets the rolling hash, and the maximum size cut leaves the run counter alone.
+   * Arrow C++ {@code NeedNewChunk} and arrow-rs {@code need_new_chunk}: a chunk ends after eight
+   * matches, each against the next gear hash table, which approximates a normal chunk size
+   * distribution, or at {@code maxChunkSize}. Neither resets the rolling hash, and the maximum size cut
+   * leaves the run counter alone. Asked at record starts only, as they ask it, so a match or the maximum
+   * size reached inside a record is kept until the next one.
    */
-  boolean needNewChunk() {
+  private boolean needNewChunk() {
     if (hasMatched) {
       hasMatched = false;
       if (++nthRun >= GearHashTable.TABLE.length) {
@@ -308,40 +261,40 @@ public class ContentDefinedChunker {
     return false;
   }
 
-  /** The chunker of a column without content defined chunking: it rolls nothing and ends no page. */
+  /** The chunker of a column without content defined chunking: it rolls nothing and ends no chunk. */
   private static final class NoopChunker extends ContentDefinedChunker {
     @Override
-    boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(int value, int repetitionLevel, int definitionLevel) {
       return false;
     }
 
     @Override
-    boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(long value, int repetitionLevel, int definitionLevel) {
       return false;
     }
 
     @Override
-    boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(float value, int repetitionLevel, int definitionLevel) {
       return false;
     }
 
     @Override
-    boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(double value, int repetitionLevel, int definitionLevel) {
       return false;
     }
 
     @Override
-    boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(boolean value, int repetitionLevel, int definitionLevel) {
       return false;
     }
 
     @Override
-    boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(Binary value, int repetitionLevel, int definitionLevel) {
       return false;
     }
 
     @Override
-    boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
+    boolean startsNewChunk(int repetitionLevel, int definitionLevel) {
       return false;
     }
   }

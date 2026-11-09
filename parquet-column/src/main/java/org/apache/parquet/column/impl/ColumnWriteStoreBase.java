@@ -263,11 +263,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   public void endRecord() {
     ++rowCount;
     if (rowCount >= rowCountForNextSizeCheck) {
-      if (props.isContentDefinedChunkingEnabled()) {
-        // The column writers apply the page limits; this schedule only flushes cached nulls.
-        rowCountForNextSizeCheck = rowCount + props.getMaxRowCountForPageSizeCheck();
-        return;
-      }
       sizeCheck();
     }
   }

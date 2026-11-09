@@ -186,11 +186,11 @@ public class TestContentDefinedChunking {
 
   /**
    * The page size check schedule of the column write store, which also decides when the held back group
-   * nulls reach the column writers, moves no page boundary: each column writer applies the page size
-   * limit itself, inside chunks and keeping every chunk boundary.
+   * nulls reach the column writers, moves no chunk boundary: the page size limit ends pages inside
+   * chunks wherever the store checks it, and every chunk still ends a page.
    */
   @Test
-  public void pageSizeCheckScheduleMovesNoPageBoundary() throws IOException {
+  public void pageSizeCheckScheduleMovesNoChunkBoundary() throws IOException {
     List<Long> chunks = pageEnds(pageCountsByRowGroup(writeLists("chunks", UnaryOperator.identity()), 0));
     List<Long> scheduled =
         pageEnds(pageCountsByRowGroup(writeLists("scheduled", b -> b.withPageSize(16 * 1024)), 0));
@@ -203,7 +203,7 @@ public class TestContentDefinedChunking {
         0));
 
     assertThat(scheduled).containsAll(chunks).hasSizeGreaterThan(2 * chunks.size());
-    assertThat(everyRecord).containsExactlyElementsOf(scheduled);
+    assertThat(everyRecord).containsAll(chunks).hasSizeGreaterThan(2 * chunks.size());
   }
 
   @Test

@@ -117,8 +117,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -158,8 +158,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(double value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -183,8 +183,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(float value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -208,8 +208,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -233,8 +233,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -258,8 +258,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -283,8 +283,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(long value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.needNewPage(value, repetitionLevel, definitionLevel, this)) {
-        writePage();
+      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+        writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
       definitionLevel(definitionLevel);
@@ -389,8 +389,13 @@ abstract class ColumnWriterBase implements ColumnWriter {
     return this.valueCount;
   }
 
-  int getPageRowCount() {
-    return this.pageRowCount;
+  /**
+   * Writes the current data to a new page in the page store, unless there is none.
+   */
+  private void writePageIfNotEmpty() {
+    if (valueCount > 0) {
+      writePage();
+    }
   }
 
   /**

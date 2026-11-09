@@ -288,9 +288,7 @@ true if the reader is using a `DirectByteBufferAllocator`
 **Description:** EXPERIMENTAL: Whether data pages also end at boundaries derived from a rolling hash of the
 column's values, so that files sharing a run of values share byte-identical pages a content addressable storage
 system can deduplicate, as Arrow C++ and arrow-rs write them. The files need no reader support.
-The page size and row count limits still end pages inside chunks: each column writer checks them at every record
-start rather than on the schedule of `parquet.page.size.row.check.min` and `parquet.page.size.row.check.max`,
-which then only paces the row group size check.  
+The page size and row count limits still end pages inside chunks, as they do without it.  
 **Default value:** `false`
 
 ---

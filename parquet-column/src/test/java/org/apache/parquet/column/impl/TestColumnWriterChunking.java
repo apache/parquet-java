@@ -53,6 +53,7 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 public class TestColumnWriterChunking {
@@ -104,7 +105,7 @@ public class TestColumnWriterChunking {
     long[] values = newLongs(60_000, 13);
     ContentDefinedChunker chunker =
         new ContentDefinedChunker(schema.getColumns().get(0), unboundedProps(OPTIONS));
-    List<Integer> expected = chunkSizes(values.length, i -> roll(chunker, type, values[i]));
+    List<Integer> expected = chunkSizes(values.length, i -> startsNewChunk(chunker, type, values[i]));
 
     assertThat(valueCounts(writePages(
             schema, unboundedProps(OPTIONS), values.length, (writer, i) -> write(writer, type, values[i]))))
@@ -187,6 +188,21 @@ public class TestColumnWriterChunking {
     assertThat(valueCounts(dictionary)).containsExactlyElementsOf(valueCounts(plain));
   }
 
+  /**
+   * A chunk that ends inside a record, here at the maximum chunk size, ends the page at the next record
+   * start instead of being lost.
+   */
+  @Test
+  public void chunkEndingInsideARecordEndsThePageAtTheNextRecordStart() {
+    List<Integer> counts = valueCounts(writePages(LIST, unboundedProps(options(0, 64, 0)), 50, (writer, i) -> {
+      for (int k = 0; k < 100; k++) {
+        writer.write((long) i * 100 + k, k == 0 ? 0 : 1, 1);
+      }
+    }));
+
+    assertThat(counts).hasSize(50).containsOnly(100);
+  }
+
   /** The row count limit is counted from the page start, so it cuts inside chunks and after boundaries. */
   @Test
   public void listPagesEndAtRecordStarts() {
@@ -212,54 +228,64 @@ public class TestColumnWriterChunking {
         .hasSizeGreaterThan(5);
   }
 
+  /** Without chunking the column writers end no page: the store checks the page size every 1000 records. */
   @Test
-  public void valueCountLimitAppliesInsideAChunk() {
+  public void withoutChunkingOnlyTheStoreEndsPages() {
     ParquetProperties props = ParquetProperties.builder()
         .withDictionaryEncoding(false)
-        .withPageRowCountLimit(Integer.MAX_VALUE)
-        .withPageValueCountThreshold(5000)
-        .withContentDefinedChunking(options(1 << 30, 1L << 31, 0))
+        .withPageSize(1024)
+        .withMinRowCountForPageSizeCheck(1000)
+        .withMaxRowCountForPageSizeCheck(1000)
+        .estimateRowCountForPageSizeCheck(false)
         .build();
 
-    assertThat(valueCounts(writePages(REQUIRED, props, 4 * 5000, (writer, i) -> writer.write((long) i, 0, 0))))
-        .containsExactly(5000, 5000, 5000, 5000);
+    assertThat(valueCounts(writePages(REQUIRED, props, 10_000, (writer, i) -> writer.write((long) i, 0, 0))))
+        .hasSize(10)
+        .containsOnly(1000);
   }
 
+  /**
+   * A page limit reached where a chunk ends still consumes the boundary, so that every later chunk
+   * ends where it would without the limit.
+   */
   @Test
-  public void pageSizeLimitAppliesInsideAChunk() {
-    ParquetProperties props = ParquetProperties.builder()
-        .withDictionaryEncoding(false)
-        .withPageRowCountLimit(Integer.MAX_VALUE)
-        .withContentDefinedChunking(options(4 << 20, 8 << 20, 0))
+  public void pageLimitsMoveNoChunkBoundary() {
+    long[] values = newLongs(30_000, 41);
+    ObjIntConsumer<ColumnWriter> record = (writer, i) -> writer.write(values[i], 0, 0);
+    ParquetProperties limited = ParquetProperties.copy(unboundedProps(OPTIONS))
+        .withPageRowCountLimit(7)
         .build();
-    byte[] value = new byte[100];
-    List<DataPage> pages = writePages(
-        REQUIRED_BINARY,
-        props,
-        100_000,
-        (writer, i) -> writer.write(Binary.fromConstantByteArray(value), 0, 0));
-    int threshold = props.getPageSizeThreshold();
+    Set<Integer> chunkEnds = pageEnds(writePages(REQUIRED, unboundedProps(OPTIONS), values.length, record));
 
-    assertThat(pages)
-        .allSatisfy(page -> assertThat(page.getUncompressedSize()).isLessThanOrEqualTo(threshold + 104))
-        .filteredOn(page -> page.getUncompressedSize() >= threshold)
-        .hasSizeGreaterThan(5);
+    assertThat(chunkEnds).hasSizeGreaterThan(20);
+    assertThat(pageEnds(writePages(REQUIRED, limited, values.length, record)))
+        .containsAll(chunkEnds);
   }
 
-  /** Narrow values, whose default sized chunks run to several pages of the default size. */
-  @Test
-  public void pageSizeLimitCutsInTheSamePlacesAfterAnEdit() throws IOException {
-    ParquetProperties props = ParquetProperties.builder()
+  /**
+   * Content defined chunking leaves the page limits as they are: with chunks too large to ever end, the
+   * pages are those written without it.
+   */
+  @ParameterizedTest
+  @CsvSource({"100, 1073741823, 67108864", "2147483647, 5000, 67108864", "2147483647, 1073741823, 4096"})
+  public void pageLimitsApplyAsWithoutChunking(int rowCountLimit, int valueCountThreshold, int pageSize) {
+    ParquetProperties.Builder limits = ParquetProperties.builder()
         .withDictionaryEncoding(false)
-        .withPageRowCountLimit(Integer.MAX_VALUE)
-        .withContentDefinedChunking(CdcOptions.DEFAULT)
-        .build();
-    long[] original = newLongs(1_500_000, 21);
-    List<Binary> before = pageBytes(narrowPages(props, original));
-    List<Binary> after = pageBytes(narrowPages(props, insert(original, 10_000, newLongs(100, 22))));
+        .withPageRowCountLimit(rowCountLimit)
+        .withPageValueCountThreshold(valueCountThreshold)
+        .withPageSize(pageSize);
+    long[] values = newLongs(30_000, 51);
+    ObjIntConsumer<ColumnWriter> record = (writer, i) -> writer.write(values[i], 0, 0);
+    List<Integer> without = valueCounts(writePages(REQUIRED, limits.build(), values.length, record));
 
-    assertThat(before).hasSizeGreaterThan(5);
-    assertThat(after).filteredOn(new HashSet<>(before)::contains).hasSizeGreaterThan(after.size() / 2);
+    assertThat(without).hasSizeGreaterThan(2);
+    assertThat(valueCounts(writePages(
+            REQUIRED,
+            limits.withContentDefinedChunking(options(1 << 30, 1L << 31, 0))
+                .build(),
+            values.length,
+            record)))
+        .containsExactlyElementsOf(without);
   }
 
   /** All but a few pages of an edited column are pages of the original, also between two edits. */
@@ -301,27 +327,15 @@ public class TestColumnWriterChunking {
     }
   }
 
-  private static boolean roll(ContentDefinedChunker chunker, PrimitiveTypeName type, long value) {
-    switch (type) {
-      case INT32:
-        chunker.roll((int) value, 0, 0);
-        break;
-      case INT64:
-        chunker.roll(value, 0, 0);
-        break;
-      case FLOAT:
-        chunker.roll(Float.intBitsToFloat((int) value), 0, 0);
-        break;
-      case DOUBLE:
-        chunker.roll(Double.longBitsToDouble(value), 0, 0);
-        break;
-      case BOOLEAN:
-        chunker.roll((value & 1) == 0, 0, 0);
-        break;
-      default:
-        chunker.roll(Binary.fromConstantByteArray(BytesUtils.longToBytes(value)), 0, 0);
-    }
-    return chunker.needNewChunk();
+  private static boolean startsNewChunk(ContentDefinedChunker chunker, PrimitiveTypeName type, long value) {
+    return switch (type) {
+      case INT32 -> chunker.startsNewChunk((int) value, 0, 0);
+      case INT64 -> chunker.startsNewChunk(value, 0, 0);
+      case FLOAT -> chunker.startsNewChunk(Float.intBitsToFloat((int) value), 0, 0);
+      case DOUBLE -> chunker.startsNewChunk(Double.longBitsToDouble(value), 0, 0);
+      case BOOLEAN -> chunker.startsNewChunk((value & 1) == 0, 0, 0);
+      default -> chunker.startsNewChunk(Binary.fromConstantByteArray(BytesUtils.longToBytes(value)), 0, 0);
+    };
   }
 
   /** Where each page ends, counted in levels from the first. */
@@ -333,13 +347,6 @@ public class TestColumnWriterChunking {
       ends.add(end);
     }
     return ends;
-  }
-
-  private static List<DataPage> narrowPages(ParquetProperties props, long[] values) {
-    return writePages(REQUIRED_BINARY, props, values.length, (writer, i) -> {
-      byte[] bytes = BytesUtils.longToBytes(values[i]);
-      writer.write(Binary.fromConstantByteArray(bytes, 0, (values[i] & 1) == 0 ? 1 : 2), 0, 0);
-    });
   }
 
   private static List<Binary> pageBytes(List<DataPage> pages) throws IOException {

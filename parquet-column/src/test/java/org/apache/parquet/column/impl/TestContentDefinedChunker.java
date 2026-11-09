@@ -69,8 +69,7 @@ public class TestContentDefinedChunker {
     long[] values = newLongs(20_000, 1);
     ContentDefinedChunker chunker = chunkerFor(options(512, 4096, 0));
     List<Integer> sizes = chunkSizes(values.length, i -> {
-      chunker.roll(values[i], 0, 0);
-      return chunker.needNewChunk();
+      return chunker.startsNewChunk(values[i], 0, 0);
     });
 
     assertThat(sizes.subList(0, sizes.size() - 1))
@@ -88,10 +87,9 @@ public class TestContentDefinedChunker {
     List<Boolean> fromBinary = new ArrayList<>();
     for (long x : lcg(4000)) {
       boolean bit = (x & 0x100000000L) != 0;
-      viaBoolean.roll(bit, 0, 0);
-      fromBoolean.add(viaBoolean.needNewChunk());
-      viaBinary.roll(Binary.fromConstantByteArray(new byte[] {(byte) (bit ? 1 : 0)}), 0, 0);
-      fromBinary.add(viaBinary.needNewChunk());
+      fromBoolean.add(viaBoolean.startsNewChunk(bit, 0, 0));
+      fromBinary.add(
+          viaBinary.startsNewChunk(Binary.fromConstantByteArray(new byte[] {(byte) (bit ? 1 : 0)}), 0, 0));
     }
 
     assertThat(fromBinary).containsExactlyElementsOf(fromBoolean);
@@ -111,14 +109,11 @@ public class TestContentDefinedChunker {
     long[] values = newLongs(30_000, 17);
     for (int i = 0; i < values.length; ++i) {
       if (i % 100 == 0) {
-        withNulls.rollNull(0, 0);
-        actual.add(withNulls.needNewChunk());
+        actual.add(withNulls.startsNewChunk(0, 0));
         expected.add(false);
       }
-      withNulls.roll(values[i], 0, 0);
-      actual.add(withNulls.needNewChunk());
-      withoutNulls.roll(values[i], 0, 0);
-      expected.add(withoutNulls.needNewChunk());
+      actual.add(withNulls.startsNewChunk(values[i], 0, 0));
+      expected.add(withoutNulls.startsNewChunk(values[i], 0, 0));
     }
 
     assertThat(actual).containsExactlyElementsOf(expected);
@@ -131,8 +126,7 @@ public class TestContentDefinedChunker {
   @Test
   public void chunksIntegers() {
     assertThat(chunkSizes(120, i -> {
-          chunker.roll(i * 0x9E3779B1, 0, 0);
-          return chunker.needNewChunk();
+          return chunker.startsNewChunk(i * 0x9E3779B1, 0, 0);
         }))
         .containsExactly(9, 9, 13, 16, 2, 9, 12, 11, 15, 11, 10, 3);
   }
@@ -141,8 +135,7 @@ public class TestContentDefinedChunker {
   @Test
   public void floatsHashRawBitsIncludingNanPayloads() {
     assertThat(chunkSizes(120, i -> {
-          chunker.roll(Float.intBitsToFloat(0x7FC00001 + i), 0, 0);
-          return chunker.needNewChunk();
+          return chunker.startsNewChunk(Float.intBitsToFloat(0x7FC00001 + i), 0, 0);
         }))
         .containsExactly(12, 11, 9, 16, 11, 12, 10, 12, 10, 14, 3);
   }
@@ -150,8 +143,7 @@ public class TestContentDefinedChunker {
   @Test
   public void doublesHashRawBitsIncludingNanPayloads() {
     assertThat(chunkSizes(120, i -> {
-          chunker.roll(Double.longBitsToDouble(0x7FF8000000000001L + i), 0, 0);
-          return chunker.needNewChunk();
+          return chunker.startsNewChunk(Double.longBitsToDouble(0x7FF8000000000001L + i), 0, 0);
         }))
         .containsExactly(7, 8, 2, 8, 8, 1, 8, 8, 1, 8, 8, 8, 8, 1, 8, 1, 8, 8, 4, 7);
   }
