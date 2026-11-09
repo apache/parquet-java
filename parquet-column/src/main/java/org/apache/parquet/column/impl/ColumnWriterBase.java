@@ -63,15 +63,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private final ContentDefinedChunker chunker;
 
   ColumnWriterBase(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
-    this(path, pageWriter, null, props);
-  }
-
-  ColumnWriterBase(
-      ColumnDescriptor path,
-      PageWriter pageWriter,
-      BloomFilterWriter bloomFilterWriter,
-      ParquetProperties props) {
-    this(path, pageWriter, bloomFilterWriter, ContentDefinedChunker.noop(), props);
+    this(path, pageWriter, null, ContentDefinedChunker.noop(), props);
   }
 
   ColumnWriterBase(
