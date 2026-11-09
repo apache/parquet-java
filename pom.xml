@@ -95,7 +95,7 @@
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.12.2</avro.version>
     <guava.version>33.7.2-jre</guava.version>
-    <brotli-codec.version>0.1.1</brotli-codec.version>
+    <brotli4j.version>1.24.0</brotli4j.version>
     <assertj.version>3.27.7</assertj.version>
     <junit.version>6.1.3</junit.version>
     <assertj.version>3.27.7</assertj.version>
