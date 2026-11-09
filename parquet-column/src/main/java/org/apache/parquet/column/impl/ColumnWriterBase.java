@@ -63,7 +63,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private final ContentDefinedChunker chunker;
 
   ColumnWriterBase(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
-    this(path, pageWriter, null, ContentDefinedChunker.noop(), props);
+    this(path, pageWriter, null, null, props);
   }
 
   ColumnWriterBase(
@@ -80,7 +80,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     this.dataColumn = props.newValuesWriter(path);
 
     this.collector = new ColumnValueCollector(path, bloomFilterWriter, props);
-    this.chunker = chunker;
+    this.chunker = chunker != null ? chunker : ContentDefinedChunker.noop();
   }
 
   void initStatusManager(StatusManager statusManager) {

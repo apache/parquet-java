@@ -138,8 +138,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      ContentDefinedChunker chunker =
-          columnChunkers != null ? columnChunkers.next() : ContentDefinedChunker.noop();
+      ContentDefinedChunker chunker = columnChunkers != null ? columnChunkers.next() : null;
       if (props.isBloomFilterEnabled(path)) {
         BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
         mcolumns.put(path, createColumnWriterBase(path, pageWriter, bloomFilterWriter, chunker, props));
@@ -164,7 +163,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       PageWriter pageWriter,
       BloomFilterWriter bloomFilterWriter,
       ParquetProperties props) {
-    return createColumnWriterBase(path, pageWriter, bloomFilterWriter, ContentDefinedChunker.noop(), props);
+    return createColumnWriterBase(path, pageWriter, bloomFilterWriter, null, props);
   }
 
   private ColumnWriterBase createColumnWriterBase(
