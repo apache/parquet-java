@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column;
 
-import org.apache.parquet.column.impl.ContentDefinedChunker;
+import org.apache.parquet.Preconditions;
 
 /**
  * EXPERIMENTAL: Options of content defined chunking, which ends data pages at boundaries derived from
@@ -43,7 +43,13 @@ public final class CdcOptions {
     this.minChunkSize = builder.minChunkSize;
     this.maxChunkSize = builder.maxChunkSize;
     this.normLevel = builder.normLevel;
-    ContentDefinedChunker.calculateMask(minChunkSize, maxChunkSize, normLevel);
+    Preconditions.checkArgument(
+        minChunkSize >= 0, "Invalid content defined chunking minimum chunk size (negative): %s", minChunkSize);
+    Preconditions.checkArgument(
+        maxChunkSize > minChunkSize,
+        "Invalid content defined chunking size range: maximum chunk size (%s) must be greater than minimum chunk size (%s)",
+        maxChunkSize,
+        minChunkSize);
   }
 
   /**

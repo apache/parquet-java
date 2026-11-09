@@ -60,6 +60,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private StatusManager statusManager = StatusManager.create();
 
   private final ColumnValueCollector collector;
+  // Null without content defined chunking
   private final ContentDefinedChunker chunker;
 
   ColumnWriterBase(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
@@ -80,7 +81,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     this.dataColumn = props.newValuesWriter(path);
 
     this.collector = new ColumnValueCollector(path, bloomFilterWriter, props);
-    this.chunker = chunker != null ? chunker : ContentDefinedChunker.noop();
+    this.chunker = chunker;
   }
 
   void initStatusManager(StatusManager statusManager) {
@@ -117,7 +118,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
@@ -158,7 +159,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(double value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
@@ -183,7 +184,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(float value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
@@ -208,7 +209,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
@@ -233,7 +234,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
@@ -258,7 +259,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);
@@ -283,7 +284,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   public void write(long value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     try {
-      if (chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
+      if (chunker != null && chunker.startsNewChunk(value, repetitionLevel, definitionLevel)) {
         writePageIfNotEmpty();
       }
       repetitionLevel(repetitionLevel);

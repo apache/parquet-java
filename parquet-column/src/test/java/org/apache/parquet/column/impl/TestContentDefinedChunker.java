@@ -221,42 +221,42 @@ public class TestContentDefinedChunker {
   /** Mostly ported from Arrow C++'s TestCDC.RollingHashMaskCalculation and ChunkSizeParameterValidation. */
   @Test
   public void maskMatchesTheReferenceForEachNormalizationLevel() {
-    assertThat(ContentDefinedChunker.calculateMask(256 * 1024L, 1024 * 1024L, 0))
+    assertThat(ContentDefinedChunker.calculateMask(options(256 * 1024L, 1024 * 1024L, 0)))
         .isEqualTo(0xFFFE000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(256 * 1024L, 1024 * 1024L, 1))
+    assertThat(ContentDefinedChunker.calculateMask(options(256 * 1024L, 1024 * 1024L, 1)))
         .isEqualTo(0xFFFC000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(256 * 1024L, 1024 * 1024L, 2))
+    assertThat(ContentDefinedChunker.calculateMask(options(256 * 1024L, 1024 * 1024L, 2)))
         .isEqualTo(0xFFF8000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(256 * 1024L, 1024 * 1024L, 3))
+    assertThat(ContentDefinedChunker.calculateMask(options(256 * 1024L, 1024 * 1024L, 3)))
         .isEqualTo(0xFFF0000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(256 * 1024L, 1024 * 1024L, -1))
+    assertThat(ContentDefinedChunker.calculateMask(options(256 * 1024L, 1024 * 1024L, -1)))
         .isEqualTo(0xFFFF000000000000L);
   }
 
   @Test
   public void maskMatchesTheReferenceAtTheEdgesOfItsRange() {
-    assertThat(ContentDefinedChunker.calculateMask(0, 32, 0)).isEqualTo(0x8000000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(0, 64, 0)).isEqualTo(0xC000000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(0, 16, -1)).isEqualTo(0x8000000000000000L);
+    assertThat(ContentDefinedChunker.calculateMask(options(0, 32, 0))).isEqualTo(0x8000000000000000L);
+    assertThat(ContentDefinedChunker.calculateMask(options(0, 64, 0))).isEqualTo(0xC000000000000000L);
+    assertThat(ContentDefinedChunker.calculateMask(options(0, 16, -1))).isEqualTo(0x8000000000000000L);
     // A zero target clamps to no bits rather than minus one.
-    assertThat(ContentDefinedChunker.calculateMask(0, 8, -1)).isEqualTo(0x8000000000000000L);
-    assertThat(ContentDefinedChunker.calculateMask(128, 384, -59)).isEqualTo(0xFFFFFFFFFFFFFFFEL);
+    assertThat(ContentDefinedChunker.calculateMask(options(0, 8, -1))).isEqualTo(0x8000000000000000L);
+    assertThat(ContentDefinedChunker.calculateMask(options(128, 384, -59))).isEqualTo(0xFFFFFFFFFFFFFFFEL);
   }
 
   @Test
   public void rejectsNegativeMinimum() {
-    assertThatThrownBy(() -> ContentDefinedChunker.calculateMask(-1, 1024, 0))
+    assertThatThrownBy(() -> options(-1, 1024, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid content defined chunking minimum chunk size (negative): -1");
   }
 
   @Test
   public void rejectsRangeThatIsNotAscending() {
-    assertThatThrownBy(() -> ContentDefinedChunker.calculateMask(1024, 512, 0))
+    assertThatThrownBy(() -> options(1024, 512, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid content defined chunking size range: maximum chunk size (512) must be greater "
             + "than minimum chunk size (1024)");
-    assertThatThrownBy(() -> ContentDefinedChunker.calculateMask(32, 32, 0))
+    assertThatThrownBy(() -> options(32, 32, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid content defined chunking size range: maximum chunk size (32) must be greater "
             + "than minimum chunk size (32)");
@@ -266,7 +266,7 @@ public class TestContentDefinedChunker {
   @ParameterizedTest
   @CsvSource({"0, 16, 0", "32, 48, 0", "1, 33, 1", "0, 123, 2", "128, 384, -60"})
   public void rejectsSizeRangeTooNarrowForTheNormalizationLevel(long min, long max, int normLevel) {
-    assertThatThrownBy(() -> ContentDefinedChunker.calculateMask(min, max, normLevel))
+    assertThatThrownBy(() -> ContentDefinedChunker.calculateMask(options(min, max, normLevel)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageStartingWith("The content defined chunking mask must be between 1 and 63 bits");
   }
@@ -274,14 +274,14 @@ public class TestContentDefinedChunker {
   @ParameterizedTest
   @CsvSource({"0, 32, 0", "32, 64, 0", "1, 65, 1", "0, 128, 2", "1073741824, 2147483648, 0"})
   public void acceptsSizeRangeWideEnoughForTheNormalizationLevel(long min, long max, int normLevel) {
-    assertThatCode(() -> ContentDefinedChunker.calculateMask(min, max, normLevel))
+    assertThatCode(() -> ContentDefinedChunker.calculateMask(options(min, max, normLevel)))
         .doesNotThrowAnyException();
   }
 
   /** A deliberate deviation: Arrow C++ and arrow-rs overflow here. */
   @Test
   public void handlesEnvelopeThatWouldOverflowTheAverage() {
-    assertThat(ContentDefinedChunker.calculateMask(256 * 1024L, Long.MAX_VALUE, 0))
+    assertThat(ContentDefinedChunker.calculateMask(options(256 * 1024L, Long.MAX_VALUE, 0)))
         .isEqualTo(0xFFFFFFFFFFFFFFC0L);
   }
 

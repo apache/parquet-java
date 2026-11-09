@@ -32,15 +32,12 @@ import org.apache.parquet.schema.MessageType;
  * Decides the content defined chunk boundaries of one leaf column for a whole file. The column writer
  * asks {@code startsNewChunk} with each triplet before writing it; the chunker rolls the triplet into
  * its hash and answers whether a chunk starts there, and the writer then ends its page. The page limits
- * end pages as they do without content defined chunking. A no-op chunker, {@link #noop()}, stands in
- * while content defined chunking is disabled.
+ * end pages as they do without content defined chunking.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
  * whose boundaries it must reproduce. Not thread safe.
  */
-public class ContentDefinedChunker {
-
-  private static final ContentDefinedChunker NOOP = new NoopChunker();
+public final class ContentDefinedChunker {
 
   private final long minChunkSize;
   private final long maxChunkSize;
@@ -54,8 +51,8 @@ public class ContentDefinedChunker {
   private long chunkSize;
 
   /**
-   * EXPERIMENTAL: The chunkers of a file, one per leaf column of {@code schema} in order, which
-   * every row group's column write store of the file continues.
+   * EXPERIMENTAL: The content defined chunkers of a file, one per leaf column of {@code schema} in
+   * order, which every row group's column write store of the file continues.
    *
    * @param schema the schema of the file
    * @param props the writer properties, with content defined chunking enabled
@@ -67,53 +64,32 @@ public class ContentDefinedChunker {
         .collect(Collectors.toList());
   }
 
-  /** The chunker of a column without content defined chunking, which never ends a chunk. */
-  static ContentDefinedChunker noop() {
-    return NOOP;
-  }
-
   ContentDefinedChunker(ColumnDescriptor path, ParquetProperties props) {
     CdcOptions options = props.getContentDefinedChunkingOptions();
     this.minChunkSize = options.getMinChunkSize();
     this.maxChunkSize = options.getMaxChunkSize();
-    this.rollingHashMask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
+    this.rollingHashMask = calculateMask(options);
     this.maxDef = path.getMaxDefinitionLevel();
     this.maxRep = path.getMaxRepetitionLevel();
   }
 
-  /** Only for {@link NoopChunker}, which uses none of the state. */
-  private ContentDefinedChunker() {
-    this.minChunkSize = 0;
-    this.maxChunkSize = 0;
-    this.rollingHashMask = 0;
-    this.maxDef = 0;
-    this.maxRep = 0;
-  }
-
   /**
-   * Derives the rolling hash mask, validating the envelope. Ported from Arrow C++
-   * {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
-   * bit-identical to theirs.
+   * Derives the rolling hash mask, rejecting options that cannot produce a usable one. Ported from
+   * Arrow C++ {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
+   * bit-identical to theirs. {@link CdcOptions} has already checked the size range.
    *
    * <p>A mask with the top {@code n} bits set matches a uniform hash with probability 1/2^n. The
    * target is the average chunk size minus the skipped {@code minChunkSize}, divided by the
    * eight matches a boundary needs.
    *
-   * @param minChunkSize the minimum chunk size in bytes
-   * @param maxChunkSize the maximum chunk size in bytes
-   * @param normLevel the normalization level
+   * @param options the chunking options
    * @return the rolling hash mask
-   * @throws IllegalArgumentException if the arguments cannot produce a usable mask
+   * @throws IllegalArgumentException if the options cannot produce a usable mask
    */
-  public static long calculateMask(long minChunkSize, long maxChunkSize, int normLevel) {
-    Preconditions.checkArgument(
-        minChunkSize >= 0, "Invalid content defined chunking minimum chunk size (negative): %s", minChunkSize);
-    Preconditions.checkArgument(
-        maxChunkSize > minChunkSize,
-        "Invalid content defined chunking size range: maximum chunk size (%s) must be greater than minimum chunk size (%s)",
-        maxChunkSize,
-        minChunkSize);
-
+  static long calculateMask(CdcOptions options) {
+    long minChunkSize = options.getMinChunkSize();
+    long maxChunkSize = options.getMaxChunkSize();
+    int normLevel = options.getNormLevel();
     // Halve before adding, so that the sum cannot overflow; the references do overflow there.
     long avgChunkSize = minChunkSize / 2 + maxChunkSize / 2 + (minChunkSize % 2 + maxChunkSize % 2) / 2;
     long targetSize = (avgChunkSize - minChunkSize) / GearHashTable.TABLE.length;
@@ -259,43 +235,5 @@ public class ContentDefinedChunker {
       return true;
     }
     return false;
-  }
-
-  /** The chunker of a column without content defined chunking: it rolls nothing and ends no chunk. */
-  private static final class NoopChunker extends ContentDefinedChunker {
-    @Override
-    boolean startsNewChunk(int value, int repetitionLevel, int definitionLevel) {
-      return false;
-    }
-
-    @Override
-    boolean startsNewChunk(long value, int repetitionLevel, int definitionLevel) {
-      return false;
-    }
-
-    @Override
-    boolean startsNewChunk(float value, int repetitionLevel, int definitionLevel) {
-      return false;
-    }
-
-    @Override
-    boolean startsNewChunk(double value, int repetitionLevel, int definitionLevel) {
-      return false;
-    }
-
-    @Override
-    boolean startsNewChunk(boolean value, int repetitionLevel, int definitionLevel) {
-      return false;
-    }
-
-    @Override
-    boolean startsNewChunk(Binary value, int repetitionLevel, int definitionLevel) {
-      return false;
-    }
-
-    @Override
-    boolean startsNewChunk(int repetitionLevel, int definitionLevel) {
-      return false;
-    }
   }
 }
