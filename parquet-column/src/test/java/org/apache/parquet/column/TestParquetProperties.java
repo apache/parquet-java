@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 
 public class TestParquetProperties {
 
-  private static final CdcOptions CHUNKING = CdcOptions.builder()
+  private static final ContentDefinedChunkingOptions CHUNKING = ContentDefinedChunkingOptions.builder()
       .withMinChunkSize(4 * 1024)
       .withMaxChunkSize(16 * 1024)
       .withNormLevel(-1)
@@ -388,20 +388,24 @@ public class TestParquetProperties {
   }
 
   @Test
-  public void cdcOptions_default_matchesArrow() {
-    assertThat(CdcOptions.DEFAULT)
+  public void contentDefinedChunkingOptions_default_matchesArrow() {
+    assertThat(ContentDefinedChunkingOptions.DEFAULT)
         .asString()
-        .isEqualTo("CdcOptions{minChunkSize=262144, maxChunkSize=1048576, normLevel=0}");
+        .isEqualTo("ContentDefinedChunkingOptions{minChunkSize=262144, maxChunkSize=1048576, normLevel=0}");
   }
 
   @Test
-  public void cdcOptions_toString_namesEverySetting() {
-    assertThat(CHUNKING).asString().isEqualTo("CdcOptions{minChunkSize=4096, maxChunkSize=16384, normLevel=-1}");
+  public void contentDefinedChunkingOptions_toString_namesEverySetting() {
+    assertThat(CHUNKING)
+        .asString()
+        .isEqualTo("ContentDefinedChunkingOptions{minChunkSize=4096, maxChunkSize=16384, normLevel=-1}");
   }
 
   @Test
-  public void cdcOptions_invalidRange_throwsIllegalArgumentException() {
-    assertThatThrownBy(() -> CdcOptions.builder().withMaxChunkSize(0).build())
+  public void contentDefinedChunkingOptions_invalidRange_throwsIllegalArgumentException() {
+    assertThatThrownBy(() -> ContentDefinedChunkingOptions.builder()
+            .withMaxChunkSize(0)
+            .build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid content defined chunking size range: maximum chunk size (0) must be greater "
             + "than minimum chunk size (262144)");

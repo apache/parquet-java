@@ -39,8 +39,8 @@ import java.util.stream.IntStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -68,8 +68,8 @@ public class TestContentDefinedChunking {
 
   private static final MessageType SCHEMA =
       MessageTypeParser.parseMessageType("message t { required int64 id; required binary name (STRING); }");
-  private static final CdcOptions OPTIONS = options(16 * 1024, 64 * 1024, 0);
-  private static final CdcOptions SMALL_OPTIONS = options(4 * 1024, 16 * 1024, 0);
+  private static final ContentDefinedChunkingOptions OPTIONS = options(16 * 1024, 64 * 1024, 0);
+  private static final ContentDefinedChunkingOptions SMALL_OPTIONS = options(4 * 1024, 16 * 1024, 0);
   private static final int ROWS = 40_000;
 
   @TempDir
@@ -243,7 +243,7 @@ public class TestContentDefinedChunking {
     conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, 16 * 1024);
     conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MAX_SIZE, 64 * 1024);
     conf.setInt(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_NORM_LEVEL, 1);
-    CdcOptions configured = CdcOptions.builder()
+    ContentDefinedChunkingOptions configured = ContentDefinedChunkingOptions.builder()
         .withMinChunkSize(16 * 1024)
         .withMaxChunkSize(64 * 1024)
         .withNormLevel(1)

@@ -26,10 +26,10 @@ import java.util.function.IntPredicate;
 import java.util.function.ObjIntConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.mem.MemPageStore;
@@ -49,8 +49,8 @@ public final class ChunkingTestUtil {
 
   private ChunkingTestUtil() {}
 
-  public static CdcOptions options(long min, long max, int normLevel) {
-    return CdcOptions.builder()
+  public static ContentDefinedChunkingOptions options(long min, long max, int normLevel) {
+    return ContentDefinedChunkingOptions.builder()
         .withMinChunkSize(min)
         .withMaxChunkSize(max)
         .withNormLevel(normLevel)
@@ -83,7 +83,7 @@ public final class ChunkingTestUtil {
   }
 
   /** Properties with the position-based page limits lifted, so every page boundary is the chunker's. */
-  static ParquetProperties unboundedProps(CdcOptions options) {
+  static ParquetProperties unboundedProps(ContentDefinedChunkingOptions options) {
     return ParquetProperties.builder()
         .withPageRowCountLimit(Integer.MAX_VALUE)
         .withPageSize(64 * 1024 * 1024)

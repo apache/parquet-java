@@ -28,18 +28,18 @@ import org.apache.parquet.Preconditions;
  * <p>The settings and defaults match {@code CdcOptions} in Arrow C++ and arrow-rs, and so do the
  * chunk boundaries for the same physical values.
  *
- * @see ParquetProperties.Builder#withContentDefinedChunking(CdcOptions)
+ * @see ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)
  */
-public final class CdcOptions {
+public final class ContentDefinedChunkingOptions {
 
   /** 256 KiB minimum, 1 MiB maximum and normalization level 0. */
-  public static final CdcOptions DEFAULT = builder().build();
+  public static final ContentDefinedChunkingOptions DEFAULT = builder().build();
 
   private final long minChunkSize;
   private final long maxChunkSize;
   private final int normLevel;
 
-  private CdcOptions(Builder builder) {
+  private ContentDefinedChunkingOptions(Builder builder) {
     this.minChunkSize = builder.minChunkSize;
     this.maxChunkSize = builder.maxChunkSize;
     this.normLevel = builder.normLevel;
@@ -75,8 +75,8 @@ public final class CdcOptions {
 
   @Override
   public String toString() {
-    return "CdcOptions{minChunkSize=" + minChunkSize + ", maxChunkSize=" + maxChunkSize + ", normLevel=" + normLevel
-        + '}';
+    return "ContentDefinedChunkingOptions{minChunkSize=" + minChunkSize + ", maxChunkSize=" + maxChunkSize
+        + ", normLevel=" + normLevel + '}';
   }
 
   /**
@@ -86,7 +86,7 @@ public final class CdcOptions {
     return new Builder();
   }
 
-  /** EXPERIMENTAL: Builds {@link CdcOptions}. */
+  /** EXPERIMENTAL: Builds {@link ContentDefinedChunkingOptions}. */
   public static class Builder {
     private long minChunkSize = 256 * 1024L;
     private long maxChunkSize = 1024 * 1024L;
@@ -133,8 +133,8 @@ public final class CdcOptions {
      * @throws IllegalArgumentException if the minimum chunk size is negative, the maximum is not
      *     greater than the minimum, or the size range is too narrow for the normalization level
      */
-    public CdcOptions build() {
-      return new CdcOptions(this);
+    public ContentDefinedChunkingOptions build() {
+      return new ContentDefinedChunkingOptions(this);
     }
   }
 }

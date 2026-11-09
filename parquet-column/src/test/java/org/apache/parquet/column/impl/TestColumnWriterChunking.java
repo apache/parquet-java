@@ -40,8 +40,8 @@ import java.util.function.ObjIntConsumer;
 import java.util.function.ObjLongConsumer;
 import java.util.stream.LongStream;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnWriter;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
@@ -58,7 +58,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 public class TestColumnWriterChunking {
 
-  private static final CdcOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
+  private static final ContentDefinedChunkingOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
   private static final int EDIT = 50;
 
   private static final MessageType REQUIRED = MessageTypeParser.parseMessageType("message m { required int64 v; }");

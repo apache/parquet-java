@@ -37,8 +37,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.io.api.Binary;
@@ -58,7 +58,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 public class TestContentDefinedChunker {
 
   private static final int ROWS = 200_000;
-  private static final CdcOptions OPTIONS = options(64 * 1024, 256 * 1024, 0);
+  private static final ContentDefinedChunkingOptions OPTIONS = options(64 * 1024, 256 * 1024, 0);
   private static final List<Integer> REQUIRED_INT64 =
       Arrays.asList(17054, 17725, 12281, 14801, 17490, 15449, 19582, 14469, 22343, 16007, 10731, 20511, 1557);
 
@@ -285,7 +285,7 @@ public class TestContentDefinedChunker {
         .isEqualTo(0xFFFFFFFFFFFFFFC0L);
   }
 
-  private static ContentDefinedChunker chunkerFor(CdcOptions options) {
+  private static ContentDefinedChunker chunkerFor(ContentDefinedChunkingOptions options) {
     return new ContentDefinedChunker(
         new ColumnDescriptor(new String[] {"v"}, Types.required(INT64).named("v"), 0, 0),
         unboundedProps(options));

@@ -22,8 +22,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
@@ -65,7 +65,7 @@ public final class ContentDefinedChunker {
   }
 
   ContentDefinedChunker(ColumnDescriptor path, ParquetProperties props) {
-    CdcOptions options = props.getContentDefinedChunkingOptions();
+    ContentDefinedChunkingOptions options = props.getContentDefinedChunkingOptions();
     this.minChunkSize = options.getMinChunkSize();
     this.maxChunkSize = options.getMaxChunkSize();
     this.rollingHashMask = calculateMask(options);
@@ -76,7 +76,7 @@ public final class ContentDefinedChunker {
   /**
    * Derives the rolling hash mask, rejecting options that cannot produce a usable one. Ported from
    * Arrow C++ {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
-   * bit-identical to theirs. {@link CdcOptions} has already checked the size range.
+   * bit-identical to theirs. {@link ContentDefinedChunkingOptions} has already checked the size range.
    *
    * <p>A mask with the top {@code n} bits set matches a uniform hash with probability 1/2^n. The
    * target is the average chunk size minus the skipped {@code minChunkSize}, divided by the
@@ -86,7 +86,7 @@ public final class ContentDefinedChunker {
    * @return the rolling hash mask
    * @throws IllegalArgumentException if the options cannot produce a usable mask
    */
-  static long calculateMask(CdcOptions options) {
+  static long calculateMask(ContentDefinedChunkingOptions options) {
     long minChunkSize = options.getMinChunkSize();
     long maxChunkSize = options.getMaxChunkSize();
     int normLevel = options.getNormLevel();

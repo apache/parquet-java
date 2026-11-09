@@ -34,7 +34,7 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.parquet.column.CdcOptions;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -415,11 +415,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(PAGE_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_PAGE_ROW_COUNT_LIMIT);
   }
 
-  private static CdcOptions getContentDefinedChunkingOptions(Configuration conf) {
-    return CdcOptions.builder()
-        .withMinChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MIN_SIZE, CdcOptions.DEFAULT.getMinChunkSize()))
-        .withMaxChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MAX_SIZE, CdcOptions.DEFAULT.getMaxChunkSize()))
-        .withNormLevel(conf.getInt(CONTENT_DEFINED_CHUNKING_NORM_LEVEL, CdcOptions.DEFAULT.getNormLevel()))
+  private static ContentDefinedChunkingOptions getContentDefinedChunkingOptions(Configuration conf) {
+    return ContentDefinedChunkingOptions.builder()
+        .withMinChunkSize(conf.getLong(
+            CONTENT_DEFINED_CHUNKING_MIN_SIZE, ContentDefinedChunkingOptions.DEFAULT.getMinChunkSize()))
+        .withMaxChunkSize(conf.getLong(
+            CONTENT_DEFINED_CHUNKING_MAX_SIZE, ContentDefinedChunkingOptions.DEFAULT.getMaxChunkSize()))
+        .withNormLevel(conf.getInt(
+            CONTENT_DEFINED_CHUNKING_NORM_LEVEL, ContentDefinedChunkingOptions.DEFAULT.getNormLevel()))
         .build();
   }
 
