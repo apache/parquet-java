@@ -19,10 +19,10 @@
 package org.apache.parquet.column.impl;
 
 import static org.apache.parquet.column.impl.ChunkingTestUtil.chunkSizes;
-import static org.apache.parquet.column.impl.ChunkingTestUtil.insert;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.newLongs;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.options;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.unboundedProps;
+import static org.apache.parquet.column.impl.ChunkingTestUtil.valueCountDifferences;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.valueCounts;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.writePages;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,18 +32,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.ObjIntConsumer;
 import java.util.function.ObjLongConsumer;
-import java.util.stream.LongStream;
+import java.util.function.ToIntFunction;
+import java.util.stream.Stream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.impl.ChunkingTestUtil.Page;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
@@ -313,20 +314,31 @@ public class TestColumnWriterChunking {
         .containsExactlyElementsOf(without);
   }
 
-  /** All but a few pages of an edited column are pages of the original, also between two edits. */
+  /**
+   * An edit changes one run of pages at each place it edits, which holds the edited values more or
+   * fewer, and leaves every other page byte for byte, as Arrow C++ checks it; in particular the first
+   * and last pages, unless the edit is there.
+   */
   @ParameterizedTest
   @EnumSource(Column.class)
   public void editChangesOnlyThePagesAroundIt(Column column) throws IOException {
     long[] seeds = newLongs(column.records, 37);
-    List<Binary> before = column.pageBytes(seeds);
-    Set<Binary> original = new HashSet<>(before);
+    List<Page> before = column.pages(seeds);
 
-    assertThat(before).hasSizeGreaterThan(350);
     for (Edit edit : Edit.values()) {
-      assertThat(column.pageBytes(edit.apply(seeds)))
-          .filteredOn(page -> !original.contains(page))
-          .as("new pages after %s", edit)
-          .hasSizeLessThanOrEqualTo(20 * edit.at.length);
+      List<Page> after = column.pages(edit.apply(seeds));
+
+      assertThat(valueCountDifferences(before, after))
+          .as("value count of each changed run of pages after %s", edit)
+          .containsExactlyElementsOf(edit.differences(seeds, column::values));
+      if (!edit.editsFirstPage()) {
+        assertThat(after.get(0)).as("first page after %s", edit).isEqualTo(before.get(0));
+      }
+      if (!edit.editsLastPage()) {
+        assertThat(after.get(after.size() - 1))
+            .as("last page after %s", edit)
+            .isEqualTo(before.get(before.size() - 1));
+      }
     }
   }
 
@@ -363,13 +375,13 @@ public class TestColumnWriterChunking {
     return ends;
   }
 
-  private static List<Binary> pageBytes(List<DataPage> pages) throws IOException {
-    List<Binary> bytes = new ArrayList<>();
+  private static List<Page> pages(List<DataPage> pages) throws IOException {
+    List<Page> compared = new ArrayList<>();
     for (DataPage page : pages) {
-      bytes.add(
-          Binary.fromConstantByteArray(((DataPageV1) page).getBytes().toByteArray()));
+      compared.add(new Page(
+          Binary.fromConstantByteArray(((DataPageV1) page).getBytes().toByteArray()), page.getValueCount()));
     }
-    return bytes;
+    return compared;
   }
 
   /** A column of each shape, a record written from each seed. */
@@ -419,12 +431,24 @@ public class TestColumnWriterChunking {
       this.record = record;
     }
 
-    List<Binary> pageBytes(long[] seeds) throws IOException {
-      return TestColumnWriterChunking.pageBytes(writePages(
+    List<Page> pages(long[] seeds) throws IOException {
+      return TestColumnWriterChunking.pages(writePages(
           schema,
           unboundedProps(options(1024, 4096, 0)),
           seeds.length,
           (writer, i) -> record.accept(writer, seeds[i])));
+    }
+
+    /** How many values, nulls and levels of empty lists included, the records of these seeds have. */
+    int values(long[] seeds) {
+      return valueCounts(writePages(
+              schema,
+              ParquetProperties.builder().build(),
+              seeds.length,
+              (writer, i) -> record.accept(writer, seeds[i])))
+          .stream()
+          .mapToInt(Integer::intValue)
+          .sum();
     }
 
     /** A null or empty list, or one of one to six elements, some of them null at every level. */
@@ -444,26 +468,26 @@ public class TestColumnWriterChunking {
     }
   }
 
-  private interface EditAt {
-    long[] apply(long[] seeds, int at);
-  }
-
-  /** Edits of {@code EDIT} records at fractions of a column. */
+  /** Edits at fractions of a column, each deleting {@code EDIT} records, inserting as many, or both. */
   private enum Edit {
-    INSERT(Edit::insertAt, 0.5),
-    DELETE(Edit::deleteAt, 0.5),
-    UPDATE(Edit::updateAt, 0.5),
-    PREPEND(Edit::insertAt, 0),
-    APPEND(Edit::insertAt, 1),
-    INSERT_TWICE(Edit::insertAt, 1 / 3.0, 2 / 3.0),
-    DELETE_TWICE(Edit::deleteAt, 1 / 3.0, 2 / 3.0),
-    UPDATE_TWICE(Edit::updateAt, 1 / 3.0, 2 / 3.0);
+    INSERT(true, false, 0.5),
+    DELETE(false, true, 0.5),
+    UPDATE(true, true, 0.5),
+    PREPEND(true, false, 0),
+    APPEND(true, false, 1),
+    INSERT_TWICE(true, false, 1 / 3.0, 2 / 3.0),
+    DELETE_TWICE(false, true, 1 / 3.0, 2 / 3.0),
+    UPDATE_TWICE(true, true, 1 / 3.0, 2 / 3.0);
 
-    private final EditAt edit;
+    private static final long[] INSERTED = newLongs(EDIT, 41);
+
+    private final boolean inserts;
+    private final boolean deletes;
     private final double[] at;
 
-    Edit(EditAt edit, double... at) {
-      this.edit = edit;
+    Edit(boolean inserts, boolean deletes, double... at) {
+      this.inserts = inserts;
+      this.deletes = deletes;
       this.at = at;
     }
 
@@ -471,24 +495,34 @@ public class TestColumnWriterChunking {
       long[] edited = seeds;
       // The later place first, so that the earlier one keeps its index.
       for (int k = at.length - 1; k >= 0; --k) {
-        edited = edit.apply(edited, (int) (at[k] * seeds.length));
+        int place = (int) (at[k] * seeds.length);
+        edited = Stream.of(
+                Arrays.copyOfRange(edited, 0, place),
+                inserts ? INSERTED : new long[0],
+                Arrays.copyOfRange(edited, deletes ? place + EDIT : place, edited.length))
+            .flatMapToLong(Arrays::stream)
+            .toArray();
       }
       return edited;
     }
 
-    private static long[] insertAt(long[] seeds, int at) {
-      return insert(seeds, at, newLongs(EDIT, 41));
+    /** How many values more the column holds at each place this edits, in column order. */
+    List<Integer> differences(long[] seeds, ToIntFunction<long[]> values) {
+      List<Integer> differences = new ArrayList<>();
+      for (double fraction : at) {
+        int place = (int) (fraction * seeds.length);
+        differences.add((inserts ? values.applyAsInt(INSERTED) : 0)
+            - (deletes ? values.applyAsInt(Arrays.copyOfRange(seeds, place, place + EDIT)) : 0));
+      }
+      return differences;
     }
 
-    private static long[] deleteAt(long[] seeds, int at) {
-      return LongStream.concat(Arrays.stream(seeds, 0, at), Arrays.stream(seeds, at + EDIT, seeds.length))
-          .toArray();
+    boolean editsFirstPage() {
+      return at[0] == 0;
     }
 
-    private static long[] updateAt(long[] seeds, int at) {
-      long[] updated = seeds.clone();
-      System.arraycopy(newLongs(EDIT, 41), 0, updated, at, EDIT);
-      return updated;
+    boolean editsLastPage() {
+      return at[at.length - 1] == 1;
     }
   }
 }

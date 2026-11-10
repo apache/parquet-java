@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.OPTIONAL_LIST_OF_INT64_PAGES;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.lcg;
 import static org.apache.parquet.column.impl.ChunkingTestUtil.options;
+import static org.apache.parquet.column.impl.ChunkingTestUtil.valueCountDifferences;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +43,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.impl.ChunkingTestUtil.Page;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
@@ -152,9 +154,10 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * An insertion near the start of one of several row groups, as Arrow C++ tests it: the row groups
-   * before it keep every page, and each later one shares all its pages with the original but the
-   * first and last, which its shifted boundaries cut.
+   * An insertion near the start of one of several row groups of a fixed row count, as Arrow C++ tests
+   * it: the row groups before it keep every page; the edited one and each later one change one run of
+   * pages that holds the 100 inserted or shifted in values more, and one at their end that holds the
+   * 100 shifted out values fewer; the last one only grows.
    */
   @Test
   public void insertionLeavesOtherRowGroupsDeduplicating() throws IOException {
@@ -167,13 +170,16 @@ public class TestContentDefinedChunking {
         .toArray();
     UnaryOperator<ExampleParquetWriter.Builder> configure =
         b -> b.withRowGroupRowCountLimit(perGroup).withContentDefinedChunking(SMALL_OPTIONS);
-    List<List<Binary>> before = pageBytesByRowGroup(write("before", SCHEMA, original, configure), 1);
-    List<List<Binary>> after = pageBytesByRowGroup(write("after", SCHEMA, edited, configure), 1);
-    Set<Binary> originalPages = before.stream().flatMap(List::stream).collect(Collectors.toSet());
+    List<List<Page>> before = comparedPagesByRowGroup(write("before", SCHEMA, original, configure), 1);
+    List<List<Page>> after = comparedPagesByRowGroup(write("after", SCHEMA, edited, configure), 1);
 
-    assertThat(after.subList(0, 2)).containsExactlyElementsOf(before.subList(0, 2));
-    for (List<Binary> group : after.subList(3, after.size() - 1)) {
-      assertThat(group.subList(1, group.size() - 1)).hasSizeGreaterThan(3).isSubsetOf(originalPages);
+    assertThat(after).hasSameSizeAs(before);
+    for (int group = 0; group < after.size(); group++) {
+      List<Integer> expected =
+          group < 2 ? List.of() : group < after.size() - 1 ? List.of(100, -100) : List.of(100);
+      assertThat(valueCountDifferences(before.get(group), after.get(group)))
+          .as("value count of each changed run of pages in row group %s", group)
+          .containsExactlyElementsOf(expected);
     }
   }
 
@@ -453,11 +459,13 @@ public class TestContentDefinedChunking {
     return pagesByRowGroup(file, column, DataPage::getValueCount);
   }
 
-  private static List<List<Binary>> pageBytesByRowGroup(Path file, int column) throws IOException {
+  private static List<List<Page>> comparedPagesByRowGroup(Path file, int column) throws IOException {
     return pagesByRowGroup(file, column, page -> {
       try {
-        return Binary.fromConstantByteArray(
-            ((DataPageV1) page).getBytes().toByteArray());
+        return new Page(
+            Binary.fromConstantByteArray(
+                ((DataPageV1) page).getBytes().toByteArray()),
+            page.getValueCount());
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }

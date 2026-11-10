@@ -34,6 +34,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.column.page.mem.MemPageWriter;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 
 public final class ChunkingTestUtil {
@@ -71,15 +72,6 @@ public final class ChunkingTestUtil {
       values[i] = x;
     }
     return values;
-  }
-
-  /** {@code original} with {@code inserted} spliced in at {@code at}, the edit under test. */
-  static long[] insert(long[] original, int at, long[] inserted) {
-    long[] result = new long[original.length + inserted.length];
-    System.arraycopy(original, 0, result, 0, at);
-    System.arraycopy(inserted, 0, result, at, inserted.length);
-    System.arraycopy(original, at, result, at + inserted.length, original.length - at);
-    return result;
   }
 
   /** Properties with the position-based page limits lifted, so every page boundary is the chunker's. */
@@ -144,6 +136,50 @@ public final class ChunkingTestUtil {
       sizes.add(current);
     }
     return sizes;
+  }
+
+  /** A data page as the edit tests compare pages: its bytes, and how many values it holds. */
+  public record Page(Binary bytes, int valueCount) {}
+
+  /**
+   * How many values more each run of differing pages holds after an edit, in page order. The two
+   * sequences are aligned by the longest common subsequence of their pages, as Arrow C++ aligns them in
+   * {@code FindDifferences}; a run lies between two pages the sequences share.
+   */
+  public static List<Integer> valueCountDifferences(List<Page> before, List<Page> after) {
+    int[][] common = new int[before.size() + 1][after.size() + 1];
+    for (int i = before.size() - 1; i >= 0; --i) {
+      for (int j = after.size() - 1; j >= 0; --j) {
+        common[i][j] = before.get(i).bytes().equals(after.get(j).bytes())
+            ? common[i + 1][j + 1] + 1
+            : Math.max(common[i + 1][j], common[i][j + 1]);
+      }
+    }
+    List<Integer> differences = new ArrayList<>();
+    Integer run = null;
+    int i = 0;
+    int j = 0;
+    while (i < before.size() || j < after.size()) {
+      if (i < before.size()
+          && j < after.size()
+          && before.get(i).bytes().equals(after.get(j).bytes())
+          && common[i][j] == common[i + 1][j + 1] + 1) {
+        if (run != null) {
+          differences.add(run);
+          run = null;
+        }
+        ++i;
+        ++j;
+      } else if (j < after.size() && (i == before.size() || common[i][j + 1] >= common[i + 1][j])) {
+        run = (run == null ? 0 : run) + after.get(j++).valueCount();
+      } else {
+        run = (run == null ? 0 : run) - before.get(i++).valueCount();
+      }
+    }
+    if (run != null) {
+      differences.add(run);
+    }
+    return differences;
   }
 
   static List<Integer> valueCounts(List<DataPage> pages) {
