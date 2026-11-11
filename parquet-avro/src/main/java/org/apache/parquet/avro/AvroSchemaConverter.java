@@ -655,8 +655,9 @@ public class AvroSchemaConverter {
    * schema and that a schema can be provided to override the default behavior.
    */
   private boolean isElementType(Type repeatedType, GroupType parent) {
-    if (parent.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation)
+    if (parent.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation) {
       return false;
+    }
     return (
     // can't be a synthetic layer because it would be invalid
     repeatedType.isPrimitive()

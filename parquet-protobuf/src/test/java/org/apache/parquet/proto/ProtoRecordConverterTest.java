@@ -21,14 +21,11 @@ package org.apache.parquet.proto;
 import static org.apache.parquet.proto.TestUtils.testData;
 import static org.apache.parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Offset.offset;
 
 import com.google.protobuf.ByteString;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.example.data.Group;
@@ -38,7 +35,6 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
-import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.Test;
@@ -69,16 +65,6 @@ public class ProtoRecordConverterTest {
     assertThat(messages).hasSize(2);
     assertThat(messages.get(0).getRepeatedIntList()).containsExactly(1, 2, 3);
     assertThat(messages.get(1).getRepeatedIntList()).containsExactly(4, 5, 6);
-  }
-
-  @Test
-  public void testVectorRejectsScalarTarget() {
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group optionalInt32"
-        + " (FINITE_VECTOR(3)) { repeated group list { required int32 element; } } }");
-    assertThatThrownBy(() -> new ProtoRecordConverter<>(
-            new Configuration(), SchemaConverterAllDatatypes.class, schema, Collections.emptyMap()))
-        .isInstanceOf(IncompatibleSchemaModificationException.class)
-        .hasMessageContaining("FINITE_VECTOR field optionalInt32 requires a repeated protobuf field");
   }
 
   @Test

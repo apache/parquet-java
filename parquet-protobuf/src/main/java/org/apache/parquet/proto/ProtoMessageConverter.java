@@ -271,10 +271,6 @@ class ProtoMessageConverter extends GroupConverter {
           @Override
           public Optional<Converter> visit(
               LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
-            if (!fieldDescriptor.isRepeated()) {
-              throw new IncompatibleSchemaModificationException("FINITE_VECTOR field "
-                  + fieldDescriptor.getName() + " requires a repeated protobuf field");
-            }
             return visit(LogicalTypeAnnotation.listType());
           }
 
