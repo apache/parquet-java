@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
@@ -278,7 +279,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
       if (value.length() != 2) {
         throw new InvalidRecordException("Invalid FLOAT16 FINITE_VECTOR element length: " + value.length());
       }
-      if ((value.get2BytesLittleEndian() & 0x7c00) == 0x7c00) {
+      if (!Float16.isFinite(value.get2BytesLittleEndian())) {
         throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
       }
     }

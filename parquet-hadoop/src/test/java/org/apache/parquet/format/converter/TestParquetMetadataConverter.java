@@ -194,7 +194,7 @@ public class TestParquetMetadataConverter {
         Arguments.of(
             "element name",
             (Consumer<List<SchemaElement>>) wire -> wire.get(3).setName("item"),
-            "Invalid FINITE_VECTOR schema in file metadata"));
+            "Invalid FINITE_VECTOR schema:"));
   }
 
   @ParameterizedTest(name = "{0}")

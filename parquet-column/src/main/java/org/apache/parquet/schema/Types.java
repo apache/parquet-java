@@ -29,10 +29,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
-import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
 import org.slf4j.Logger;
@@ -854,43 +851,9 @@ public class Types {
           ? new GroupType(repetition, name, logicalTypeAnnotation, fields, id)
           : new GroupType(repetition, name, getOriginalType(), fields, id);
       if (logicalTypeAnnotation instanceof FiniteVectorLogicalTypeAnnotation) {
-        checkFiniteVector(group);
+        TypeUtil.checkFiniteVector(group);
       }
       return group;
-    }
-
-    private static void checkFiniteVector(GroupType vector) {
-      if (vector.isRepetition(Type.Repetition.REPEATED) || vector.getFieldCount() != 1) {
-        throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
-      }
-      Type list = vector.getType(0);
-      if (list.isPrimitive()
-          || !list.getName().equals("list")
-          || !list.isRepetition(Type.Repetition.REPEATED)
-          || list.getLogicalTypeAnnotation() != null
-          || list.asGroupType().getFieldCount() != 1) {
-        throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
-      }
-      Type element = list.asGroupType().getType(0);
-      if (!element.isPrimitive()
-          || !element.getName().equals("element")
-          || !element.isRepetition(Type.Repetition.REQUIRED)) {
-        throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
-      }
-      LogicalTypeAnnotation logical = element.getLogicalTypeAnnotation();
-      boolean allowed = switch (element.asPrimitiveType().getPrimitiveTypeName()) {
-        case BOOLEAN, FLOAT, DOUBLE -> logical == null;
-        case INT32, INT64 ->
-          logical == null
-              || logical instanceof IntLogicalTypeAnnotation
-              || logical instanceof DecimalLogicalTypeAnnotation;
-        case FIXED_LEN_BYTE_ARRAY ->
-          logical instanceof Float16LogicalTypeAnnotation || logical instanceof DecimalLogicalTypeAnnotation;
-        default -> false;
-      };
-      if (!allowed) {
-        throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);
-      }
     }
 
     public MapBuilder<THIS> map(Type.Repetition repetition) {

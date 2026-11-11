@@ -93,6 +93,10 @@ public class Float16 {
     return (h & EXPONENT_SIGNIFICAND_MASK) > POSITIVE_INFINITY;
   }
 
+  public static boolean isFinite(short h) {
+    return (h & EXPONENT_SIGNIFICAND_MASK) < POSITIVE_INFINITY;
+  }
+
   /**
    * <p>Compares the two specified half-precision float values. The following
    * conditions apply during the comparison:</p>

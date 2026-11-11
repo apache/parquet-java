@@ -485,12 +485,6 @@ public class AvroSchemaConverter {
               }
 
               @Override
-              public Optional<Schema> visit(
-                  LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
-                return visit(LogicalTypeAnnotation.listType());
-              }
-
-              @Override
               // for backward-compatibility
               public Optional<Schema> visit(
                   LogicalTypeAnnotation.MapKeyValueTypeAnnotation mapKeyValueLogicalType) {

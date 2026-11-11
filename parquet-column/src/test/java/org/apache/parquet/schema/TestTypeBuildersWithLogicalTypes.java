@@ -97,7 +97,7 @@ public class TestTypeBuildersWithLogicalTypes {
           }
         };
     assertThat(listType().accept(listVisitor)).contains("list");
-    assertThat(finiteVectorType(5).accept(listVisitor)).isEmpty();
+    assertThat(finiteVectorType(5).accept(listVisitor)).contains("list");
 
     LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Integer> vectorVisitor =
         new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Integer>() {

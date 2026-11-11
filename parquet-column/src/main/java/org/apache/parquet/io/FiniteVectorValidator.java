@@ -21,6 +21,7 @@ package org.apache.parquet.io;
 import java.util.Arrays;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -74,7 +75,7 @@ final class FiniteVectorValidator {
       if (value.length() != 2) {
         throw invalidVector("invalid FLOAT16 element length: " + value.length());
       }
-      if ((value.get2BytesLittleEndian() & 0x7c00) == 0x7c00) {
+      if (!Float16.isFinite(value.get2BytesLittleEndian())) {
         throw invalidVector("non-finite element");
       }
     }

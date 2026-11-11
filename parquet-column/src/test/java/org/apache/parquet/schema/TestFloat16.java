@@ -215,6 +215,14 @@ public class TestFloat16 {
   }
 
   @Test
+  public void testIsFinite() {
+    for (int bits = 0; bits <= 0xffff; bits++) {
+      Binary value = Binary.fromConstantByteArray(new byte[] {(byte) bits, (byte) (bits >> 8)});
+      assertThat(Float16.isFinite((short) bits)).isEqualTo(Float.isFinite(Float16.toFloat(value)));
+    }
+  }
+
+  @Test
   public void testCompare() {
     assertThat(Float16.compare(NaN, NaN)).isZero();
     assertThat(Float16.compare(NaN, (short) 0xfc98)).isZero();

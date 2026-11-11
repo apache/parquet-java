@@ -765,6 +765,7 @@ public class ParquetFileReader implements Closeable {
   private final InputFile file;
   private final ParquetReadOptions options;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
+  private final Map<ColumnPath, VectorColumn> vectorColumns;
   private final FileMetaData fileMetaData; // may be null
   private final List<BlockMetaData> blocks;
   private final List<ColumnIndexStore> blockIndexStores;
@@ -819,6 +820,7 @@ public class ParquetFileReader implements Closeable {
     this.converter = new ParquetMetadataConverter(configuration);
     this.file = HadoopInputFile.fromPath(filePath, configuration);
     this.fileMetaData = fileMetaData;
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.f = file.newStream();
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     if (null == fileDecryptor) {
@@ -876,6 +878,7 @@ public class ParquetFileReader implements Closeable {
     this.file = HadoopInputFile.fromPath(file, conf);
     this.f = this.file.newStream();
     this.fileMetaData = footer.getFileMetaData();
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     if (null == fileDecryptor) {
       this.options = HadoopReadOptions.builder(conf).build();
@@ -933,6 +936,7 @@ public class ParquetFileReader implements Closeable {
     this.file = HadoopInputFile.fromPath(file, conf);
     this.f = f;
     this.fileMetaData = footer.getFileMetaData();
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     this.options = options;
     this.footer = footer;
@@ -987,6 +991,7 @@ public class ParquetFileReader implements Closeable {
     this.footer = footer;
 
     this.fileMetaData = footer.getFileMetaData();
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
     if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
       this.fileDecryptor = null; // Plaintext file. No need in decryptor
@@ -1160,6 +1165,20 @@ public class ParquetFileReader implements Closeable {
     return currentRowGroup;
   }
 
+  private record VectorColumn(ColumnDescriptor descriptor, int length) {}
+
+  private static Map<ColumnPath, VectorColumn> vectorColumns(MessageType schema) {
+    if (!TypeUtil.hasFiniteVector(schema)) return Collections.emptyMap();
+    Map<ColumnPath, VectorColumn> columns = new HashMap<>();
+    for (ColumnDescriptor column : schema.getColumns()) {
+      FiniteVectorLogicalTypeAnnotation vector = TypeUtil.getFiniteVectorType(schema, column.getPath());
+      if (vector != null) {
+        columns.put(ColumnPath.get(column.getPath()), new VectorColumn(column, vector.getNumElements()));
+      }
+    }
+    return columns;
+  }
+
   private static void checkVectorCounts(ColumnDescriptor path, int numElements, long rows, long values, long nulls) {
     long declaredNulls = nulls;
     boolean invalid = rows < 0 || values < 0 || nulls < -1 || nulls > values;
@@ -1189,14 +1208,12 @@ public class ParquetFileReader implements Closeable {
   }
 
   private void checkVectorColumnCounts(ColumnChunkMetaData column, long rows) {
-    MessageType fileSchema = getFileMetaData().getSchema();
-    String[] path = column.getPath().toArray();
-    FiniteVectorLogicalTypeAnnotation vector = TypeUtil.getFiniteVectorType(fileSchema, path);
+    if (vectorColumns.isEmpty()) return;
+    VectorColumn vector = vectorColumns.get(column.getPath());
     if (vector == null) return;
-    ColumnDescriptor descriptor = fileSchema.getColumnDescription(path);
     org.apache.parquet.column.statistics.Statistics<?> stats = column.getStatistics();
     long nulls = stats != null && stats.isNumNullsSet() ? stats.getNumNulls() : -1;
-    checkVectorCounts(descriptor, vector.getNumElements(), rows, column.getValueCount(), nulls);
+    checkVectorCounts(vector.descriptor(), vector.length(), rows, column.getValueCount(), nulls);
   }
 
   private ColumnChunkPageReadStore internalReadRowGroup(int blockIndex) throws IOException {
@@ -2178,10 +2195,8 @@ public class ParquetFileReader implements Closeable {
           .getSchema()
           .getType(descriptor.col.getPath())
           .asPrimitiveType();
-      MessageType fileSchema = getFileMetaData().getSchema();
       String[] path = descriptor.col.getPath();
-      FiniteVectorLogicalTypeAnnotation vector = TypeUtil.getFiniteVectorType(fileSchema, path);
-      ColumnDescriptor fileDescriptor = vector == null ? null : fileSchema.getColumnDescription(path);
+      VectorColumn vector = vectorColumns.isEmpty() ? null : vectorColumns.get(descriptor.metadata.getPath());
       long valuesCountReadSoFar = 0L;
       int dataPageCountReadSoFar = 0;
       byte[] dataPageHeaderAAD = null;
@@ -2263,7 +2278,7 @@ public class ParquetFileReader implements Closeable {
               org.apache.parquet.column.statistics.Statistics<?> stats = dataPageV1.getStatistics();
               long nulls = stats != null && stats.isNumNullsSet() ? stats.getNumNulls() : -1;
               checkVectorCounts(
-                  fileDescriptor, vector.getNumElements(), rows, dataPageV1.getValueCount(), nulls);
+                  vector.descriptor(), vector.length(), rows, dataPageV1.getValueCount(), nulls);
             }
             pagesInChunk.add(dataPageV1);
             valuesCountReadSoFar += dataHeaderV1.getNum_values();
@@ -2277,11 +2292,11 @@ public class ParquetFileReader implements Closeable {
                     + Arrays.toString(path)
                     + ": rows=" + dataHeaderV2.getNum_rows() + ", values="
                     + dataHeaderV2.getNum_values() + ", nulls=" + dataHeaderV2.getNum_nulls()
-                    + ", length=" + vector.getNumElements());
+                    + ", length=" + vector.length());
               }
               checkVectorCounts(
-                  fileDescriptor,
-                  vector.getNumElements(),
+                  vector.descriptor(),
+                  vector.length(),
                   dataHeaderV2.getNum_rows(),
                   dataHeaderV2.getNum_values(),
                   dataHeaderV2.getNum_nulls());

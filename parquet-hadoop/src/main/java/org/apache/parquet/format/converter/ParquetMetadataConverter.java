@@ -419,11 +419,6 @@ public class ParquetMetadataConverter {
     }
 
     @Override
-    public Optional<ConvertedType> visit(FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
-      return of(ConvertedType.LIST);
-    }
-
-    @Override
     public Optional<ConvertedType> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
       return of(ConvertedType.ENUM);
     }
@@ -2043,7 +2038,7 @@ public class ParquetMetadataConverter {
       buildChildren(builder, iterator, root.getNum_children(), columnOrderIterator);
       return builder.named(root.name);
     } catch (InvalidSchemaException e) {
-      throw new ParquetDecodingException("Invalid FINITE_VECTOR schema in file metadata", e);
+      throw new ParquetDecodingException(e.getMessage(), e);
     }
   }
 

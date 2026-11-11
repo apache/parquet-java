@@ -537,11 +537,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public OriginalType toOriginalType() {
-      return OriginalType.LIST;
-    }
-
-    @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> visitor) {
       return visitor.visit(this);
     }
@@ -1592,7 +1587,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
-      return empty();
+      return visit((ListLogicalTypeAnnotation) vectorLogicalType);
     }
 
     default Optional<T> visit(VariantLogicalTypeAnnotation variantLogicalType) {

@@ -32,6 +32,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 import static org.apache.parquet.hadoop.VectorInteropFileGenerator.readFooter;
 import static org.apache.parquet.hadoop.VectorInteropFileGenerator.rewriteFooter;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -73,8 +74,11 @@ import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -324,6 +328,21 @@ public class TestVectorReadWrite {
       }
     }
     assertInvalidWrite(schema, row, message);
+  }
+
+  @org.junit.jupiter.api.Test
+  public void testInvalidVectorWriteSchema() {
+    GroupType vector = schema("required", 2, false).getType("v").asGroupType();
+    GroupType invalid = vector.withNewFields(
+        Types.repeatedGroup().optional(FLOAT).named("element").named("list"));
+    MessageType schema = Types.buildMessage()
+        .optionalGroup()
+        .addField(invalid)
+        .named("parent")
+        .named("m");
+    assertThatThrownBy(() -> writeVectors(schema, WriterVersion.PARQUET_1_0, false, List.of()))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessage("Invalid FINITE_VECTOR schema: " + invalid);
   }
 
   @org.junit.jupiter.api.Test
