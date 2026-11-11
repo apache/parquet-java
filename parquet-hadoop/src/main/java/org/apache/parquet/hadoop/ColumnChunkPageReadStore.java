@@ -33,6 +33,7 @@ import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
@@ -40,6 +41,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
@@ -221,6 +223,22 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
           if (!dataPageV2.isCompressed() && offsetIndex == null && null == blockDecryptor) {
             return dataPageV2;
           }
+          // In the standard encrypted layout, the levels are encrypted together with the values, and are
+          // split from the decrypted page body. Otherwise, they are already split (and in plaintext).
+          final boolean levelsInPageBody = dataPageV2 instanceof EncryptedDataPageV2;
+          final int rlLength;
+          final int dlLength;
+          BytesInput repetitionLevels = dataPageV2.getRepetitionLevels();
+          BytesInput definitionLevels = dataPageV2.getDefinitionLevels();
+          if (levelsInPageBody) {
+            rlLength = ((EncryptedDataPageV2) dataPageV2).getRepetitionLevelsByteLength();
+            dlLength = ((EncryptedDataPageV2) dataPageV2).getDefinitionLevelsByteLength();
+          } else {
+            rlLength = Math.toIntExact(repetitionLevels.size());
+            dlLength = Math.toIntExact(definitionLevels.size());
+          }
+          final int uncompressedSize =
+              Math.toIntExact(dataPageV2.getUncompressedSize() - dlLength - rlLength);
           BytesInput pageBytes = dataPageV2.getData();
           try {
             if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
@@ -231,11 +249,14 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               if (blockDecryptor != null) {
                 byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
               }
+              if (levelsInPageBody) {
+                repetitionLevels = BytesInput.from(slice(byteBuffer, 0, rlLength));
+                definitionLevels = BytesInput.from(slice(byteBuffer, rlLength, dlLength));
+                byteBuffer = slice(
+                    byteBuffer, rlLength + dlLength, byteBuffer.remaining() - rlLength - dlLength);
+              }
               long compressedSize = byteBuffer.limit();
               if (dataPageV2.isCompressed()) {
-                int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
-                    - dataPageV2.getDefinitionLevels().size()
-                    - dataPageV2.getRepetitionLevels().size());
                 ByteBuffer decompressedBuffer =
                     options.getAllocator().allocate(uncompressedSize);
                 releaser.releaseLater(decompressedBuffer);
@@ -250,13 +271,17 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               }
             } else {
               if (null != blockDecryptor) {
-                pageBytes =
-                    BytesInput.from(blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
+                byte[] decrypted = blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD);
+                if (levelsInPageBody) {
+                  repetitionLevels = BytesInput.from(decrypted, 0, rlLength);
+                  definitionLevels = BytesInput.from(decrypted, rlLength, dlLength);
+                  pageBytes = BytesInput.from(
+                      decrypted, rlLength + dlLength, decrypted.length - rlLength - dlLength);
+                } else {
+                  pageBytes = BytesInput.from(decrypted);
+                }
               }
               if (dataPageV2.isCompressed()) {
-                int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
-                    - dataPageV2.getDefinitionLevels().size()
-                    - dataPageV2.getRepetitionLevels().size());
                 long start = System.nanoTime();
                 pageBytes = BytesInput.copy(decompressor.decompress(pageBytes, uncompressedSize));
                 setDecompressMetrics(pageBytes, start);
@@ -272,8 +297,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 dataPageV2.getRowCount(),
                 dataPageV2.getNullCount(),
                 dataPageV2.getValueCount(),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
+                repetitionLevels,
+                definitionLevels,
                 dataPageV2.getDataEncoding(),
                 pageBytes,
                 dataPageV2.getStatistics());
@@ -283,8 +308,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 dataPageV2.getNullCount(),
                 dataPageV2.getValueCount(),
                 offsetIndex.getFirstRowIndex(currentPageIndex),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
+                repetitionLevels,
+                definitionLevels,
                 dataPageV2.getDataEncoding(),
                 pageBytes,
                 dataPageV2.getStatistics());
@@ -422,5 +447,56 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     readers.values().forEach(reader -> toClose.add(reader));
     toClose.add(releaser);
     AutoCloseables.uncheckedClose(toClose);
+  }
+
+  private static ByteBuffer slice(ByteBuffer buffer, int offset, int length) {
+    ByteBuffer slice = buffer.duplicate();
+    slice.position(buffer.position() + offset);
+    slice.limit(buffer.position() + offset + length);
+    return slice.slice();
+  }
+
+  /**
+   * An encrypted v2 data page, whose repetition and definition levels are encrypted together with the values, as a
+   * single page module. {@link #getData()} returns the encrypted page body; the levels are split from the page body
+   * after decryption, using the level byte lengths from the page header.
+   */
+  static final class EncryptedDataPageV2 extends DataPageV2 {
+    private final int repetitionLevelsByteLength;
+    private final int definitionLevelsByteLength;
+
+    EncryptedDataPageV2(
+        int rowCount,
+        int nullCount,
+        int valueCount,
+        int repetitionLevelsByteLength,
+        int definitionLevelsByteLength,
+        Encoding dataEncoding,
+        BytesInput encryptedPageBody,
+        int uncompressedSize,
+        Statistics<?> statistics,
+        boolean isCompressed) {
+      super(
+          rowCount,
+          nullCount,
+          valueCount,
+          BytesInput.empty(),
+          BytesInput.empty(),
+          dataEncoding,
+          encryptedPageBody,
+          uncompressedSize,
+          statistics,
+          isCompressed);
+      this.repetitionLevelsByteLength = repetitionLevelsByteLength;
+      this.definitionLevelsByteLength = definitionLevelsByteLength;
+    }
+
+    int getRepetitionLevelsByteLength() {
+      return repetitionLevelsByteLength;
+    }
+
+    int getDefinitionLevelsByteLength() {
+      return definitionLevelsByteLength;
+    }
   }
 }

@@ -34,6 +34,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -65,9 +66,15 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.SemanticVersion;
+import org.apache.parquet.Strings;
+import org.apache.parquet.VersionParser;
+import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -2215,34 +2222,60 @@ public class ParquetFileReader implements Closeable {
             break;
           case DATA_PAGE_V2:
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
-            int dataSize = compressedPageSize
-                - dataHeaderV2.getRepetition_levels_byte_length()
-                - dataHeaderV2.getDefinition_levels_byte_length();
-            final BytesInput repetitionLevels =
-                this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length());
-            final BytesInput definitionLevels =
-                this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length());
-            final BytesInput values = this.readAsBytesInput(dataSize);
-            if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-              verifyCrc(
-                  pageHeader.getCrc(),
-                  "could not verify page integrity, CRC checksum verification failed",
+            int rlLength = dataHeaderV2.getRepetition_levels_byte_length();
+            int dlLength = dataHeaderV2.getDefinition_levels_byte_length();
+            DataPageV2 dataPageV2;
+            if (null != pageBlockDecryptor
+                && rlLength + dlLength > 0
+                && !isLegacyEncryptedDataPageV2(rlLength + dlLength, compressedPageSize)) {
+              // The levels are encrypted together with the values, as a single page module. They
+              // are split after decryption, in ColumnChunkPageReader.
+              final BytesInput encryptedPageBody = this.readAsBytesInput(compressedPageSize);
+              if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+                verifyCrc(
+                    pageHeader.getCrc(),
+                    "could not verify page integrity, CRC checksum verification failed",
+                    encryptedPageBody);
+              }
+              dataPageV2 = new ColumnChunkPageReadStore.EncryptedDataPageV2(
+                  dataHeaderV2.getNum_rows(),
+                  dataHeaderV2.getNum_nulls(),
+                  dataHeaderV2.getNum_values(),
+                  rlLength,
+                  dlLength,
+                  converter.getEncoding(dataHeaderV2.getEncoding()),
+                  encryptedPageBody,
+                  uncompressedPageSize,
+                  converter.fromParquetStatistics(
+                      getFileMetaData().getCreatedBy(), dataHeaderV2.getStatistics(), type),
+                  dataHeaderV2.isIs_compressed());
+            } else {
+              // Unencrypted page, or page without levels, or legacy encrypted page with plaintext levels
+              int dataSize = compressedPageSize - rlLength - dlLength;
+              final BytesInput repetitionLevels = this.readAsBytesInput(rlLength);
+              final BytesInput definitionLevels = this.readAsBytesInput(dlLength);
+              final BytesInput values = this.readAsBytesInput(dataSize);
+              if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+                verifyCrc(
+                    pageHeader.getCrc(),
+                    "could not verify page integrity, CRC checksum verification failed",
+                    repetitionLevels,
+                    definitionLevels,
+                    values);
+              }
+              dataPageV2 = new DataPageV2(
+                  dataHeaderV2.getNum_rows(),
+                  dataHeaderV2.getNum_nulls(),
+                  dataHeaderV2.getNum_values(),
                   repetitionLevels,
                   definitionLevels,
-                  values);
+                  converter.getEncoding(dataHeaderV2.getEncoding()),
+                  values,
+                  uncompressedPageSize,
+                  converter.fromParquetStatistics(
+                      getFileMetaData().getCreatedBy(), dataHeaderV2.getStatistics(), type),
+                  dataHeaderV2.isIs_compressed());
             }
-            DataPageV2 dataPageV2 = new DataPageV2(
-                dataHeaderV2.getNum_rows(),
-                dataHeaderV2.getNum_nulls(),
-                dataHeaderV2.getNum_values(),
-                repetitionLevels,
-                definitionLevels,
-                converter.getEncoding(dataHeaderV2.getEncoding()),
-                values,
-                uncompressedPageSize,
-                converter.fromParquetStatistics(
-                    getFileMetaData().getCreatedBy(), dataHeaderV2.getStatistics(), type),
-                dataHeaderV2.isIs_compressed());
             // Copy crc to new page, used for testing
             if (pageHeader.isSetCrc()) {
               dataPageV2.setCrc(pageHeader.getCrc());
@@ -2280,6 +2313,61 @@ public class ParquetFileReader implements Closeable {
           options);
     }
 
+    /**
+     * Detects the layout of an encrypted v2 data page with non-empty levels, without consuming the stream.
+     * <p>
+     * Per the Parquet Modular Encryption specification, the levels and the values of a v2 data page are encrypted
+     * together, as a single page module that starts with a 4-byte little-endian length. Older parquet-java
+     * versions wrote the levels in plaintext, followed by a page module that encrypts the values only.
+     *
+     * @param levelsLength the total byte length of the repetition and definition levels
+     * @param compressedPageSize the page size, as written to the file
+     * @return true if the page uses the legacy layout, with plaintext levels
+     */
+    private boolean isLegacyEncryptedDataPageV2(int levelsLength, int compressedPageSize) throws IOException {
+      if (compressedPageSize < levelsLength + 4) {
+        // Too small for a page module after the levels: can only be the standard layout
+        return false;
+      }
+      long moduleLengthAtStart;
+      long moduleLengthAfterLevels;
+      stream.mark(levelsLength + 4);
+      try {
+        if (levelsLength >= 4) {
+          moduleLengthAtStart = BytesUtils.readIntLittleEndian(stream) & 0xFFFFFFFFL;
+          stream.skipFully(levelsLength - 4);
+          moduleLengthAfterLevels = BytesUtils.readIntLittleEndian(stream) & 0xFFFFFFFFL;
+        } else {
+          // The two candidate length fields overlap
+          byte[] prefix = new byte[levelsLength + 4];
+          for (int i = 0; i < prefix.length; i++) {
+            int b = stream.read();
+            if (b < 0) {
+              throw new EOFException(
+                  "Unexpected end of encrypted data page v2 in column " + descriptor.col);
+            }
+            prefix[i] = (byte) b;
+          }
+          moduleLengthAtStart = BytesUtils.readIntLittleEndian(prefix, 0) & 0xFFFFFFFFL;
+          moduleLengthAfterLevels = BytesUtils.readIntLittleEndian(prefix, levelsLength) & 0xFFFFFFFFL;
+        }
+      } finally {
+        stream.reset();
+      }
+      boolean standard = moduleLengthAtStart + 4 == compressedPageSize;
+      boolean legacy = levelsLength + moduleLengthAfterLevels + 4 == compressedPageSize;
+      if (standard && legacy) {
+        // Ambiguous (very unlikely): rely on the writer version
+        return isWrittenWithPlaintextEncryptedV2Levels(getFileMetaData().getCreatedBy());
+      }
+      if (!standard && !legacy) {
+        throw new ParquetDecodingException("Encrypted data page v2 in column " + descriptor.col
+            + " is corrupted: the page size " + compressedPageSize
+            + " does not match the size of its encrypted page module");
+      }
+      return legacy;
+    }
+
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
       return offsetIndex == null
           ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
@@ -2301,6 +2389,35 @@ public class ParquetFileReader implements Closeable {
      */
     public BytesInput readAsBytesInput(int size) throws IOException {
       return BytesInput.from(stream.sliceBuffers(size));
+    }
+  }
+
+  /**
+   * First parquet-java version that encrypts the levels of v2 data pages together with the values.
+   */
+  private static final SemanticVersion ENCRYPTED_V2_LEVELS_FIXED_VERSION = new SemanticVersion(1, 19, 0);
+
+  /**
+   * @param createdBy the created_by field of the file
+   * @return true if the file was written by a parquet-java version that left the levels of encrypted v2 data
+   *     pages in plaintext
+   */
+  static boolean isWrittenWithPlaintextEncryptedV2Levels(String createdBy) {
+    if (Strings.isNullOrEmpty(createdBy)) {
+      return false;
+    }
+    try {
+      ParsedVersion version = VersionParser.parse(createdBy);
+      if (!"parquet-mr".equals(version.application) || !version.hasSemanticVersion()) {
+        return false;
+      }
+      SemanticVersion semver = version.getSemanticVersion();
+      // Ignore pre-release and build info: snapshots of the fixed version already use the standard layout
+      return new SemanticVersion(semver.major, semver.minor, semver.patch)
+              .compareTo(ENCRYPTED_V2_LEVELS_FIXED_VERSION)
+          < 0;
+    } catch (RuntimeException | VersionParseException e) {
+      return false;
     }
   }
 
