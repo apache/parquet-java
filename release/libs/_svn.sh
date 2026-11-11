@@ -81,23 +81,6 @@ function svn_stage_rc {
       -m "${commit_msg}" )
 }
 
-# svn_promote_rc_to_release <version> <rc_num>
-#   Moves dist/dev/parquet/<rc_tag>/ to dist/release/parquet/<final_tag>/.
-function svn_promote_rc_to_release {
-  local version="$1"
-  local rc_num="$2"
-
-  local rc_tag="${TAG_PREFIX}${version}-rc${rc_num}"
-  local final_tag="${TAG_PREFIX}${version}"
-  local dev_url="${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}/${rc_tag}"
-  local release_url="${APACHE_DIST_URL}${APACHE_DIST_RELEASE_PATH}/${final_tag}"
-
-  exec_process svn mv \
-    --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-    "${dev_url}" "${release_url}" \
-    -m "Release Apache Parquet ${version}"
-}
-
 # svn_remove_rc <version> <rc_num>
 #   Removes dist/dev/parquet/<rc_tag>/ (used by cancel-rc.sh).
 function svn_remove_rc {
@@ -134,15 +117,13 @@ function svn_remove_rc {
 #   supported minor on dist.apache.org/release"; older minor branches are
 #   left in place and must be retired manually.
 #
+#   The listing is an anonymous, read-only request, so it runs in dry-run
+#   mode too and needs no credentials.
+#
 #   Returns non-zero only on real svn-listing failure or invalid input.
 function svn_list_old_releases {
   local version_to_keep="$1"
   local release_base_url="${APACHE_DIST_URL}${APACHE_DIST_RELEASE_PATH}"
-
-  if [[ ${DRY_RUN:-1} -eq 1 ]]; then
-    print_command "Dry-run, WOULD list ${release_base_url}" >&2
-    return 0
-  fi
 
   if [[ ! "${version_to_keep}" =~ ^${VERSION_REGEX}$ ]]; then
     print_error "svn_list_old_releases: invalid version '${version_to_keep}'"
@@ -153,9 +134,7 @@ function svn_list_old_releases {
   local keep_patch="${BASH_REMATCH[3]}"
 
   local listing
-  if ! listing=$(svn list \
-      --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-      "${release_base_url}" 2>&1); then
+  if ! listing=$(svn list --non-interactive "${release_base_url}" 2>&1); then
     print_error "Failed to list SVN releases at ${release_base_url}: ${listing}"
     return 1
   fi
@@ -172,17 +151,4 @@ function svn_list_old_releases {
           tail = substr($0, length(prefix) + 1)
           if (tail ~ /^[0-9]+$/ && (tail + 0) < (keep_patch + 0)) print $0
         }'
-}
-
-# svn_remove_release <release_dir> <new_version>
-#   svn rm a release directory under dist/release/parquet/.
-function svn_remove_release {
-  local release_dir="$1"
-  local new_version="$2"
-  local release_base_url="${APACHE_DIST_URL}${APACHE_DIST_RELEASE_PATH}"
-
-  exec_process svn rm \
-    --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-    "${release_base_url}/${release_dir}" \
-    -m "Remove old release ${release_dir} (superseded by ${new_version})"
 }

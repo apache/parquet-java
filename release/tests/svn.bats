@@ -54,28 +54,6 @@ setup() {
   [ ! -d "${BATS_TEST_TMPDIR}/tmp" ]
 }
 
-# ---- svn_promote_rc_to_release ----
-
-@test "svn_promote_rc_to_release: dry-run shows mv command" {
-  DRY_RUN=1
-  run svn_promote_rc_to_release "1.18.0" "2"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"svn mv"* ]]
-  [[ "$output" == *"apache-parquet-1.18.0-rc2"* ]]
-  [[ "$output" == *"apache-parquet-1.18.0"* ]]
-  [[ "$output" == *"/dev/parquet"* ]]
-  [[ "$output" == *"/release/parquet"* ]]
-}
-
-@test "svn_promote_rc_to_release: real mode invokes svn mv" {
-  DRY_RUN=0
-  svn() { echo "SVN: $*"; return 0; }
-  export -f svn
-  run svn_promote_rc_to_release "1.18.0" "0"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"SVN: mv"* ]]
-}
-
 # ---- svn_remove_rc ----
 
 @test "svn_remove_rc: dry-run shows rm command" {
@@ -118,12 +96,22 @@ setup() {
 # touch other minors (1.8.x, 1.10.x), the kept version itself, or any
 # higher patch on the same minor.
 
-@test "svn_list_old_releases: dry-run returns empty without calling svn" {
+@test "svn_list_old_releases: lists anonymously, even in dry-run" {
   DRY_RUN=1
-  run svn_list_old_releases "1.18.0"
+  svn() {
+    if [[ "$1" == "list" ]]; then
+      echo "ARGS: $*" >&2
+      printf 'apache-parquet-1.18.0/\napache-parquet-1.18.1/\n'
+      return 0
+    fi
+    return 99
+  }
+  export -f svn
+  run svn_list_old_releases "1.18.1"
   [ "$status" -eq 0 ]
-  # No actual entries, just the dry-run banner on stderr
-  [ -z "$(echo "$output" | grep -v Dry-run | grep -v WOULD)" ]
+  [[ "$output" == *"apache-parquet-1.18.0"* ]]
+  [[ "$output" != *"--username"* ]]
+  [[ "$output" != *"--password"* ]]
 }
 
 @test "svn_list_old_releases: returns older patches on the same minor only" {
@@ -266,26 +254,4 @@ setup() {
   run svn_list_old_releases "1.18.0"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Failed to list"* ]]
-}
-
-# ---- svn_remove_release ----
-
-@test "svn_remove_release: dry-run shows rm command" {
-  DRY_RUN=1
-  run svn_remove_release "apache-parquet-1.16.0" "1.18.0"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"svn rm"* ]]
-  [[ "$output" == *"apache-parquet-1.16.0"* ]]
-  [[ "$output" == *"superseded by 1.18.0"* ]]
-}
-
-@test "svn_remove_release: real mode invokes svn rm with commit message" {
-  DRY_RUN=0
-  svn() { echo "SVN: $*"; return 0; }
-  export -f svn
-  run svn_remove_release "apache-parquet-1.16.0" "1.18.0"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"SVN: rm"* ]]
-  [[ "$output" == *"apache-parquet-1.16.0"* ]]
-  [[ "$output" == *"superseded by 1.18.0"* ]]
 }
