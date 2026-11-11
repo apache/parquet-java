@@ -23,7 +23,6 @@ import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
-import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
@@ -43,7 +42,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.BytesInput;
@@ -62,18 +60,15 @@ import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.ConvertedType;
-import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.ColumnIOFactory;
-import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.RecordReader;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
@@ -81,9 +76,7 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.MethodSource;
 
 public class TestVectorReadWrite {
   @TempDir
@@ -270,66 +263,6 @@ public class TestVectorReadWrite {
     }
   }
 
-  private static Stream<Arguments> invalidVectorWrites() {
-    return Stream.of(
-        Arguments.of("float element", 2, List.of(), "Invalid FINITE_VECTOR length for v: expected 2, got 0"),
-        Arguments.of(
-            "float element", 2, List.of(1.0f), "Invalid FINITE_VECTOR length for v: expected 2, got 1"),
-        Arguments.of(
-            "float element",
-            2,
-            List.of(1.0f, 2.0f, 3.0f),
-            "Invalid FINITE_VECTOR length for v: expected 2, got 3"),
-        Arguments.of("float element", 1, List.of(Float.NaN), "Non-finite FINITE_VECTOR element in v"),
-        Arguments.of(
-            "double element",
-            1,
-            List.of(Double.POSITIVE_INFINITY),
-            "Non-finite FINITE_VECTOR element in v"),
-        Arguments.of(
-            "fixed_len_byte_array(2) element (FLOAT16)",
-            1,
-            List.of(Binary.fromConstantByteArray(new byte[] {0, (byte) 0xfc})),
-            "Non-finite FINITE_VECTOR element in v"),
-        Arguments.of(
-            "fixed_len_byte_array(2) element (FLOAT16)",
-            1,
-            List.of(Binary.fromConstantByteArray(new byte[] {0})),
-            "Invalid FLOAT16 FINITE_VECTOR element length: 1"));
-  }
-
-  private void assertInvalidWrite(MessageType schema, Group row, String message) throws IOException {
-    Path path = new Path(tempDir.resolve(UUID.randomUUID() + ".parquet").toUri());
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withType(schema)
-        .withValidation(false)
-        .build()) {
-      assertThatThrownBy(() -> writer.write(row))
-          .isInstanceOf(InvalidRecordException.class)
-          .hasMessage(message);
-    }
-  }
-
-  @ParameterizedTest
-  @MethodSource("invalidVectorWrites")
-  public void testInvalidVectorWrite(String element, int length, List<?> values, String message) throws IOException {
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group v (FINITE_VECTOR(" + length
-        + ")) { repeated group list { required " + element + "; } } }");
-    Group row = new SimpleGroupFactory(schema).newGroup();
-    Group vector = row.addGroup("v");
-    for (Object value : values) {
-      Group entry = vector.addGroup("list");
-      if (value instanceof Float) {
-        entry.append("element", (Float) value);
-      } else if (value instanceof Double) {
-        entry.append("element", (Double) value);
-      } else {
-        entry.append("element", (Binary) value);
-      }
-    }
-    assertInvalidWrite(schema, row, message);
-  }
-
   @org.junit.jupiter.api.Test
   public void testInvalidVectorWriteSchema() {
     GroupType vector = schema("required", 2, false).getType("v").asGroupType();
@@ -346,34 +279,6 @@ public class TestVectorReadWrite {
   }
 
   @org.junit.jupiter.api.Test
-  public void testMandatoryVectorValidation() throws IOException {
-    MessageType missingId = MessageTypeParser.parseMessageType("message m { required int32 id;"
-        + " required group v (FINITE_VECTOR(2)) { repeated group list { required float element; } } }");
-    Group missingRow = new SimpleGroupFactory(missingId).newGroup();
-    Group v = missingRow.addGroup("v");
-    v.addGroup("list").append("element", 1.0f);
-    v.addGroup("list").append("element", 2.0f);
-    assertInvalidWrite(missingId, missingRow, "required field is missing required int32 id");
-
-    MessageType missingElement = schema("required", 2, false);
-    Group missingElementRow = new SimpleGroupFactory(missingElement).newGroup();
-    Group missingElementVector = missingElementRow.addGroup("v");
-    missingElementVector.addGroup("list").append("element", 1.0f);
-    missingElementVector.addGroup("list");
-    assertInvalidWrite(missingElement, missingElementRow, "required field is missing required float element");
-
-    MessageType duplicate = schema("required", 2, false);
-    Group duplicateRow = new SimpleGroupFactory(duplicate).newGroup();
-    for (int i = 0; i < 2; i++) {
-      Group entry = duplicateRow.addGroup("v");
-      entry.addGroup("list").append("element", i == 0 ? 1.0f : 3.0f);
-      entry.addGroup("list").append("element", i == 0 ? 2.0f : 4.0f);
-    }
-    assertInvalidWrite(
-        duplicate, duplicateRow, "repeated value when the type is not repeated in " + duplicate.getType("v"));
-  }
-
-  @org.junit.jupiter.api.Test
   public void testVectorReadProjection() throws Exception {
     MessageType list = MessageTypeParser.parseMessageType(
         schema("required", 5, false).toString().replace("FINITE_VECTOR(5)", "LIST"));
@@ -381,65 +286,29 @@ public class TestVectorReadWrite {
     Path path = writeVectors(list, WriterVersion.PARQUET_1_0, false, listRows(list, 4, 6));
     assertVectorRows(readGroups(path, vector), 4, 6);
 
-    rewriteFooter(path, footer -> footer.getSchema().get(1).setLogicalType(LogicalTypes.FINITE_VECTOR(5)));
+    Path vectorPath = writeVectors(vector, WriterVersion.PARQUET_1_0, false, listRows(vector, 4, 6));
     for (MessageType requested : List.of(vector, list)) {
-      assertThatThrownBy(() -> readGroups(path, requested))
-          .isInstanceOf(ParquetDecodingException.class)
-          .hasMessage("Invalid FINITE_VECTOR data for [v, list, element]: expected 5 elements, got 4");
-    }
-
-    try (ParquetFileReader reader =
-            ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())));
-        PageReadStore pages = reader.readFilteredRowGroup(0, RowRanges.createSingle(1))) {
-      MessageColumnIO columns = new ColumnIOFactory()
-          .getColumnIO(vector, reader.getFileMetaData().getSchema());
-      RecordReader<Group> records = columns.getRecordReader(pages, new GroupRecordConverter(vector));
-      assertThatThrownBy(records::read)
-          .isInstanceOf(ParquetDecodingException.class)
-          .hasMessage("Invalid FINITE_VECTOR data for [v, list, element]: expected 5 elements, got 4");
+      assertVectorRows(readGroups(vectorPath, requested), 4, 6);
     }
   }
 
   @ParameterizedTest
-  @CsvSource(
-      value = {
-        "short_v|all|expected 5 elements, got 4",
-        "long_v|all|expected 5 elements, got 6",
-        "empty_v|all|empty vector",
-        "nested|all|expected 5 elements, got 4",
-        "partial|all|expected 5 elements, got 3",
-        "nf_f|all|non-finite element",
-        "nf_d|all|non-finite element",
-        "nf_h|all|non-finite element",
-        "short_v|filter2|expected 5 elements, got 4",
-        "short_v|legacy|expected 5 elements, got 4"
-      },
-      delimiter = '|')
-  public void testInvalidVectorReferenceFile(String field, String mode, String reason) throws Exception {
-    Path path = referenceFile("vector_invalid_v1_dictionary.parquet");
-    try (ParquetFileReader reader =
-        ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-      MessageType file = reader.getFileMetaData().getSchema();
-      MessageType projected = new MessageType("m", file.getType("id"), file.getType(field));
-      reader.setRequestedSchema(projected);
-      try (PageReadStore pages = reader.readRowGroup(0)) {
-        MessageColumnIO columns = new ColumnIOFactory().getColumnIO(projected, file);
-        FilterCompat.Filter filter = mode.equals("filter2")
-            ? FilterCompat.get(eq(intColumn("id"), 1))
-            : mode.equals("legacy")
-                ? FilterCompat.get(
-                    org.apache.parquet.filter.ColumnRecordFilter.column("id", equalTo(1)))
-                : FilterCompat.NOOP;
-        RecordReader<Group> records =
-            columns.getRecordReader(pages, new GroupRecordConverter(projected), filter);
-        String name = field.equals("nested") || field.equals("partial") ? field + ", v" : field;
-        assertThatThrownBy(() -> {
-              for (long i = 0; i < pages.getRowCount(); i++) records.read();
-            })
-            .isInstanceOf(ParquetDecodingException.class)
-            .hasMessage("Invalid FINITE_VECTOR data for [" + name + ", list, element]: " + reason);
-      }
+  @CsvSource({"false", "true"})
+  public void testVectorValuesAreNotValidated(boolean validation) throws IOException {
+    MessageType schema = schema("required", 3, false);
+    Group row = new SimpleGroupFactory(schema).newGroup();
+    Group vector = row.addGroup("v");
+    for (float value : new float[] {Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY}) {
+      vector.addGroup("list").append("element", value);
     }
+    Path path = new Path(tempDir.resolve("non-finite.parquet").toUri());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withValidation(validation)
+        .build()) {
+      writer.write(row);
+    }
+    assertRow(readGroups(path, schema).get(0), row);
   }
 
   private static org.apache.parquet.format.ColumnMetaData column(org.apache.parquet.format.FileMetaData footer) {

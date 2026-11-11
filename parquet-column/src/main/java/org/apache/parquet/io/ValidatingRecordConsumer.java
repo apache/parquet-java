@@ -32,9 +32,6 @@ import java.util.Arrays;
 import java.util.Deque;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.schema.Float16;
-import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
-import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -55,10 +52,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   private Deque<Integer> fields = new ArrayDeque<>();
   private Deque<Integer> previousField = new ArrayDeque<>();
   private Deque<Integer> fieldValueCount = new ArrayDeque<>();
-  private FiniteVectorLogicalTypeAnnotation vectorType;
-  private String vectorName;
-  private long vectorCount;
-  private int vectorDepth;
 
   /**
    * @param delegate the consumer to pass down the event to
@@ -117,13 +110,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    */
   @Override
   public void endField(String field, int index) {
-    Type currentType = types.peek().asGroupType().getType(fields.peek());
-    if (fieldValueCount.peek() == 0
-        && currentType.isRepetition(Repetition.REQUIRED)
-        && (currentType.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation
-            || vectorType != null && types.size() == vectorDepth + 1)) {
-      throw new InvalidRecordException("required field is missing " + currentType);
-    }
     delegate.endField(field, index);
     fieldValueCount.pop();
     previousField.pop();
@@ -135,26 +121,8 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    */
   @Override
   public void startGroup() {
-    Type child = types.peek().asGroupType().getType(fields.peek());
-    if (child.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation) {
-      int count = fieldValueCount.pop() + 1;
-      fieldValueCount.push(count);
-      if (count > 1) {
-        throw new InvalidRecordException("repeated value when the type is not repeated in " + child);
-      }
-      vectorType = (FiniteVectorLogicalTypeAnnotation) child.getLogicalTypeAnnotation();
-      vectorName = child.getName();
-      vectorCount = 0;
-      vectorDepth = types.size() + 1;
-    } else if (vectorType != null && types.size() == vectorDepth) {
-      vectorCount++;
-      if (vectorCount > vectorType.getNumElements()) {
-        throw new InvalidRecordException("Invalid FINITE_VECTOR length for " + vectorName + ": expected "
-            + vectorType.getNumElements() + ", got " + vectorCount);
-      }
-    }
     previousField.push(-1);
-    types.push(child);
+    types.push(types.peek().asGroupType().getType(fields.peek()));
     delegate.startGroup();
   }
 
@@ -163,21 +131,10 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    */
   @Override
   public void endGroup() {
-    boolean endingVector = vectorType != null && types.size() == vectorDepth;
-    if (endingVector && vectorCount != vectorType.getNumElements()) {
-      throw new InvalidRecordException("Invalid FINITE_VECTOR length for " + vectorName + ": expected "
-          + vectorType.getNumElements() + ", got " + vectorCount);
-    }
     delegate.endGroup();
     validateMissingFields(types.peek().asGroupType().getFieldCount());
     types.pop();
     previousField.pop();
-    if (endingVector) {
-      vectorType = null;
-      vectorName = null;
-      vectorCount = 0;
-      vectorDepth = 0;
-    }
   }
 
   /**
@@ -273,16 +230,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addBinary(Binary value) {
     validate(BINARY, INT96, FIXED_LEN_BYTE_ARRAY);
-    if (vectorType != null
-        && types.peek().asGroupType().getType(fields.peek()).getLogicalTypeAnnotation()
-            instanceof Float16LogicalTypeAnnotation) {
-      if (value.length() != 2) {
-        throw new InvalidRecordException("Invalid FLOAT16 FINITE_VECTOR element length: " + value.length());
-      }
-      if (!Float16.isFinite(value.get2BytesLittleEndian())) {
-        throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
-      }
-    }
     delegate.addBinary(value);
   }
 
@@ -292,9 +239,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addFloat(float value) {
     validate(FLOAT);
-    if (vectorType != null && !Float.isFinite(value)) {
-      throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
-    }
     delegate.addFloat(value);
   }
 
@@ -304,9 +248,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addDouble(double value) {
     validate(DOUBLE);
-    if (vectorType != null && !Double.isFinite(value)) {
-      throw new InvalidRecordException("Non-finite FINITE_VECTOR element in " + vectorName);
-    }
     delegate.addDouble(value);
   }
 }

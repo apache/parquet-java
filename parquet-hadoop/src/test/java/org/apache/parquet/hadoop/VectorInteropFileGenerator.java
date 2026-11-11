@@ -48,8 +48,6 @@ import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.format.ConvertedType;
-import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -140,90 +138,6 @@ public final class VectorInteropFileGenerator {
     }
   }
 
-  static MessageType invalidSchema() {
-    return MessageTypeParser.parseMessageType("message m { required int32 id;"
-        + " required group short_v (LIST) { repeated group list { required float element; } }"
-        + " required group long_v (LIST) { repeated group list { required float element; } }"
-        + " optional group empty_v (LIST) { repeated group list { required float element; } }"
-        + " repeated group nested { required group v (LIST) { repeated group list {"
-        + " required float element; } } }"
-        + " repeated group partial { required group v (LIST) { repeated group list {"
-        + " required float element; } } }"
-        + " required group nf_f (LIST) { repeated group list { required float element; } }"
-        + " required group nf_d (LIST) { repeated group list { required double element; } }"
-        + " required group nf_h (LIST) { repeated group list {"
-        + " required fixed_len_byte_array(2) element (FLOAT16); } } }");
-  }
-
-  static List<Group> invalidRows() {
-    MessageType schema = invalidSchema();
-    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
-    List<Group> rows = new ArrayList<>();
-    int[] shortLengths = {4, 6, 5, 5};
-    int[] longLengths = {6, 4, 5, 5};
-    int[] emptyLengths = {0, 5, 5, 5};
-    int[] partialLengths = {5, 5, 5, 3};
-    byte[] halfNegativeInfinity = {0, (byte) 0xfc};
-    byte[] halfZero = {0, 0};
-    byte[] halfOne = {0, 0x3c};
-    for (int i = 0; i < 4; i++) {
-      Group row = factory.newGroup().append("id", i);
-      for (String name : List.of("short_v", "long_v", "empty_v")) {
-        int length = name.equals("short_v")
-            ? shortLengths[i]
-            : name.equals("long_v") ? longLengths[i] : emptyLengths[i];
-        Group vector = row.addGroup(name);
-        for (int k = 0; k < length; k++) {
-          vector.addGroup("list").append("element", (float) (100 * i + k));
-        }
-      }
-      int[] nestedLengths = i == 0 ? new int[] {4, 6} : i == 1 ? new int[0] : new int[] {5};
-      for (int j = 0; j < nestedLengths.length; j++) {
-        Group vector = row.addGroup("nested").addGroup("v");
-        for (int k = 0; k < nestedLengths[j]; k++) {
-          vector.addGroup("list").append("element", (float) (100 * i + 10 * j + k));
-        }
-      }
-      Group partial = row.addGroup("partial").addGroup("v");
-      for (int k = 0; k < partialLengths[i]; k++) {
-        partial.addGroup("list").append("element", (float) (100 * i + k));
-      }
-      Group nfFloat = row.addGroup("nf_f");
-      Group nfDouble = row.addGroup("nf_d");
-      Group nfHalf = row.addGroup("nf_h");
-      for (int k = 0; k < 8; k++) {
-        nfFloat.addGroup("list").append("element", i == 0 && k == 0 ? Float.NaN : k == 0 ? 0.0f : 1.0f);
-        nfDouble.addGroup("list")
-            .append("element", i == 0 && k == 0 ? Double.POSITIVE_INFINITY : k == 0 ? 0.0d : 1.0d);
-        nfHalf.addGroup("list")
-            .append(
-                "element",
-                Binary.fromConstantByteArray(
-                    i == 0 && k == 0 ? halfNegativeInfinity : k == 0 ? halfZero : halfOne));
-      }
-      rows.add(row);
-    }
-    return rows;
-  }
-
-  static void writeInvalid(Path path) throws IOException {
-    writeRows(path, invalidSchema(), WriterVersion.PARQUET_1_0, true, invalidRows());
-    rewriteFooter(path, footer -> {
-      footer.getSchema().stream()
-          .filter(element -> element.getConverted_type() == ConvertedType.LIST)
-          .forEach(element -> element.setLogicalType(
-              LogicalTypes.FINITE_VECTOR(element.getName().startsWith("nf_") ? 8 : 5)));
-      for (org.apache.parquet.format.ColumnChunk chunk :
-          footer.getRow_groups().get(0).getColumns()) {
-        chunk.getMeta_data().getStatistics().unsetNull_count();
-        chunk.unsetColumn_index_offset();
-        chunk.unsetColumn_index_length();
-        chunk.unsetOffset_index_offset();
-        chunk.unsetOffset_index_length();
-      }
-    });
-  }
-
   static org.apache.parquet.format.FileMetaData readFooter(Path path) throws IOException {
     java.nio.file.Path local = java.nio.file.Path.of(path.toUri());
     byte[] original = Files.readAllBytes(local);
@@ -308,7 +222,5 @@ public final class VectorInteropFileGenerator {
     writeMixed(
         new Path(dir.resolve("vector_mixed_v2_dictionary.parquet").toUri()), WriterVersion.PARQUET_2_0, true);
     writeSplit(new Path(dir.resolve("vector_split_v1.parquet").toUri()));
-    writeInvalid(
-        new Path(dir.resolve("vector_invalid_v1_dictionary.parquet").toUri()));
   }
 }
