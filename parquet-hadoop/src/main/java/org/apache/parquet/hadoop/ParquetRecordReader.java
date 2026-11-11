@@ -43,12 +43,9 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Reads the records from a block of a Parquet file
@@ -59,7 +56,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ParquetRecordReader.class);
   private final InternalParquetRecordReader<T> internalReader;
 
   /**
@@ -125,15 +121,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext context) throws IOException, InterruptedException {
 
-    if (ContextUtil.hasCounterMethod(context)) {
-      BenchmarkCounter.initCounterFromContext(context);
-    } else {
-      LOG.error(String.format(
-          "Can not initialize counter because the class '%s' does not have a '.getCounterMethod'",
-          context.getClass().getCanonicalName()));
-    }
+    BenchmarkCounter.initCounterFromContext(context);
 
-    initializeInternalReader(toParquetSplit(inputSplit), ContextUtil.getConfiguration(context));
+    initializeInternalReader(toParquetSplit(inputSplit), context.getConfiguration());
   }
 
   public void initialize(InputSplit inputSplit, Configuration configuration, Reporter reporter)

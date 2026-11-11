@@ -28,7 +28,6 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +43,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
 
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
-    Configuration configuration = ContextUtil.getConfiguration(jobContext);
+    Configuration configuration = jobContext.getConfiguration();
     writeMetaDataFile(configuration, outputPath);
   }
 

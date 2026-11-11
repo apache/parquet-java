@@ -57,6 +57,7 @@ import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesInput;
@@ -93,7 +94,6 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.metadata.StrictKeyValueMetadataMergeStrategy;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
@@ -387,7 +387,7 @@ public class TestParquetFileWriter {
     ParquetInputFormat input = new ParquetInputFormat();
     configuration.set(READ_SUPPORT_CLASS, GroupReadSupport.class.getName());
     TaskAttemptID taskAttemptID = TaskAttemptID.forName("attempt_0_1_m_1_1");
-    TaskAttemptContext taskContext = ContextUtil.newTaskAttemptContext(configuration, taskAttemptID);
+    TaskAttemptContext taskContext = new TaskAttemptContextImpl(configuration, taskAttemptID);
     RecordReader<Void, ArrayWritable> reader = input.createRecordReader(split, taskContext);
     assertThat(reader).isInstanceOf(ParquetRecordReader.class);
     // RowGroup.file_offset is checked here

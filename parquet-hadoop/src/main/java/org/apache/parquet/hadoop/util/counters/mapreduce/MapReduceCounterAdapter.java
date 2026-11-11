@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.util.counters.mapreduce;
 
 import org.apache.hadoop.mapreduce.Counter;
-import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.ICounter;
 
 /**
@@ -34,7 +33,7 @@ public class MapReduceCounterAdapter implements ICounter {
 
   @Override
   public void increment(long val) {
-    ContextUtil.incrementCounter(adaptee, val);
+    adaptee.increment(val);
   }
 
   @Override
