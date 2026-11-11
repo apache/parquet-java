@@ -27,7 +27,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.19.0-SNAPSHOT</version>
+  <version>1.18.3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet Java</name>
@@ -84,7 +84,7 @@
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.4.2</hadoop.version>
-    <previous.version>1.18.0</previous.version>
+    <previous.version>1.18.2</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
