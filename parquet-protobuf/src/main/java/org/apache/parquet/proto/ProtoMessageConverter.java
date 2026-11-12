@@ -269,6 +269,12 @@ class ProtoMessageConverter extends GroupConverter {
           }
 
           @Override
+          public Optional<Converter> visit(
+              LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
+            return visit(LogicalTypeAnnotation.listType());
+          }
+
+          @Override
           public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
             return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
           }

@@ -24,9 +24,11 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.finiteVectorType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.jsonType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
@@ -46,13 +48,180 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class TestTypeBuildersWithLogicalTypes {
+  private static GroupType vector(Type element) {
+    return new GroupType(REQUIRED, "v", finiteVectorType(5), new GroupType(Repetition.REPEATED, "list", element));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, Integer.MAX_VALUE})
+  public void testVectorAnnotation(int length) {
+    GroupType vector = new GroupType(
+        REQUIRED,
+        "v",
+        finiteVectorType(length),
+        new GroupType(Repetition.REPEATED, "list", Types.required(FLOAT).named("element")));
+    MessageType schema = Types.buildMessage().addField(vector).named("m");
+    TypeUtil.checkValidWriteSchema(schema);
+    assertThat(MessageTypeParser.parseMessageType(schema.toString())).isEqualTo(schema);
+    assertThat(finiteVectorType(length)).asString().isEqualTo("FINITE_VECTOR(" + length + ")");
+    assertThat(finiteVectorType(length).getNumElements()).isEqualTo(length);
+    assertThat(finiteVectorType(length).toOriginalType()).isEqualTo(OriginalType.LIST);
+    assertThat(finiteVectorType(length)).isInstanceOf(LogicalTypeAnnotation.ListLogicalTypeAnnotation.class);
+    assertThat(finiteVectorType(length))
+        .isEqualTo(finiteVectorType(length))
+        .hasSameHashCodeAs(finiteVectorType(length));
+    assertThat(finiteVectorType(length)).isNotEqualTo(finiteVectorType(length == 1 ? 5 : 1));
+    assertThat(finiteVectorType(length)).isNotEqualTo(LogicalTypeAnnotation.listType());
+    assertThat(listType()).isNotEqualTo(finiteVectorType(length));
+  }
+
+  @Test
+  public void testVectorVisitorDispatch() {
+    LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<String> listVisitor =
+        new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<String>() {
+          @Override
+          public Optional<String> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation list) {
+            return Optional.of("list");
+          }
+        };
+    assertThat(listType().accept(listVisitor)).contains("list");
+    assertThat(finiteVectorType(5).accept(listVisitor)).contains("list");
+
+    LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Integer> vectorVisitor =
+        new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Integer>() {
+          @Override
+          public Optional<Integer> visit(LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vector) {
+            return Optional.of(vector.getNumElements());
+          }
+        };
+    assertThat(finiteVectorType(5).accept(vectorVisitor)).contains(5);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1})
+  public void testInvalidVectorLength(int length) {
+    assertThatThrownBy(() -> finiteVectorType(length))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid FINITE_VECTOR length: " + length);
+  }
+
+  private static Stream<Arguments> invalidVectors() {
+    PrimitiveType element = Types.required(FLOAT).named("element");
+    GroupType list = new GroupType(Repetition.REPEATED, "list", element);
+    return Stream.of(
+        Arguments.of(new GroupType(Repetition.REPEATED, "v", finiteVectorType(5), list)),
+        Arguments.of(new GroupType(
+            REQUIRED, "v", finiteVectorType(5), new GroupType(Repetition.REPEATED, "items", element))),
+        Arguments.of(new GroupType(REQUIRED, "v", finiteVectorType(5), list, list)),
+        Arguments.of(
+            new GroupType(REQUIRED, "v", finiteVectorType(5), new GroupType(REQUIRED, "list", element))),
+        Arguments.of(new GroupType(
+            REQUIRED,
+            "v",
+            finiteVectorType(5),
+            new GroupType(Repetition.REPEATED, "list", LogicalTypeAnnotation.listType(), element))),
+        Arguments.of(new GroupType(
+            REQUIRED,
+            "v",
+            finiteVectorType(5),
+            new GroupType(Repetition.REPEATED, "list", element, element))),
+        Arguments.of(vector(Types.required(FLOAT).named("item"))),
+        Arguments.of(vector(Types.optional(FLOAT).named("element"))),
+        Arguments.of(vector(Types.repeated(FLOAT).named("element"))),
+        Arguments.of(vector(new GroupType(REQUIRED, "element", element))),
+        Arguments.of(vector(Types.required(BINARY).as(decimalType(2, 9)).named("element"))),
+        Arguments.of(
+            vector(Types.required(FIXED_LEN_BYTE_ARRAY).length(2).named("element"))),
+        Arguments.of(vector(Types.required(INT96).named("element"))),
+        Arguments.of(vector(Types.required(BINARY).as(stringType()).named("element"))),
+        Arguments.of(vector(Types.required(INT32).as(dateType()).named("element"))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidVectors")
+  public void testInvalidVectorSchema(GroupType vector) {
+    assertThatThrownBy(() -> Types.buildGroup(vector.getRepetition())
+            .as(vector.getLogicalTypeAnnotation())
+            .addFields(vector.getFields().toArray(new Type[0]))
+            .named(vector.getName()))
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessage("Invalid FINITE_VECTOR schema: " + vector);
+  }
+
+  private static Stream<Executable> vectorConstructionBoundaries() {
+    GroupType list =
+        new GroupType(Repetition.REPEATED, "list", Types.optional(FLOAT).named("element"));
+    return Stream.of(
+        () -> Types.requiredGroup()
+            .as(finiteVectorType(5))
+            .addField(list)
+            .named("v"),
+        () -> Types.buildMessage()
+            .requiredGroup()
+            .as(finiteVectorType(5))
+            .repeatedGroup()
+            .optional(FLOAT)
+            .named("element")
+            .named("list")
+            .named("v")
+            .named("m"),
+        () -> Types.buildMessage()
+            .requiredGroup()
+            .addField(vector(Types.required(FLOAT).named("element")))
+            .requiredGroup()
+            .as(finiteVectorType(5))
+            .addField(list)
+            .named("bad")
+            .named("parent")
+            .named("m"),
+        () -> MessageTypeParser.parseMessageType("message m { required group v (FINITE_VECTOR(5)) { "
+            + "repeated group list { optional float element; } } }"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("vectorConstructionBoundaries")
+  public void testVectorConstructionBoundaries(Executable construction) {
+    assertThatThrownBy(construction::execute)
+        .isInstanceOf(InvalidSchemaException.class)
+        .hasMessageContaining("Invalid FINITE_VECTOR schema");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testHasFiniteVector(boolean hasVector) {
+    GroupType field = hasVector
+        ? vector(Types.required(FLOAT).named("element"))
+        : new GroupType(
+            REQUIRED,
+            "v",
+            listType(),
+            new GroupType(
+                Repetition.REPEATED,
+                "list",
+                Types.required(FLOAT).named("element")));
+    MessageType schema = new MessageType("m", new GroupType(REQUIRED, "parent", field));
+    assertThat(TypeUtil.hasFiniteVector(schema)).isEqualTo(hasVector);
+  }
+
+  @Test
+  public void testVectorOnPrimitive() {
+    assertThatThrownBy(() -> Types.required(FLOAT).as(finiteVectorType(5)).named("v"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("FINITE_VECTOR(5) can not be applied to a primitive type");
+  }
+
   @Test
   public void testGroupTypeConstruction() {
     PrimitiveType f1 = Types.required(BINARY).as(stringType()).named("f1");

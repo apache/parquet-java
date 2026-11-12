@@ -117,8 +117,10 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetFileRange;
 import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.TypeUtil;
 import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -763,6 +765,7 @@ public class ParquetFileReader implements Closeable {
   private final InputFile file;
   private final ParquetReadOptions options;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
+  private final Map<ColumnPath, VectorColumn> vectorColumns;
   private final FileMetaData fileMetaData; // may be null
   private final List<BlockMetaData> blocks;
   private final List<ColumnIndexStore> blockIndexStores;
@@ -817,6 +820,7 @@ public class ParquetFileReader implements Closeable {
     this.converter = new ParquetMetadataConverter(configuration);
     this.file = HadoopInputFile.fromPath(filePath, configuration);
     this.fileMetaData = fileMetaData;
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.f = file.newStream();
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     if (null == fileDecryptor) {
@@ -874,6 +878,7 @@ public class ParquetFileReader implements Closeable {
     this.file = HadoopInputFile.fromPath(file, conf);
     this.f = this.file.newStream();
     this.fileMetaData = footer.getFileMetaData();
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     if (null == fileDecryptor) {
       this.options = HadoopReadOptions.builder(conf).build();
@@ -931,6 +936,7 @@ public class ParquetFileReader implements Closeable {
     this.file = HadoopInputFile.fromPath(file, conf);
     this.f = f;
     this.fileMetaData = footer.getFileMetaData();
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     this.options = options;
     this.footer = footer;
@@ -985,6 +991,7 @@ public class ParquetFileReader implements Closeable {
     this.footer = footer;
 
     this.fileMetaData = footer.getFileMetaData();
+    this.vectorColumns = vectorColumns(fileMetaData.getSchema());
     this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
     if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
       this.fileDecryptor = null; // Plaintext file. No need in decryptor
@@ -1158,6 +1165,57 @@ public class ParquetFileReader implements Closeable {
     return currentRowGroup;
   }
 
+  private record VectorColumn(ColumnDescriptor descriptor, int length) {}
+
+  private static Map<ColumnPath, VectorColumn> vectorColumns(MessageType schema) {
+    if (!TypeUtil.hasFiniteVector(schema)) return Collections.emptyMap();
+    Map<ColumnPath, VectorColumn> columns = new HashMap<>();
+    for (ColumnDescriptor column : schema.getColumns()) {
+      FiniteVectorLogicalTypeAnnotation vector = TypeUtil.getFiniteVectorType(schema, column.getPath());
+      if (vector != null) {
+        columns.put(ColumnPath.get(column.getPath()), new VectorColumn(column, vector.getNumElements()));
+      }
+    }
+    return columns;
+  }
+
+  private static void checkVectorCounts(ColumnDescriptor path, int numElements, long rows, long values, long nulls) {
+    long declaredNulls = nulls;
+    boolean invalid = rows < 0 || values < 0 || nulls < -1 || nulls > values;
+    if (!invalid && path.getMaxRepetitionLevel() == 1) {
+      if (path.getMaxDefinitionLevel() == 1) {
+        invalid = nulls > 0;
+        nulls = 0;
+      }
+      if (nulls >= 0) {
+        long present = values - nulls;
+        invalid |= nulls > rows || present % numElements != 0 || present / numElements != rows - nulls;
+      } else {
+        long extra = values - rows;
+        invalid |= values < rows
+            || (numElements == 1
+                ? values != rows
+                : extra % (numElements - 1) != 0 || extra / (numElements - 1) > rows);
+      }
+    } else if (!invalid && nulls >= 0) {
+      invalid = (values - nulls) % numElements != 0;
+    }
+    if (invalid) {
+      throw new ParquetDecodingException("Invalid FINITE_VECTOR counts for " + Arrays.toString(path.getPath())
+          + ": rows=" + rows + ", values=" + values + ", nulls=" + declaredNulls
+          + ", length=" + numElements);
+    }
+  }
+
+  private void checkVectorColumnCounts(ColumnChunkMetaData column, long rows) {
+    if (vectorColumns.isEmpty()) return;
+    VectorColumn vector = vectorColumns.get(column.getPath());
+    if (vector == null) return;
+    org.apache.parquet.column.statistics.Statistics<?> stats = column.getStatistics();
+    long nulls = stats != null && stats.isNumNullsSet() ? stats.getNumNulls() : -1;
+    checkVectorCounts(vector.descriptor(), vector.length(), rows, column.getValueCount(), nulls);
+  }
+
   private ColumnChunkPageReadStore internalReadRowGroup(int blockIndex) throws IOException {
     if (blockIndex < 0 || blockIndex >= blocks.size()) {
       return null;
@@ -1175,6 +1233,7 @@ public class ParquetFileReader implements Closeable {
       ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
+        checkVectorColumnCounts(mc, block.getRowCount());
         BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
         long startingPos = mc.getStartingPos();
         // first part or not consecutive => new list
@@ -1573,6 +1632,7 @@ public class ParquetFileReader implements Closeable {
       ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
+        checkVectorColumnCounts(mc, block.getRowCount());
         OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
 
         OffsetIndex filteredOffsetIndex =
@@ -2135,6 +2195,8 @@ public class ParquetFileReader implements Closeable {
           .getSchema()
           .getType(descriptor.col.getPath())
           .asPrimitiveType();
+      String[] path = descriptor.col.getPath();
+      VectorColumn vector = vectorColumns.isEmpty() ? null : vectorColumns.get(descriptor.metadata.getPath());
       long valuesCountReadSoFar = 0L;
       int dataPageCountReadSoFar = 0;
       byte[] dataPageHeaderAAD = null;
@@ -2209,12 +2271,36 @@ public class ParquetFileReader implements Closeable {
             if (pageHeader.isSetCrc()) {
               dataPageV1.setCrc(pageHeader.getCrc());
             }
+            if (vector != null && offsetIndex != null) {
+              long rows = offsetIndex.getLastRowIndex(dataPageCountReadSoFar, rowCount)
+                  - offsetIndex.getFirstRowIndex(dataPageCountReadSoFar)
+                  + 1;
+              org.apache.parquet.column.statistics.Statistics<?> stats = dataPageV1.getStatistics();
+              long nulls = stats != null && stats.isNumNullsSet() ? stats.getNumNulls() : -1;
+              checkVectorCounts(
+                  vector.descriptor(), vector.length(), rows, dataPageV1.getValueCount(), nulls);
+            }
             pagesInChunk.add(dataPageV1);
             valuesCountReadSoFar += dataHeaderV1.getNum_values();
             ++dataPageCountReadSoFar;
             break;
           case DATA_PAGE_V2:
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
+            if (vector != null) {
+              if (dataHeaderV2.getNum_nulls() < 0) {
+                throw new ParquetDecodingException("Invalid FINITE_VECTOR counts for "
+                    + Arrays.toString(path)
+                    + ": rows=" + dataHeaderV2.getNum_rows() + ", values="
+                    + dataHeaderV2.getNum_values() + ", nulls=" + dataHeaderV2.getNum_nulls()
+                    + ", length=" + vector.length());
+              }
+              checkVectorCounts(
+                  vector.descriptor(),
+                  vector.length(),
+                  dataHeaderV2.getNum_rows(),
+                  dataHeaderV2.getNum_values(),
+                  dataHeaderV2.getNum_nulls());
+            }
             int dataSize = compressedPageSize
                 - dataHeaderV2.getRepetition_levels_byte_length()
                 - dataHeaderV2.getDefinition_levels_byte_length();

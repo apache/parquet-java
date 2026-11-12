@@ -488,6 +488,21 @@ public class SchemaConverter {
 
             @Override
             public Optional<TypeMapping> visit(
+                LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation vectorLogicalType) {
+              List3Levels list3Levels = new List3Levels(type);
+              Type element = list3Levels.getElement();
+              TypeMapping child = fromParquet(element, null, element.getRepetition());
+              ArrowType.FixedSizeList fixedSizeList =
+                  new ArrowType.FixedSizeList(vectorLogicalType.getNumElements());
+              Field arrowField = new Field(
+                  name,
+                  new FieldType(type.isRepetition(OPTIONAL), fixedSizeList, null),
+                  Collections.singletonList(child.getArrowField()));
+              return of(new ListTypeMapping(arrowField, list3Levels, child));
+            }
+
+            @Override
+            public Optional<TypeMapping> visit(
                 LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
               Map3Levels map3levels = new Map3Levels(type);
               TypeMapping keyType = fromParquet(
