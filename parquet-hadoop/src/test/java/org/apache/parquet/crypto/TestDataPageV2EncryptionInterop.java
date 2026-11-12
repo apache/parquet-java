@@ -19,17 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.COLUMN_KEY;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.COLUMN_KEY_METADATA;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.FOOTER_KEY;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.FOOTER_KEY_METADATA;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.NUM_ROWS;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.SCHEMA;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.decryptionProperties;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.expectedRows;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.readRows;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.readRowsWrittenBy;
-import static org.apache.parquet.crypto.DataPageV2EncryptionTestData.row;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -38,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,18 +38,25 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.mocks.Base64KmsClient;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.format.BlockCipher;
@@ -70,17 +67,27 @@ import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.rewrite.ParquetRewriter;
 import org.apache.parquet.hadoop.rewrite.RewriteOptions;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.RecordReader;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -108,6 +115,32 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class TestDataPageV2EncryptionInterop {
 
   private static final String FIXTURES = "/encryption/datapagev2/";
+
+  private static final int NUM_ROWS = 500;
+
+  /** Footer key, also the key of all columns with uniform encryption. */
+  private static final byte[] FOOTER_KEY = "0123456789abcdef".getBytes(StandardCharsets.UTF_8);
+
+  private static final byte[] FOOTER_KEY_METADATA = "footkey".getBytes(StandardCharsets.UTF_8);
+
+  private static final byte[] COLUMN_KEY = "fedcba9876543210".getBytes(StandardCharsets.UTF_8);
+
+  private static final byte[] COLUMN_KEY_METADATA = "colkey".getBytes(StandardCharsets.UTF_8);
+
+  /**
+   * {@code seq} is required (no levels), {@code id} and {@code name} are optional (definition
+   * levels), {@code tags} is a list (repetition and definition levels).
+   */
+  private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("message schema {"
+      + "  required int64 seq;"
+      + "  optional int32 id;"
+      + "  optional binary name (STRING);"
+      + "  optional group tags (LIST) {"
+      + "    repeated group list {"
+      + "      optional binary element (STRING);"
+      + "    }"
+      + "  }"
+      + "}");
 
   /** {@code seq >= 250} lets the first two pages (rows 0-199) be skipped. */
   private static final int FIRST_ROW_OF_PAGE_WITH_SEQ_250 = 200;
@@ -460,6 +493,140 @@ public class TestDataPageV2EncryptionInterop {
       }
     }
     return file;
+  }
+
+  /** Builds row {@code i}, as stored in the {@code arrow-v2-*} fixtures. */
+  private static Group row(int i) {
+    Group group = new SimpleGroupFactory(SCHEMA).newGroup();
+    group.add("seq", (long) i);
+    if (i % 7 != 0) {
+      group.add("id", i);
+    }
+    if (i % 5 != 0) {
+      group.add("name", "name-" + i);
+    }
+    if (i % 4 != 0) {
+      Group tags = group.addGroup("tags");
+      int count = i % 4;
+      for (int j = 0; j < count; j++) {
+        Group element = tags.addGroup("list");
+        if ((i + j) % 3 != 0) {
+          element.add("element", "tag-" + i + "-" + j);
+        }
+      }
+    }
+    return group;
+  }
+
+  private static List<String> expectedRows() {
+    List<String> rows = new ArrayList<>(NUM_ROWS);
+    for (int i = 0; i < NUM_ROWS; i++) {
+      rows.add(row(i).toString());
+    }
+    return rows;
+  }
+
+  private static FileDecryptionProperties decryptionProperties() {
+    return FileDecryptionProperties.builder()
+        .withKeyRetriever(new DecryptionKeyRetrieverMock()
+            .putKey("footkey", FOOTER_KEY)
+            .putKey("colkey", COLUMN_KEY))
+        .build();
+  }
+
+  /**
+   * Reads all rows as strings. Page checksums are verified unless {@code conf} disables it.
+   *
+   * @param conf not modified
+   * @param decryption the decryption properties, or null to use the ones configured in {@code conf}
+   * @param directMemory whether to read into direct buffers and decrypt off heap
+   */
+  private static List<String> readRows(
+      Path file, Configuration conf, FileDecryptionProperties decryption, boolean directMemory)
+      throws IOException {
+    return readRows(file, conf, decryption, directMemory, FilterCompat.NOOP);
+  }
+
+  /** Like {@link #readRows(Path, Configuration, FileDecryptionProperties, boolean)}, filtered by page. */
+  private static List<String> readRows(
+      Path file,
+      Configuration conf,
+      FileDecryptionProperties decryption,
+      boolean directMemory,
+      FilterCompat.Filter filter)
+      throws IOException {
+    Configuration readConf = new Configuration(conf);
+    readConf.setBoolean(ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED, directMemory);
+    readConf.setBoolean(
+        ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED,
+        conf.getBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true));
+    if (filter != FilterCompat.NOOP) {
+      // Return every row of the pages that are read, so the test can see which pages were skipped
+      readConf.setBoolean(ParquetInputFormat.RECORD_FILTERING_ENABLED, false);
+    }
+    List<String> rows = new ArrayList<>();
+    // close() fails on leaked buffers
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
+        directMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator())) {
+      ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), file)
+          .withConf(readConf)
+          .withFilter(filter)
+          .withAllocator(allocator);
+      if (decryption != null) {
+        builder.withDecryption(decryption);
+      }
+      try (ParquetReader<Group> reader = builder.build()) {
+        Group group;
+        while ((group = reader.read()) != null) {
+          rows.add(group.toString());
+        }
+      }
+    }
+    return rows;
+  }
+
+  /** Reads all rows as strings, with {@code createdBy} in place of the {@code created_by} of the file. */
+  private static List<String> readRowsWrittenBy(Path file, String createdBy, boolean directMemory)
+      throws IOException {
+    Configuration conf = new Configuration();
+    InputFile inputFile = HadoopInputFile.fromPath(file, conf);
+    List<String> rows = new ArrayList<>();
+    // close() fails on leaked buffers
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
+        directMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator())) {
+      ParquetReadOptions options = HadoopReadOptions.builder(conf, file)
+          .withDecryption(decryptionProperties())
+          .withAllocator(allocator)
+          .useOffHeapDecryptBuffer(directMemory)
+          .build();
+      ParquetMetadata footer;
+      try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options)) {
+        footer = reader.getFooter();
+      }
+      FileMetaData fileMetaData = footer.getFileMetaData();
+      ParquetMetadata writtenBy = new ParquetMetadata(
+          new FileMetaData(
+              fileMetaData.getSchema(),
+              fileMetaData.getKeyValueMetaData(),
+              createdBy,
+              fileMetaData.getEncryptionType(),
+              fileMetaData.getFileDecryptor()),
+          footer.getBlocks());
+      MessageType schema = fileMetaData.getSchema();
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+      try (ParquetFileReader reader =
+          new ParquetFileReader(inputFile, writtenBy, options, inputFile.newStream())) {
+        PageReadStore rowGroup;
+        while ((rowGroup = reader.readNextRowGroup()) != null) {
+          RecordReader<Group> records = columnIO.getRecordReader(rowGroup, new GroupRecordConverter(schema));
+          for (long i = 0; i < rowGroup.getRowCount(); i++) {
+            rows.add(records.read().toString());
+          }
+          rowGroup.close();
+        }
+      }
+    }
+    return rows;
   }
 
   private static Path fixture(String name) throws URISyntaxException {
