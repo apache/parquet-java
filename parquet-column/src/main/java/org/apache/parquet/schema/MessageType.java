@@ -44,6 +44,15 @@ public final class MessageType extends GroupType {
     super(Repetition.REPEATED, name, fields);
   }
 
+  private MessageType(MessageType toCopy, String newName) {
+    super(toCopy, newName);
+  }
+
+  @Override
+  public MessageType withName(String newName) {
+    return new MessageType(this, newName);
+  }
+
   /**
    * {@inheritDoc}
    */
