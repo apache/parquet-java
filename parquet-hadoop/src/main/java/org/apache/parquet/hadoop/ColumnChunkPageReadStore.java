@@ -271,7 +271,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
       try {
         ByteBuffer body = decryptDataPageModule(page.getData(), offHeap);
-        checkDecryptedPageSize(body.limit(), levelsByteLength);
+        checkDecryptedPageSize(page, body.limit(), levelsByteLength);
         BytesInput repetitionLevels = BytesInput.from(body.slice(0, repetitionLevelsByteLength));
         BytesInput definitionLevels =
             BytesInput.from(body.slice(repetitionLevelsByteLength, definitionLevelsByteLength));
@@ -285,11 +285,16 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       }
     }
 
-    private void checkDecryptedPageSize(int decryptedSize, int levelsByteLength) {
+    private void checkDecryptedPageSize(DataPageV2 page, int decryptedSize, int levelsByteLength) {
       if (decryptedSize < levelsByteLength) {
         throw new ParquetDecodingException("Decrypted DataPageV2 body has " + decryptedSize
             + " bytes, which is less than the " + levelsByteLength
             + " bytes of repetition and definition levels in the page header");
+      }
+      if (!page.isCompressed() && decryptedSize != page.getUncompressedSize()) {
+        throw new ParquetDecodingException("Decrypted DataPageV2 body has " + decryptedSize
+            + " bytes, but the page header gives an uncompressed page size of "
+            + page.getUncompressedSize() + " bytes");
       }
     }
 

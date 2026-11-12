@@ -20,12 +20,25 @@
 package org.apache.parquet.hadoop;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.page.DataPage;
+import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.crypto.AesCipher;
+import org.apache.parquet.crypto.AesMode;
+import org.apache.parquet.crypto.ModuleCipherFactory;
+import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import org.apache.parquet.hadoop.FullBodyEncryptedDataPageV2.Layout;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -158,6 +171,56 @@ public class TestFullBodyEncryptedDataPageV2 {
   })
   public void layoutWrittenByFollowsTheWriterVersion(String createdBy, Layout expected) {
     assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(createdBy)).isEqualTo(expected);
+  }
+
+  /** Reads one uncompressed page whose body is {@code LEVELS} (definition levels) and 8 value bytes. */
+  private static DataPage readUncompressedPage(int uncompressedPageSize) {
+    byte[] key = "0123456789abcdef".getBytes(StandardCharsets.UTF_8);
+    byte[] fileAAD = "file".getBytes(StandardCharsets.UTF_8);
+    byte[] plainBody = concat(LEVELS, new byte[8]);
+    byte[] dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 0, 0, 0);
+    byte[] encryptedBody =
+        ModuleCipherFactory.getEncryptor(AesMode.GCM, key).encrypt(plainBody, dataPageAAD);
+    FullBodyEncryptedDataPageV2 page = new FullBodyEncryptedDataPageV2(
+        8,
+        0,
+        8,
+        Encoding.PLAIN,
+        BytesInput.from(encryptedBody),
+        0,
+        LEVELS.length,
+        uncompressedPageSize,
+        null,
+        false);
+    ColumnChunkPageReader reader = new ColumnChunkPageReader(
+        null,
+        Collections.singletonList(page),
+        null,
+        null,
+        8,
+        ModuleCipherFactory.getDecryptor(AesMode.GCM, key),
+        fileAAD,
+        0,
+        0,
+        ParquetReadOptions.builder().build());
+    return reader.readPage();
+  }
+
+  @Test
+  public void uncompressedPageWithTheSizeOfItsDecryptedBodyIsRead() {
+    DataPageV2 page = (DataPageV2) readUncompressedPage(LEVELS.length + 8);
+
+    assertThat(page.getDefinitionLevels().size()).isEqualTo(LEVELS.length);
+    assertThat(page.getData().size()).isEqualTo(8);
+  }
+
+  @Test
+  public void uncompressedPageWhoseHeaderDisagreesWithItsDecryptedBodyIsRejected() {
+    assertThatThrownBy(() -> readUncompressedPage(LEVELS.length + 9))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage(
+            "Decrypted DataPageV2 body has 12 bytes, but the page header gives an uncompressed page size"
+                + " of 13 bytes");
   }
 
   @Test
