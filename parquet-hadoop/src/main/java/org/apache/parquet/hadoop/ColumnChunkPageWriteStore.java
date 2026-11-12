@@ -317,23 +317,18 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         compressedData = compressor.compress(data);
         compressed = true;
       }
-      // When encrypted, the levels and the values are encrypted together as one module
-      List<BytesInput> pageParts = new ArrayList<>(3);
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
-        byte[] plainPage = BytesInput.concat(repetitionLevels, definitionLevels, compressedData)
-            .toByteArray();
-        pageParts.add(BytesInput.from(pageBlockEncryptor.encrypt(plainPage, dataPageAAD)));
-      } else {
-        pageParts.add(repetitionLevels);
-        pageParts.add(definitionLevels);
-        pageParts.add(compressedData);
+        // The levels are encrypted with the values as one module, which is written in place of all three
+        compressedData = BytesInput.from(pageBlockEncryptor.encrypt(
+            BytesInput.concat(repetitionLevels, definitionLevels, compressedData)
+                .toByteArray(),
+            dataPageAAD));
+        repetitionLevels = BytesInput.empty();
+        definitionLevels = BytesInput.empty();
       }
-      long pagePartsSize = 0;
-      for (BytesInput part : pageParts) {
-        pagePartsSize += part.size();
-      }
-      int compressedSize = toIntWithCheck(pagePartsSize);
+      int compressedSize =
+          toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
       tempOutputStream.reset();
       if (null != headerBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
@@ -341,10 +336,14 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       if (pageWriteChecksumEnabled) {
         crc.reset();
         try (ByteBufferReleaser pageReleaser = new ByteBufferReleaser(allocator)) {
-          for (BytesInput part : pageParts) {
-            if (part.size() > 0) {
-              crc.update(part.toByteBuffer(pageReleaser));
-            }
+          if (repetitionLevels.size() > 0) {
+            crc.update(repetitionLevels.toByteBuffer(pageReleaser));
+          }
+          if (definitionLevels.size() > 0) {
+            crc.update(definitionLevels.toByteBuffer(pageReleaser));
+          }
+          if (compressedData.size() > 0) {
+            crc.update(compressedData.toByteBuffer(pageReleaser));
           }
         }
         parquetMetadataConverter.writeDataPageV2Header(
@@ -389,10 +388,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
-      List<BytesInput> pageBytes = new ArrayList<>(pageParts.size() + 1);
-      pageBytes.add(BytesInput.from(tempOutputStream));
-      pageBytes.addAll(pageParts);
-      buf.collect(BytesInput.concat(pageBytes));
+      buf.collect(BytesInput.concat(
+          BytesInput.from(tempOutputStream), repetitionLevels, definitionLevels, compressedData));
       dataEncodings.add(dataEncoding);
     }
 

@@ -28,8 +28,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -1430,8 +1428,10 @@ public class ParquetFileWriter implements AutoCloseable {
         valueCount,
         toIntWithCheck(repetitionLevels.size(), "page repetition levels"),
         toIntWithCheck(definitionLevels.size(), "page definition levels"),
+        repetitionLevels,
+        definitionLevels,
         dataEncoding,
-        Arrays.asList(repetitionLevels, definitionLevels, bytes),
+        bytes,
         compressed,
         uncompressedDataSize,
         statistics,
@@ -1483,22 +1483,26 @@ public class ParquetFileWriter implements AutoCloseable {
     Preconditions.checkArgument(
         (metadataBlockEncryptor == null) == (pageBlockEncryptor == null),
         "Both the page header and the page of an encrypted column must be encrypted");
-    List<BytesInput> pageParts;
-    if (pageBlockEncryptor == null) {
-      pageParts = Arrays.asList(repetitionLevels, definitionLevels, bytes);
-    } else {
+    int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
+    int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
+    if (pageBlockEncryptor != null) {
       Preconditions.checkArgument(dataPageAAD != null, "dataPageAAD is required to encrypt the page");
-      pageParts = Collections.singletonList(BytesInput.from(pageBlockEncryptor.encrypt(
-          BytesInput.concat(repetitionLevels, definitionLevels, bytes).toByteArray(), dataPageAAD)));
+      // The levels are encrypted with the data bytes as one module, which is written in place of all three
+      bytes = BytesInput.from(pageBlockEncryptor.encrypt(
+          BytesInput.concat(repetitionLevels, definitionLevels, bytes).toByteArray(), dataPageAAD));
+      repetitionLevels = BytesInput.empty();
+      definitionLevels = BytesInput.empty();
     }
     writeDataPageV2Parts(
         rowCount,
         nullCount,
         valueCount,
-        toIntWithCheck(repetitionLevels.size(), "page repetition levels"),
-        toIntWithCheck(definitionLevels.size(), "page definition levels"),
+        rlByteLength,
+        dlByteLength,
+        repetitionLevels,
+        definitionLevels,
         dataEncoding,
-        pageParts,
+        bytes,
         compressed,
         uncompressedDataSize,
         statistics,
@@ -1507,15 +1511,24 @@ public class ParquetFileWriter implements AutoCloseable {
         sizeStatistics);
   }
 
-  /** @param pageParts the bytes written after the page header */
+  /**
+   * @param rlByteLength the repetition levels length written in the page header
+   * @param dlByteLength the definition levels length written in the page header
+   * @param repetitionLevels the repetition level bytes written after the page header, empty if they
+   *                         are encrypted in {@code bytes}
+   * @param definitionLevels the definition level bytes written after the page header, empty if they
+   *                         are encrypted in {@code bytes}
+   */
   private void writeDataPageV2Parts(
       int rowCount,
       int nullCount,
       int valueCount,
       int rlByteLength,
       int dlByteLength,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
       Encoding dataEncoding,
-      List<BytesInput> pageParts,
+      BytesInput bytes,
       boolean compressed,
       int uncompressedDataSize,
       Statistics<?> statistics,
@@ -1525,11 +1538,8 @@ public class ParquetFileWriter implements AutoCloseable {
       throws IOException {
     withAbortOnFailure(() -> {
       state = state.write();
-      long pagePartsSize = 0;
-      for (BytesInput part : pageParts) {
-        pagePartsSize += part.size();
-      }
-      int compressedSize = toIntWithCheck(pagePartsSize, "page");
+      int compressedSize =
+          toIntWithCheck(bytes.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
       int uncompressedSize = toIntWithCheck((long) uncompressedDataSize + rlByteLength + dlByteLength, "page");
 
@@ -1540,10 +1550,14 @@ public class ParquetFileWriter implements AutoCloseable {
 
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        for (BytesInput part : pageParts) {
-          if (part.size() > 0) {
-            crcUpdate(part);
-          }
+        if (repetitionLevels.size() > 0) {
+          crcUpdate(repetitionLevels);
+        }
+        if (definitionLevels.size() > 0) {
+          crcUpdate(definitionLevels);
+        }
+        if (bytes.size() > 0) {
+          crcUpdate(bytes);
         }
         metadataConverter.writeDataPageV2Header(
             uncompressedSize,
@@ -1584,7 +1598,7 @@ public class ParquetFileWriter implements AutoCloseable {
       currentEncodings.add(dataEncoding);
       encodingStatsBuilder.addDataEncoding(dataEncoding);
 
-      BytesInput.concat(pageParts).writeAllTo(out);
+      BytesInput.concat(repetitionLevels, definitionLevels, bytes).writeAllTo(out);
 
       offsetIndexBuilder.add(
           toIntWithCheck(out.getPos() - beforeHeader, "page"),
