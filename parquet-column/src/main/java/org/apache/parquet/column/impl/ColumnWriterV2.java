@@ -65,8 +65,9 @@ final class ColumnWriterV2 extends ColumnWriterBase {
       ColumnDescriptor path,
       PageWriter pageWriter,
       BloomFilterWriter bloomFilterWriter,
+      ContentDefinedChunker chunker,
       ParquetProperties props) {
-    super(path, pageWriter, bloomFilterWriter, props);
+    super(path, pageWriter, bloomFilterWriter, chunker, props);
   }
 
   @Override

@@ -23,12 +23,14 @@ import static java.lang.Math.min;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.impl.ContentDefinedChunker;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.InternalFileEncryptor;
@@ -64,6 +66,8 @@ class InternalParquetRecordWriter<T> {
   private long lastRowGroupEndPos = 0;
 
   private ColumnWriteStore columnStore;
+  // Continued by every row group of the file; null unless content defined chunking is enabled.
+  private final List<ContentDefinedChunker> contentDefinedChunkers;
   private ColumnChunkPageWriteStore pageStore;
   private BloomFilterWriteStore bloomFilterWriteStore;
   private RecordConsumer recordConsumer;
@@ -100,6 +104,8 @@ class InternalParquetRecordWriter<T> {
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
     this.rowGroupOrdinal = 0;
+    this.contentDefinedChunkers =
+        props.isContentDefinedChunkingEnabled() ? ContentDefinedChunker.forColumns(schema, props) : null;
     initStore();
     recordCountForNextMemCheck = props.getMinRowCountForPageSizeCheck();
   }
@@ -121,7 +127,7 @@ class InternalParquetRecordWriter<T> {
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 
-    columnStore = props.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore);
+    columnStore = props.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore, contentDefinedChunkers);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
     writeSupport.prepareForWrite(recordConsumer);

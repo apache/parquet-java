@@ -24,6 +24,7 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.parquet.column.impl.ContentDefinedChunker;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.column.values.alp.AlpConfig;
 import org.apache.parquet.schema.MessageType;
@@ -32,6 +33,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class TestParquetProperties {
+
+  private static final ContentDefinedChunkingOptions CHUNKING = ContentDefinedChunkingOptions.builder()
+      .withMinChunkSize(4 * 1024)
+      .withMaxChunkSize(16 * 1024)
+      .withNormLevel(-1)
+      .build();
 
   private static final MessageType SCHEMA = MessageTypeParser.parseMessageType(
       "message test { required binary col_a; required int32 col_b; required double col_c; }");
@@ -193,6 +200,20 @@ public class TestParquetProperties {
   }
 
   @Test
+  public void alp_onNonFloatOrDoubleColumn_failsAlsoWithContentDefinedChunking() {
+    ParquetProperties props = ParquetProperties.builder()
+        .withAlp("col_b")
+        .withContentDefinedChunking(CHUNKING)
+        .build();
+
+    assertThatThrownBy(() -> props.newColumnWriteStore(
+            SCHEMA, new MemPageStore(0), column -> null, ContentDefinedChunker.forColumns(SCHEMA, props)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("col_b")
+        .hasMessageContaining("only supports FLOAT and DOUBLE");
+  }
+
+  @Test
   public void alp_withByteStreamSplitOnTheSameColumn_fails() {
     ParquetProperties props = ParquetProperties.builder()
         .withAlp()
@@ -337,5 +358,56 @@ public class TestParquetProperties {
     assertThat(props.getColumnCompressionLevel(colA)).isNull();
     assertThat(props.getColumnCompressionLevel(colB)).isEqualTo(7);
     assertThat(props.getColumnCompressionLevel(colC)).isNull();
+  }
+
+  @Test
+  public void contentDefinedChunking_byDefault_isDisabled() {
+    assertThat(ParquetProperties.builder().build().isContentDefinedChunkingEnabled())
+        .isFalse();
+  }
+
+  @Test
+  public void withContentDefinedChunking_nullOptions_disablesChunking() {
+    ParquetProperties disabled = ParquetProperties.builder()
+        .withContentDefinedChunking(CHUNKING)
+        .withContentDefinedChunking(null)
+        .build();
+
+    assertThat(disabled.isContentDefinedChunkingEnabled()).isFalse();
+    assertThat(disabled.getContentDefinedChunkingOptions()).isNull();
+  }
+
+  @Test
+  public void withContentDefinedChunking_options_enablesChunkingAndSurvivesCopy() {
+    ParquetProperties original =
+        ParquetProperties.builder().withContentDefinedChunking(CHUNKING).build();
+    ParquetProperties copy = ParquetProperties.copy(original).build();
+
+    assertThat(copy.isContentDefinedChunkingEnabled()).isTrue();
+    assertThat(copy.getContentDefinedChunkingOptions()).isSameAs(CHUNKING);
+  }
+
+  @Test
+  public void contentDefinedChunkingOptions_default_matchesArrow() {
+    assertThat(ContentDefinedChunkingOptions.DEFAULT)
+        .asString()
+        .isEqualTo("ContentDefinedChunkingOptions{minChunkSize=262144, maxChunkSize=1048576, normLevel=0}");
+  }
+
+  @Test
+  public void contentDefinedChunkingOptions_toString_namesEverySetting() {
+    assertThat(CHUNKING)
+        .asString()
+        .isEqualTo("ContentDefinedChunkingOptions{minChunkSize=4096, maxChunkSize=16384, normLevel=-1}");
+  }
+
+  @Test
+  public void contentDefinedChunkingOptions_invalidRange_throwsIllegalArgumentException() {
+    assertThatThrownBy(() -> ContentDefinedChunkingOptions.builder()
+            .withMaxChunkSize(0)
+            .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid content defined chunking size range: maximum chunk size (0) must be greater "
+            + "than minimum chunk size (262144)");
   }
 }
