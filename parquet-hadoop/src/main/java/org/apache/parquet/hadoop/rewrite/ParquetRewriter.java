@@ -161,11 +161,18 @@ public class ParquetRewriter implements Closeable {
     this.inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
     this.inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
     this.outSchema = pruneColumnsInSchema(getSchema(), options.getPruneColumns());
-    this.extraMetaData = getExtraMetadata(options);
     ensureSameSchema(inputFiles);
     ensureSameSchema(inputFilesToJoin);
     ensureRowCount();
     ensureRenamingCorrectness(outSchema, renamedColumns);
+    Map<String, String> inputMetaData = getExtraMetadata(options);
+    boolean pruned =
+        options.getPruneColumns() != null && !options.getPruneColumns().isEmpty();
+    if (pruned || !renamedColumns.isEmpty()) {
+      // Keep the Avro schema stored by parquet-avro consistent with the pruned/renamed Parquet schema
+      inputMetaData = AvroSchemaMetadata.adjust(inputMetaData, outSchema, renamedColumns);
+    }
+    this.extraMetaData = inputMetaData;
     OutputFile out = options.getParquetOutputFile();
     LOG.info(
         "Start rewriting {} input file(s) {} to {}",
