@@ -42,9 +42,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.crypto.AesCipher;
-import org.apache.parquet.crypto.AesCtrDecryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
-import org.apache.parquet.crypto.TagVerificationException;
 import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
@@ -263,38 +261,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     /**
-     * Reads a page whose levels and values are one encrypted module. If the layout is ambiguous and the
-     * writer of the file is unknown, the page is decrypted as one module first, and read with plaintext
-     * levels if the GCM tag check fails. CTR has no tag, so such CTR pages are read with plaintext
-     * levels.
+     * Reads a page whose levels and values are one encrypted module: decrypts the body, splits it into
+     * levels and values, and decompresses the values.
      */
     private DataPageV2 readPageV2WithEncryptedLevels(FullBodyEncryptedDataPageV2 page, int currentPageIndex) {
-      DataPageV2 plaintextLevelsPage = page.getPlaintextLevelsLayoutPage();
-      if (plaintextLevelsPage == null) {
-        return decryptPageV2WithEncryptedLevels(page, currentPageIndex, decryptsOffHeap());
-      }
-      if (blockDecryptor instanceof AesCtrDecryptor) {
-        return readPageV2WithPlaintextLevels(plaintextLevelsPage, currentPageIndex);
-      }
-      try {
-        // Not off heap: decrypting in place would overwrite the bytes the fallback reads
-        return decryptPageV2WithEncryptedLevels(page, currentPageIndex, false);
-      } catch (TagVerificationException notASingleModule) {
-        LOG.debug(
-            "DataPageV2 body is not a single encrypted module, reading it with plaintext levels",
-            notASingleModule);
-        try {
-          return readPageV2WithPlaintextLevels(plaintextLevelsPage, currentPageIndex);
-        } catch (TagVerificationException notPlaintextLevelsEither) {
-          notPlaintextLevelsEither.addSuppressed(notASingleModule);
-          throw notPlaintextLevelsEither;
-        }
-      }
-    }
-
-    /** Decrypts the body, splits it into levels and values, and decompresses the values. */
-    private DataPageV2 decryptPageV2WithEncryptedLevels(
-        FullBodyEncryptedDataPageV2 page, int currentPageIndex, boolean offHeap) {
+      boolean offHeap = decryptsOffHeap();
       int repetitionLevelsByteLength = page.getRepetitionLevelsByteLength();
       int definitionLevelsByteLength = page.getDefinitionLevelsByteLength();
       int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;

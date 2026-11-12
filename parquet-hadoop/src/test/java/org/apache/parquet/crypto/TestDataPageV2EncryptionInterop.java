@@ -362,8 +362,9 @@ public class TestDataPageV2EncryptionInterop {
   /**
    * {@code legacy-v2-ambiguous-*}: one legacy page of 8 optional int32 values, only the first (12345)
    * defined. Its 4 bytes of definition levels, {@code 03 01 00 00}, are a bit-packed run of 8 levels
-   * plus 2 unread bytes, and read as an LE int they equal {@code bodySize - 4}, so the layout is {@code
-   * AMBIGUOUS}.
+   * plus 2 unread bytes, and read as an LE int they equal {@code bodySize - 4}, so the body fits both
+   * layouts. The {@code created_by} of the fixture, {@code parquet-mr version 1.19.0-SNAPSHOT}, resolves
+   * it to plaintext levels.
    */
   @ParameterizedTest(name = "{0}, directMemory={1}")
   @MethodSource("ambiguousFixtures")

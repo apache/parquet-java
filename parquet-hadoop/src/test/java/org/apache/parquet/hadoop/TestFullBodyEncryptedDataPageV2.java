@@ -32,6 +32,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 public class TestFullBodyEncryptedDataPageV2 {
 
+  private static final String PARQUET_JAVA_1_18 = "parquet-mr version 1.18.0 (build abc)";
+  private static final String ARROW = "parquet-cpp-arrow version 24.0.0";
+
   /** A bit-packed run of 8 levels, then an RLE run of 8 levels. */
   private static final byte[] LEVELS = {0x03, (byte) 0xff, 0x10, 0x01};
 
@@ -54,7 +57,8 @@ public class TestFullBodyEncryptedDataPageV2 {
 
   @Test
   public void bodyThatIsOneModuleIsASingleModule() throws IOException {
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(module(50)), LEVELS.length))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+            BytesInput.from(module(50)), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
@@ -62,7 +66,7 @@ public class TestFullBodyEncryptedDataPageV2 {
   public void bodyWithPlaintextLevelsInFrontOfAModuleHasPlaintextLevels() throws IOException {
     byte[] body = concat(LEVELS, module(50));
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), LEVELS.length))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), LEVELS.length, ARROW))
         .isEqualTo(Layout.PLAINTEXT_LEVELS);
   }
 
@@ -72,7 +76,8 @@ public class TestFullBodyEncryptedDataPageV2 {
     ByteBuffer first = ByteBuffer.wrap(body, 0, 2).slice();
     ByteBuffer second = ByteBuffer.wrap(body, 2, body.length - 2).slice();
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(first, second), LEVELS.length))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+            BytesInput.from(first, second), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
@@ -84,23 +89,33 @@ public class TestFullBodyEncryptedDataPageV2 {
     ByteBuffer second = ByteBuffer.wrap(body, LEVELS.length + 2, body.length - LEVELS.length - 2)
         .slice();
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(first, second), LEVELS.length))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(first, second), LEVELS.length, ARROW))
         .isEqualTo(Layout.PLAINTEXT_LEVELS);
   }
 
-  @Test
-  public void bodyThatFitsBothLayoutsIsAmbiguous() throws IOException {
-    // Levels whose first 4 bytes are bodySize - 4
+  /** Levels whose first 4 bytes are {@code bodySize - 4}, followed by a module. */
+  private static byte[] bodyThatFitsBothLayouts() {
     byte[] module = module(50);
     int bodySize = LEVELS.length + module.length;
     byte[] levels = ByteBuffer.allocate(LEVELS.length)
         .order(ByteOrder.LITTLE_ENDIAN)
         .putInt(bodySize - Integer.BYTES)
         .array();
-    byte[] body = concat(levels, module);
+    return concat(levels, module);
+  }
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), levels.length))
-        .isEqualTo(Layout.AMBIGUOUS);
+  @Test
+  public void bodyThatFitsBothLayoutsHasPlaintextLevelsIfWrittenByParquetJava118() throws IOException {
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+            BytesInput.from(bodyThatFitsBothLayouts()), LEVELS.length, PARQUET_JAVA_1_18))
+        .isEqualTo(Layout.PLAINTEXT_LEVELS);
+  }
+
+  @Test
+  public void bodyThatFitsBothLayoutsIsASingleModuleIfWrittenByAnotherWriter() throws IOException {
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+            BytesInput.from(bodyThatFitsBothLayouts()), LEVELS.length, ARROW))
+        .isEqualTo(Layout.SINGLE_MODULE);
   }
 
   @Test
@@ -108,18 +123,19 @@ public class TestFullBodyEncryptedDataPageV2 {
     byte[] body = concat(LEVELS, module(50));
     body[LEVELS.length] ^= 0x01;
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), LEVELS.length))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
   @Test
   public void bodyThatIsTooShortToHoldAModuleLengthIsNotAnythingElseThanASingleModule() throws IOException {
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.empty(), 1))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.empty(), 1, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(new byte[] {1, 2, 3}), 1))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+            BytesInput.from(new byte[] {1, 2, 3}), 1, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
     // Body is only levels
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(LEVELS), LEVELS.length))
+    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(LEVELS), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
@@ -133,19 +149,19 @@ public class TestFullBodyEncryptedDataPageV2 {
     "'parquet-mr version 2.0.0-SNAPSHOT', SINGLE_MODULE",
     "'parquet-cpp-arrow version 24.0.0', SINGLE_MODULE",
     "'parquet-rs version 57.0.0', SINGLE_MODULE",
-    "'parquet-mr version 1.19.0-SNAPSHOT (build abc)', AMBIGUOUS",
-    "'parquet-mr version 1.19.0rc1', AMBIGUOUS",
-    "'parquet-mr version', AMBIGUOUS",
-    "'parquet-mr version not-a-version', AMBIGUOUS",
-    "'not a created_by', AMBIGUOUS",
-    "'', AMBIGUOUS",
+    "'parquet-mr version 1.19.0-SNAPSHOT (build abc)', PLAINTEXT_LEVELS",
+    "'parquet-mr version 1.19.0rc1', PLAINTEXT_LEVELS",
+    "'parquet-mr version', SINGLE_MODULE",
+    "'parquet-mr version not-a-version', SINGLE_MODULE",
+    "'not a created_by', SINGLE_MODULE",
+    "'', SINGLE_MODULE",
   })
   public void layoutWrittenByFollowsTheWriterVersion(String createdBy, Layout expected) {
     assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(createdBy)).isEqualTo(expected);
   }
 
   @Test
-  public void layoutWrittenByAnUnknownWriterIsAmbiguous() {
-    assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(null)).isEqualTo(Layout.AMBIGUOUS);
+  public void layoutWrittenByAnUnknownWriterIsASingleModule() {
+    assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(null)).isEqualTo(Layout.SINGLE_MODULE);
   }
 }

@@ -44,22 +44,17 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
     /** {@code [module of levels and values]} */
     SINGLE_MODULE,
     /** {@code [plaintext levels][module of values]} */
-    PLAINTEXT_LEVELS,
-    /** Both length checks match, and {@code created_by} does not tell; only decryption can tell. */
-    AMBIGUOUS
+    PLAINTEXT_LEVELS
   }
 
   private static final SemanticVersion SINGLE_MODULE_SINCE = new SemanticVersion(1, 19, 0);
 
   private final int repetitionLevelsByteLength;
   private final int definitionLevelsByteLength;
-  private final DataPageV2 plaintextLevelsLayoutPage;
 
   /**
    * @param encryptedBody {@code length (4 bytes, LE) | nonce | ciphertext [| tag]}
    * @param uncompressedSize uncompressed page size, levels included
-   * @param plaintextLevelsLayoutPage the page split as {@link Layout#PLAINTEXT_LEVELS}, if the layout is
-   *     {@link Layout#AMBIGUOUS}; otherwise null
    */
   FullBodyEncryptedDataPageV2(
       int rowCount,
@@ -71,8 +66,7 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
       int definitionLevelsByteLength,
       int uncompressedSize,
       Statistics<?> statistics,
-      boolean isCompressed,
-      DataPageV2 plaintextLevelsLayoutPage) {
+      boolean isCompressed) {
     super(
         rowCount,
         nullCount,
@@ -86,7 +80,6 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
         isCompressed);
     this.repetitionLevelsByteLength = repetitionLevelsByteLength;
     this.definitionLevelsByteLength = definitionLevelsByteLength;
-    this.plaintextLevelsLayoutPage = plaintextLevelsLayoutPage;
   }
 
   int getRepetitionLevelsByteLength() {
@@ -97,19 +90,6 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
     return definitionLevelsByteLength;
   }
 
-  /** @return the page split as {@link Layout#PLAINTEXT_LEVELS}, or null if the layout is not ambiguous */
-  DataPageV2 getPlaintextLevelsLayoutPage() {
-    return plaintextLevelsLayoutPage;
-  }
-
-  @Override
-  public void setCrc(int crc) {
-    super.setCrc(crc);
-    if (plaintextLevelsLayoutPage != null) {
-      plaintextLevelsLayoutPage.setCrc(crc);
-    }
-  }
-
   /**
    * Detects the layout of the body of a page that has levels. A module starts with the length of the
    * rest of the module as a 4 byte LE int, so:
@@ -118,55 +98,46 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
    *   <li>{@link Layout#SINGLE_MODULE}: the int at offset 0 is {@code size - 4}
    *   <li>{@link Layout#PLAINTEXT_LEVELS}: the int at offset {@code levelsByteLength} is {@code size -
    *       levelsByteLength - 4}
-   *   <li>{@link Layout#AMBIGUOUS}: both hold
    * </ul>
    *
-   * If neither holds, the page is corrupt and {@link Layout#SINGLE_MODULE} is returned, so that
-   * decryption fails.
+   * If both hold, the layout is the one written by {@code createdBy}. If neither holds, the page is
+   * corrupt and {@link Layout#SINGLE_MODULE} is returned, so that decryption fails.
    *
    * @param pageBody the page body, of {@code compressed_page_size} bytes
    * @param levelsByteLength the length of the repetition and definition levels, above zero
+   * @param createdBy the {@code created_by} of the file
    */
-  static Layout detectLayout(BytesInput pageBody, int levelsByteLength) throws IOException {
+  static Layout detectLayout(BytesInput pageBody, int levelsByteLength, String createdBy) throws IOException {
     long size = pageBody.size();
     boolean singleModule = size >= Integer.BYTES && readLength(pageBody, 0) == size - Integer.BYTES;
     boolean plaintextLevels = size - levelsByteLength >= Integer.BYTES
         && readLength(pageBody, levelsByteLength) == size - levelsByteLength - Integer.BYTES;
     if (plaintextLevels && singleModule) {
-      return Layout.AMBIGUOUS;
+      return layoutWrittenBy(createdBy);
     }
     return plaintextLevels ? Layout.PLAINTEXT_LEVELS : Layout.SINGLE_MODULE;
   }
 
   /**
    * Returns the layout written by the application in {@code created_by}: {@link
-   * Layout#PLAINTEXT_LEVELS} for parquet-java before 1.19.0, {@link Layout#SINGLE_MODULE} for later
-   * versions and other applications, and {@link Layout#AMBIGUOUS} if {@code created_by} is missing,
-   * cannot be parsed, or is a 1.19.0 pre-release.
+   * Layout#PLAINTEXT_LEVELS} for parquet-java before 1.19.0, pre-releases of 1.19.0 included, and
+   * {@link Layout#SINGLE_MODULE} otherwise, including if {@code created_by} is missing or cannot be
+   * parsed.
    */
   static Layout layoutWrittenBy(String createdBy) {
     if (Strings.isNullOrEmpty(createdBy)) {
-      return Layout.AMBIGUOUS;
+      return Layout.SINGLE_MODULE;
     }
     ParsedVersion writer;
     try {
       writer = VersionParser.parse(createdBy);
     } catch (VersionParseException | RuntimeException e) {
-      return Layout.AMBIGUOUS;
-    }
-    if (!"parquet-mr".equals(writer.application)) {
       return Layout.SINGLE_MODULE;
     }
-    if (!writer.hasSemanticVersion()) {
-      return Layout.AMBIGUOUS;
-    }
-    SemanticVersion version = writer.getSemanticVersion();
-    int cmp = new SemanticVersion(version.major, version.minor, version.patch).compareTo(SINGLE_MODULE_SINCE);
-    if (cmp < 0) {
+    if ("parquet-mr".equals(writer.application)
+        && writer.hasSemanticVersion()
+        && writer.getSemanticVersion().compareTo(SINGLE_MODULE_SINCE) < 0) {
       return Layout.PLAINTEXT_LEVELS;
-    }
-    if (cmp == 0 && (version.prerelease || version.pre != null)) {
-      return Layout.AMBIGUOUS;
     }
     return Layout.SINGLE_MODULE;
   }

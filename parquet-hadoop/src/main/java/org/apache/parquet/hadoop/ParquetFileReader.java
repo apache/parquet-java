@@ -2269,7 +2269,7 @@ public class ParquetFileReader implements Closeable {
 
     /**
      * Reads a DataPageV2 body. For an encrypted column with levels, returns a {@link
-     * FullBodyEncryptedDataPageV2} if the levels may be inside the encrypted module, or a {@link
+     * FullBodyEncryptedDataPageV2} if the levels are inside the encrypted module, or a {@link
      * DataPageV2} with the plaintext levels split out otherwise.
      */
     private DataPageV2 readDataPageV2(PageHeader pageHeader, PrimitiveType type, boolean encryptedColumn)
@@ -2302,25 +2302,13 @@ public class ParquetFileReader implements Closeable {
               "could not verify page integrity, CRC checksum verification failed",
               pageBody);
         }
-        FullBodyEncryptedDataPageV2.Layout layout =
-            FullBodyEncryptedDataPageV2.detectLayout(pageBody, levelsByteLength);
-        if (layout == FullBodyEncryptedDataPageV2.Layout.AMBIGUOUS) {
-          layout = FullBodyEncryptedDataPageV2.layoutWrittenBy(
-              getFileMetaData().getCreatedBy());
-        }
-        switch (layout) {
+        switch (FullBodyEncryptedDataPageV2.detectLayout(
+            pageBody, levelsByteLength, getFileMetaData().getCreatedBy())) {
           case PLAINTEXT_LEVELS:
             return pageWithPlaintextLevels(pageHeader, pageBody, encoding, statistics);
           case SINGLE_MODULE:
-            return fullBodyEncryptedPage(pageHeader, pageBody, encoding, statistics, null);
-          case AMBIGUOUS:
           default:
-            return fullBodyEncryptedPage(
-                pageHeader,
-                pageBody,
-                encoding,
-                statistics,
-                pageWithPlaintextLevels(pageHeader, pageBody, encoding, statistics));
+            return fullBodyEncryptedPage(pageHeader, pageBody, encoding, statistics);
         }
       }
 
@@ -2371,16 +2359,12 @@ public class ParquetFileReader implements Closeable {
           header.isIs_compressed());
     }
 
-    /**
-     * @param plaintextLevelsPage the same page read as {@link #pageWithPlaintextLevels}, if the layout is
-     *     ambiguous; null otherwise
-     */
+    /** Keeps the body of a page whose levels and values are one encrypted module. */
     private FullBodyEncryptedDataPageV2 fullBodyEncryptedPage(
         PageHeader pageHeader,
         BytesInput pageBody,
         org.apache.parquet.column.Encoding encoding,
-        org.apache.parquet.column.statistics.Statistics<?> statistics,
-        DataPageV2 plaintextLevelsPage) {
+        org.apache.parquet.column.statistics.Statistics<?> statistics) {
       DataPageHeaderV2 header = pageHeader.getData_page_header_v2();
       return new FullBodyEncryptedDataPageV2(
           header.getNum_rows(),
@@ -2392,8 +2376,7 @@ public class ParquetFileReader implements Closeable {
           header.getDefinition_levels_byte_length(),
           pageHeader.getUncompressed_page_size(),
           statistics,
-          header.isIs_compressed(),
-          plaintextLevelsPage);
+          header.isIs_compressed());
     }
 
     /**
