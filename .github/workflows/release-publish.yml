@@ -84,8 +84,6 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
-          SVN_USERNAME: ${{ secrets.PARQUET_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.PARQUET_SVN_DEV_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_RC_NUMBER: ${{ inputs.rc_number }}
