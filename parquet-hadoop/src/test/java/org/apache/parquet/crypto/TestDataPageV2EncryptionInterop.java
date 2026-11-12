@@ -198,7 +198,7 @@ public class TestDataPageV2EncryptionInterop {
 
   @ParameterizedTest(name = "{0}, {1}")
   @MethodSource("ciphersAndCodecs")
-  public void writesTheLevelsInTheEncryptedPageBody(ParquetCipher cipher, CompressionCodecName codec)
+  public void writesTheLevelsInTheEncryptedPageModule(ParquetCipher cipher, CompressionCodecName codec)
       throws Exception {
     Path file = writeWithParquetJava(cipher, codec);
 
@@ -210,7 +210,7 @@ public class TestDataPageV2EncryptionInterop {
         .anySatisfy(page -> assertThat(page.repetitionLevelsLength).isPositive());
     for (DecodedPage page : pages) {
       assertThat(page.singleModule)
-          .as("the levels of %s must be inside the encrypted page body", page)
+          .as("the levels of %s must be inside the encrypted page module", page)
           .isTrue();
       assertThat(page.decryptedLength).isGreaterThanOrEqualTo(page.levelsLength());
       if (codec == CompressionCodecName.UNCOMPRESSED) {
@@ -265,7 +265,7 @@ public class TestDataPageV2EncryptionInterop {
     // First ciphertext byte, which is the first byte of the levels
     File source = new File(file.toUri());
     try (RandomAccessFile raf = new RandomAccessFile(source, "rw")) {
-      long position = page.bodyOffset + Integer.BYTES + AesCipher.NONCE_LENGTH;
+      long position = page.pageBytesOffset + Integer.BYTES + AesCipher.NONCE_LENGTH;
       raf.seek(position);
       int original = raf.read();
       raf.seek(position);
@@ -278,7 +278,7 @@ public class TestDataPageV2EncryptionInterop {
 
   @ParameterizedTest(name = "{0}, {1}")
   @MethodSource("ciphersAndCodecs")
-  public void rewriterWritesTheLevelsInTheEncryptedPageBody(ParquetCipher cipher, CompressionCodecName codec)
+  public void rewriterWritesTheLevelsInTheEncryptedPageModule(ParquetCipher cipher, CompressionCodecName codec)
       throws Exception {
     Path plaintext = writeWithParquetJava(null, codec);
     Path rewritten = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
@@ -362,8 +362,8 @@ public class TestDataPageV2EncryptionInterop {
   /**
    * {@code legacy-v2-ambiguous-*}: one legacy page of 8 optional int32 values, only the first (12345)
    * defined. Its 4 bytes of definition levels, {@code 03 01 00 00}, are a bit-packed run of 8 levels
-   * plus 2 unread bytes, and read as an LE int they equal {@code bodySize - 4}, so the body fits both
-   * layouts. The {@code created_by} of the fixture, {@code parquet-mr version 1.19.0-SNAPSHOT}, resolves
+   * plus 2 unread bytes, and read as an LE int they equal {@code compressed_page_size - 4}, so the
+   * page fits both layouts. The {@code created_by} of the fixture, {@code parquet-mr version 1.19.0-SNAPSHOT}, resolves
    * it to plaintext levels.
    */
   @ParameterizedTest(name = "{0}, directMemory={1}")
@@ -400,7 +400,7 @@ public class TestDataPageV2EncryptionInterop {
   }
 
   @Test
-  public void writerRejectsAnEncryptedPageHeaderWithoutAnEncryptedPageBody() throws Exception {
+  public void writerRejectsAnEncryptedPageHeaderWithoutAnEncryptedPage() throws Exception {
     Path file = new Path(tempDir.resolve(UUID.randomUUID().toString()).toUri());
     try (ParquetFileWriter writer = new ParquetFileWriter(
         HadoopOutputFile.fromPath(file, new Configuration()),
@@ -429,7 +429,7 @@ public class TestDataPageV2EncryptionInterop {
               null,
               null))
           .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("Both the page header and the page body of an encrypted column must be encrypted");
+          .hasMessage("Both the page header and the page of an encrypted column must be encrypted");
     }
   }
 
@@ -473,7 +473,7 @@ public class TestDataPageV2EncryptionInterop {
     private final String column;
     private final int repetitionLevelsLength;
     private final int definitionLevelsLength;
-    private final long bodyOffset;
+    private final long pageBytesOffset;
     private final boolean singleModule;
     private final int decryptedLength;
     private final int uncompressedPageSize;
@@ -482,14 +482,14 @@ public class TestDataPageV2EncryptionInterop {
         String column,
         int repetitionLevelsLength,
         int definitionLevelsLength,
-        long bodyOffset,
+        long pageBytesOffset,
         boolean singleModule,
         int decryptedLength,
         int uncompressedPageSize) {
       this.column = column;
       this.repetitionLevelsLength = repetitionLevelsLength;
       this.definitionLevelsLength = definitionLevelsLength;
-      this.bodyOffset = bodyOffset;
+      this.pageBytesOffset = pageBytesOffset;
       this.singleModule = singleModule;
       this.decryptedLength = decryptedLength;
       this.uncompressedPageSize = uncompressedPageSize;
@@ -501,15 +501,15 @@ public class TestDataPageV2EncryptionInterop {
 
     @Override
     public String toString() {
-      return "DataPageV2 of column " + column + " at offset " + bodyOffset + " with " + levelsLength()
+      return "DataPageV2 of column " + column + " at offset " + pageBytesOffset + " with " + levelsLength()
           + " bytes of levels";
     }
   }
 
   /**
    * Decodes the DataPageV2 pages of a file without the parquet-java page reader: parses and decrypts
-   * the page headers, then decrypts the page body as one module if its first 4 bytes are {@code
-   * size - 4}, otherwise the bytes after the levels.
+   * the page headers, then decrypts the bytes after each header as one module if their first 4 bytes
+   * are {@code size - 4}, otherwise the bytes after the levels.
    *
    * @param file file with an encrypted footer, whose encrypted columns all use {@code columnKey}
    * @param onlyEncryptedColumns whether to skip columns that are not encrypted
@@ -563,9 +563,9 @@ public class TestDataPageV2EncryptionInterop {
                     columnOrdinal,
                     -1);
             PageHeader header = Util.readPageHeader(in, headerDecryptor, headerAAD);
-            long bodyOffset = bytes.length - in.available();
-            byte[] body = in.readNBytes(header.getCompressed_page_size());
-            assertThat(body).hasSize(header.getCompressed_page_size());
+            long pageBytesOffset = bytes.length - in.available();
+            byte[] pageBytes = in.readNBytes(header.getCompressed_page_size());
+            assertThat(pageBytes).hasSize(header.getCompressed_page_size());
             if (!dictionaryPageRead) {
               dictionaryPageRead = true;
               continue;
@@ -577,8 +577,9 @@ public class TestDataPageV2EncryptionInterop {
                   header.getData_page_header_v2().getDefinition_levels_byte_length();
               int levels = repetitionLevels + definitionLevels;
               boolean singleModule =
-                  BytesUtils.readIntLittleEndian(body, 0) == body.length - Integer.BYTES;
-              byte[] module = singleModule ? body : Arrays.copyOfRange(body, levels, body.length);
+                  BytesUtils.readIntLittleEndian(pageBytes, 0) == pageBytes.length - Integer.BYTES;
+              byte[] module =
+                  singleModule ? pageBytes : Arrays.copyOfRange(pageBytes, levels, pageBytes.length);
               assertThat(BytesUtils.readIntLittleEndian(module, 0))
                   .isEqualTo(module.length - Integer.BYTES);
               byte[] pageAAD = AesCipher.createModuleAAD(
@@ -589,7 +590,7 @@ public class TestDataPageV2EncryptionInterop {
                     chunk.getPath().toDotString(),
                     repetitionLevels,
                     definitionLevels,
-                    bodyOffset,
+                    pageBytesOffset,
                     singleModule,
                     decrypted.length,
                     header.getUncompressed_page_size()));

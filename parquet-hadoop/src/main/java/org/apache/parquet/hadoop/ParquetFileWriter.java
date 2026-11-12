@@ -1424,7 +1424,7 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
-    writeDataPageV2Body(
+    writeDataPageV2Parts(
         rowCount,
         nullCount,
         valueCount,
@@ -1457,8 +1457,8 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
-   * @param pageBlockEncryptor encryptor for the page body, or null if the column is not encrypted; null
-   *                           if and only if {@code metadataBlockEncryptor} is null
+   * @param pageBlockEncryptor encryptor for the levels and data bytes, or null if the column is not
+   *                           encrypted; null if and only if {@code metadataBlockEncryptor} is null
    * @param dataPageAAD data page AAD, updated for this page's ordinal; required if
    *                    {@code pageBlockEncryptor} is not null
    * @throws IOException if any I/O error occurs during writing the file
@@ -1482,23 +1482,23 @@ public class ParquetFileWriter implements AutoCloseable {
       throws IOException {
     Preconditions.checkArgument(
         (metadataBlockEncryptor == null) == (pageBlockEncryptor == null),
-        "Both the page header and the page body of an encrypted column must be encrypted");
-    List<BytesInput> pageBody;
+        "Both the page header and the page of an encrypted column must be encrypted");
+    List<BytesInput> pageParts;
     if (pageBlockEncryptor == null) {
-      pageBody = Arrays.asList(repetitionLevels, definitionLevels, bytes);
+      pageParts = Arrays.asList(repetitionLevels, definitionLevels, bytes);
     } else {
-      Preconditions.checkArgument(dataPageAAD != null, "dataPageAAD is required to encrypt the page body");
-      pageBody = Collections.singletonList(BytesInput.from(pageBlockEncryptor.encrypt(
+      Preconditions.checkArgument(dataPageAAD != null, "dataPageAAD is required to encrypt the page");
+      pageParts = Collections.singletonList(BytesInput.from(pageBlockEncryptor.encrypt(
           BytesInput.concat(repetitionLevels, definitionLevels, bytes).toByteArray(), dataPageAAD)));
     }
-    writeDataPageV2Body(
+    writeDataPageV2Parts(
         rowCount,
         nullCount,
         valueCount,
         toIntWithCheck(repetitionLevels.size(), "page repetition levels"),
         toIntWithCheck(definitionLevels.size(), "page definition levels"),
         dataEncoding,
-        pageBody,
+        pageParts,
         compressed,
         uncompressedDataSize,
         statistics,
@@ -1507,15 +1507,15 @@ public class ParquetFileWriter implements AutoCloseable {
         sizeStatistics);
   }
 
-  /** @param pageBody the bytes written after the page header */
-  private void writeDataPageV2Body(
+  /** @param pageParts the bytes written after the page header */
+  private void writeDataPageV2Parts(
       int rowCount,
       int nullCount,
       int valueCount,
       int rlByteLength,
       int dlByteLength,
       Encoding dataEncoding,
-      List<BytesInput> pageBody,
+      List<BytesInput> pageParts,
       boolean compressed,
       int uncompressedDataSize,
       Statistics<?> statistics,
@@ -1525,11 +1525,11 @@ public class ParquetFileWriter implements AutoCloseable {
       throws IOException {
     withAbortOnFailure(() -> {
       state = state.write();
-      long pageBodySize = 0;
-      for (BytesInput part : pageBody) {
-        pageBodySize += part.size();
+      long pagePartsSize = 0;
+      for (BytesInput part : pageParts) {
+        pagePartsSize += part.size();
       }
-      int compressedSize = toIntWithCheck(pageBodySize, "page");
+      int compressedSize = toIntWithCheck(pagePartsSize, "page");
 
       int uncompressedSize = toIntWithCheck((long) uncompressedDataSize + rlByteLength + dlByteLength, "page");
 
@@ -1540,7 +1540,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        for (BytesInput part : pageBody) {
+        for (BytesInput part : pageParts) {
           if (part.size() > 0) {
             crcUpdate(part);
           }
@@ -1584,7 +1584,7 @@ public class ParquetFileWriter implements AutoCloseable {
       currentEncodings.add(dataEncoding);
       encodingStatsBuilder.addDataEncoding(dataEncoding);
 
-      BytesInput.concat(pageBody).writeAllTo(out);
+      BytesInput.concat(pageParts).writeAllTo(out);
 
       offsetIndexBuilder.add(
           toIntWithCheck(out.getPos() - beforeHeader, "page"),

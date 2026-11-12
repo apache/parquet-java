@@ -33,13 +33,13 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.statistics.Statistics;
 
 /**
- * An encrypted DataPageV2 whose body, levels included, is one encrypted module. The body is held as
- * {@link #getData()} and the levels are empty until {@code ColumnChunkPageReader} decrypts the page
- * and splits the body using the level lengths.
+ * An encrypted DataPageV2 whose levels and values are one encrypted module. Until {@code
+ * ColumnChunkPageReader} decrypts the module and splits it using the level lengths, {@link
+ * #getData()} holds the whole module and the levels are empty.
  */
-final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
+final class SingleModuleDataPageV2 extends DataPageV2 {
 
-  /** How the body of an encrypted DataPageV2 page that has levels is laid out. */
+  /** How the bytes after the header of an encrypted DataPageV2 page that has levels are laid out. */
   enum Layout {
     /** {@code [module of levels and values]} */
     SINGLE_MODULE,
@@ -53,15 +53,15 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
   private final int definitionLevelsByteLength;
 
   /**
-   * @param encryptedBody {@code length (4 bytes, LE) | nonce | ciphertext [| tag]}
+   * @param encryptedModule {@code length (4 bytes, LE) | nonce | ciphertext [| tag]}
    * @param uncompressedSize uncompressed page size, levels included
    */
-  FullBodyEncryptedDataPageV2(
+  SingleModuleDataPageV2(
       int rowCount,
       int nullCount,
       int valueCount,
       Encoding dataEncoding,
-      BytesInput encryptedBody,
+      BytesInput encryptedModule,
       int repetitionLevelsByteLength,
       int definitionLevelsByteLength,
       int uncompressedSize,
@@ -74,12 +74,16 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
         BytesInput.empty(),
         BytesInput.empty(),
         dataEncoding,
-        encryptedBody,
+        encryptedModule,
         uncompressedSize,
         statistics,
         isCompressed);
     this.repetitionLevelsByteLength = repetitionLevelsByteLength;
     this.definitionLevelsByteLength = definitionLevelsByteLength;
+  }
+
+  BytesInput getEncryptedModule() {
+    return getData();
   }
 
   int getRepetitionLevelsByteLength() {
@@ -91,7 +95,7 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
   }
 
   /**
-   * Detects the layout of the body of a page that has levels. A module starts with the length of the
+   * Detects the layout of the bytes after the header of a page that has levels. A module starts with the length of the
    * rest of the module as a 4 byte LE int, so:
    *
    * <ul>
@@ -103,15 +107,15 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
    * If both hold, the layout is the one written by {@code createdBy}. If neither holds, the page is
    * corrupt and {@link Layout#SINGLE_MODULE} is returned, so that decryption fails.
    *
-   * @param pageBody the page body, of {@code compressed_page_size} bytes
+   * @param pageBytes the bytes after the page header, {@code compressed_page_size} of them
    * @param levelsByteLength the length of the repetition and definition levels, above zero
    * @param createdBy the {@code created_by} of the file
    */
-  static Layout detectLayout(BytesInput pageBody, int levelsByteLength, String createdBy) throws IOException {
-    long size = pageBody.size();
-    boolean singleModule = size >= Integer.BYTES && readLength(pageBody, 0) == size - Integer.BYTES;
+  static Layout detectLayout(BytesInput pageBytes, int levelsByteLength, String createdBy) throws IOException {
+    long size = pageBytes.size();
+    boolean singleModule = size >= Integer.BYTES && readLength(pageBytes, 0) == size - Integer.BYTES;
     boolean plaintextLevels = size - levelsByteLength >= Integer.BYTES
-        && readLength(pageBody, levelsByteLength) == size - levelsByteLength - Integer.BYTES;
+        && readLength(pageBytes, levelsByteLength) == size - levelsByteLength - Integer.BYTES;
     if (plaintextLevels && singleModule) {
       return layoutWrittenBy(createdBy);
     }
@@ -142,8 +146,8 @@ final class FullBodyEncryptedDataPageV2 extends DataPageV2 {
     return Layout.SINGLE_MODULE;
   }
 
-  private static int readLength(BytesInput pageBody, int offset) throws IOException {
-    try (ByteBufferInputStream in = pageBody.toInputStream()) {
+  private static int readLength(BytesInput pageBytes, int offset) throws IOException {
+    try (ByteBufferInputStream in = pageBytes.toInputStream()) {
       in.skipFully(offset);
       return BytesUtils.readIntLittleEndian(in);
     }

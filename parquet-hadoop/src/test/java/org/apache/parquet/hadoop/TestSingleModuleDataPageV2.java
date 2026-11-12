@@ -37,13 +37,13 @@ import org.apache.parquet.crypto.AesMode;
 import org.apache.parquet.crypto.ModuleCipherFactory;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
-import org.apache.parquet.hadoop.FullBodyEncryptedDataPageV2.Layout;
+import org.apache.parquet.hadoop.SingleModuleDataPageV2.Layout;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-public class TestFullBodyEncryptedDataPageV2 {
+public class TestSingleModuleDataPageV2 {
 
   private static final String PARQUET_JAVA_1_18 = "parquet-mr version 1.18.0 (build abc)";
   private static final String ARROW = "parquet-cpp-arrow version 24.0.0";
@@ -70,39 +70,38 @@ public class TestFullBodyEncryptedDataPageV2 {
 
   @Test
   public void bodyThatIsOneModuleIsASingleModule() throws IOException {
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
-            BytesInput.from(module(50)), LEVELS.length, PARQUET_JAVA_1_18))
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.from(module(50)), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
   @Test
   public void bodyWithPlaintextLevelsInFrontOfAModuleHasPlaintextLevels() throws IOException {
-    byte[] body = concat(LEVELS, module(50));
+    byte[] pageBytes = concat(LEVELS, module(50));
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), LEVELS.length, ARROW))
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.from(pageBytes), LEVELS.length, ARROW))
         .isEqualTo(Layout.PLAINTEXT_LEVELS);
   }
 
   @Test
   public void bodyThatIsOneModuleIsRecognizedWhenItIsNotInOneBuffer() throws IOException {
-    byte[] body = module(300);
-    ByteBuffer first = ByteBuffer.wrap(body, 0, 2).slice();
-    ByteBuffer second = ByteBuffer.wrap(body, 2, body.length - 2).slice();
+    byte[] pageBytes = module(300);
+    ByteBuffer first = ByteBuffer.wrap(pageBytes, 0, 2).slice();
+    ByteBuffer second = ByteBuffer.wrap(pageBytes, 2, pageBytes.length - 2).slice();
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+    assertThat(SingleModuleDataPageV2.detectLayout(
             BytesInput.from(first, second), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
   @Test
   public void bodyWithPlaintextLevelsIsRecognizedWhenTheModuleLengthIsNotInOneBuffer() throws IOException {
-    byte[] body = concat(LEVELS, module(300));
+    byte[] pageBytes = concat(LEVELS, module(300));
     // Split inside the module length
-    ByteBuffer first = ByteBuffer.wrap(body, 0, LEVELS.length + 2).slice();
-    ByteBuffer second = ByteBuffer.wrap(body, LEVELS.length + 2, body.length - LEVELS.length - 2)
+    ByteBuffer first = ByteBuffer.wrap(pageBytes, 0, LEVELS.length + 2).slice();
+    ByteBuffer second = ByteBuffer.wrap(pageBytes, LEVELS.length + 2, pageBytes.length - LEVELS.length - 2)
         .slice();
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(first, second), LEVELS.length, ARROW))
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.from(first, second), LEVELS.length, ARROW))
         .isEqualTo(Layout.PLAINTEXT_LEVELS);
   }
 
@@ -119,36 +118,35 @@ public class TestFullBodyEncryptedDataPageV2 {
 
   @Test
   public void bodyThatFitsBothLayoutsHasPlaintextLevelsIfWrittenByParquetJava118() throws IOException {
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+    assertThat(SingleModuleDataPageV2.detectLayout(
             BytesInput.from(bodyThatFitsBothLayouts()), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.PLAINTEXT_LEVELS);
   }
 
   @Test
   public void bodyThatFitsBothLayoutsIsASingleModuleIfWrittenByAnotherWriter() throws IOException {
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
+    assertThat(SingleModuleDataPageV2.detectLayout(
             BytesInput.from(bodyThatFitsBothLayouts()), LEVELS.length, ARROW))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
   @Test
   public void bodyThatFitsNeitherLayoutIsTreatedAsASingleModuleSoThatDecryptionReportsIt() throws IOException {
-    byte[] body = concat(LEVELS, module(50));
-    body[LEVELS.length] ^= 0x01;
+    byte[] pageBytes = concat(LEVELS, module(50));
+    pageBytes[LEVELS.length] ^= 0x01;
 
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(body), LEVELS.length, PARQUET_JAVA_1_18))
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.from(pageBytes), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
   @Test
   public void bodyThatIsTooShortToHoldAModuleLengthIsNotAnythingElseThanASingleModule() throws IOException {
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.empty(), 1, PARQUET_JAVA_1_18))
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.empty(), 1, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(
-            BytesInput.from(new byte[] {1, 2, 3}), 1, PARQUET_JAVA_1_18))
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.from(new byte[] {1, 2, 3}), 1, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
-    // Body is only levels
-    assertThat(FullBodyEncryptedDataPageV2.detectLayout(BytesInput.from(LEVELS), LEVELS.length, PARQUET_JAVA_1_18))
+    // Page is only levels
+    assertThat(SingleModuleDataPageV2.detectLayout(BytesInput.from(LEVELS), LEVELS.length, PARQUET_JAVA_1_18))
         .isEqualTo(Layout.SINGLE_MODULE);
   }
 
@@ -170,23 +168,23 @@ public class TestFullBodyEncryptedDataPageV2 {
     "'', SINGLE_MODULE",
   })
   public void layoutWrittenByFollowsTheWriterVersion(String createdBy, Layout expected) {
-    assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(createdBy)).isEqualTo(expected);
+    assertThat(SingleModuleDataPageV2.layoutWrittenBy(createdBy)).isEqualTo(expected);
   }
 
-  /** Reads one uncompressed page whose body is {@code LEVELS} (definition levels) and 8 value bytes. */
+  /** Reads one uncompressed page of {@code LEVELS} (definition levels) and 8 value bytes. */
   private static DataPage readUncompressedPage(int uncompressedPageSize) {
     byte[] key = "0123456789abcdef".getBytes(StandardCharsets.UTF_8);
     byte[] fileAAD = "file".getBytes(StandardCharsets.UTF_8);
-    byte[] plainBody = concat(LEVELS, new byte[8]);
+    byte[] plainPage = concat(LEVELS, new byte[8]);
     byte[] dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 0, 0, 0);
-    byte[] encryptedBody =
-        ModuleCipherFactory.getEncryptor(AesMode.GCM, key).encrypt(plainBody, dataPageAAD);
-    FullBodyEncryptedDataPageV2 page = new FullBodyEncryptedDataPageV2(
+    byte[] encryptedModule =
+        ModuleCipherFactory.getEncryptor(AesMode.GCM, key).encrypt(plainPage, dataPageAAD);
+    SingleModuleDataPageV2 page = new SingleModuleDataPageV2(
         8,
         0,
         8,
         Encoding.PLAIN,
-        BytesInput.from(encryptedBody),
+        BytesInput.from(encryptedModule),
         0,
         LEVELS.length,
         uncompressedPageSize,
@@ -207,7 +205,7 @@ public class TestFullBodyEncryptedDataPageV2 {
   }
 
   @Test
-  public void uncompressedPageWithTheSizeOfItsDecryptedBodyIsRead() {
+  public void uncompressedPageWithTheSizeOfItsDecryptedModuleIsRead() {
     DataPageV2 page = (DataPageV2) readUncompressedPage(LEVELS.length + 8);
 
     assertThat(page.getDefinitionLevels().size()).isEqualTo(LEVELS.length);
@@ -215,16 +213,16 @@ public class TestFullBodyEncryptedDataPageV2 {
   }
 
   @Test
-  public void uncompressedPageWhoseHeaderDisagreesWithItsDecryptedBodyIsRejected() {
+  public void uncompressedPageWhoseHeaderDisagreesWithItsDecryptedModuleIsRejected() {
     assertThatThrownBy(() -> readUncompressedPage(LEVELS.length + 9))
         .isInstanceOf(ParquetDecodingException.class)
         .hasMessage(
-            "Decrypted DataPageV2 body has 12 bytes, but the page header gives an uncompressed page size"
+            "Decrypted DataPageV2 page has 12 bytes, but the page header gives an uncompressed page size"
                 + " of 13 bytes");
   }
 
   @Test
   public void layoutWrittenByAnUnknownWriterIsASingleModule() {
-    assertThat(FullBodyEncryptedDataPageV2.layoutWrittenBy(null)).isEqualTo(Layout.SINGLE_MODULE);
+    assertThat(SingleModuleDataPageV2.layoutWrittenBy(null)).isEqualTo(Layout.SINGLE_MODULE);
   }
 }

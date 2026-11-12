@@ -2268,9 +2268,9 @@ public class ParquetFileReader implements Closeable {
     }
 
     /**
-     * Reads a DataPageV2 body. For an encrypted column with levels, returns a {@link
-     * FullBodyEncryptedDataPageV2} if the levels are inside the encrypted module, or a {@link
-     * DataPageV2} with the plaintext levels split out otherwise.
+     * Reads the bytes after a DataPageV2 header. For an encrypted column with levels, returns a {@link
+     * SingleModuleDataPageV2} if the levels are inside the encrypted module, or a {@link DataPageV2}
+     * with the plaintext levels split out otherwise.
      */
     private DataPageV2 readDataPageV2(PageHeader pageHeader, PrimitiveType type, boolean encryptedColumn)
         throws IOException {
@@ -2295,20 +2295,20 @@ public class ParquetFileReader implements Closeable {
               + " bytes, of " + uncompressedPageSize + " bytes uncompressed");
         }
         int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
-        BytesInput pageBody = this.readAsBytesInput(compressedPageSize);
+        BytesInput pageBytes = this.readAsBytesInput(compressedPageSize);
         if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
           verifyCrc(
               pageHeader.getCrc(),
               "could not verify page integrity, CRC checksum verification failed",
-              pageBody);
+              pageBytes);
         }
-        switch (FullBodyEncryptedDataPageV2.detectLayout(
-            pageBody, levelsByteLength, getFileMetaData().getCreatedBy())) {
+        switch (SingleModuleDataPageV2.detectLayout(
+            pageBytes, levelsByteLength, getFileMetaData().getCreatedBy())) {
           case PLAINTEXT_LEVELS:
-            return pageWithPlaintextLevels(pageHeader, pageBody, encoding, statistics);
+            return pageWithPlaintextLevels(pageHeader, pageBytes, encoding, statistics);
           case SINGLE_MODULE:
           default:
-            return fullBodyEncryptedPage(pageHeader, pageBody, encoding, statistics);
+            return singleModulePage(pageHeader, pageBytes, encoding, statistics);
         }
       }
 
@@ -2337,41 +2337,41 @@ public class ParquetFileReader implements Closeable {
           header.isIs_compressed());
     }
 
-    /** Splits the levels off the front of a page body whose levels are not encrypted. */
+    /** Splits the plaintext levels off the front of the bytes after a page header. */
     private DataPageV2 pageWithPlaintextLevels(
         PageHeader pageHeader,
-        BytesInput pageBody,
+        BytesInput pageBytes,
         org.apache.parquet.column.Encoding encoding,
         org.apache.parquet.column.statistics.Statistics<?> statistics)
         throws IOException {
       DataPageHeaderV2 header = pageHeader.getData_page_header_v2();
-      ByteBufferInputStream pageBodyStream = pageBody.toInputStream();
+      ByteBufferInputStream pageStream = pageBytes.toInputStream();
       return new DataPageV2(
           header.getNum_rows(),
           header.getNum_nulls(),
           header.getNum_values(),
-          BytesInput.from(pageBodyStream.sliceBuffers(header.getRepetition_levels_byte_length())),
-          BytesInput.from(pageBodyStream.sliceBuffers(header.getDefinition_levels_byte_length())),
+          BytesInput.from(pageStream.sliceBuffers(header.getRepetition_levels_byte_length())),
+          BytesInput.from(pageStream.sliceBuffers(header.getDefinition_levels_byte_length())),
           encoding,
-          BytesInput.from(pageBodyStream.remainingBuffers()),
+          BytesInput.from(pageStream.remainingBuffers()),
           pageHeader.getUncompressed_page_size(),
           statistics,
           header.isIs_compressed());
     }
 
-    /** Keeps the body of a page whose levels and values are one encrypted module. */
-    private FullBodyEncryptedDataPageV2 fullBodyEncryptedPage(
+    /** Keeps the encrypted module of a page whose levels and values are one encrypted module. */
+    private SingleModuleDataPageV2 singleModulePage(
         PageHeader pageHeader,
-        BytesInput pageBody,
+        BytesInput pageBytes,
         org.apache.parquet.column.Encoding encoding,
         org.apache.parquet.column.statistics.Statistics<?> statistics) {
       DataPageHeaderV2 header = pageHeader.getData_page_header_v2();
-      return new FullBodyEncryptedDataPageV2(
+      return new SingleModuleDataPageV2(
           header.getNum_rows(),
           header.getNum_nulls(),
           header.getNum_values(),
           encoding,
-          pageBody,
+          pageBytes,
           header.getRepetition_levels_byte_length(),
           header.getDefinition_levels_byte_length(),
           pageHeader.getUncompressed_page_size(),
