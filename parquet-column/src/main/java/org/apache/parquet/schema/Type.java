@@ -187,6 +187,28 @@ public abstract class Type {
     this.id = id;
   }
 
+  Type(Type toCopy, String newName) {
+    this.name = Objects.requireNonNull(newName, "name cannot be null");
+    this.repetition = toCopy.repetition;
+    this.logicalTypeAnnotation = toCopy.logicalTypeAnnotation;
+    this.id = toCopy.id;
+  }
+
+  /**
+   * Returns a copy with a new name and all other attributes unchanged.
+   * Subclasses must override this method to support renaming.
+   *
+   * @param newName the name of the copy
+   * @return a copy of this type with the given name
+   * @throws NullPointerException if newName is null
+   * @throws UnsupportedOperationException if this type does not support renaming
+   */
+  public Type withName(String newName) {
+    Objects.requireNonNull(newName, "name cannot be null");
+    throw new UnsupportedOperationException(
+        "Renaming is not supported by " + getClass().getName());
+  }
+
   /**
    * @param id an integer id
    * @return the same type with the id field set

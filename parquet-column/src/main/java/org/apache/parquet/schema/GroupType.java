@@ -123,6 +123,17 @@ public class GroupType extends Type {
     }
   }
 
+  GroupType(GroupType toCopy, String newName) {
+    super(toCopy, newName);
+    this.fields = toCopy.fields;
+    this.indexByName = toCopy.indexByName;
+  }
+
+  @Override
+  public GroupType withName(String newName) {
+    return new GroupType(this, newName);
+  }
+
   /**
    * @param id the field id
    * @return a new GroupType with the same fields and a new id

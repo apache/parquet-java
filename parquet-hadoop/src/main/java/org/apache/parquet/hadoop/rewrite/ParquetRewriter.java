@@ -87,7 +87,6 @@ import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.schema.Types;
 import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -279,28 +278,10 @@ public class ParquetRewriter implements Closeable {
           if (newName == null) {
             return type;
           }
-          return renameType(type, newName);
+          return type.withName(newName);
         })
         .collect(Collectors.toList());
     return new MessageType(schema.getName(), fields);
-  }
-
-  private static Type renameType(Type type, String newName) {
-    Types.Builder<?, ? extends Type> builder;
-    if (type.isPrimitive()) {
-      PrimitiveType primitive = type.asPrimitiveType();
-      builder = Types.primitive(primitive.getPrimitiveTypeName(), primitive.getRepetition())
-          .length(primitive.getTypeLength())
-          .columnOrder(primitive.columnOrder());
-    } else {
-      builder = Types.buildGroup(type.getRepetition())
-          .addFields(type.asGroupType().getFields().toArray(Type[]::new));
-    }
-    builder.as(type.getLogicalTypeAnnotation());
-    if (type.getId() != null) {
-      builder.id(type.getId().intValue());
-    }
-    return builder.named(newName);
   }
 
   private Map<String, String> getExtraMetadata(RewriteOptions options) {
@@ -497,7 +478,7 @@ public class ParquetRewriter implements Closeable {
     if (newName == null) {
       return type;
     }
-    return renameType(type, newName).asPrimitiveType();
+    return type.withName(newName);
   }
 
   private void processBlock(

@@ -654,6 +654,19 @@ public final class PrimitiveType extends Type {
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
 
+  private PrimitiveType(PrimitiveType toCopy, String newName) {
+    super(toCopy, newName);
+    this.primitive = toCopy.primitive;
+    this.length = toCopy.length;
+    this.decimalMeta = toCopy.decimalMeta;
+    this.columnOrder = toCopy.columnOrder;
+  }
+
+  @Override
+  public PrimitiveType withName(String newName) {
+    return new PrimitiveType(this, newName);
+  }
+
   /**
    * The column order used when none is specified explicitly. A plain INT96 is the deprecated
    * timestamp encoding and defaults to INT96 timestamp order so its min/max are chronological and
