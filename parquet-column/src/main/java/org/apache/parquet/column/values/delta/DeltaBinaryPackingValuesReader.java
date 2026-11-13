@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.delta;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
@@ -52,6 +51,21 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private ByteBufferInputStream in;
   private DeltaBinaryPackingConfig config;
   private int[] bitWidths;
+
+  /**
+   * Reusable byte buffer for holding the packed bytes of a single mini block.
+   * Avoids allocating a fresh {@code ByteBuffer.slice()} per mini block in
+   * {@link #unpackMiniBlock(BytePackerForLong)}. Sized lazily to the maximum
+   * miniblock byte count seen so far.
+   */
+  private byte[] miniBlockByteBuffer = new byte[0];
+
+  /**
+   * Cache of {@link BytePackerForLong} instances keyed by bit width (0..64).
+   * The default packer factory does an array lookup, but caching the resolved
+   * packer instance per reader avoids two virtual dispatches per mini block.
+   */
+  private final BytePackerForLong[] packerCache = new BytePackerForLong[65];
 
   /**
    * eagerly loads all the data into memory
@@ -130,7 +144,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     // mini block is atomic for reading, we read a mini block when there are more values left
     int i;
     for (i = 0; i < config.miniBlockNumInABlock && valuesBuffered < totalValueCount; i++) {
-      BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidths[i]);
+      int bitWidth = bitWidths[i];
+      BytePackerForLong packer = packerCache[bitWidth];
+      if (packer == null) {
+        packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
+        packerCache[bitWidth] = packer;
+      }
       unpackMiniBlock(packer);
     }
 
@@ -143,22 +162,49 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   /**
-   * mini block has a size of 8*n, unpack 8 value each time
+   * Mini block has a size of 8*n. Reads the packed bytes once into a reused {@code byte[]}
+   * buffer (avoiding the per-mini-block {@code ByteBuffer.slice()} allocation), then unpacks
+   * 32 values at a time using the byte[] form of the packer (which is faster than the
+   * ByteBuffer form per the comment in {@code ByteBitPackingValuesReader}). For the
+   * default mini-block size of 32 values this collapses to a single {@code unpack32Values}
+   * call per mini block. Any residual {@code 8*n} group (mini-block size not a multiple of 32)
+   * falls back to {@code unpack8Values}.
    *
    * @param packer the packer created from bitwidth of current mini block
    */
   private void unpackMiniBlock(BytePackerForLong packer) throws IOException {
-    for (int j = 0; j < config.miniBlockSizeInValues; j += 8) {
-      unpack8Values(packer);
-    }
-  }
+    final int bitWidth = packer.getBitWidth();
+    final int valueCount = config.miniBlockSizeInValues;
+    final int byteCount = (valueCount / 8) * bitWidth;
 
-  private void unpack8Values(BytePackerForLong packer) throws IOException {
-    // get a single buffer of 8 values. most of the time, this won't require a copy
-    // TODO: update the packer to consume from an InputStream
-    ByteBuffer buffer = in.slice(packer.getBitWidth());
-    packer.unpack8Values(buffer, buffer.position(), valuesBuffer, valuesBuffered);
-    this.valuesBuffered += 8;
+    if (miniBlockByteBuffer.length < byteCount) {
+      miniBlockByteBuffer = new byte[byteCount];
+    }
+    int read = 0;
+    while (read < byteCount) {
+      int n = in.read(miniBlockByteBuffer, read, byteCount - read);
+      if (n < 0) {
+        throw new ParquetDecodingException(
+            "not enough bytes for mini block: needed " + byteCount + ", got " + read);
+      }
+      read += n;
+    }
+
+    // Unpack 32 values at a time when possible; fall back to 8 for any residual.
+    int valueIndex = 0;
+    int byteIndex = 0;
+    final int step32 = bitWidth * 4;
+    while (valueIndex + 32 <= valueCount) {
+      packer.unpack32Values(miniBlockByteBuffer, byteIndex, valuesBuffer, valuesBuffered + valueIndex);
+      valueIndex += 32;
+      byteIndex += step32;
+    }
+    while (valueIndex < valueCount) {
+      packer.unpack8Values(miniBlockByteBuffer, byteIndex, valuesBuffer, valuesBuffered + valueIndex);
+      valueIndex += 8;
+      byteIndex += bitWidth;
+    }
+    valuesBuffered += valueCount;
   }
 
   private void readBitWidthsForMiniBlocks() {
