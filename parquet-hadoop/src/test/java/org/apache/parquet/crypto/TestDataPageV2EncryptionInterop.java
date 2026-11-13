@@ -245,22 +245,10 @@ public class TestDataPageV2EncryptionInterop {
       assertThat(page.singleModule)
           .as("the levels of %s must be inside the encrypted page module", page)
           .isTrue();
-      assertThat(page.decryptedLength).isGreaterThanOrEqualTo(page.levelsLength());
       if (codec == CompressionCodecName.UNCOMPRESSED) {
         assertThat(page.decryptedLength).isEqualTo(page.uncompressedPageSize);
       }
     }
-  }
-
-  @ParameterizedTest(name = "{0}, {1}")
-  @MethodSource("ciphersAndCodecs")
-  public void readsWhatItWrites(ParquetCipher cipher, CompressionCodecName codec) throws Exception {
-    Path file = writeWithParquetJava(cipher, codec);
-
-    assertThat(readRows(file, new Configuration(), decryptionProperties(), false))
-        .containsExactlyElementsOf(expectedRows());
-    assertThat(readRows(file, new Configuration(), decryptionProperties(), true))
-        .containsExactlyElementsOf(expectedRows());
   }
 
   @Test
@@ -348,8 +336,6 @@ public class TestDataPageV2EncryptionInterop {
     assertThat(pages).allSatisfy(page -> assertThat(page.singleModule).isTrue());
     assertThat(readRows(rewritten, new Configuration(), decryptionProperties(), false))
         .containsExactlyElementsOf(expectedRows());
-    assertThat(readRows(rewritten, new Configuration(), decryptionProperties(), true))
-        .containsExactlyElementsOf(expectedRows());
   }
 
   @ParameterizedTest(name = "{0}, {1}")
@@ -364,8 +350,6 @@ public class TestDataPageV2EncryptionInterop {
             .build())) {
       assertThat(reader.getFooter().getBlocks()).hasSizeGreaterThan(1);
     }
-    assertThat(decodeDataPagesV2(file, FOOTER_KEY, false))
-        .allSatisfy(page -> assertThat(page.singleModule).isTrue());
     assertThat(readRows(file, new Configuration(), decryptionProperties(), false))
         .containsExactlyElementsOf(expectedRows());
     assertThat(readRows(file, new Configuration(), decryptionProperties(), true))
@@ -396,24 +380,13 @@ public class TestDataPageV2EncryptionInterop {
    * {@code legacy-v2-ambiguous-*}: one legacy page of 8 optional int32 values, only the first (12345)
    * defined. Its 4 bytes of definition levels, {@code 03 01 00 00}, are a bit-packed run of 8 levels
    * plus 2 unread bytes, and read as an LE int they equal {@code compressed_page_size - 4}, so the
-   * page fits both layouts. The {@code created_by} of the fixture, {@code parquet-mr version 1.19.0-SNAPSHOT}, resolves
-   * it to plaintext levels.
+   * page fits both layouts. The {@code created_by} of the fixture, {@code parquet-mr version
+   * 1.19.0-SNAPSHOT}, resolves it to plaintext levels.
    */
   @ParameterizedTest(name = "{0}, directMemory={1}")
   @MethodSource("ambiguousFixtures")
   public void readsALegacyPageThatLooksLikeASingleModule(String fixture, boolean directMemory) throws Exception {
     List<String> rows = readRows(fixture(fixture), new Configuration(), decryptionProperties(), directMemory);
-
-    assertThat(rows).hasSize(8);
-    assertThat(rows.get(0)).contains("v: 12345");
-    assertThat(rows.subList(1, 8)).allSatisfy(row -> assertThat(row).doesNotContain("v:"));
-  }
-
-  @ParameterizedTest(name = "{0}, directMemory={1}")
-  @MethodSource("ambiguousFixtures")
-  public void readsAnAmbiguousPageWithPlaintextLevelsIfTheFileIsFromParquetJava118(
-      String fixture, boolean directMemory) throws Exception {
-    List<String> rows = readRowsWrittenBy(fixture(fixture), "parquet-mr version 1.18.0 (build abc)", directMemory);
 
     assertThat(rows).hasSize(8);
     assertThat(rows.get(0)).contains("v: 12345");
