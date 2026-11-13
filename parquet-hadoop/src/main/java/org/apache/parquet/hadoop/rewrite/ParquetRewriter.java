@@ -738,6 +738,7 @@ public class ParquetRewriter implements Closeable {
           BytesInput dlLevels = readBlockAllocate(dlLength, reader);
           int payLoadLength = pageHeader.getCompressed_page_size() - rlLength - dlLength;
           int rawDataLength = pageHeader.getUncompressed_page_size() - rlLength - dlLength;
+          // Not encrypted here: the writer encrypts the levels and the payload together
           pageLoad = processPageLoad(
               reader,
               headerV2.is_compressed,
@@ -745,9 +746,9 @@ public class ParquetRewriter implements Closeable {
               decompressor,
               payLoadLength,
               rawDataLength,
-              encryptColumn,
-              dataEncryptor,
-              dataPageAAD);
+              false,
+              null,
+              null);
           statistics = convertStatistics(
               originalCreatedBy,
               normalizeNameInType(chunk.getPrimitiveType()),
@@ -777,7 +778,10 @@ public class ParquetRewriter implements Closeable {
               rawDataLength,
               statistics,
               metaEncryptor,
-              dataPageHeaderAAD);
+              dataPageHeaderAAD,
+              null,
+              dataEncryptor,
+              dataPageAAD);
           pageOrdinal++;
           break;
         default:

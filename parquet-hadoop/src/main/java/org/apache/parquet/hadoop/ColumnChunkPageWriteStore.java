@@ -319,7 +319,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       }
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
-        compressedData = BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray(), dataPageAAD));
+        // The levels are encrypted with the values as one module, which is written in place of all three
+        compressedData = BytesInput.from(pageBlockEncryptor.encrypt(
+            BytesInput.concat(repetitionLevels, definitionLevels, compressedData)
+                .toByteArray(),
+            dataPageAAD));
+        repetitionLevels = BytesInput.empty();
+        definitionLevels = BytesInput.empty();
       }
       int compressedSize =
           toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
