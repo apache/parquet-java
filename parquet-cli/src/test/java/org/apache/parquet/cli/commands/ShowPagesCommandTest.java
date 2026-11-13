@@ -23,15 +23,20 @@ import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RawLocalFileSystem;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DictionaryPage;
@@ -47,6 +52,7 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
@@ -214,5 +220,85 @@ public class ShowPagesCommandTest extends ParquetFileTest {
         }
       }
     });
+  }
+
+  @Test
+  public void testReadsEachPageHeaderOnce() throws IOException {
+    Configuration conf = new Configuration();
+    conf.setClass("fs.counting.impl", CountingFileSystem.class, FileSystem.class);
+    Path path = new Path("counting", null, randomParquetFile().getAbsolutePath());
+    MessageType schema = Types.buildMessage()
+        .required(INT64)
+        .named("id")
+        .required(BINARY)
+        .named("name")
+        .named("schema");
+    SimpleGroupFactory groups = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withConf(conf)
+        .withType(schema)
+        .withPageRowCountLimit(10)
+        .withRowGroupSize(4096)
+        .build()) {
+      for (int i = 0; i < 1000; i++) {
+        writer.write(groups.newGroup().append("id", (long) i).append("name", "name-" + (i % 37)));
+      }
+    }
+
+    List<String> expected = new ArrayList<>();
+    HadoopInputFile file = HadoopInputFile.fromPath(path, conf);
+    try (ParquetFileReader reader = ParquetFileReader.open(file);
+        SeekableInputStream input = file.newStream()) {
+      assertThat(reader.getRowGroups()).hasSizeGreaterThan(1);
+      for (int column = 0; column < schema.getFieldCount(); column++) {
+        for (BlockMetaData rowGroup : reader.getRowGroups()) {
+          ColumnChunkMetaData chunk = rowGroup.getColumns().get(column);
+          input.seek(chunk.getStartingPos());
+          while (input.getPos() < chunk.getStartingPos() + chunk.getTotalSize()) {
+            PageHeader header = Util.readPageHeader(input);
+            int count = header.getType() == PageType.DICTIONARY_PAGE
+                ? header.getDictionary_page_header().getNum_values()
+                : header.getData_page_header().getNum_values();
+            long size = header.getCompressed_page_size();
+            expected.add(String.format(
+                "%-7d %-10s %-10s", count, humanReadable((float) size / count), humanReadable(size)));
+            input.seek(input.getPos() + size);
+          }
+        }
+      }
+    }
+    assertThat(expected).hasSizeGreaterThan(100);
+
+    CountingFileSystem fs = (CountingFileSystem) path.getFileSystem(conf);
+    long fileLength = fs.getFileStatus(path).getLen();
+    long bytesReadBefore = fs.getBytesRead();
+    withLogger((console, events) -> {
+      ShowPagesCommand command = new ShowPagesCommand(console);
+      command.targets = List.of(path.toString());
+      command.setConf(conf);
+      assertThat(command.run()).isZero();
+      List<String> pageLines = events.stream()
+          .map(LoggingEvent::getMessage)
+          .filter(line -> line.matches("\\s*\\d+-.*"))
+          .toList();
+      assertThat(pageLines).hasSameSizeAs(expected);
+      for (int i = 0; i < pageLines.size(); i++) {
+        assertThat(pageLines.get(i)).contains(expected.get(i));
+      }
+    });
+    // the pages and their headers are each read once, not the headers again for every page
+    assertThat(fs.getBytesRead() - bytesReadBefore).isLessThan(3 * fileLength);
+  }
+
+  /** A local file system under its own scheme, so that its read statistics only count this test. */
+  public static class CountingFileSystem extends RawLocalFileSystem {
+    @Override
+    public URI getUri() {
+      return URI.create("counting:///");
+    }
+
+    long getBytesRead() {
+      return statistics.getBytesRead();
+    }
   }
 }
