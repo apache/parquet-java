@@ -25,6 +25,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -103,6 +105,51 @@ class ReadCliTest extends CliTestBase {
 
     assertThat(result.exitCode()).isNotZero();
     assertThat(result.output()).contains("Cannot find field", "missing_field");
+  }
+
+  @Test
+  void catReadsStandardListsWithoutAvroSchema() throws Exception {
+    // Written without an Avro schema in the file metadata, like files from Spark or PyArrow
+    Path path = getTempFolder().toPath().resolve("lists.parquet");
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.INT32)
+        .named("id")
+        .optionalList()
+        .optionalElement(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("tags")
+        .named("record");
+    List<List<String>> tags = Arrays.asList(List.of("a", "b"), List.of(), null, Arrays.asList("c", null));
+    SimpleGroupFactory groups = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new org.apache.hadoop.fs.Path(path.toUri()))
+        .withType(schema)
+        .build()) {
+      for (int i = 0; i < tags.size(); i++) {
+        Group record = groups.newGroup().append("id", i);
+        if (tags.get(i) != null) {
+          Group list = record.addGroup("tags");
+          for (String tag : tags.get(i)) {
+            Group element = list.addGroup("list");
+            if (tag != null) {
+              element.append("element", tag);
+            }
+          }
+        }
+        writer.write(record);
+      }
+    }
+
+    CliResult result = cli("cat", path.toString());
+
+    assertThat(result.exitCode()).as(result.output()).isZero();
+    List<Map<String, Object>> expected = new ArrayList<>();
+    for (int i = 0; i < tags.size(); i++) {
+      Map<String, Object> record = new HashMap<>();
+      record.put("id", i);
+      record.put("tags", tags.get(i));
+      expected.add(record);
+    }
+    assertThat(readRecords(result.output())).containsExactlyElementsOf(expected);
   }
 
   private Path writeRecords(String name, int firstId, int count) throws IOException {
