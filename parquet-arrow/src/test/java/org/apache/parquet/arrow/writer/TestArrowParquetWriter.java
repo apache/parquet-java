@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -41,6 +43,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
@@ -278,10 +281,9 @@ public class TestArrowParquetWriter {
           .sum();
       assertThat(totalRows).isEqualTo(numRows);
 
-      // Verify the column chunk has multiple pages (data_page_offset implies pages were written)
-      // With 500K x 4 bytes = 2MB and 1MB target page size, expect at least 2 pages
-      long totalSize = footer.getBlocks().get(0).getColumns().get(0).getTotalSize();
-      assertThat(totalSize).isGreaterThan(0);
+      // 500K x 4 bytes = 2MB at a 1MB target page size: 262144 rows a page, so 2 pages
+      assertThat(fileReader.readOffsetIndex(footer.getBlocks().get(0).getColumns().get(0)).getPageCount())
+          .isEqualTo(2);
     }
 
     // Verify round-trip of first and last values
@@ -296,6 +298,45 @@ public class TestArrowParquetWriter {
       Group last = reader.read();
       assertThat(last.getInteger("x", 0)).isEqualTo(numRows - 1);
       assertThat(reader.read()).isNull();
+    }
+  }
+
+  @Test
+  void testPageSizeDoesNotShrinkWithColumnCount() throws IOException {
+    // 20 INT32 columns x 100K rows: 400KB a column, under the 1MB target, so one page each.
+    // Sizing pages by the whole row would cut every column into many small pages.
+    int numColumns = 20;
+    int numRows = 100_000;
+    List<Field> fields = new ArrayList<>();
+    for (int c = 0; c < numColumns; c++) {
+      fields.add(new Field("c" + c, FieldType.notNullable(new ArrowType.Int(32, true)), null));
+    }
+    Schema arrowSchema = new Schema(fields);
+    MessageType parquetSchema = new SchemaConverter().fromArrow(arrowSchema).getParquetSchema();
+    Path path = tempDir.toPath().resolve("wide_schema.parquet");
+
+    try (VectorSchemaRoot batch = VectorSchemaRoot.create(arrowSchema, allocator)) {
+      for (int c = 0; c < numColumns; c++) {
+        IntVector v = (IntVector) batch.getVector(c);
+        v.allocateNew(numRows);
+        for (int i = 0; i < numRows; i++) {
+          v.set(i, i * c);
+        }
+      }
+      batch.setRowCount(numRows);
+      try (ArrowParquetWriter writer = new ArrowParquetWriter(new LocalOutputFile(path), parquetSchema)) {
+        writer.writeBatch(batch);
+      }
+    }
+
+    try (ParquetFileReader fileReader = ParquetFileReader.open(new LocalInputFile(path))) {
+      ParquetMetadata footer = fileReader.getFooter();
+      assertThat(footer.getBlocks()).hasSize(1);
+      for (ColumnChunkMetaData column : footer.getBlocks().get(0).getColumns()) {
+        assertThat(fileReader.readOffsetIndex(column).getPageCount())
+            .as(column.getPath().toDotString())
+            .isEqualTo(1);
+      }
     }
   }
 

@@ -171,13 +171,13 @@ public class ArrowParquetWriter implements Closeable {
       return;
     }
 
-    // Estimate rows per page based on schema width
-    int estimatedRowBytes = 0;
+    // Every column is cut at the same row boundaries, and each column chunk gets its own pages,
+    // so size the pages by the widest column rather than by the whole row.
+    int widestValueBytes = 1;
     for (ColumnDescriptor col : schema.getColumns()) {
-      int typeLen = col.getPrimitiveType().getTypeLength();
-      estimatedRowBytes += typeLen > 0 ? typeLen : VAR_WIDTH_ESTIMATE_BYTES;
+      widestValueBytes = Math.max(widestValueBytes, estimatedValueBytes(col));
     }
-    int rowsPerPage = Math.max(1, TARGET_PAGE_SIZE_BYTES / Math.max(estimatedRowBytes, 1));
+    int rowsPerPage = Math.max(1, TARGET_PAGE_SIZE_BYTES / widestValueBytes);
 
     // Write in page-sized chunks
     int offset = 0;
@@ -242,6 +242,26 @@ public class ArrowParquetWriter implements Closeable {
     }
 
     rowGroupRowCount = 0;
+  }
+
+  /** Estimated encoded bytes of one PLAIN value of the column. */
+  static int estimatedValueBytes(ColumnDescriptor col) {
+    switch (col.getPrimitiveType().getPrimitiveTypeName()) {
+      case BOOLEAN:
+        return 1;
+      case INT32:
+      case FLOAT:
+        return 4;
+      case INT64:
+      case DOUBLE:
+        return 8;
+      case INT96:
+        return 12;
+      case FIXED_LEN_BYTE_ARRAY:
+        return col.getPrimitiveType().getTypeLength();
+      default:
+        return VAR_WIDTH_ESTIMATE_BYTES;
+    }
   }
 
   private boolean shouldFlushRowGroup() {
