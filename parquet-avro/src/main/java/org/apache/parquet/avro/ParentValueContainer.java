@@ -24,8 +24,8 @@ import java.util.Map;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericEnumSymbol;
+import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.IndexedRecord;
 
 abstract class ParentValueContainer {
@@ -185,7 +185,7 @@ abstract class ParentValueContainer {
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromFixed((GenericData.Fixed) value, schema, logicalType));
+            parent.add(conversion.fromFixed((GenericFixed) value, schema, logicalType));
           }
         };
       case RECORD:

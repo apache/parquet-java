@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -332,6 +333,43 @@ public class TestSpecificReadWrite {
     final List<LogicalTypesTest> output = new ArrayList<>();
     try (ParquetReader<org.apache.parquet.avro.LogicalTypesTest> reader = new AvroParquetReader<>(testConf, path)) {
       for (LogicalTypesTest record = reader.read(); record != null; record = reader.read()) {
+        output.add(record);
+      }
+    }
+
+    assertThat(output).containsExactlyElementsOf(records);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testReadSpecificDecimalFixed(boolean compat) throws IOException {
+    Configuration testConf = testConf(compat);
+    // The decimal is stored in the generated Decimal9Fixed class, which is a SpecificFixed and not a
+    // GenericData.Fixed, so the conversion must accept any GenericFixed
+    List<DecimalFixedTest> records = IntStream.range(0, 25)
+        .mapToObj(i -> DecimalFixedTest.newBuilder()
+            .setAmount(BigDecimal.valueOf(i * 1000 - 12345, 2))
+            .build())
+        .collect(Collectors.toList());
+
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path path = new Path(tmp.getPath());
+
+    try (ParquetWriter<DecimalFixedTest> writer = AvroParquetWriter.<DecimalFixedTest>builder(path)
+        .withSchema(DecimalFixedTest.getClassSchema())
+        .withConf(new Configuration(false))
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .build()) {
+      for (DecimalFixedTest record : records) {
+        writer.write(record);
+      }
+    }
+
+    final List<DecimalFixedTest> output = new ArrayList<>();
+    try (ParquetReader<DecimalFixedTest> reader = new AvroParquetReader<>(testConf, path)) {
+      for (DecimalFixedTest record = reader.read(); record != null; record = reader.read()) {
         output.add(record);
       }
     }
