@@ -123,11 +123,15 @@ public class RunLengthBitPackingHybridDecoder {
         LOG.debug("reading {} values BIT PACKED", currentCount);
         if (currentBuffer.length < currentCount) {
           currentBuffer = new int[currentCount];
+        } else {
+          Arrays.fill(currentBuffer, currentCount, currentBuffer.length, 0);
         }
         currentBufferPosition = 0;
         int bytesRequired = numGroups * bitWidth;
         if (packedBytes.length < bytesRequired) {
           packedBytes = new byte[bytesRequired];
+        } else {
+          Arrays.fill(packedBytes, bytesRequired, packedBytes.length, (byte) 0);
         }
         // At the end of the file RLE data though, there might not be that many bytes left.
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
