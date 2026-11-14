@@ -308,6 +308,54 @@ public class TestMemoryManager {
   }
 
   /**
+   * Regression test for a reentrancy bug in MemoryManager#recomputeScale(): the scale-exceeded
+   * callbacks run from inside the synchronized addWriter()/removeWriter()/recomputeScale() chain,
+   * so a callback that closes a writer reenters that same chain (the lock is reentrant) and
+   * publishes a freshly-correct {@code scale}. The outer call must not then clobber it with the
+   * {@code newScale} it computed before the callback ran.
+   */
+  @Test
+  public void testScaleReflectsStateAfterCallbackReentrancy() throws Exception {
+    resetStaticMemoryManager();
+    try {
+      // The manager is created lazily from the current conf on first use.
+      createWriter(900).close(null);
+      long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
+      // Each writer alone fits comfortably, but two together exceed the pool (total = 1.2x),
+      // so opening the second one triggers the scale-exceeded callback.
+      long rowGroupSize = (long) (poolSize * 0.6);
+      conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
+
+      RecordWriter writer1 = createWriter(1);
+      AtomicReference<RecordWriter> writer1Ref = new AtomicReference<>(writer1);
+      ParquetOutputFormat.getMemoryManager().registerScaleCallBack("close-writer1", () -> {
+        RecordWriter w = writer1Ref.getAndSet(null);
+        if (w != null) {
+          try {
+            w.close(null);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        }
+      });
+
+      // Opening writer2 pushes total allocation past the pool, triggering the callback above,
+      // which reentrantly closes writer1 and brings total allocation back under the pool.
+      RecordWriter writer2 = createWriter(2);
+      try {
+        assertThat(ParquetOutputFormat.getMemoryManager().getScale())
+            .as("Scale should reflect state after the callback closed writer1 (back under the "
+                + "pool), not the stale value computed before the callback ran")
+            .isEqualTo(1.0);
+      } finally {
+        writer2.close(null);
+      }
+    } finally {
+      resetStaticMemoryManager();
+    }
+  }
+
+  /**
    * ParquetOutputFormat#memoryManager is a process-wide singleton created lazily on the first
    * writer and never reconfigured afterward, so tests that need a specific
    * MIN_MEMORY_ALLOCATION/MEMORY_POOL_RATIO must force it to be rebuilt.
