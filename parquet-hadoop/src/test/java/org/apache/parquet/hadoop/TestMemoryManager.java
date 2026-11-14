@@ -22,7 +22,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -159,6 +169,201 @@ public class TestMemoryManager {
     assertThat(ParquetOutputFormat.getMemoryManager().getScaleCallBacks())
         .as("Should not allow duplicate callbacks")
         .hasSize(1);
+  }
+
+  /**
+   * Regression test for PARQUET-2412: many threads concurrently opening and closing writers
+   * (as Spark's dynamic partition writer does) must not corrupt MemoryManager's bookkeeping,
+   * deadlock, or spuriously trip the duplicate-writer / minimum-allocation guards, even while
+   * the pool is sustained well past its limit for most of the run.
+   *
+   * <p>Note that no records are ever written through these writers: the single GroupWriteSupport
+   * instance shared by {@code parquetOutputFormat} is not safe for concurrent record writes (its
+   * {@code schema}/{@code groupWriter} fields race), so this test must stay open/close-only.
+   */
+  @Test
+  public void testConcurrentAddRemoveWriters() throws Exception {
+    long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
+    // Small enough that a handful of concurrently open writers comfortably exceeds the pool,
+    // so the run spends most of its time with scale < 1.0, not just the healthy fast path.
+    long rowGroupSize = poolSize / 4;
+    conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
+
+    int threadCount = 20;
+    int opsPerThread = 200;
+    AtomicInteger nextFileIndex = new AtomicInteger(10_000);
+    List<Throwable> failures = new CopyOnWriteArrayList<>();
+    AtomicReference<Double> minObservedScale = new AtomicReference<>(1.0);
+
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    List<Future<?>> futures = new ArrayList<>();
+    for (int t = 0; t < threadCount; t++) {
+      futures.add(executor.submit(() -> {
+        try {
+          for (int i = 0; i < opsPerThread; i++) {
+            RecordWriter writer = createWriter(nextFileIndex.incrementAndGet());
+            try {
+              // Give other threads a chance to overlap so several writers are open at once,
+              // and sample the scale while this writer is live.
+              Thread.yield();
+              minObservedScale.accumulateAndGet(
+                  ParquetOutputFormat.getMemoryManager().getScale(), Math::min);
+            } finally {
+              writer.close(null);
+            }
+          }
+        } catch (Throwable t2) {
+          failures.add(t2);
+        }
+      }));
+    }
+
+    for (Future<?> f : futures) {
+      f.get(120, TimeUnit.SECONDS);
+    }
+    executor.shutdown();
+
+    assertThat(failures)
+        .as("No exceptions expected from concurrent add/remove")
+        .isEmpty();
+    assertThat(ParquetOutputFormat.getMemoryManager().getWriterList())
+        .as("All writers should have been removed once every thread finished")
+        .isEmpty();
+    assertThat(minObservedScale.get())
+        .as("The run should have actually exercised the degraded (scale < 1.0) path")
+        .isLessThan(1.0);
+  }
+
+  /**
+   * Regression test for the TreeMap.firstKey()-based minMemoryAllocation guard in
+   * MemoryManager#recomputeScale(), which replaced a full scan over every writer. The
+   * equivalence (the smallest live allocation is always the first to breach the floor, since
+   * scale is a single multiplier) is only argued in a code comment; this pins it down with
+   * both a negative and a positive case.
+   *
+   * <p>It also pins the failure handling around that guard: a writer rejected by the guard
+   * never escapes its constructor, so nothing can ever close it — the manager must roll its
+   * registration back instead of leaking the allocation, and it must reset {@code scale} to
+   * 1.0 once the last writer is removed.
+   */
+  @Test
+  public void testMinimumAllocationGuard() throws Exception {
+    long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
+    // The shared MemoryManager singleton is created lazily on first use and never
+    // reconfigured afterward, so reset it to pick up a custom MIN_MEMORY_ALLOCATION here,
+    // and again afterward so this test's custom configuration can't leak into whichever
+    // test happens to run next.
+    resetStaticMemoryManager();
+    try {
+      // minAllocation is comfortably below a single writer's own request, so one writer
+      // alone is always safe; it only gets breached once enough writers are open at once
+      // that scale has to shrink past minAllocation / rowGroupSize (= 0.8) to fit them all.
+      long minAllocation = poolSize / 10;
+      long rowGroupSize = poolSize / 8;
+      conf.setLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION, minAllocation);
+      conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
+
+      // Negative case: a couple of writers stay comfortably under the pool (scale == 1.0),
+      // so the floor is never approached and no exception should be thrown.
+      RecordWriter safe1 = createWriter(901);
+      RecordWriter safe2 = createWriter(902);
+      safe1.close(null);
+      safe2.close(null);
+
+      // Positive case: enough concurrently open writers that scale must drop below 0.8 to
+      // fit them all, which pushes the smallest (here, every) allocation under minAllocation.
+      List<RecordWriter> writers = new ArrayList<>();
+      try {
+        assertThatThrownBy(() -> {
+              for (int i = 0; i < 20; i++) {
+                writers.add(createWriter(1000 + i));
+              }
+            })
+            .isInstanceOf(ParquetMemoryManagerRuntimeException.class)
+            .hasMessageContaining("is smaller than the minimum allocation size");
+      } finally {
+        for (RecordWriter writer : writers) {
+          writer.close(null);
+        }
+      }
+
+      // The rejected writer never escaped its constructor, so no caller can ever close it;
+      // rejecting it must therefore roll the registration back instead of leaking it into
+      // this JVM-global manager. A leaked allocation would keep every later writer
+      // over-allocated and re-tripping the same exception on this JVM.
+      assertThat(ParquetOutputFormat.getMemoryManager().getWriterList())
+          .as("The rejected writer must not be leaked in the manager's bookkeeping")
+          .isEmpty();
+
+      // The manager must stay usable for later writers instead of being wedged by a leak.
+      RecordWriter recovery = createWriter(2000);
+      recovery.close(null);
+
+      assertThat(ParquetOutputFormat.getMemoryManager().getScale())
+          .as("Scale should return to 1.0 once every writer has been removed")
+          .isEqualTo(1.0);
+    } finally {
+      resetStaticMemoryManager();
+    }
+  }
+
+  /**
+   * Regression test for a reentrancy bug in MemoryManager#recomputeScale(): the scale-exceeded
+   * callbacks run from inside the synchronized addWriter()/removeWriter()/recomputeScale() chain,
+   * so a callback that closes a writer reenters that same chain (the lock is reentrant) and
+   * publishes a freshly-correct {@code scale}. The outer call must not then clobber it with the
+   * {@code newScale} it computed before the callback ran.
+   */
+  @Test
+  public void testScaleReflectsStateAfterCallbackReentrancy() throws Exception {
+    resetStaticMemoryManager();
+    try {
+      // The manager is created lazily from the current conf on first use.
+      createWriter(900).close(null);
+      long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
+      // Each writer alone fits comfortably, but two together exceed the pool (total = 1.2x),
+      // so opening the second one triggers the scale-exceeded callback.
+      long rowGroupSize = (long) (poolSize * 0.6);
+      conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
+
+      RecordWriter writer1 = createWriter(1);
+      AtomicReference<RecordWriter> writer1Ref = new AtomicReference<>(writer1);
+      ParquetOutputFormat.getMemoryManager().registerScaleCallBack("close-writer1", () -> {
+        RecordWriter w = writer1Ref.getAndSet(null);
+        if (w != null) {
+          try {
+            w.close(null);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        }
+      });
+
+      // Opening writer2 pushes total allocation past the pool, triggering the callback above,
+      // which reentrantly closes writer1 and brings total allocation back under the pool.
+      RecordWriter writer2 = createWriter(2);
+      try {
+        assertThat(ParquetOutputFormat.getMemoryManager().getScale())
+            .as("Scale should reflect state after the callback closed writer1 (back under the "
+                + "pool), not the stale value computed before the callback ran")
+            .isEqualTo(1.0);
+      } finally {
+        writer2.close(null);
+      }
+    } finally {
+      resetStaticMemoryManager();
+    }
+  }
+
+  /**
+   * ParquetOutputFormat#memoryManager is a process-wide singleton created lazily on the first
+   * writer and never reconfigured afterward, so tests that need a specific
+   * MIN_MEMORY_ALLOCATION/MEMORY_POOL_RATIO must force it to be rebuilt.
+   */
+  private static void resetStaticMemoryManager() throws Exception {
+    Field field = ParquetOutputFormat.class.getDeclaredField("memoryManager");
+    field.setAccessible(true);
+    field.set(null, null);
   }
 
   @TempDir

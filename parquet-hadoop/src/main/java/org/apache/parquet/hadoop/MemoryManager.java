@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +48,17 @@ public class MemoryManager {
   private final long totalMemoryPool;
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter<?>, Long> writerList = new HashMap<>();
+  // Multiset of the allocations currently in writerList, keyed by allocation size, so the
+  // smallest live allocation (the first one that would breach minMemoryAllocation as scale
+  // shrinks) can be found in O(log D) instead of scanning all of writerList, where D is the
+  // number of distinct allocation sizes in use (typically 1, since writers in a job usually
+  // share the same configured row group size).
+  private final TreeMap<Long, Integer> allocationCounts = new TreeMap<>();
   private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
-  private double scale = 1.0;
+  private long totalAllocations = 0;
+  // Writers read this directly (MemoryManager#getScale) off the write path, so it must stay
+  // cheap and lock-free from the reader's side; all writes to it happen under the monitor below.
+  private volatile double scale = 1.0;
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
@@ -75,16 +85,27 @@ public class MemoryManager {
    * @param allocation the requested buffer size
    */
   synchronized void addWriter(InternalParquetRecordWriter<?> writer, Long allocation) {
-    Long oldValue = writerList.get(writer);
-    if (oldValue == null) {
-      writerList.put(writer, allocation);
-    } else {
+    if (writerList.putIfAbsent(writer, allocation) != null) {
       throw new IllegalArgumentException("[BUG] The Parquet Memory Manager should not add an "
           + "instance of InternalParquetRecordWriter more than once. The Manager already contains "
           + "the writer: "
           + writer);
     }
-    updateAllocation();
+    writer.setMemoryManager(this);
+    totalAllocations += allocation;
+    allocationCounts.merge(allocation, 1, Integer::sum);
+    try {
+      recomputeScale();
+    } catch (RuntimeException e) {
+      // A writer rejected here (e.g. its allocation would scale below minMemoryAllocation) never
+      // escapes its constructor, so nothing will ever close it: undo the registration instead of
+      // leaking the allocation in this JVM-global manager. A leaked allocation would keep every
+      // later writer over-allocated and re-tripping the same exception on this JVM.
+      writerList.remove(writer);
+      totalAllocations -= allocation;
+      allocationCounts.compute(allocation, (key, count) -> (count == null || count <= 1) ? null : count - 1);
+      throw e;
+    }
   }
 
   /**
@@ -93,44 +114,68 @@ public class MemoryManager {
    * @param writer the writer that has been closed
    */
   synchronized void removeWriter(InternalParquetRecordWriter<?> writer) {
-    writerList.remove(writer);
+    Long allocation = writerList.remove(writer);
+    if (allocation == null) {
+      return;
+    }
+    totalAllocations -= allocation;
+    allocationCounts.compute(allocation, (key, count) -> (count == null || count <= 1) ? null : count - 1);
     if (!writerList.isEmpty()) {
-      updateAllocation();
+      recomputeScale();
+    } else {
+      // No live writers are left: reset so a stale shrunken scale cannot be observed or used
+      // while the manager sits idle (writers read scale lazily, so it is the sole live state).
+      scale = 1.0;
     }
   }
 
   /**
-   * Update the allocated size of each writer based on the current allocations and pool size.
+   * Recompute the scale factor applied to every writer's row group size from the current total
+   * allocation and pool size. Writers do not store a pushed threshold; each one reads {@link
+   * #getScale()} lazily, so this only has to update the handful of fields below instead of
+   * visiting every writer in {@code writerList}.
    */
-  private void updateAllocation() {
-    long totalAllocations = 0;
-    for (Long allocation : writerList.values()) {
-      totalAllocations += allocation;
-    }
+  private void recomputeScale() {
+    double newScale;
     if (totalAllocations <= totalMemoryPool) {
-      scale = 1.0;
+      newScale = 1.0;
     } else {
-      scale = (double) totalMemoryPool / totalAllocations;
+      newScale = (double) totalMemoryPool / totalAllocations;
       LOG.warn(String.format(
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n"
               + "Scaling row group sizes to %.2f%% for %d writers",
-          100 * memoryPoolRatio, totalMemoryPool, 100 * scale, writerList.size()));
+          100 * memoryPoolRatio, totalMemoryPool, 100 * newScale, writerList.size()));
       for (Runnable callBack : callBacks.values()) {
         // we do not really want to start a new thread here.
         callBack.run();
       }
+      // Callbacks may close writers and reenter removeWriter(), changing totalAllocations.
+      // Recalculate before validating and publishing the scale.
+      newScale = totalAllocations <= totalMemoryPool ? 1.0 : (double) totalMemoryPool / totalAllocations;
     }
 
-    for (Map.Entry<InternalParquetRecordWriter<?>, Long> entry : writerList.entrySet()) {
-      long newSize = (long) Math.floor(entry.getValue() * scale);
-      if (scale < 1.0 && minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
+    if (newScale < 1.0 && minMemoryAllocation > 0 && !allocationCounts.isEmpty()) {
+      // scale is a single multiplier applied to every writer's allocation, so the smallest
+      // live allocation is always the first one to breach minMemoryAllocation.
+      long minAllocation = allocationCounts.firstKey();
+      long minScaledSize = (long) Math.floor(minAllocation * newScale);
+      if (minScaledSize < minMemoryAllocation) {
         throw new ParquetMemoryManagerRuntimeException(String.format(
             "New Memory allocation %d bytes" + " is smaller than the minimum allocation size of %d bytes.",
-            newSize, minMemoryAllocation));
+            minScaledSize, minMemoryAllocation));
       }
-      entry.getKey().setRowGroupSizeThreshold(newSize);
-      LOG.debug(String.format(
-          "Adjust block size from %,d to %,d for writer: %s", entry.getValue(), newSize, entry.getKey()));
+    }
+
+    scale = newScale;
+
+    if (LOG.isDebugEnabled()) {
+      // Only pay for visiting every writer when a caller has actually opted into DEBUG
+      // logging; the scale itself is computed above without ever touching writerList.
+      for (Map.Entry<InternalParquetRecordWriter<?>, Long> entry : writerList.entrySet()) {
+        LOG.debug(String.format(
+            "Adjust block size from %,d to %,d for writer: %s",
+            entry.getValue(), (long) Math.floor(entry.getValue() * newScale), entry.getKey()));
+      }
     }
   }
 
