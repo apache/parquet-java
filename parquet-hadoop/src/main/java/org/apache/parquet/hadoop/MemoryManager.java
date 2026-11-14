@@ -149,6 +149,11 @@ public class MemoryManager {
         // we do not really want to start a new thread here.
         callBack.run();
       }
+      // Callbacks may close writers and reenter removeWriter(), changing totalAllocations.
+      // Recalculate before validating and publishing the scale.
+      newScale = totalAllocations <= totalMemoryPool
+          ? 1.0
+          : (double) totalMemoryPool / totalAllocations;
     }
 
     if (newScale < 1.0 && minMemoryAllocation > 0 && !allocationCounts.isEmpty()) {
