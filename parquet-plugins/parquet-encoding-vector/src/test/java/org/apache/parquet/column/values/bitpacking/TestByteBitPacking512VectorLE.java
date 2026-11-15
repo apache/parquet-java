@@ -22,8 +22,9 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.Assume;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -41,30 +42,31 @@ public class TestByteBitPacking512VectorLE {
   }
 
   private void unpackValuesUsingVectorBitWidth(int bitWidth) {
-    List<int[]> intInputs = getRangeData(bitWidth);
+    try (Stream<int[]> intInputs = getRangeData(bitWidth)) {
+      intInputs.forEach(intInput -> {
+        int pack8Count = intInput.length / 8;
+        int byteOutputSize = pack8Count * bitWidth;
+        byte[] byteOutput = new byte[byteOutputSize];
+        int[] output = new int[intInput.length];
 
-    for (int[] intInput : intInputs) {
-      int pack8Count = intInput.length / 8;
-      int byteOutputSize = pack8Count * bitWidth;
-      byte[] byteOutput = new byte[byteOutputSize];
-      int[] output1 = new int[intInput.length];
-      int[] output2 = new int[intInput.length];
-      int[] output3 = new int[intInput.length];
+        BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+        for (int i = 0; i < pack8Count; i++) {
+          bytePacker.pack8Values(intInput, 8 * i, byteOutput, bitWidth * i);
+        }
 
-      BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-      for (int i = 0; i < pack8Count; i++) {
-        bytePacker.pack8Values(intInput, 8 * i, byteOutput, bitWidth * i);
-      }
+        unpack8Values(bitWidth, byteOutput, output);
+        assertArrayEquals(intInput, output);
+        Arrays.fill(output, 0);
 
-      unpack8Values(bitWidth, byteOutput, output1);
-      unpackValuesUsingVectorArray(bitWidth, byteOutput, output2);
+        unpackValuesUsingVectorArray(bitWidth, byteOutput, output);
+        assertArrayEquals(intInput, output);
+        Arrays.fill(output, 0);
 
-      ByteBuffer byteBuffer = ByteBuffer.wrap(byteOutput);
-      unpackValuesUsingVectorByteBuffer(bitWidth, byteBuffer, output3);
-
-      assertArrayEquals(intInput, output1);
-      assertArrayEquals(intInput, output2);
-      assertArrayEquals(intInput, output3);
+        ByteBuffer byteBuffer = ByteBuffer.wrap(byteOutput);
+        unpackValuesUsingVectorByteBuffer(bitWidth, byteBuffer, output);
+        assertArrayEquals(intInput, output);
+        Arrays.fill(output, 0);
+      });
     }
   }
 
@@ -119,8 +121,7 @@ public class TestByteBitPacking512VectorLE {
     }
   }
 
-  private List<int[]> getRangeData(int bitWidth) {
-    List<int[]> result = new ArrayList<>();
+  private Stream<int[]> getRangeData(int bitWidth) {
     int itemMax = 268435456;
 
     long maxValue = getMaxValue(bitWidth);
@@ -131,9 +132,11 @@ public class TestByteBitPacking512VectorLE {
       ++itemCount;
     }
 
-    for (int i = 0; i < itemCount; i++) {
+    final int finalItemCount = itemCount;
+
+    return IntStream.range(0, finalItemCount).mapToObj(i -> {
       int len;
-      if ((i == itemCount - 1) && mode != 0) {
+      if ((i == finalItemCount - 1) && mode != 0) {
         len = mode;
       } else {
         len = itemMax;
@@ -162,9 +165,8 @@ public class TestByteBitPacking512VectorLE {
         array[j] = value;
         j++;
       }
-      result.add(array);
-    }
-    return result;
+      return array;
+    });
   }
 
   private long getMaxValue(int bitWidth) {
