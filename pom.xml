@@ -633,6 +633,8 @@
               <ignoreMissingClassesByRegularExpression>${shade.prefix}.*</ignoreMissingClassesByRegularExpression>
             </ignoreMissingClassesByRegularExpressions>
             <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
+            <!-- Suppresses individual false-positive compatibility changes per class -->
+            <postAnalysisScript>${maven.multiModuleProjectDirectory}/dev/japicmp-post-analysis.groovy</postAnalysisScript>
             <excludeModules>
               <!-- Excluding the following modules because they are not part of the parquet public API -->
               <excludeModule>parquet-benchmarks</excludeModule>
