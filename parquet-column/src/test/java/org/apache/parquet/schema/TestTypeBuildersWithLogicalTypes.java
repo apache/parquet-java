@@ -198,23 +198,6 @@ public class TestTypeBuildersWithLogicalTypes {
         .hasMessageContaining("Invalid FINITE_VECTOR schema");
   }
 
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  public void testHasFiniteVector(boolean hasVector) {
-    GroupType field = hasVector
-        ? vector(Types.required(FLOAT).named("element"))
-        : new GroupType(
-            REQUIRED,
-            "v",
-            listType(),
-            new GroupType(
-                Repetition.REPEATED,
-                "list",
-                Types.required(FLOAT).named("element")));
-    MessageType schema = new MessageType("m", new GroupType(REQUIRED, "parent", field));
-    assertThat(TypeUtil.hasFiniteVector(schema)).isEqualTo(hasVector);
-  }
-
   @Test
   public void testVectorOnPrimitive() {
     assertThatThrownBy(() -> Types.required(FLOAT).as(finiteVectorType(5)).named("v"))

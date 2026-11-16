@@ -24,30 +24,6 @@ import org.apache.parquet.schema.LogicalTypeAnnotation.Float16LogicalTypeAnnotat
 import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
 
 public class TypeUtil {
-  public static boolean hasFiniteVector(Type type) {
-    if (type.getLogicalTypeAnnotation() instanceof FiniteVectorLogicalTypeAnnotation) return true;
-    if (!type.isPrimitive()) {
-      for (Type child : type.asGroupType().getFields()) {
-        if (hasFiniteVector(child)) return true;
-      }
-    }
-    return false;
-  }
-
-  public static FiniteVectorLogicalTypeAnnotation getFiniteVectorType(GroupType schema, String[] path) {
-    if (path.length < 3) {
-      return null;
-    }
-    GroupType group = schema;
-    for (int i = 0; i < path.length - 2; i++) {
-      group = group.getType(path[i]).asGroupType();
-    }
-    LogicalTypeAnnotation logical = group.getLogicalTypeAnnotation();
-    return logical instanceof FiniteVectorLogicalTypeAnnotation
-        ? (FiniteVectorLogicalTypeAnnotation) logical
-        : null;
-  }
-
   static void checkFiniteVector(GroupType vector) {
     if (vector.isRepetition(Type.Repetition.REPEATED) || vector.getFieldCount() != 1) {
       throw new InvalidSchemaException("Invalid FINITE_VECTOR schema: " + vector);

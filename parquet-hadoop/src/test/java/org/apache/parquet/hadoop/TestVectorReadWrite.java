@@ -18,18 +18,14 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.column.Encoding.PLAIN;
-import static org.apache.parquet.column.Encoding.RLE;
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
-import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.CREATE;
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -38,23 +34,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
-import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -66,8 +56,6 @@ import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.MessageColumnIO;
@@ -382,9 +370,9 @@ public class TestVectorReadWrite {
     Path path = writeVectors(list, WriterVersion.PARQUET_1_0, false, listRows(list, 4, 6));
     assertVectorRows(readGroups(path, vector), 4, 6);
 
-    Path vectorPath = writeVectors(vector, WriterVersion.PARQUET_1_0, false, listRows(vector, 4, 6));
+    Path vectorPath = writeVectors(vector, WriterVersion.PARQUET_1_0, false, listRows(vector, 5, 5));
     for (MessageType requested : List.of(vector, list)) {
-      assertVectorRows(readGroups(vectorPath, requested), 4, 6);
+      assertVectorRows(readGroups(vectorPath, requested), 5, 5);
     }
   }
 
@@ -405,10 +393,6 @@ public class TestVectorReadWrite {
       writer.write(row);
     }
     assertRow(readGroups(path, schema).get(0), row);
-  }
-
-  private static org.apache.parquet.format.ColumnMetaData column(org.apache.parquet.format.FileMetaData footer) {
-    return footer.getRow_groups().get(0).getColumns().get(0).getMeta_data();
   }
 
   @ParameterizedTest
@@ -433,159 +417,86 @@ public class TestVectorReadWrite {
       }
       assertThat(column.readPage()).isNull();
     }
+    Path invalid = new Path(tempDir.resolve("split-invalid.parquet").toUri());
+    Files.copy(java.nio.file.Path.of(path.toUri()), java.nio.file.Path.of(invalid.toUri()));
+    rewriteFooter(
+        invalid,
+        footer -> footer.getSchema()
+            .get(1)
+            .getLogicalType()
+            .getFINITE_VECTOR()
+            .setNum_elements(6));
+    assertThatThrownBy(() -> readGroups(invalid, schema))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Invalid FINITE_VECTOR length for [v, list, element]: expected 6 elements, got 5");
   }
 
   @ParameterizedTest
   @CsvSource({
-    "required,5,false,4,18,0,false,false",
-    "required,5,false,4,15,0,true,true",
-    "optional,5,false,3,11,0,false,true",
-    "optional,5,false,3,10,-1,false,false",
-    "required,1,false,3,2,0,false,false",
-    "required,5,false,9223372036854775807,15,0,false,false",
-    "required,2,true,3,5,0,false,false"
+    "PARQUET_1_0,required,false,5,4",
+    "PARQUET_2_0,required,false,4,6",
+    "PARQUET_1_0,required,false,6,4",
+    "PARQUET_2_0,required,false,0,10",
+    "PARQUET_2_0,optional,false,-1,4",
+    "PARQUET_1_0,optional,false,-1,0",
+    "PARQUET_2_0,required,true,4,6",
+    "PARQUET_1_0,required,true,5,4"
   })
-  public void testInvalidVectorFooter(
-      String outer,
-      int length,
-      boolean nested,
-      long rowCount,
-      long values,
-      long nulls,
-      boolean projectList,
-      boolean filtered)
+  public void testInvalidVectorLengths(WriterVersion version, String outer, boolean nested, int first, int second)
       throws IOException {
-    MessageType fileSchema = schema(outer, length, nested);
-    int count = rowCount == Long.MAX_VALUE ? 3 : (int) rowCount;
-    int[] lengths = new int[count];
-    Arrays.fill(lengths, length);
-    if (outer.equals("optional")) lengths[0] = -1;
-    Path path = writeVectors(fileSchema, PARQUET_2_0, false, listRows(fileSchema, lengths));
-    rewriteFooter(path, footer -> {
-      footer.setNum_rows(rowCount);
-      footer.getRow_groups().get(0).setNum_rows(rowCount);
-      column(footer).setNum_values(values);
-      if (nulls == -1) {
-        column(footer).getStatistics().unsetNull_count();
-      } else {
-        column(footer).getStatistics().setNull_count(nulls);
-      }
-    });
-    String expected = (nested ? "[outer, v, list, element]" : "[v, list, element]") + ": rows=" + rowCount
-        + ", values=" + values + ", nulls=" + nulls + ", length=" + length;
-    for (boolean select : filtered ? new boolean[] {false, true} : new boolean[] {false}) {
-      assertThatThrownBy(() -> {
-            try (ParquetFileReader reader =
-                ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-              if (projectList) {
-                reader.setRequestedSchema(MessageTypeParser.parseMessageType(
-                    "message m { repeated group v (LIST) { repeated group list {"
-                        + " required float element; } } }"));
-              }
-              assertThat(reader.readOffsetIndex(reader.getFooter()
-                      .getBlocks()
-                      .get(0)
-                      .getColumns()
-                      .get(0)))
-                  .isNotNull();
-              if (select) {
-                reader.readFilteredRowGroup(0, RowRanges.createSingle(1));
-              } else {
-                reader.readRowGroup(0);
-              }
-            }
-          })
+    MessageType fileSchema = schema(outer, 5, nested);
+    List<Group> rows = listRows(fileSchema, first, second);
+    if (nested) {
+      rows.get(0).add("outer", rows.get(1).getGroup("outer", 0));
+      rows = rows.subList(0, 1);
+    }
+    Path path = writeVectors(fileSchema, version, version == WriterVersion.PARQUET_2_0, rows);
+    rewriteFooter(
+        path,
+        footer -> footer.getRow_groups()
+            .get(0)
+            .getColumns()
+            .forEach(column -> column.getMeta_data().unsetStatistics()));
+    MessageType list =
+        MessageTypeParser.parseMessageType(fileSchema.toString().replace("FINITE_VECTOR(5)", "LIST"));
+    int invalid = first == 5 || first == -1 ? second : first;
+    String column = nested ? "[outer, v, list, element]" : "[v, list, element]";
+    for (MessageType requested : List.of(fileSchema, list)) {
+      assertThatThrownBy(() -> readGroups(path, requested))
           .isInstanceOf(ParquetDecodingException.class)
-          .hasMessageContaining("Invalid FINITE_VECTOR counts for " + expected);
+          .hasMessage("Invalid FINITE_VECTOR length for " + column + ": expected 5 elements, got "
+              + Math.min(invalid, 6));
     }
   }
 
   @ParameterizedTest
-  @CsvSource({"false,3,10,0", "false,2,10,1", "false,-1,10,0", "false,2,10,-1", "true,2,9,0"})
-  public void testInvalidVectorPageHeader(boolean nested, int headerRows, int headerValues, int headerNulls)
-      throws IOException {
-    MessageType fileSchema = schema("required", nested ? 2 : 5, nested);
-    Path path = new Path(tempDir.resolve(UUID.randomUUID() + ".parquet").toUri());
-    try (ParquetFileWriter writer = new ParquetFileWriter(
-        HadoopOutputFile.fromPath(path, new Configuration()),
-        fileSchema,
-        CREATE,
-        DEFAULT_BLOCK_SIZE,
-        MAX_PADDING_SIZE_DEFAULT,
-        null,
-        ParquetProperties.builder().build())) {
-      FloatStatistics stats = new FloatStatistics();
-      stats.updateStats(1.0f);
-      stats.setNumNulls(0);
-      writer.start();
-      writer.startBlock(2);
-      writer.startColumn(fileSchema.getColumns().get(0), 10, CompressionCodecName.UNCOMPRESSED);
-      writer.writeDataPageV2(
-          headerRows,
-          headerNulls,
-          headerValues,
-          BytesInput.empty(),
-          BytesInput.empty(),
-          PLAIN,
-          BytesInput.empty(),
-          false,
-          0,
-          stats);
-      writer.endColumn();
-      writer.endBlock();
-      writer.end(Collections.emptyMap());
+  @CsvSource({"PARQUET_1_0,predicate", "PARQUET_2_0,legacy", "PARQUET_1_0,indexed", "PARQUET_2_0,indexed"})
+  public void testInvalidFilteredVectorLengths(WriterVersion version, String mode) throws IOException {
+    MessageType schema = new MessageType(
+        "m",
+        Types.required(INT32).named("id"),
+        schema("required", 5, false).getType("v"));
+    List<Group> rows = listRows(schema, 5, 4, 6, 5);
+    for (int i = 0; i < rows.size(); i++) rows.get(i).append("id", i);
+    Path path = writeVectors(schema, version, false, rows);
+    FilterCompat.Filter filter = switch (mode) {
+      case "legacy" -> FilterCompat.get(org.apache.parquet.filter.ColumnRecordFilter.column("id", equalTo(2)));
+      case "predicate" -> FilterCompat.get(eq(intColumn("id"), 2));
+      default -> FilterCompat.NOOP;
+    };
+    try (ParquetFileReader reader =
+            ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())));
+        PageReadStore pages = mode.equals("indexed")
+            ? reader.readFilteredRowGroup(
+                0, RowRanges.builder().addSelectedRange(1, 2).build())
+            : reader.readRowGroup(0)) {
+      MessageColumnIO columns = new ColumnIOFactory().getColumnIO(schema, schema);
+      RecordReader<Group> records = columns.getRecordReader(pages, new GroupRecordConverter(schema), filter);
+      assertThatThrownBy(() -> {
+            for (long i = 0; i < pages.getRowCount(); i++) records.read();
+          })
+          .isInstanceOf(ParquetDecodingException.class)
+          .hasMessage("Invalid FINITE_VECTOR length for [v, list, element]: expected 5 elements, got 4");
     }
-    assertThatThrownBy(() -> {
-          try (ParquetFileReader reader =
-              ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-            reader.readRowGroup(0);
-          }
-        })
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage("Invalid FINITE_VECTOR counts for "
-            + (nested ? "[outer, v, list, element]" : "[v, list, element]")
-            + ": rows=" + headerRows + ", values=" + headerValues + ", nulls=" + headerNulls
-            + ", length=" + (nested ? 2 : 5));
-  }
-
-  @Test
-  public void testInvalidIndexedVectorPage() throws IOException {
-    MessageType fileSchema = schema("required", 5, false);
-    Path path = new Path(tempDir.resolve("invalid-indexed.parquet").toUri());
-    FloatStatistics stats = new FloatStatistics();
-    stats.updateStats(1.0f);
-    stats.setNumNulls(0);
-    try (ParquetFileWriter writer = new ParquetFileWriter(
-        HadoopOutputFile.fromPath(path, new Configuration()),
-        fileSchema,
-        CREATE,
-        DEFAULT_BLOCK_SIZE,
-        MAX_PADDING_SIZE_DEFAULT,
-        null,
-        ParquetProperties.builder().build())) {
-      writer.start();
-      writer.startBlock(4);
-      writer.startColumn(fileSchema.getColumns().get(0), 20, CompressionCodecName.UNCOMPRESSED);
-      writer.writeDataPage(9, 0, BytesInput.empty(), stats, 2, RLE, RLE, PLAIN);
-      writer.writeDataPage(11, 0, BytesInput.empty(), stats, 2, RLE, RLE, PLAIN);
-      writer.endColumn();
-      writer.endBlock();
-      writer.end(Collections.emptyMap());
-    }
-    assertThatThrownBy(() -> {
-          try (ParquetFileReader reader =
-              ParquetFileReader.open(new LocalInputFile(java.nio.file.Path.of(path.toUri())))) {
-            assertThat(reader.readOffsetIndex(reader.getFooter()
-                    .getBlocks()
-                    .get(0)
-                    .getColumns()
-                    .get(0)))
-                .isNotNull();
-            reader.readFilteredRowGroup(0, RowRanges.createSingle(1));
-          }
-        })
-        .isInstanceOf(ParquetDecodingException.class)
-        .hasMessage(
-            "Invalid FINITE_VECTOR counts for [v, list, element]: rows=2, values=9, nulls=-1, length=5");
   }
 }
