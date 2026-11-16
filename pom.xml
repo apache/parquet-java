@@ -78,7 +78,7 @@
     <jackson.version>2.23.0</jackson.version>
     <jackson-databind.version>2.23.0</jackson-databind.version>
     <jackson-annotations.version>2.23</jackson-annotations.version>
-    <japicmp.version>0.26.5</japicmp.version>
+    <japicmp.version>0.27.0</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>3.11.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
@@ -633,6 +633,8 @@
               <ignoreMissingClassesByRegularExpression>${shade.prefix}.*</ignoreMissingClassesByRegularExpression>
             </ignoreMissingClassesByRegularExpressions>
             <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
+            <!-- Suppresses individual false-positive compatibility changes per class -->
+            <postAnalysisScript>${maven.multiModuleProjectDirectory}/dev/japicmp-post-analysis.groovy</postAnalysisScript>
             <excludeModules>
               <!-- Excluding the following modules because they are not part of the parquet public API -->
               <excludeModule>parquet-benchmarks</excludeModule>
