@@ -177,8 +177,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
               }
               long start = System.nanoTime();
-              decompressed =
-                  BytesInput.copy(decompressor.decompress(bytes, dataPageV1.getUncompressedSize()));
+              decompressed = ownedCopy(decompressor.decompress(bytes, dataPageV1.getUncompressedSize()));
               setDecompressMetrics(bytes, start);
             }
 
@@ -258,7 +257,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                     - dataPageV2.getDefinitionLevels().size()
                     - dataPageV2.getRepetitionLevels().size());
                 long start = System.nanoTime();
-                pageBytes = BytesInput.copy(decompressor.decompress(pageBytes, uncompressedSize));
+                pageBytes = ownedCopy(decompressor.decompress(pageBytes, uncompressedSize));
                 setDecompressMetrics(pageBytes, start);
               }
             }
@@ -297,6 +296,24 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       });
     }
 
+    /**
+     * The {@link BytesInputDecompressor} contract allows the returned bytes to be overwritten by the next call, but
+     * pages are kept after the decompressor moves on (GH-3150), so they are copied unless the decompressor guarantees
+     * stable output.
+     */
+    private BytesInput ownedCopy(BytesInput decompressed) throws IOException {
+      return returnsStableBytes() ? decompressed : BytesInput.copy(decompressed);
+    }
+
+    private BytesInput ownedCopy(BytesInput decompressed, ByteBufferReleaser releaser) throws IOException {
+      return returnsStableBytes() ? decompressed : decompressed.copy(releaser);
+    }
+
+    private boolean returnsStableBytes() {
+      return decompressor instanceof CodecFactory.BytesDecompressor
+          && ((CodecFactory.BytesDecompressor) decompressor).returnsStableBytes();
+    }
+
     private void setDecompressMetrics(BytesInput bytes, long start) {
       final ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
       if (metricsCallback != null) {
@@ -327,9 +344,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         long start = System.nanoTime();
         setDecompressMetrics(bytes, start);
         DictionaryPage decompressedPage = new DictionaryPage(
-            decompressor
-                .decompress(bytes, compressedDictionaryPage.getUncompressedSize())
-                .copy(releaser),
+            ownedCopy(
+                decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize()),
+                releaser),
             compressedDictionaryPage.getDictionarySize(),
             compressedDictionaryPage.getEncoding());
         if (compressedDictionaryPage.getCrc().isPresent()) {

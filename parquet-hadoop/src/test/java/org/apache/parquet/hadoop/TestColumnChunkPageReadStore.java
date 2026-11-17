@@ -29,17 +29,21 @@ import static org.mockito.Mockito.verify;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
@@ -77,6 +81,63 @@ public class TestColumnChunkPageReadStore {
       assertThat(((DataPageV1) reader.readPage()).getBytes().toByteArray())
           .isEqualTo(bytes);
       verify(allocator, never()).allocate(anyInt());
+    }
+  }
+
+  @Test
+  public void stableDecompressorOutputIsNotCopied() throws Exception {
+    BytesInput pageBytes = BytesInput.from(new byte[] {1, 2, 3, 4});
+    BytesInput dictionaryBytes = BytesInput.from(new byte[] {5, 6, 7, 8});
+    try (ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L)) {
+      ColumnChunkPageReader reader = newReader(CodecFactory.NO_OP_DECOMPRESSOR, pageBytes, dictionaryBytes);
+      store.addColumn(COLUMN, reader);
+      assertThat(((DataPageV1) reader.readPage()).getBytes()).isSameAs(pageBytes);
+      assertThat(reader.readDictionaryPage().getBytes()).isSameAs(dictionaryBytes);
+    }
+  }
+
+  @Test
+  public void otherDecompressorOutputIsCopied() throws Exception {
+    BytesInput pageBytes = BytesInput.from(new byte[] {1, 2, 3, 4});
+    BytesInput dictionaryBytes = BytesInput.from(new byte[] {5, 6, 7, 8});
+    try (ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L)) {
+      ColumnChunkPageReader reader = newReader(NOOP_DECOMPRESSOR, pageBytes, dictionaryBytes);
+      store.addColumn(COLUMN, reader);
+      BytesInput page = ((DataPageV1) reader.readPage()).getBytes();
+      assertThat(page).isNotSameAs(pageBytes);
+      assertThat(page.toByteArray()).isEqualTo(pageBytes.toByteArray());
+      BytesInput dictionary = reader.readDictionaryPage().getBytes();
+      assertThat(dictionary).isNotSameAs(dictionaryBytes);
+      assertThat(dictionary.toByteArray()).isEqualTo(dictionaryBytes.toByteArray());
+    }
+  }
+
+  @Test
+  public void onlyDecompressorsWithOwnedOutputReturnStableBytes() {
+    Configuration conf = new Configuration();
+    CodecFactory heap = new CodecFactory(conf, 1024);
+    CodecFactory direct =
+        CodecFactory.createDirectCodecFactory(conf, DirectByteBufferAllocator.getInstance(), 1024);
+    try {
+      assertThat(heap.getDecompressor(CompressionCodecName.UNCOMPRESSED).returnsStableBytes())
+          .isTrue();
+      assertThat(heap.getDecompressor(CompressionCodecName.ZSTD).returnsStableBytes())
+          .isTrue();
+      assertThat(heap.getDecompressor(CompressionCodecName.LZ4_RAW).returnsStableBytes())
+          .isTrue();
+      // Lazy streams tied to the decompressor
+      assertThat(heap.getDecompressor(CompressionCodecName.SNAPPY).returnsStableBytes())
+          .isFalse();
+      assertThat(heap.getDecompressor(CompressionCodecName.GZIP).returnsStableBytes())
+          .isFalse();
+      // Reuses its output buffer (GH-3150)
+      assertThat(direct.getDecompressor(CompressionCodecName.SNAPPY).returnsStableBytes())
+          .isFalse();
+      assertThat(direct.getDecompressor(CompressionCodecName.ZSTD).returnsStableBytes())
+          .isFalse();
+    } finally {
+      heap.release();
+      direct.release();
     }
   }
 
@@ -157,6 +218,23 @@ public class TestColumnChunkPageReadStore {
         return true;
       }
     };
+  }
+
+  private static ColumnChunkPageReader newReader(
+      BytesInputDecompressor decompressor, BytesInput pageBytes, BytesInput dictionaryBytes) throws Exception {
+    DataPageV1 page = new DataPageV1(pageBytes, 1, (int) pageBytes.size(), null, RLE, RLE, PLAIN);
+    DictionaryPage dictionary = new DictionaryPage(dictionaryBytes, (int) dictionaryBytes.size(), 1, PLAIN);
+    return new ColumnChunkPageReader(
+        decompressor,
+        Collections.<DataPage>singletonList(page),
+        dictionary,
+        null,
+        1L,
+        null,
+        null,
+        0,
+        0,
+        ParquetReadOptions.builder().build());
   }
 
   private static ColumnChunkPageReader newReaderWithoutPages(ParquetReadOptions options) {

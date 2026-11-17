@@ -89,6 +89,11 @@ public class CodecFactory implements CompressionCodecFactory {
     }
 
     @Override
+    boolean returnsStableBytes() {
+      return true; // returns the input, which the caller owns
+    }
+
+    @Override
     public void release() {}
   };
 
@@ -173,6 +178,15 @@ public class CodecFactory implements CompressionCodecFactory {
       decompressor = CodecPool.getDecompressor(codec);
     }
 
+    private boolean materializesEagerly() {
+      return codec instanceof ZstandardCodec || codec instanceof Lz4RawCodec;
+    }
+
+    @Override
+    boolean returnsStableBytes() {
+      return materializesEagerly(); // a fresh array; the lazy stream of other codecs is tied to the decompressor
+    }
+
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       final BytesInput decompressed;
@@ -192,7 +206,7 @@ public class CodecFactory implements CompressionCodecFactory {
       // LZ4_RAW: requires one-shot decompression; the lazy StreamBytesInput.writeInto() path reads via
       // Channels.newChannel() in ~8KB chunks, causing the decompressor to be called with an undersized
       // output buffer (see #3478).
-      if (codec instanceof ZstandardCodec || codec instanceof Lz4RawCodec) {
+      if (materializesEagerly()) {
         decompressed = BytesInput.copy(BytesInput.from(is, decompressedSize));
         is.close();
       } else {
@@ -514,5 +528,14 @@ public class CodecFactory implements CompressionCodecFactory {
         throws IOException;
 
     public abstract void release();
+
+    /**
+     * Whether the {@link BytesInput} returned by {@link #decompress(BytesInput, int)} stays valid when this
+     * decompressor is used again, so callers need not copy it. Package-private: only implementations in this
+     * package can opt in; any other implementation is assumed to reuse its buffers.
+     */
+    boolean returnsStableBytes() {
+      return false;
+    }
   }
 }
