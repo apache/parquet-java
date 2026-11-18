@@ -34,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
@@ -44,6 +46,7 @@ import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.arrow.schema.SchemaMapping.ListTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.PrimitiveTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.RepeatedTypeMapping;
@@ -51,17 +54,34 @@ import org.apache.parquet.arrow.schema.SchemaMapping.StructTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.TypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.TypeMappingVisitor;
 import org.apache.parquet.arrow.schema.SchemaMapping.UnionTypeMapping;
+import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.example.Paper;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.io.LocalOutputFile;
+import org.apache.parquet.io.RecordReader;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * @see SchemaConverter
  */
 public class TestSchemaConverter {
+
+  @TempDir
+  private Path tempDir;
 
   private static Field field(String name, boolean nullable, ArrowType type, Field... children) {
     if (nullable) {
@@ -513,8 +533,70 @@ public class TestSchemaConverter {
     MessageType parquet = Types.buildMessage()
         .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).named("a"))
         .named("root");
-    Schema expected = new Schema(asList(field("a", new ArrowType.Binary())));
+    Schema expected = new Schema(asList(field("a", new ArrowType.FixedSizeBinary(12))));
     assertThat(converter.fromParquet(parquet).getArrowSchema()).isEqualTo(expected);
+  }
+
+  @Test
+  public void testArrowFixedBinaryToParquet() {
+    for (int byteWidth : new int[] {1, 12, 16, 32}) {
+      Schema arrow = new Schema(asList(field("a", new ArrowType.FixedSizeBinary(byteWidth))));
+      MessageType expected = Types.buildMessage()
+          .addField(Types.optional(FIXED_LEN_BYTE_ARRAY)
+              .length(byteWidth)
+              .named("a"))
+          .named("root");
+      assertThat(converter.fromArrow(arrow).getParquetSchema()).isEqualTo(expected);
+    }
+  }
+
+  @Test
+  public void testArrowZeroWidthBinaryToParquet() {
+    Schema arrow = new Schema(asList(field("a", new ArrowType.FixedSizeBinary(0))));
+    MessageType expected =
+        Types.buildMessage().addField(Types.optional(BINARY).named("a")).named("root");
+    assertThat(converter.fromArrow(arrow).getParquetSchema()).isEqualTo(expected);
+  }
+
+  @Test
+  public void testFixedBinaryFileRoundTrip() throws IOException {
+    byte[] value = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
+    Schema arrow = new Schema(asList(field("fingerprint", new ArrowType.FixedSizeBinary(value.length))));
+    MessageType parquet = converter.fromArrow(arrow).getParquetSchema();
+    SimpleGroupFactory groups = new SimpleGroupFactory(parquet);
+    PlainParquetConfiguration conf = new PlainParquetConfiguration();
+    Path file = tempDir.resolve("fixed-binary.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(file))
+        .withType(parquet)
+        .withConf(conf)
+        .build()) {
+      writer.write(groups.newGroup().append("fingerprint", Binary.fromConstantByteArray(value)));
+      writer.write(groups.newGroup());
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(
+        new LocalInputFile(file), ParquetReadOptions.builder(conf).build())) {
+      MessageType stored = reader.getFooter().getFileMetaData().getSchema();
+      Schema restored = converter.fromParquet(stored).getArrowSchema();
+      try (PageReadStore rows = reader.readNextRowGroup()) {
+        assertThat(rows.getRowCount()).isEqualTo(2);
+        RecordReader<Group> records = new ColumnIOFactory()
+            .getColumnIO(stored)
+            .getRecordReader(rows, new GroupRecordConverter(stored));
+        assertThat(records.read().getBinary("fingerprint", 0).getBytes())
+            .isEqualTo(value);
+        assertThat(records.read().getFieldRepetitionCount("fingerprint"))
+            .isZero();
+      }
+      System.out.println("stored_type="
+          + stored.getType("fingerprint").asPrimitiveType().getPrimitiveTypeName());
+      System.out.println("stored_width="
+          + stored.getType("fingerprint").asPrimitiveType().getTypeLength());
+      System.out.println(
+          "restored_type=" + restored.getFields().get(0).getType().getTypeID());
+      System.out.println("rows=2, payload_preserved=true, null_preserved=true");
+      assertThat(restored).isEqualTo(arrow);
+    }
   }
 
   @Test
