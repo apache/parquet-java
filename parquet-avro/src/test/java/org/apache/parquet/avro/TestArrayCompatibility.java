@@ -42,6 +42,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -1826,6 +1827,181 @@ public class TestArrayCompatibility extends DirectWriterTest {
     counts.put(new Utf8("a"), 5);
 
     assertReaderContains(projectionReader(test, projection), projection, instance(projection, "counts", counts));
+  }
+
+  @Test
+  public void testProjectionStillChecksElementTypes() throws Exception {
+    // The projected element keeps its own type, so a type that doesn't match the file still fails
+    // the requested-schema check instead of reaching a converter.
+    Path test = writeDirect(
+        "message ProjectWrongElementType {"
+            + "  optional group items (LIST) {"
+            + "    repeated group list {"
+            + "      optional int32 element;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("items", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(5);
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("items", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectWrongElementType", optionalField("items", array(optional(primitive(Schema.Type.STRING)))));
+
+    AvroParquetReader<GenericRecord> reader = projectionReader(test, projection);
+    assertThatThrownBy(reader::read)
+        .isInstanceOf(ParquetDecodingException.class)
+        .cause()
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("incompatible types");
+  }
+
+  @Test
+  public void testProjectionKeepsNonNullElementsRequired() throws Exception {
+    // A non-null Avro element type is still requested as required, so optional elements in the file
+    // fail the requested-schema check as they did before.
+    Path test = writeDirect(
+        "message ProjectRequiredElements {"
+            + "  optional group items (LIST) {"
+            + "    repeated group list {"
+            + "      optional int32 item;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("items", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("item", 0);
+          rc.addInteger(5);
+          rc.endField("item", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("items", 0);
+          rc.endMessage();
+        });
+
+    Schema projection =
+        record("ProjectRequiredElements", optionalField("items", array(primitive(Schema.Type.INT))));
+
+    AvroParquetReader<GenericRecord> reader = projectionReader(test, projection);
+    assertThatThrownBy(reader::read)
+        .isInstanceOf(ParquetDecodingException.class)
+        .cause()
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("incompatible types");
+  }
+
+  @Test
+  public void testProjectionReadsNestedNonStandardLists() throws Exception {
+    // A "list" / "item" list whose elements are 2-level lists
+    Path test = writeDirect(
+        "message ProjectNestedLists {"
+            + "  optional group matrix (LIST) {"
+            + "    repeated group list {"
+            + "      optional group item (LIST) {"
+            + "        repeated int32 element;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("matrix", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("item", 0);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(1);
+          rc.addInteger(2);
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("item", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("matrix", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectNestedLists", optionalField("matrix", array(optional(array(primitive(Schema.Type.INT))))));
+
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "matrix", Arrays.asList(Arrays.asList(1, 2))));
+  }
+
+  @Test
+  public void testProjectionReadsMapOfNonStandardLists() throws Exception {
+    // A map whose values are "bag" lists
+    Path test = writeDirect(
+        "message ProjectMapOfLists {"
+            + "  optional group lists (MAP) {"
+            + "    repeated group key_value {"
+            + "      required binary key (UTF8);"
+            + "      optional group value (LIST) {"
+            + "        repeated group bag {"
+            + "          optional int32 x;"
+            + "        }"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("lists", 0);
+          rc.startGroup();
+          rc.startField("key_value", 0);
+          rc.startGroup();
+          rc.startField("key", 0);
+          rc.addBinary(Binary.fromString("a"));
+          rc.endField("key", 0);
+          rc.startField("value", 1);
+          rc.startGroup();
+          rc.startField("bag", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(3);
+          rc.endField("x", 0);
+          rc.endGroup();
+          rc.startGroup(); // null element
+          rc.endGroup();
+          rc.endField("bag", 0);
+          rc.endGroup();
+          rc.endField("value", 1);
+          rc.endGroup();
+          rc.endField("key_value", 0);
+          rc.endGroup();
+          rc.endField("lists", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectMapOfLists",
+        optionalField("lists", Schema.createMap(optional(array(optional(primitive(Schema.Type.INT)))))));
+    Map<Utf8, Object> lists = new HashMap<>();
+    lists.put(new Utf8("a"), Arrays.asList(3, null));
+
+    assertReaderContains(projectionReader(test, projection), projection, instance(projection, "lists", lists));
   }
 
   private <T extends IndexedRecord> AvroParquetReader<T> projectionReader(Path path, Schema projection)

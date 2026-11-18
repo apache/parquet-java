@@ -37,7 +37,9 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -360,18 +362,44 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         : projected.withNewFields(fileKeyValue.withNewFields(fileKeyValue.getType(0), alignedValue));
   }
 
-  // Returns the projected element with the name and repetition of the file's element, or null if
-  // one of them is a group and the other is not.
+  // Returns the projected element under the name of the file's element, or null if one of them is a
+  // group and the other is not. The type stays the projected one, so the requested schema is still
+  // checked against the file. The repetition is the one the converted projection gives the element:
+  // repeated if the file's repeated field is the element, otherwise optional only if the Avro schema
+  // allows null.
   private static Type alignElement(Type projected, Type file, Schema schema, boolean oldListStructure) {
     if (projected.isPrimitive() != file.isPrimitive()) {
       return null;
     }
+    Type.Repetition repetition;
+    if (file.isRepetition(Type.Repetition.REPEATED)) {
+      repetition = Type.Repetition.REPEATED;
+    } else if (isNullable(schema)) {
+      repetition = Type.Repetition.OPTIONAL;
+    } else {
+      repetition = Type.Repetition.REQUIRED;
+    }
     if (file.isPrimitive()) {
-      return file;
+      PrimitiveType primitive = projected.asPrimitiveType();
+      Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(
+              primitive.getPrimitiveTypeName(), repetition)
+          .as(primitive.getLogicalTypeAnnotation());
+      if (primitive.getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+        builder = builder.length(primitive.getTypeLength());
+      }
+      return builder.named(file.getName());
     }
     GroupType aligned =
         alignListStructures(projected, file, schema, oldListStructure).asGroupType();
-    return file.asGroupType().withNewFields(aligned.getFields());
+    return Types.buildGroup(repetition)
+        .as(aligned.getLogicalTypeAnnotation())
+        .addFields(aligned.getFields().toArray(new Type[0]))
+        .named(file.getName());
+  }
+
+  private static boolean isNullable(Schema schema) {
+    return schema.getType() == Schema.Type.UNION
+        && schema.getTypes().stream().anyMatch(s -> s.getType() == Schema.Type.NULL);
   }
 
   private static boolean writesNewListStructure(MessageType schema) {
