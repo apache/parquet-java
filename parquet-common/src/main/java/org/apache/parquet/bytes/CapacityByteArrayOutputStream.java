@@ -269,9 +269,28 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       // The OutputStream interface only takes a byte[], unfortunately this means that a ByteBuffer
       // not backed by a byte array must be copied to fulfil this interface
       byte[] copy = new byte[len];
-      buf.flip();
-      buf.get(copy);
+      // Read through a duplicate so the slab's position and limit are left unchanged
+      ByteBuffer content = buf.duplicate();
+      content.flip();
+      content.get(copy);
       out.write(copy);
+    }
+  }
+
+  /**
+   * Checks that the slabs hold exactly the {@link #size()} bytes that were written. The size is used for the length
+   * prefixes and page headers that describe this content, so serializing content of a different length would
+   * silently produce a corrupt file.
+   */
+  private void checkContentSize() {
+    long contentSize = 0;
+    for (ByteBuffer slab : slabs) {
+      contentSize += slab.position();
+    }
+    if (contentSize != bytesUsed) {
+      throw new IllegalStateException(format(
+          "The slabs of this stream hold %d bytes, but %d bytes were written to it (%d slabs)",
+          contentSize, bytesUsed, slabs.size()));
     }
   }
 
@@ -281,8 +300,10 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    *
    * @param out the output stream to which to write the data.
    * @throws IOException if an I/O error occurs.
+   * @throws IllegalStateException if the content of the slabs does not match {@link #size()}
    */
   public void writeTo(OutputStream out) throws IOException {
+    checkContentSize();
     for (ByteBuffer slab : slabs) {
       writeToOutput(out, slab, slab.position());
     }
@@ -290,11 +311,16 @@ public class CapacityByteArrayOutputStream extends OutputStream {
 
   /**
    * It is expected that the buffer is large enough to fit the content of this.
+   *
+   * @throws IllegalStateException if the content of the slabs does not match {@link #size()}
    */
   void writeInto(ByteBuffer buffer) {
+    checkContentSize();
     for (ByteBuffer slab : slabs) {
-      slab.flip();
-      buffer.put(slab);
+      // Read through a duplicate so the slab's position and limit are left unchanged
+      ByteBuffer content = slab.duplicate();
+      content.flip();
+      buffer.put(content);
     }
   }
 
@@ -349,15 +375,17 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   public void setByte(long index, byte value) {
     checkArgument(index < bytesUsed, "Index: %d is >= the current size of: %d", index, bytesUsed);
 
+    // A slab may be followed by a new one before it is full (see writeInt and writeLong), so the bytes written to
+    // each slab are counted by its position, not by its capacity or limit
     long seen = 0;
     for (int i = 0; i < slabs.size(); i++) {
       ByteBuffer slab = slabs.get(i);
-      if (index < seen + slab.limit()) {
+      if (index < seen + slab.position()) {
         // ok found index
         slab.put((int) (index - seen), value);
         break;
       }
-      seen += slab.limit();
+      seen += slab.position();
     }
   }
 
