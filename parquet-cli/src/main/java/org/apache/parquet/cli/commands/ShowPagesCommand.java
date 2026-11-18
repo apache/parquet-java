@@ -97,7 +97,9 @@ public class ShowPagesCommand extends BaseCommand {
     }
 
     String source = targets.get(0);
-    try (ParquetFileReader reader = createParquetFileReader(source)) {
+    try (ParquetFileReader reader = createParquetFileReader(source);
+        SeekableInputStream input = HadoopInputFile.fromPath(new Path(reader.getFile()), getConf())
+            .newStream()) {
       MessageType schema = reader.getFileMetaData().getSchema();
       Map<ColumnDescriptor, PrimitiveType> columns = new LinkedHashMap<>();
       if (this.columns == null || this.columns.isEmpty()) {
@@ -114,7 +116,7 @@ public class ShowPagesCommand extends BaseCommand {
           reader.getRowGroups().get(0).getColumns().get(0).getCodec();
       // accumulate formatted lines to print by column
       Map<String, List<String>> formatted = new LinkedHashMap<>();
-      PageFormatter formatter = new PageFormatter(reader);
+      PageFormatter formatter = new PageFormatter(reader, input);
       PageReadStore pageStore;
       int rowGroupNum = 0;
       while ((pageStore = reader.readNextRowGroup()) != null) {
@@ -163,14 +165,19 @@ public class ShowPagesCommand extends BaseCommand {
 
   private class PageFormatter implements DataPage.Visitor<String> {
     private final ParquetFileReader reader;
+    private final SeekableInputStream input;
     private int rowGroupNum;
     private int pageNum;
     private PrimitiveType type;
     private String shortCodec;
     private ColumnDescriptor currentColumn;
+    // compressed sizes of the page headers read so far in the current column chunk
+    private final List<Long> compressedPageSizes = new ArrayList<>();
+    private long columnChunkEndPos;
 
-    PageFormatter(ParquetFileReader reader) {
+    PageFormatter(ParquetFileReader reader, SeekableInputStream input) {
       this.reader = reader;
+      this.input = input;
     }
 
     String getHeader() {
@@ -185,6 +192,8 @@ public class ShowPagesCommand extends BaseCommand {
       this.type = type;
       this.shortCodec = shortCodec(codec);
       this.currentColumn = column;
+      this.compressedPageSizes.clear();
+      this.columnChunkEndPos = -1;
     }
 
     String format(Page page) {
@@ -199,29 +208,26 @@ public class ShowPagesCommand extends BaseCommand {
     }
 
     private long getPageCompressedSize() {
-      long compressedSize = 0;
-      try (SeekableInputStream input = HadoopInputFile.fromPath(new Path(reader.getFile()), getConf())
-          .newStream()) {
-        BlockMetaData rowGroup = reader.getRowGroups().get(rowGroupNum);
-        int columnIndex =
-            reader.getFileMetaData().getSchema().getColumns().indexOf(currentColumn);
-        ColumnChunkMetaData columnChunk = rowGroup.getColumns().get(columnIndex);
+      try {
+        if (columnChunkEndPos < 0) {
+          BlockMetaData rowGroup = reader.getRowGroups().get(rowGroupNum);
+          int columnIndex =
+              reader.getFileMetaData().getSchema().getColumns().indexOf(currentColumn);
+          ColumnChunkMetaData columnChunk = rowGroup.getColumns().get(columnIndex);
 
-        long startOffset = columnChunk.getStartingPos();
-        input.seek(startOffset);
-        long endPos = startOffset + columnChunk.getTotalSize();
-        int currentPageIndex = 0;
-
-        while (input.getPos() < endPos) {
-          PageHeader pageHeader = Util.readPageHeader(input);
-          if (currentPageIndex == pageNum) {
-            compressedSize = pageHeader.getCompressed_page_size();
-            break;
-          }
-          input.skip(pageHeader.getCompressed_page_size());
-          currentPageIndex++;
+          long startOffset = columnChunk.getStartingPos();
+          input.seek(startOffset);
+          columnChunkEndPos = startOffset + columnChunk.getTotalSize();
         }
-        return compressedSize;
+
+        // Pages are formatted in file order, so continue from the last header read instead of
+        // reading all the headers of the column chunk again for every page.
+        while (compressedPageSizes.size() <= pageNum && input.getPos() < columnChunkEndPos) {
+          PageHeader pageHeader = Util.readPageHeader(input);
+          compressedPageSizes.add((long) pageHeader.getCompressed_page_size());
+          input.skip(pageHeader.getCompressed_page_size());
+        }
+        return pageNum < compressedPageSizes.size() ? compressedPageSizes.get(pageNum) : 0;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
