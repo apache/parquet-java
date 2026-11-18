@@ -114,11 +114,17 @@ public class RunLengthBitPackingHybridDecoder {
     switch (mode) {
       case RLE:
         currentCount = header >>> 1;
+        if (currentCount == 0) {
+          throw new ParquetDecodingException("Invalid RLE run with a repeat count of 0");
+        }
         LOG.debug("reading {} values RLE", currentCount);
         currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);
         break;
       case PACKED:
         int numGroups = header >>> 1;
+        if (numGroups == 0) {
+          throw new ParquetDecodingException("Invalid bit-packed run with 0 groups of 8 values");
+        }
         currentCount = numGroups * 8;
         LOG.debug("reading {} values BIT PACKED", currentCount);
         if (currentBuffer.length < currentCount) {
