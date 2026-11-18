@@ -445,6 +445,7 @@ public class RewriteOptions {
 
     /**
      * Set the columns to be renamed.
+     * Renaming preserves all other schema properties.
      * <p>
      * Note that nested columns can't be renamed, in case of GroupType column only top level column can be renamed.
      *

@@ -274,19 +274,11 @@ public class ParquetRewriter implements Closeable {
   private MessageType getSchemaWithRenamedColumns(MessageType schema) {
     List<Type> fields = schema.getFields().stream()
         .map(type -> {
-          if (!renamedColumns.containsKey(type.getName())) {
+          String newName = renamedColumns.get(type.getName());
+          if (newName == null) {
             return type;
-          } else if (type.isPrimitive()) {
-            return new PrimitiveType(
-                type.getRepetition(),
-                type.asPrimitiveType().getPrimitiveTypeName(),
-                renamedColumns.get(type.getName()));
-          } else {
-            return new GroupType(
-                type.getRepetition(),
-                renamedColumns.get(type.getName()),
-                type.asGroupType().getFields());
           }
+          return type.withName(newName);
         })
         .collect(Collectors.toList());
     return new MessageType(schema.getName(), fields);
@@ -482,14 +474,11 @@ public class ParquetRewriter implements Closeable {
   }
 
   private PrimitiveType normalizeNameInType(PrimitiveType type) {
-    if (renamedColumns.isEmpty()) {
+    String newName = renamedColumns.get(type.getName());
+    if (newName == null) {
       return type;
-    } else {
-      return new PrimitiveType(
-          type.getRepetition(),
-          type.asPrimitiveType().getPrimitiveTypeName(),
-          renamedColumns.getOrDefault(type.getName(), type.getName()));
     }
+    return type.withName(newName);
   }
 
   private void processBlock(
