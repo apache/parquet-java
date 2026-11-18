@@ -36,6 +36,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,6 +151,44 @@ class ReadCliTest extends CliTestBase {
       expected.add(record);
     }
     assertThat(readRecords(result.output())).containsExactlyElementsOf(expected);
+  }
+
+  @Test
+  void catReadsNonStandardListsWithoutAvroSchema() throws Exception {
+    // A 2-level list and the "list" / "item" names older PyArrow versions write
+    Path path = getTempFolder().toPath().resolve("legacy-lists.parquet");
+    MessageType schema = MessageTypeParser.parseMessageType("message record {"
+        + "  required int32 id;"
+        + "  optional group two_level (LIST) { repeated binary element (STRING); }"
+        + "  optional group items (LIST) { repeated group list { optional binary item (STRING); } }"
+        + "}");
+    SimpleGroupFactory groups = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new org.apache.hadoop.fs.Path(path.toUri()))
+        .withType(schema)
+        .build()) {
+      Group record = groups.newGroup().append("id", 0);
+      record.addGroup("two_level").append("element", "a").append("element", "b");
+      Group items = record.addGroup("items");
+      items.addGroup("list").append("item", "c");
+      items.addGroup("list");
+      writer.write(record);
+    }
+
+    Map<String, Object> expected = new HashMap<>();
+    expected.put("id", 0);
+    expected.put("two_level", List.of("a", "b"));
+    expected.put("items", Arrays.asList("c", null));
+
+    CliResult all = cli("cat", path.toString());
+    assertThat(all.exitCode()).as(all.output()).isZero();
+    assertThat(readRecords(all.output())).containsExactly(expected);
+
+    CliResult projected = cli("cat", "--columns", "id,items", path.toString());
+    assertThat(projected.exitCode()).as(projected.output()).isZero();
+    Map<String, Object> expectedProjected = new HashMap<>();
+    expectedProjected.put("id", 0);
+    expectedProjected.put("items", Arrays.asList("c", null));
+    assertThat(readRecords(projected.output())).containsExactly(expectedProjected);
   }
 
   private Path writeRecords(String name, int firstId, int count) throws IOException {

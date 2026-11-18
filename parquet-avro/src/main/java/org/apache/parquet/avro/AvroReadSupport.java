@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.avro;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -140,8 +142,13 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      projection = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
-          .convert(avroRequestedProjection);
+      ParquetConfiguration listEncodingConf = getDerivedListEncodingConf(configuration, fileSchema);
+      projection = new AvroSchemaConverter(listEncodingConf).convert(avroRequestedProjection);
+      boolean oldListStructure = listEncodingConf.getBoolean(
+          AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT);
+      projection = new MessageType(
+          projection.getName(),
+          alignListStructures(projection, fileSchema, avroRequestedProjection, oldListStructure));
     }
 
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
@@ -267,6 +274,104 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     copiedConfiguration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
 
     return copiedConfiguration;
+  }
+
+  // The projection converted from the Avro schema writes every list with the same structure, so it
+  // only selects a list's columns if the file wrote the list that way too. Use the repeated and
+  // element names of each list in the file instead; the converters read all the
+  // backward-compatible list structures.
+  private static List<Type> alignListStructures(
+      GroupType projected, GroupType file, Schema record, boolean oldListStructure) {
+    List<Type> fields = new ArrayList<>(projected.getFieldCount());
+    for (Type field : projected.getFields()) {
+      Schema.Field avroField = record.getField(field.getName());
+      if (avroField != null && file.containsField(field.getName())) {
+        fields.add(alignListStructures(
+            field, file.getType(field.getName()), avroField.schema(), oldListStructure));
+      } else {
+        fields.add(field);
+      }
+    }
+    return fields;
+  }
+
+  private static Type alignListStructures(Type projected, Type file, Schema schema, boolean oldListStructure) {
+    if (projected.isPrimitive() || file.isPrimitive()) {
+      return projected;
+    }
+    GroupType projectedGroup = projected.asGroupType();
+    GroupType fileGroup = file.asGroupType();
+    Schema nonNullSchema = AvroSchemaConverter.getNonNull(schema);
+    switch (nonNullSchema.getType()) {
+      case RECORD:
+        return projectedGroup.withNewFields(
+            alignListStructures(projectedGroup, fileGroup, nonNullSchema, oldListStructure));
+      case ARRAY:
+        return alignList(projectedGroup, fileGroup, nonNullSchema.getElementType(), oldListStructure);
+      case MAP:
+        return alignMap(projectedGroup, fileGroup, nonNullSchema.getValueType(), oldListStructure);
+      default:
+        return projected;
+    }
+  }
+
+  private static Type alignList(GroupType projected, GroupType file, Schema elementSchema, boolean oldListStructure) {
+    if (!(projected.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation)
+        || !(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation)
+        || file.isRepetition(Type.Repetition.REPEATED)
+        || file.getFieldCount() != 1
+        || !file.getType(0).isRepetition(Type.Repetition.REPEATED)) {
+      return projected;
+    }
+    Type projectedRepeated = projected.getType(0);
+    Type projectedElement = oldListStructure
+        ? projectedRepeated
+        : projectedRepeated.asGroupType().getType(0);
+    Type fileRepeated = file.getType(0);
+    Type alignedRepeated;
+    // Decide which field is the element the same way AvroCollectionConverter does
+    if (AvroRecordConverter.isElementType(fileRepeated, AvroSchemaConverter.getNonNull(elementSchema))) {
+      alignedRepeated = alignElement(projectedElement, fileRepeated, elementSchema, oldListStructure);
+    } else {
+      GroupType fileRepeatedGroup = fileRepeated.asGroupType();
+      Type alignedElement =
+          alignElement(projectedElement, fileRepeatedGroup.getType(0), elementSchema, oldListStructure);
+      alignedRepeated = alignedElement == null ? null : fileRepeatedGroup.withNewFields(alignedElement);
+    }
+    return alignedRepeated == null ? projected : projected.withNewFields(alignedRepeated);
+  }
+
+  private static Type alignMap(GroupType projected, GroupType file, Schema valueSchema, boolean oldListStructure) {
+    if (projected.getFieldCount() != 1
+        || file.getFieldCount() != 1
+        || file.getType(0).isPrimitive()
+        || !file.getType(0).isRepetition(Type.Repetition.REPEATED)) {
+      return projected;
+    }
+    GroupType projectedKeyValue = projected.getType(0).asGroupType();
+    GroupType fileKeyValue = file.getType(0).asGroupType();
+    if (projectedKeyValue.getFieldCount() != 2 || fileKeyValue.getFieldCount() != 2) {
+      return projected;
+    }
+    Type alignedValue =
+        alignElement(projectedKeyValue.getType(1), fileKeyValue.getType(1), valueSchema, oldListStructure);
+    return alignedValue == null
+        ? projected
+        : projected.withNewFields(fileKeyValue.withNewFields(fileKeyValue.getType(0), alignedValue));
+  }
+
+  // Returns the projected element with the name and repetition of the file's element, or null if
+  // one of them is a group and the other is not.
+  private static Type alignElement(Type projected, Type file, Schema schema, boolean oldListStructure) {
+    if (projected.isPrimitive() != file.isPrimitive()) {
+      return null;
+    }
+    if (file.isPrimitive()) {
+      return file;
+    }
+    GroupType aligned =
+        alignListStructures(projected, file, schema, oldListStructure).asGroupType();
+    return file.asGroupType().withNewFields(aligned.getFields());
   }
 
   private static boolean writesNewListStructure(MessageType schema) {
