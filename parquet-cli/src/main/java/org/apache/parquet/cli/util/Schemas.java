@@ -82,7 +82,15 @@ public class Schemas {
     if (schemaString != null) {
       return new Schema.Parser().parse(schemaString);
     } else {
-      return new AvroSchemaConverter(conf)
+      // Without an Avro schema, the file was likely not written by parquet-avro, so apply the LIST
+      // backward-compatibility rules of the Parquet spec: a repeated group with a single field is a
+      // synthetic layer around the element unless it is named "array" or "<list name>_tuple".
+      Configuration converterConf = conf;
+      if (conf.get(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS) == null) {
+        converterConf = new Configuration(conf);
+        converterConf.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+      }
+      return new AvroSchemaConverter(converterConf)
           .convert(footer.getFileMetaData().getSchema());
     }
   }

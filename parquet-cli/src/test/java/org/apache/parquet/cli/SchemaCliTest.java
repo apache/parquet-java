@@ -24,6 +24,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.avro.Schema;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
 
 class SchemaCliTest extends CliTestBase {
@@ -62,6 +69,57 @@ class SchemaCliTest extends CliTestBase {
     assertThat(schema.getField("flba_field").schema().getFixedSize()).isEqualTo(12);
     assertThat(schema.getField("date_field").schema().getLogicalType().getName())
         .isEqualTo("date");
+  }
+
+  @Test
+  void printsStandardListsWithoutAvroSchemaAsArrays() throws Exception {
+    CliResult result = cli("schema", writeStandardListFile().toString());
+
+    assertThat(result.exitCode()).as(result.output()).isZero();
+    Schema tags = listSchema(result.output(), "tags");
+    assertThat(tags.getType()).isEqualTo(Schema.Type.ARRAY);
+    assertThat(tags.getElementType().toString()).isEqualTo("[\"null\",\"string\"]");
+  }
+
+  @Test
+  void keepsExplicitAddListElementRecordsSetting() throws Exception {
+    CliResult result = cli(
+        "-D",
+        "parquet.avro.add-list-element-records=true",
+        "schema",
+        writeStandardListFile().toString());
+
+    assertThat(result.exitCode()).as(result.output()).isZero();
+    Schema element = listSchema(result.output(), "tags").getElementType();
+    assertThat(element.getType()).isEqualTo(Schema.Type.RECORD);
+    assertThat(element.getName()).isEqualTo("list");
+    assertThat(element.getFields()).extracting(Schema.Field::name).containsExactly("element");
+  }
+
+  // Written without an Avro schema in the file metadata, like files from Spark or PyArrow
+  private Path writeStandardListFile() throws Exception {
+    Path input = getTempFolder().toPath().resolve("lists.parquet");
+    MessageType parquetSchema = Types.buildMessage()
+        .optionalList()
+        .optionalElement(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("tags")
+        .named("record");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new org.apache.hadoop.fs.Path(input.toUri()))
+        .withType(parquetSchema)
+        .build()) {
+      // only the schema is needed
+    }
+    return input;
+  }
+
+  private static Schema listSchema(String avroSchema, String field) {
+    return new Schema.Parser()
+        .parse(avroSchema)
+        .getField(field)
+        .schema()
+        .getTypes()
+        .get(1);
   }
 
   @Test
