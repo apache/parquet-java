@@ -39,12 +39,6 @@ public class Utils {
     return samples;
   }
 
-  public static void writeInts(ValuesWriter writer, int[] ints) throws IOException {
-    for (int i = 0; i < ints.length; i++) {
-      writer.writeInteger(ints[i]);
-    }
-  }
-
   public static void writeData(ValuesWriter writer, String[] strings) throws IOException {
     for (int i = 0; i < strings.length; i++) {
       writer.writeBytes(Binary.fromString(strings[i]));
