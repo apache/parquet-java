@@ -55,4 +55,18 @@ public class ShowSizeStatisticsCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
     assertThat(command.run()).isZero();
   }
+
+  @Test
+  public void testShowSizeStatisticsCommandWithEncryptedFile() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_sizestats_test.parquet");
+
+    ShowSizeStatisticsCommand command = new ShowSizeStatisticsCommand(createLogger());
+    command.targets = Arrays.asList(encryptedFile.getAbsolutePath());
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
+  }
 }
