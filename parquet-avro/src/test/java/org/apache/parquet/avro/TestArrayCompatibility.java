@@ -2004,11 +2004,81 @@ public class TestArrayCompatibility extends DirectWriterTest {
     assertReaderContains(projectionReader(test, projection), projection, instance(projection, "lists", lists));
   }
 
+  @Test
+  public void testProjectionOfTwoLevelRecordsFollowsTheReadSchema() throws Exception {
+    // A 2-level list of records with one of their fields projected. The converters decide again
+    // whether the pruned repeated group is the element, with the read schema.
+    Path test = writeDirect(
+        "message ProjectTwoLevelRecords {"
+            + "  optional group points (LIST) {"
+            + "    repeated group point {"
+            + "      required int32 x;"
+            + "      required int32 y;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("points", 0);
+          rc.startGroup();
+          rc.startField("point", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(1);
+          rc.endField("x", 0);
+          rc.startField("y", 1);
+          rc.addInteger(2);
+          rc.endField("y", 1);
+          rc.endGroup();
+          rc.endField("point", 0);
+          rc.endGroup();
+          rc.endField("points", 0);
+          rc.endMessage();
+        });
+
+    Schema x = record("point", field("x", primitive(Schema.Type.INT)));
+    Schema projection = record("ProjectTwoLevelRecords", optionalField("points", array(x)));
+
+    // the read schema is the projection
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "points", Arrays.asList(instance(x, "x", 1))));
+
+    // the read schema adds a field with a default
+    Schema.Field yWithDefault = new Schema.Field("y", primitive(Schema.Type.INT), null, 7);
+    Schema xy = Schema.createRecord(
+        "point", null, null, false, Arrays.asList(field("x", primitive(Schema.Type.INT)), yWithDefault));
+    Schema readSchema = record("ProjectTwoLevelRecords", optionalField("points", array(xy)));
+    assertReaderContains(
+        projectionReader(test, projection, readSchema),
+        readSchema,
+        instance(readSchema, "points", Arrays.asList(instance(xy, "x", 1, "y", 7))));
+
+    // the read schema requires a field the projection leaves out, so the pruned group would not be
+    // read as the element: the list keeps the converted projection, as before the alignment
+    Schema xyRequired =
+        record("point", field("x", primitive(Schema.Type.INT)), field("y", primitive(Schema.Type.INT)));
+    Schema requiredReadSchema = record("ProjectTwoLevelRecords", optionalField("points", array(xyRequired)));
+    assertReaderContains(
+        projectionReader(test, projection, requiredReadSchema),
+        requiredReadSchema,
+        instance(requiredReadSchema, "points", null));
+  }
+
   private <T extends IndexedRecord> AvroParquetReader<T> projectionReader(Path path, Schema projection)
       throws IOException {
     Configuration conf = new Configuration();
     AvroReadSupport.setRequestedProjection(conf, projection);
     AvroReadSupport.setAvroReadSchema(conf, projection);
+    return new AvroParquetReader<>(conf, path);
+  }
+
+  private <T extends IndexedRecord> AvroParquetReader<T> projectionReader(
+      Path path, Schema projection, Schema readSchema) throws IOException {
+    Configuration conf = new Configuration();
+    AvroReadSupport.setRequestedProjection(conf, projection);
+    AvroReadSupport.setAvroReadSchema(conf, readSchema);
     return new AvroParquetReader<>(conf, path);
   }
 
