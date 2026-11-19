@@ -36,11 +36,14 @@ import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.jupiter.api.BeforeAll;
@@ -1608,6 +1611,475 @@ public class TestArrayCompatibility extends DirectWriterTest {
     assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
     assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
     assertReaderContains(new AvroParquetReader<>(newAutoDetectConf(), test), expectedSchema, expectedRecord);
+  }
+
+  @Test
+  public void testProjectionReadsTwoLevelListOfPrimitives() throws Exception {
+    // The projection is converted with the old list structure ("repeated binary array"), which
+    // must follow the file's repeated field name to find the column.
+    Path test = writeDirect(
+        "message ProjectTwoLevelList {"
+            + "  required int32 id;"
+            + "  optional group tags (LIST) {"
+            + "    repeated binary element (UTF8);"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("id", 0);
+          rc.addInteger(1);
+          rc.endField("id", 0);
+          rc.startField("tags", 1);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addBinary(Binary.fromString("a"));
+          rc.addBinary(Binary.fromString("b"));
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("tags", 1);
+          rc.endMessage();
+        });
+
+    Schema projection = record("ProjectTwoLevelList", optionalField("tags", array(primitive(Schema.Type.STRING))));
+
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "tags", Arrays.asList(new Utf8("a"), new Utf8("b"))));
+  }
+
+  @Test
+  public void testProjectionReadsSingleFieldGroupsWithOtherNames() throws Exception {
+    // A synthetic group that is not named "list" or whose element is not named "element", such as
+    // "bag" or the "list" / "item" names older PyArrow versions write
+    for (String repeatedName : Arrays.asList("bag", "list")) {
+      String elementName = repeatedName.equals("bag") ? "x" : "item";
+      Path test = writeDirect(
+          "message ProjectSingleFieldGroup {"
+              + "  required int32 id;"
+              + "  optional group tags (LIST) {"
+              + "    repeated group " + repeatedName + " {"
+              + "      optional binary " + elementName + " (UTF8);"
+              + "    }"
+              + "  }"
+              + "}",
+          rc -> {
+            rc.startMessage();
+            rc.startField("id", 0);
+            rc.addInteger(1);
+            rc.endField("id", 0);
+            rc.startField("tags", 1);
+            rc.startGroup();
+            rc.startField(repeatedName, 0);
+            rc.startGroup();
+            rc.startField(elementName, 0);
+            rc.addBinary(Binary.fromString("a"));
+            rc.endField(elementName, 0);
+            rc.endGroup();
+            rc.startGroup(); // null element
+            rc.endGroup();
+            rc.endField(repeatedName, 0);
+            rc.endGroup();
+            rc.endField("tags", 1);
+            rc.endMessage();
+          });
+
+      Schema projection = record(
+          "ProjectSingleFieldGroup", optionalField("tags", array(optional(primitive(Schema.Type.STRING)))));
+
+      assertReaderContains(
+          projectionReader(test, projection),
+          projection,
+          instance(projection, "tags", Arrays.asList(new Utf8("a"), null)));
+    }
+  }
+
+  @Test
+  public void testProjectionReadsMixedListStructures() throws Exception {
+    // A standard 3-level list next to a non-standard one disables auto-detection for the file
+    Path test = writeDirect(
+        "message ProjectMixedLists {"
+            + "  optional group standard (LIST) {"
+            + "    repeated group list {"
+            + "      optional int32 element;"
+            + "    }"
+            + "  }"
+            + "  optional group legacy (LIST) {"
+            + "    repeated group list {"
+            + "      optional int32 item;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("standard", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(1);
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("standard", 0);
+          rc.startField("legacy", 1);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("item", 0);
+          rc.addInteger(2);
+          rc.endField("item", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("legacy", 1);
+          rc.endMessage();
+        });
+
+    Schema ints = array(optional(primitive(Schema.Type.INT)));
+    Schema projection = record("ProjectMixedLists", optionalField("standard", ints), optionalField("legacy", ints));
+
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "standard", Arrays.asList(1), "legacy", Arrays.asList(2)));
+  }
+
+  @Test
+  public void testProjectionPrunesRecordsInNonStandardList() throws Exception {
+    Path test = writeDirect(
+        "message ProjectRecordsInList {"
+            + "  optional group points (LIST) {"
+            + "    repeated group list {"
+            + "      optional group item {"
+            + "        required int32 x;"
+            + "        required int32 y;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("points", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("item", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(3);
+          rc.endField("x", 0);
+          rc.startField("y", 1);
+          rc.addInteger(4);
+          rc.endField("y", 1);
+          rc.endGroup();
+          rc.endField("item", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("points", 0);
+          rc.endMessage();
+        });
+
+    Schema point = record("item", field("x", primitive(Schema.Type.INT)));
+    Schema projection = record("ProjectRecordsInList", optionalField("points", array(optional(point))));
+
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "points", Arrays.asList(instance(point, "x", 3))));
+  }
+
+  @Test
+  public void testProjectionReadsMapWithOtherNames() throws Exception {
+    Path test = writeDirect(
+        "message ProjectMap {"
+            + "  optional group counts (MAP_KEY_VALUE) {"
+            + "    repeated group map {"
+            + "      required binary key (UTF8);"
+            + "      optional int32 value;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("counts", 0);
+          rc.startGroup();
+          rc.startField("map", 0);
+          rc.startGroup();
+          rc.startField("key", 0);
+          rc.addBinary(Binary.fromString("a"));
+          rc.endField("key", 0);
+          rc.startField("value", 1);
+          rc.addInteger(5);
+          rc.endField("value", 1);
+          rc.endGroup();
+          rc.endField("map", 0);
+          rc.endGroup();
+          rc.endField("counts", 0);
+          rc.endMessage();
+        });
+
+    Schema projection =
+        record("ProjectMap", optionalField("counts", Schema.createMap(optional(primitive(Schema.Type.INT)))));
+    Map<Utf8, Integer> counts = new HashMap<>();
+    counts.put(new Utf8("a"), 5);
+
+    assertReaderContains(projectionReader(test, projection), projection, instance(projection, "counts", counts));
+  }
+
+  @Test
+  public void testProjectionStillChecksElementTypes() throws Exception {
+    // The projected element keeps its own type, so a type that doesn't match the file still fails
+    // the requested-schema check instead of reaching a converter.
+    Path test = writeDirect(
+        "message ProjectWrongElementType {"
+            + "  optional group items (LIST) {"
+            + "    repeated group list {"
+            + "      optional int32 element;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("items", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(5);
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("items", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectWrongElementType", optionalField("items", array(optional(primitive(Schema.Type.STRING)))));
+
+    AvroParquetReader<GenericRecord> reader = projectionReader(test, projection);
+    assertThatThrownBy(reader::read)
+        .isInstanceOf(ParquetDecodingException.class)
+        .cause()
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("incompatible types");
+  }
+
+  @Test
+  public void testProjectionKeepsNonNullElementsRequired() throws Exception {
+    // A non-null Avro element type is still requested as required, so optional elements in the file
+    // fail the requested-schema check as they did before.
+    Path test = writeDirect(
+        "message ProjectRequiredElements {"
+            + "  optional group items (LIST) {"
+            + "    repeated group list {"
+            + "      optional int32 item;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("items", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("item", 0);
+          rc.addInteger(5);
+          rc.endField("item", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("items", 0);
+          rc.endMessage();
+        });
+
+    Schema projection =
+        record("ProjectRequiredElements", optionalField("items", array(primitive(Schema.Type.INT))));
+
+    AvroParquetReader<GenericRecord> reader = projectionReader(test, projection);
+    assertThatThrownBy(reader::read)
+        .isInstanceOf(ParquetDecodingException.class)
+        .cause()
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessageContaining("incompatible types");
+  }
+
+  @Test
+  public void testProjectionReadsNestedNonStandardLists() throws Exception {
+    // A "list" / "item" list whose elements are 2-level lists
+    Path test = writeDirect(
+        "message ProjectNestedLists {"
+            + "  optional group matrix (LIST) {"
+            + "    repeated group list {"
+            + "      optional group item (LIST) {"
+            + "        repeated int32 element;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("matrix", 0);
+          rc.startGroup();
+          rc.startField("list", 0);
+          rc.startGroup();
+          rc.startField("item", 0);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.addInteger(1);
+          rc.addInteger(2);
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("item", 0);
+          rc.endGroup();
+          rc.endField("list", 0);
+          rc.endGroup();
+          rc.endField("matrix", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectNestedLists", optionalField("matrix", array(optional(array(primitive(Schema.Type.INT))))));
+
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "matrix", Arrays.asList(Arrays.asList(1, 2))));
+  }
+
+  @Test
+  public void testProjectionReadsMapOfNonStandardLists() throws Exception {
+    // A map whose values are "bag" lists
+    Path test = writeDirect(
+        "message ProjectMapOfLists {"
+            + "  optional group lists (MAP) {"
+            + "    repeated group key_value {"
+            + "      required binary key (UTF8);"
+            + "      optional group value (LIST) {"
+            + "        repeated group bag {"
+            + "          optional int32 x;"
+            + "        }"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("lists", 0);
+          rc.startGroup();
+          rc.startField("key_value", 0);
+          rc.startGroup();
+          rc.startField("key", 0);
+          rc.addBinary(Binary.fromString("a"));
+          rc.endField("key", 0);
+          rc.startField("value", 1);
+          rc.startGroup();
+          rc.startField("bag", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(3);
+          rc.endField("x", 0);
+          rc.endGroup();
+          rc.startGroup(); // null element
+          rc.endGroup();
+          rc.endField("bag", 0);
+          rc.endGroup();
+          rc.endField("value", 1);
+          rc.endGroup();
+          rc.endField("key_value", 0);
+          rc.endGroup();
+          rc.endField("lists", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectMapOfLists",
+        optionalField("lists", Schema.createMap(optional(array(optional(primitive(Schema.Type.INT)))))));
+    Map<Utf8, Object> lists = new HashMap<>();
+    lists.put(new Utf8("a"), Arrays.asList(3, null));
+
+    assertReaderContains(projectionReader(test, projection), projection, instance(projection, "lists", lists));
+  }
+
+  @Test
+  public void testProjectionOfTwoLevelRecordsFollowsTheReadSchema() throws Exception {
+    // A 2-level list of records with one of their fields projected. The converters decide again
+    // whether the pruned repeated group is the element, with the read schema.
+    Path test = writeDirect(
+        "message ProjectTwoLevelRecords {"
+            + "  optional group points (LIST) {"
+            + "    repeated group point {"
+            + "      required int32 x;"
+            + "      required int32 y;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("points", 0);
+          rc.startGroup();
+          rc.startField("point", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(1);
+          rc.endField("x", 0);
+          rc.startField("y", 1);
+          rc.addInteger(2);
+          rc.endField("y", 1);
+          rc.endGroup();
+          rc.endField("point", 0);
+          rc.endGroup();
+          rc.endField("points", 0);
+          rc.endMessage();
+        });
+
+    Schema x = record("point", field("x", primitive(Schema.Type.INT)));
+    Schema projection = record("ProjectTwoLevelRecords", optionalField("points", array(x)));
+
+    // the read schema is the projection
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "points", Arrays.asList(instance(x, "x", 1))));
+
+    // the read schema adds a field with a default
+    Schema.Field yWithDefault = new Schema.Field("y", primitive(Schema.Type.INT), null, 7);
+    Schema xy = Schema.createRecord(
+        "point", null, null, false, Arrays.asList(field("x", primitive(Schema.Type.INT)), yWithDefault));
+    Schema readSchema = record("ProjectTwoLevelRecords", optionalField("points", array(xy)));
+    assertReaderContains(
+        projectionReader(test, projection, readSchema),
+        readSchema,
+        instance(readSchema, "points", Arrays.asList(instance(xy, "x", 1, "y", 7))));
+
+    // the read schema requires a field the projection leaves out, so the pruned group would not be
+    // read as the element: the list keeps the converted projection, as before the alignment
+    Schema xyRequired =
+        record("point", field("x", primitive(Schema.Type.INT)), field("y", primitive(Schema.Type.INT)));
+    Schema requiredReadSchema = record("ProjectTwoLevelRecords", optionalField("points", array(xyRequired)));
+    assertReaderContains(
+        projectionReader(test, projection, requiredReadSchema),
+        requiredReadSchema,
+        instance(requiredReadSchema, "points", null));
+  }
+
+  private <T extends IndexedRecord> AvroParquetReader<T> projectionReader(Path path, Schema projection)
+      throws IOException {
+    Configuration conf = new Configuration();
+    AvroReadSupport.setRequestedProjection(conf, projection);
+    AvroReadSupport.setAvroReadSchema(conf, projection);
+    return new AvroParquetReader<>(conf, path);
+  }
+
+  private <T extends IndexedRecord> AvroParquetReader<T> projectionReader(
+      Path path, Schema projection, Schema readSchema) throws IOException {
+    Configuration conf = new Configuration();
+    AvroReadSupport.setRequestedProjection(conf, projection);
+    AvroReadSupport.setAvroReadSchema(conf, readSchema);
+    return new AvroParquetReader<>(conf, path);
   }
 
   private static Configuration newAutoDetectConf() {
