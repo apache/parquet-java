@@ -18,218 +18,556 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.column.impl.ChunkingTestUtil.OPTIONAL_LIST_OF_INT64_PAGES;
-import static org.apache.parquet.column.impl.ChunkingTestUtil.lcg;
-import static org.apache.parquet.column.impl.ChunkingTestUtil.options;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.math.BigInteger;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.function.Function;
-import java.util.function.UnaryOperator;
+import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.parquet.column.CdcOptions;
+import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
-import org.apache.parquet.column.page.DataPageV1;
-import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.example.ExampleOutputFormat;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * Arrow C++'s {@code parquet/chunker_internal_test.cc}: tables generated as Arrow C++ generates them
+ * are written with content defined chunking, and the pages read back are checked as Arrow C++ checks
+ * them: the values of a page weigh between the minimum and the maximum chunk size, and an edit
+ * changes only the pages around it.
+ */
 public class TestContentDefinedChunking {
 
-  private static final MessageType SCHEMA =
-      MessageTypeParser.parseMessageType("message t { required int64 id; required binary name (STRING); }");
-  private static final CdcOptions OPTIONS = options(16 * 1024, 64 * 1024, 0);
-  private static final CdcOptions SMALL_OPTIONS = options(4 * 1024, 16 * 1024, 0);
-  private static final int ROWS = 40_000;
-
   @TempDir
-  private java.nio.file.Path tempDir;
+  private Path tempDir;
 
-  @ParameterizedTest
-  @CsvSource({"PARQUET_1_0, true", "PARQUET_1_0, false", "PARQUET_2_0, true", "PARQUET_2_0, false"})
-  public void chunkingLosesNoData(WriterVersion version, boolean dictionary) throws IOException {
-    MessageType schema = MessageTypeParser.parseMessageType("message t {"
-        + " required int32 i32; optional int64 i64; optional float f; required double d; optional boolean b;"
-        + " optional binary s (STRING); optional fixed_len_byte_array(8) x; optional int96 t;"
-        + " optional group l (LIST) { repeated group list { optional int32 element; } }"
-        + " optional group m (MAP) { repeated group key_value { required binary key (STRING); optional int64 value; } }"
-        + " optional int64 sparse; }");
-    List<Group> rows = randomRows(schema);
-    List<Path> files = new ArrayList<>();
-    for (boolean chunking : new boolean[] {false, true}) {
-      Path file = path("data-" + chunking);
-      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
-          .withType(schema)
-          .withWriterVersion(version)
-          .withDictionaryEncoding(dictionary)
-          .withRowGroupRowCountLimit(7_000)
-          .withPageSize(2 * 1024)
-          .withPageRowCountLimit(2_000)
-          .withDictionaryPageSize(16 * 1024)
-          .withContentDefinedChunking(chunking ? SMALL_OPTIONS : null)
-          .build()) {
-        for (Group row : rows) {
-          writer.write(row);
+  /** Arrow C++'s TestFindDifferences. */
+  @Nested
+  class FindDifferences {
+
+    @Test
+    public void basic() {
+      assertThat(findDifferences(List.of(1, 2, 3, 4, 5), List.of(1, 7, 8, 4, 5)))
+          .containsExactly(new ChunkDiff(List.of(2, 3), List.of(7, 8)));
+    }
+
+    @Test
+    public void multipleDifferences() {
+      assertThat(findDifferences(List.of(1, 2, 3, 4, 5, 6, 7), List.of(1, 8, 9, 4, 10, 6, 11)))
+          .containsExactly(
+              new ChunkDiff(List.of(2, 3), List.of(8, 9)),
+              new ChunkDiff(List.of(5), List.of(10)),
+              new ChunkDiff(List.of(7), List.of(11)));
+    }
+
+    @Test
+    public void differentLengths() {
+      assertThat(findDifferences(List.of(1, 2, 3), List.of(1, 2, 3, 4, 5)))
+          .containsExactly(new ChunkDiff(List.of(), List.of(4, 5)));
+    }
+
+    @Test
+    public void changesAtBothEnds() {
+      assertThat(findDifferences(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9), List.of(0, 0, 2, 3, 4, 5, 7, 7, 8)))
+          .containsExactly(
+              new ChunkDiff(List.of(1), List.of(0, 0)),
+              new ChunkDiff(List.of(6), List.of(7)),
+              new ChunkDiff(List.of(9), List.of()));
+    }
+
+    @Test
+    public void emptyArrays() {
+      assertThat(findDifferences(List.of(), List.of())).isEmpty();
+    }
+
+    @Test
+    public void longSequenceWithSingleDifference() {
+      assertThat(findDifferences(
+              List.of(1994, 2193, 2700, 1913, 2052), List.of(2048, 43, 2080, 2700, 1913, 2052)))
+          .containsExactly(new ChunkDiff(List.of(1994, 2193), List.of(2048, 43, 2080)));
+    }
+
+    @Test
+    public void longSequenceWithMiddleChanges() {
+      assertThat(findDifferences(
+              List.of(2169, 1976, 2180, 2147, 1934, 1772, 1914, 2075, 2154, 1940, 1934, 1970),
+              List.of(2169, 1976, 2180, 2147, 2265, 1804, 1717, 1925, 2122, 1940, 1934, 1970)))
+          .containsExactly(new ChunkDiff(
+              List.of(1934, 1772, 1914, 2075, 2154), List.of(2265, 1804, 1717, 1925, 2122)));
+    }
+
+    @Test
+    public void additionalCase() {
+      assertThat(findDifferences(
+              List.of(445, 312, 393, 401, 410, 138, 558, 457),
+              List.of(445, 312, 393, 393, 410, 138, 558, 457)))
+          .containsExactly(new ChunkDiff(List.of(401), List.of(393)));
+    }
+  }
+
+  /** Arrow C++'s TestCDCSingleRowGroup, for each of its column types that Parquet stores apart. */
+  @Nested
+  @ParameterizedClass
+  @MethodSource("cases")
+  class SingleRowGroup {
+
+    private static final int PART_SIZE = 128 * 1024;
+    private static final int EDIT_SIZE = 128;
+    private static final ContentDefinedChunkingOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
+    private static final int ROW_GROUP_LENGTH = 1024 * 1024;
+
+    private final Case param;
+    private final Table part1, part2, part3, part4, part5, part6, part7;
+
+    SingleRowGroup(Case param) {
+      this.param = param;
+      // The chunk sizes are constant, so the record count follows from the size of a record, a hand
+      // picked one for variable length and nested types
+      int bytesPerRecord = param.field() instanceof Primitive field && field.type().byteWidth > 0
+          ? field.type().byteWidth + (field.nullable() ? 2 : 0)
+          : 16;
+      int partLength = PART_SIZE / bytesPerRecord;
+      int editLength = EDIT_SIZE / bytesPerRecord;
+      List<Field> fields = List.of(param.field());
+      part1 = generateTable(fields, partLength, 0);
+      part2 = generateTable(fields, editLength, 1);
+      part3 = generateTable(fields, partLength, partLength);
+      part4 = generateTable(fields, editLength, 2);
+      part5 = generateTable(fields, partLength, 2L * partLength);
+      part6 = generateTable(fields, editLength, 3);
+      part7 = generateTable(fields, editLength, 4);
+    }
+
+    static Stream<Case> cases() {
+      return Stream.of(
+          // Boolean
+          new Case(new Primitive("f0", Type.BOOLEAN, false), PARQUET_1_0),
+          // Numeric
+          new Case(new Primitive("f0", Type.UINT8, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.UINT16, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.UINT32, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.UINT64, true), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.INT8, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.INT16, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.INT32, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.INT64, true), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.FLOAT16, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.FLOAT, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.DOUBLE, true), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.DECIMAL_18_6, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.DECIMAL_40_6, false), PARQUET_1_0),
+          // Binary-like
+          new Case(new Primitive("f0", Type.STRING, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.BINARY, true), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.FIXED_LEN_BYTE_ARRAY, true), PARQUET_1_0),
+          // Temporal
+          new Case(new Primitive("f0", Type.DATE, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.TIME_MILLIS, true), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.TIME_NANOS, false), PARQUET_1_0),
+          new Case(new Primitive("f0", Type.TIMESTAMP_NANOS, true), PARQUET_1_0),
+          // Nested types
+          new Case(new ListOf("f0", new Primitive("element", Type.INT16, true), false), PARQUET_1_0),
+          new Case(new ListOf("f0", new Primitive("element", Type.INT32, true), true), PARQUET_1_0),
+          new Case(new ListOf("f0", new Primitive("element", Type.STRING, true), true), PARQUET_1_0),
+          new Case(new StructOf("f0", new Primitive("f0", Type.INT32, true), false), PARQUET_1_0),
+          new Case(new StructOf("f0", new Primitive("f0", Type.DOUBLE, true), true), PARQUET_1_0),
+          new Case(
+              new ListOf(
+                  "f0", new StructOf("element", new Primitive("f0", Type.INT32, true), true), false),
+              PARQUET_1_0),
+          // V2 data pages
+          new Case(new Primitive("f0", Type.BINARY, false), PARQUET_2_0),
+          new Case(new ListOf("f0", new Primitive("element", Type.STRING, true), true), PARQUET_2_0));
+    }
+
+    @Test
+    public void deleteOnce() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part2, part3));
+      List<Integer> modified = write(Table.concat(part1, part3));
+      // A single row group, so no other page changes
+      assertPageLengthDifferences(original, modified, 0, 0, 1, editLength(part2));
+    }
+
+    @Test
+    public void deleteTwice() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part2, part3, part4, part5));
+      List<Integer> modified = write(Table.concat(part1, part3, part5));
+      // part2 and part4 have as many values
+      assertPageLengthDifferences(original, modified, 0, 0, 2, editLength(part2));
+    }
+
+    @Test
+    public void updateOnce() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part2, part3));
+      List<Integer> modified = write(Table.concat(part1, part4, part3));
+      assertPageLengthDifferences(original, modified, 1);
+    }
+
+    @Test
+    public void updateTwice() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part2, part3, part4, part5));
+      List<Integer> modified = write(Table.concat(part1, part6, part3, part7, part5));
+      assertPageLengthDifferences(original, modified, 2);
+    }
+
+    @Test
+    public void insertOnce() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part3));
+      List<Integer> modified = write(Table.concat(part1, part2, part3));
+      assertPageLengthDifferences(original, modified, 0, 1, 0, editLength(part2));
+    }
+
+    @Test
+    public void insertTwice() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part3, part5));
+      List<Integer> modified = write(Table.concat(part1, part2, part3, part4, part5));
+      assertPageLengthDifferences(original, modified, 0, 2, 0, editLength(part2));
+    }
+
+    @Test
+    public void prepend() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part2, part3));
+      List<Integer> modified = write(Table.concat(part4, part1, part2, part3));
+      // As many pages or more at the start, and no later page larger
+      assertThat(modified).hasSizeGreaterThanOrEqualTo(original.size());
+      assertPageLengthDifferences(original, modified, 0, 1, 0, editLength(part4));
+    }
+
+    @Test
+    public void append() throws IOException {
+      List<Integer> original = write(Table.concat(part1, part2, part3));
+      List<Integer> modified = write(Table.concat(part1, part2, part3, part4));
+      // More pages, or a larger last page; every other page is the same
+      assertThat(modified).hasSizeGreaterThanOrEqualTo(original.size());
+      assertThat(modified.subList(0, original.size() - 1))
+          .containsExactlyElementsOf(original.subList(0, original.size() - 1));
+      assertThat(modified.get(original.size() - 1)).isGreaterThanOrEqualTo(original.get(original.size() - 1));
+    }
+
+    @Test
+    public void emptyTable() throws IOException {
+      Table empty = generateTable(List.of(param.field()), 0, 0);
+      Path file = writeTable(empty, OPTIONS, ROW_GROUP_LENGTH, param.version());
+
+      // Arrow C++ writes an empty row group, parquet-java none
+      assertThat(pageLengths(file, 0)).isEmpty();
+    }
+
+    /**
+     * Writes the table into a single row group, and checks that the values of its pages weigh between
+     * the minimum and maximum chunk size.
+     */
+    private List<Integer> write(Table table) throws IOException {
+      List<List<Integer>> pages = pageLengths(writeTable(table, OPTIONS, ROW_GROUP_LENGTH, param.version()), 0);
+      assertThat(pages).hasSize(1);
+      assertContentDefinedChunkSizes(table, pages.get(0));
+      return pages.get(0);
+    }
+
+    /**
+     * Arrow C++'s AssertContentDefinedChunkSizes: the values of each page but the last weigh between
+     * the minimum and the maximum chunk size, as the chunker weighs them, and the last no more. Like
+     * Arrow C++, only for columns of a primitive type.
+     */
+    private void assertContentDefinedChunkSizes(Table table, List<Integer> pageLengths) {
+      if (!(param.field() instanceof Primitive field)) {
+        return;
+      }
+      int offset = 0;
+      for (int page = 0; page < pageLengths.size(); page++) {
+        long size = 0;
+        for (Group row : table.rows().subList(offset, offset + pageLengths.get(page))) {
+          if (row.getFieldRepetitionCount(field.name()) > 0) {
+            size += field.type() == Type.BOOLEAN
+                ? 1
+                : field.type().byteWidth > 0
+                    ? field.type().byteWidth
+                    : row.getBinary(field.name(), 0).length();
+          }
+          // Of nullable columns, the definition level too
+          size += field.nullable() ? 2 : 0;
+        }
+        offset += pageLengths.get(page);
+        if (page < pageLengths.size() - 1) {
+          assertThat(size)
+              .as("chunk size of page %s", page)
+              .isBetween(OPTIONS.getMinChunkSize(), OPTIONS.getMaxChunkSize());
+        } else {
+          assertThat(size).as("chunk size of the last page").isLessThanOrEqualTo(OPTIONS.getMaxChunkSize());
         }
       }
-      files.add(file);
+      assertThat(offset).as("values of the pages").isEqualTo(table.rows().size());
     }
-    assertThat(read(files.get(1)))
-        .containsExactlyElementsOf(rows.stream().map(Group::toString).collect(Collectors.toList()));
-    assertThat(pagesByRowGroup(files.get(1), 0, Function.identity()).get(0))
-        .first()
-        .isInstanceOf(version == WriterVersion.PARQUET_2_0 ? DataPageV2.class : DataPageV1.class);
 
-    assertThat(pageCounts(files.get(1), 1)).isNotEqualTo(pageCounts(files.get(0), 1));
-    assertThat(pageCountsByRowGroup(files.get(1), 1)).hasSameSizeAs(pageCountsByRowGroup(files.get(0), 1));
-  }
-
-  /**
-   * Row groups add page boundaries but move no chunk boundary: the first layout ends a row group a
-   * row before a chunk boundary, the second has row groups shorter than the minimum chunk size.
-   */
-  @ParameterizedTest
-  @ValueSource(ints = {0, 1})
-  public void chunkingContinuesAcrossRowGroups(int column) throws IOException {
-    List<List<Integer>> whole = pageCountsByRowGroup(write("one-group", UnaryOperator.identity()), column);
-    assertThat(whole).hasSize(1);
-    assertThat(whole.get(0)).hasSizeGreaterThan(4);
-
-    for (int perGroup : new int[] {whole.get(0).get(0) - 1, 100}) {
-      List<List<Integer>> groups = pageCountsByRowGroup(
-          write("groups-" + perGroup, b -> b.withRowGroupRowCountLimit(perGroup)), column);
-      Set<Long> expected = new TreeSet<>(pageEnds(whole));
-      for (long end = perGroup; end < ROWS; end += perGroup) {
-        expected.add(end);
+    /**
+     * How many values, levels rather than elements, an edit adds or removes: a null or empty list
+     * has a level, but no element.
+     */
+    private int editLength(Table edit) {
+      if (!(param.field() instanceof ListOf field)) {
+        return edit.rows().size();
       }
-
-      assertThat(groups).hasSizeGreaterThan(4);
-      assertThat(pageEnds(groups)).as("row groups of %s rows", perGroup).containsExactlyElementsOf(expected);
+      int length = 0;
+      for (Group row : edit.rows()) {
+        int elements = row.getFieldRepetitionCount(field.name()) == 0
+            ? 0
+            : row.getGroup(field.name(), 0).getFieldRepetitionCount("list");
+        length += Math.max(1, elements);
+      }
+      return length;
     }
   }
 
-  @Test
-  public void eachColumnChunksOnItsOwn() throws IOException {
-    Path both = write("both", UnaryOperator.identity());
-    for (int column = 0; column < SCHEMA.getFieldCount(); column++) {
-      MessageType alone = new MessageType("t", SCHEMA.getType(column));
-      List<Integer> counts = pageCounts(
-          write("alone-" + column, alone, IntStream.range(0, ROWS).toArray(), b -> b), 0);
+  /** Arrow C++'s TestCDCMultipleRowGroups. */
+  @Nested
+  class MultipleRowGroups {
 
-      assertThat(counts).hasSizeGreaterThan(4);
-      assertThat(pageCounts(both, column)).containsExactlyElementsOf(counts);
+    private static final int PART_LENGTH = 128 * 1024;
+    private static final int EDIT_LENGTH = 128;
+    private static final int ROW_GROUP_LENGTH = 64 * 1024;
+    private static final ContentDefinedChunkingOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
+
+    private final List<Field> fields = List.of(
+        new Primitive("int32", Type.INT32, true),
+        new Primitive("float64", Type.DOUBLE, true),
+        new Primitive("bool", Type.BOOLEAN, false));
+    private final Table part1 = generateTable(fields, PART_LENGTH, 0);
+    private final Table part2 = generateTable(fields, PART_LENGTH, 2);
+    private final Table part3 = generateTable(fields, PART_LENGTH, 4);
+    private final Table edit1 = generateTable(fields, EDIT_LENGTH, 1);
+    private final Table edit2 = generateTable(fields, EDIT_LENGTH, 3);
+    private final Table edit3 = generateTable(fields, EDIT_LENGTH, 5);
+
+    /**
+     * An insertion makes a larger difference in the row group it is in, and a smaller one at its end, as
+     * the row groups have a fixed length; the later row groups shift likewise, and the last one grows.
+     */
+    @Test
+    public void insertOnce() throws IOException {
+      Path original = write(Table.concat(part1, edit1, part2, part3));
+      Path modified = write(Table.concat(part1, edit1, edit2, part2, part3));
+
+      for (int column = 0; column < fields.size(); column++) {
+        List<List<Integer>> originalPages = pageLengths(original, column);
+        List<List<Integer>> modifiedPages = pageLengths(modified, column);
+        assertThat(originalPages).hasSize(7);
+        assertThat(modifiedPages).hasSize(7);
+        // Each part is two row groups, and the first is not edited
+        assertThat(modifiedPages.subList(0, 2)).containsExactlyElementsOf(originalPages.subList(0, 2));
+        for (int i = 2; i < 6; i++) {
+          assertPageLengthDifferences(originalPages.get(i), modifiedPages.get(i), 0, 1, 1, EDIT_LENGTH);
+        }
+        assertPageLengthDifferences(originalPages.get(6), modifiedPages.get(6), 0, 1, 0, EDIT_LENGTH);
+      }
+    }
+
+    /** A deletion makes a smaller difference, and the shift a larger one at the end of each row group. */
+    @Test
+    public void deleteOnce() throws IOException {
+      Path original = write(Table.concat(part1, edit1, part2, part3, edit2));
+      Path modified = write(Table.concat(part1, part2, part3, edit2));
+
+      for (int column = 0; column < fields.size(); column++) {
+        List<List<Integer>> originalPages = pageLengths(original, column);
+        List<List<Integer>> modifiedPages = pageLengths(modified, column);
+        assertThat(originalPages).hasSize(7);
+        assertThat(modifiedPages).hasSize(7);
+        assertThat(modifiedPages.subList(0, 2)).containsExactlyElementsOf(originalPages.subList(0, 2));
+        for (int i = 2; i < 6; i++) {
+          assertPageLengthDifferences(originalPages.get(i), modifiedPages.get(i), 0, 1, 1, EDIT_LENGTH);
+        }
+        assertPageLengthDifferences(originalPages.get(6), modifiedPages.get(6), 0, 0, 1, EDIT_LENGTH);
+      }
+    }
+
+    /** An update shifts nothing, so it changes pages of one row group at most. */
+    @Test
+    public void updateOnce() throws IOException {
+      Path original = write(Table.concat(part1, edit1, part2, part3, edit2));
+      Path modified = write(Table.concat(part1, edit3, part2, part3, edit2));
+
+      for (int column = 0; column < fields.size(); column++) {
+        List<List<Integer>> originalPages = pageLengths(original, column);
+        List<List<Integer>> modifiedPages = pageLengths(modified, column);
+        assertThat(originalPages).hasSize(7);
+        assertThat(modifiedPages).hasSize(7);
+        assertThat(modifiedPages.subList(0, 2)).containsExactlyElementsOf(originalPages.subList(0, 2));
+        assertPageLengthDifferences(originalPages.get(2), modifiedPages.get(2), 1);
+        assertThat(modifiedPages.subList(2, 7)).containsExactlyElementsOf(originalPages.subList(2, 7));
+      }
+    }
+
+    @Test
+    public void append() throws IOException {
+      Path original = write(Table.concat(part1, edit1, part2, part3));
+      Path modified = write(Table.concat(part1, edit1, part2, part3, edit2));
+
+      for (int column = 0; column < fields.size(); column++) {
+        List<List<Integer>> originalPages = pageLengths(original, column);
+        List<List<Integer>> modifiedPages = pageLengths(modified, column);
+        assertThat(originalPages).hasSize(7);
+        assertThat(modifiedPages).hasSize(7);
+        assertThat(modifiedPages.subList(0, 6)).containsExactlyElementsOf(originalPages.subList(0, 6));
+        // Only the last row group grows, and of it only the last page
+        List<Integer> originalLast = originalPages.get(6);
+        List<Integer> modifiedLast = modifiedPages.get(6);
+        assertThat(modifiedLast).hasSameSizeAs(originalLast);
+        assertThat(modifiedLast.subList(0, modifiedLast.size() - 1))
+            .containsExactlyElementsOf(originalLast.subList(0, originalLast.size() - 1));
+        assertThat(modifiedLast.get(modifiedLast.size() - 1))
+            .isGreaterThan(originalLast.get(originalLast.size() - 1));
+      }
+    }
+
+    /**
+     * Splitting the data into row groups moves no page boundary but adds one at the end of each row
+     * group: if the pages of a file of one row group end at rows 100, 250 and 400, then with row groups
+     * of 200 rows they end at rows 100, 200, 250 and 400.
+     */
+    @Test
+    public void independentOfRowGroupBoundaries() throws IOException {
+      Table table = Table.concat(part1, part2, part3);
+      int rows = table.rows().size();
+      int rowGroupLength = rows / 6;
+      Path single = writeTable(table, OPTIONS, rows, PARQUET_1_0);
+      Path multi = writeTable(table, OPTIONS, rowGroupLength, PARQUET_1_0);
+
+      assertThat(pageLengths(single, 0)).hasSize(1);
+      assertThat(pageLengths(multi, 0)).hasSize(6);
+      for (int column = 0; column < fields.size(); column++) {
+        List<Integer> singleEnds = pageEnds(single, column);
+        List<Integer> expected = new ArrayList<>(singleEnds);
+        for (int i = 1; i < 6; i++) {
+          expected.add(i * rowGroupLength);
+        }
+        Collections.sort(expected);
+
+        assertThat(pageEnds(multi, column)).as("column %s", column).containsExactlyElementsOf(expected);
+      }
+    }
+
+    /**
+     * The pages of each row group of each column are those Arrow C++ writes for the same table. Arrow
+     * C++ keeps chunking across row groups since apache/arrow#51685, which no release has yet, so the
+     * page lengths come from a build of its main branch: {@code parquet::arrow::WriteTable} of the
+     * table, combined into one chunk, with row groups of 64Ki rows, a minimum chunk size of 64 KiB, a
+     * maximum of 256 KiB and normalization level 0, V1 data pages, no dictionary and no compression,
+     * and the data page size and rows per page limits lifted. The chunk sizes are larger than the
+     * other tests' to keep the page lengths few.
+     */
+    @Test
+    public void pageLengthsMatchArrowCpp() throws IOException {
+      Path file = writeTable(
+          Table.concat(part1, edit1, part2, part3),
+          options(64 * 1024, 256 * 1024, 0),
+          ROW_GROUP_LENGTH,
+          PARQUET_1_0);
+
+      assertThat(pageLengths(file, 0))
+          .as("int32")
+          .containsExactly(
+              List.of(28446, 22751, 14339),
+              List.of(8214, 23968, 20647, 12707),
+              List.of(14647, 33235, 17654),
+              List.of(2454, 29854, 20647, 12581),
+              List.of(14645, 33235, 17656),
+              List.of(2452, 29854, 20647, 12583),
+              List.of(128));
+      assertThat(pageLengths(file, 1))
+          .as("float64")
+          .containsExactly(
+              List.of(13867, 13300, 9396, 10801, 15077, 3095),
+              List.of(14371, 15918, 20443, 14285, 519),
+              List.of(10507, 13212, 12970, 10801, 15077, 2969),
+              List.of(14497, 15918, 20443, 14285, 393),
+              List.of(13991, 13300, 9396, 10801, 15077, 2971),
+              List.of(14495, 15918, 20443, 14285, 395),
+              List.of(128));
+      assertThat(pageLengths(file, 2))
+          .as("bool")
+          .containsExactly(
+              List.of(65536),
+              List.of(65536),
+              List.of(16580, 48956),
+              List.of(65536),
+              List.of(16578, 48958),
+              List.of(65536),
+              List.of(128));
+    }
+
+    private Path write(Table table) throws IOException {
+      return writeTable(table, OPTIONS, ROW_GROUP_LENGTH, PARQUET_1_0);
     }
   }
 
   /**
-   * An insertion near the start of one of several row groups, as Arrow C++ tests it: the row groups
-   * before it keep every page, and each later one shares all its pages with the original but the
-   * first and last, which its shifted boundaries cut.
+   * The pages of a nullable list of strings and of NaNs of differing payloads are those Arrow C++
+   * writes for the same table, with chunks small enough that many end at the maximum chunk size. They
+   * come from the build and settings of {@link MultipleRowGroups#pageLengthsMatchArrowCpp}, with one
+   * row group, a minimum chunk size of 1 KiB, a maximum of 2 KiB and normalization level -1.
    */
   @Test
-  public void insertionLeavesOtherRowGroupsDeduplicating() throws IOException {
-    int perGroup = ROWS / 7;
-    int at = 2 * perGroup + perGroup / 8;
-    int[] original = IntStream.range(0, ROWS).toArray();
-    int[] edited = IntStream.concat(
-            IntStream.concat(IntStream.range(0, at), IntStream.range(ROWS, ROWS + 100)),
-            IntStream.range(at, ROWS))
-        .toArray();
-    UnaryOperator<ExampleParquetWriter.Builder> configure =
-        b -> b.withRowGroupRowCountLimit(perGroup).withContentDefinedChunking(SMALL_OPTIONS);
-    List<List<Binary>> before = pageBytesByRowGroup(write("before", SCHEMA, original, configure), 1);
-    List<List<Binary>> after = pageBytesByRowGroup(write("after", SCHEMA, edited, configure), 1);
-    Set<Binary> originalPages = before.stream().flatMap(List::stream).collect(Collectors.toSet());
+  public void pageLengthsOfListsAndNaNsMatchArrowCpp() throws IOException {
+    Table table = generateTable(
+        List.of(
+            new ListOf("strings", new Primitive("element", Type.STRING, true), true),
+            new Primitive("nan", Type.NAN, false)),
+        2048,
+        0);
+    Path file = writeTable(table, options(1024, 2048, -1), table.rows().size(), PARQUET_1_0);
 
-    assertThat(after.subList(0, 2)).containsExactlyElementsOf(before.subList(0, 2));
-    for (List<Binary> group : after.subList(3, after.size() - 1)) {
-      assertThat(group.subList(1, group.size() - 1)).hasSizeGreaterThan(3).isSubsetOf(originalPages);
-    }
-  }
-
-  /** The list vector of TestContentDefinedChunker, through a writer that holds back group nulls. */
-  @Test
-  public void listWrittenByRecordsMatchesArrowCpp() throws IOException {
-    assertThat(pageCounts(writeLists("list", UnaryOperator.identity()), 0))
-        .containsExactlyElementsOf(OPTIONAL_LIST_OF_INT64_PAGES);
-  }
-
-  /**
-   * The page size check schedule of the column write store, which also decides when the held back group
-   * nulls reach the column writers, moves no page boundary: each column writer applies the page size
-   * limit itself, inside chunks and keeping every chunk boundary.
-   */
-  @Test
-  public void pageSizeCheckScheduleMovesNoPageBoundary() throws IOException {
-    List<Long> chunks = pageEnds(pageCountsByRowGroup(writeLists("chunks", UnaryOperator.identity()), 0));
-    List<Long> scheduled =
-        pageEnds(pageCountsByRowGroup(writeLists("scheduled", b -> b.withPageSize(16 * 1024)), 0));
-    List<Long> everyRecord = pageEnds(pageCountsByRowGroup(
-        writeLists(
-            "every-record",
-            b -> b.withPageSize(16 * 1024)
-                .withMinRowCountForPageSizeCheck(1)
-                .withMaxRowCountForPageSizeCheck(1)),
-        0));
-
-    assertThat(scheduled).containsAll(chunks).hasSizeGreaterThan(2 * chunks.size());
-    assertThat(everyRecord).containsExactlyElementsOf(scheduled);
-  }
-
-  @Test
-  public void emptyFileReadsBack() throws IOException {
-    Path file = write("empty", SCHEMA, new int[0], UnaryOperator.identity());
-
-    try (ParquetReader<Group> reader =
-        ParquetReader.builder(new GroupReadSupport(), file).build()) {
-      assertThat(reader.read()).isNull();
-    }
+    assertThat(pageLengths(file, 0))
+        .as("strings")
+        .containsExactly(List.of(
+            116, 60, 115, 87, 114, 63, 114, 63, 108, 120, 84, 116, 60, 115, 57, 120, 66, 108, 72, 86, 106,
+            116, 88, 116, 70, 116, 79, 117, 84, 111, 81, 111, 33));
+    assertThat(pageLengths(file, 1))
+        .as("nan")
+        .containsExactly(List.of(224, 233, 256, 217, 242, 256, 210, 221, 189));
   }
 
   @Test
   public void invalidOptionsFailOnlyWhileEnabled() {
-    Configuration conf = outputFormatConf();
+    Table empty = generateTable(List.of(new Primitive("f0", Type.INT32, false)), 0, 0);
+    Configuration conf = outputFormatConf(empty.schema());
     conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, 8 * 1024 * 1024);
 
     conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, false);
-    assertThatCode(() -> new ParquetOutputFormat<Group>()
-            .getRecordWriter(conf, path("off"), CompressionCodecName.UNCOMPRESSED)
-            .close(null))
-        .doesNotThrowAnyException();
+    assertThatCode(() -> writeThroughOutputFormat(conf, empty, "off")).doesNotThrowAnyException();
 
     conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, true);
-    assertThatThrownBy(() -> new ParquetOutputFormat<Group>()
-            .getRecordWriter(conf, path("on"), CompressionCodecName.UNCOMPRESSED))
+    assertThatThrownBy(() -> writeThroughOutputFormat(conf, empty, "on"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid content defined chunking size range: maximum chunk size (1048576) must be greater "
             + "than minimum chunk size (8388608)");
@@ -238,114 +576,80 @@ public class TestContentDefinedChunking {
 
   @Test
   public void configurationKeysReachTheWriter() throws Exception {
-    Configuration conf = outputFormatConf();
-    conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, true);
-    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, 16 * 1024);
-    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MAX_SIZE, 64 * 1024);
-    conf.setInt(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_NORM_LEVEL, 1);
-    CdcOptions configured = CdcOptions.builder()
-        .withMinChunkSize(16 * 1024)
-        .withMaxChunkSize(64 * 1024)
-        .withNormLevel(1)
-        .build();
+    Table table = generateTable(List.of(new Primitive("f0", Type.STRING, true)), 40_000, 0);
+    Configuration conf = outputFormatConf(table.schema());
+    ContentDefinedChunkingOptions options = options(16 * 1024, 64 * 1024, 1);
+    ParquetOutputFormat.setContentDefinedChunking(conf, options);
 
-    assertThat(pageCounts(writeThroughOutputFormat(conf, "configured"), 1))
-        .hasSizeGreaterThan(1)
+    List<List<Integer>> pages = pageLengths(writeThroughOutputFormat(conf, table, "configured"), 0);
+    assertThat(pages)
         .containsExactlyElementsOf(
-            pageCounts(write("direct", b -> b.withContentDefinedChunking(configured)), 1));
+            pageLengths(writeTable(table, options, table.rows().size(), PARQUET_1_0), 0));
+    assertThat(pages.get(0)).hasSizeGreaterThan(1);
 
-    conf.unset(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED);
-    assertThat(pageCounts(writeThroughOutputFormat(conf, "unconfigured"), 1))
-        .hasSize(1);
-  }
-
-  private static String name(int i) {
-    return "row-" + (i * 2654435761L % 1_000_000L);
+    ParquetOutputFormat.setContentDefinedChunking(conf, null);
+    assertThat(pageLengths(writeThroughOutputFormat(conf, table, "unconfigured"), 0))
+        .containsExactly(List.of(table.rows().size()));
   }
 
   private Path path(String label) {
-    return new Path(tempDir.resolve(label + ".parquet").toUri());
+    return tempDir.resolve(label + ".parquet");
   }
 
-  /** A writer with chunking on and the position-based page limits lifted, so every page boundary is the chunker's. */
-  private static ExampleParquetWriter.Builder builder(Path file, MessageType schema) {
-    return ExampleParquetWriter.builder(file)
-        .withType(schema)
-        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
-        .withDictionaryEncoding(false)
-        .withRowGroupSize(1L << 30)
-        .withPageSize(1 << 30)
-        .withPageRowCountLimit(Integer.MAX_VALUE)
-        .withContentDefinedChunking(OPTIONS);
-  }
-
-  private Path write(String label, UnaryOperator<ExampleParquetWriter.Builder> configure) throws IOException {
-    return write(label, SCHEMA, IntStream.range(0, ROWS).toArray(), configure);
-  }
-
-  /** A row of {@code id} and {@code name(id)} for every id, as far as {@code schema} has those fields. */
-  private Path write(
-      String label, MessageType schema, int[] ids, UnaryOperator<ExampleParquetWriter.Builder> configure)
+  /**
+   * Arrow C++'s WriteTableToBuffer: writes the table with content defined chunking and, so that every
+   * page ends at a chunk or row group boundary, without the page size and row count limits. The rows
+   * read back must be the rows written. Unlike Arrow C++'s tests, which also check the dictionary page,
+   * only without dictionary encoding: the chunker weighs values before they are encoded, so the pages
+   * end at the same values with it.
+   */
+  private Path writeTable(
+      Table table, ContentDefinedChunkingOptions options, int rowGroupLength, WriterVersion version)
       throws IOException {
-    Path file = path(label);
-    try (ParquetWriter<Group> writer =
-        configure.apply(builder(file, schema)).build()) {
-      SimpleGroupFactory f = new SimpleGroupFactory(schema);
-      for (int id : ids) {
-        Group row = f.newGroup();
-        if (schema.containsField("id")) {
-          row.append("id", (long) id);
-        }
-        if (schema.containsField("name")) {
-          row.append("name", name(id));
-        }
-        writer.write(row);
-      }
-    }
-    return file;
-  }
-
-  /** The list vector of TestContentDefinedChunker: up to three elements a row, about one row in eleven null. */
-  private Path writeLists(String label, UnaryOperator<ExampleParquetWriter.Builder> configure) throws IOException {
-    MessageType schema = MessageTypeParser.parseMessageType(
-        "message t { optional group v (LIST) { repeated group list { optional int64 element; } } }");
-    Path file = path(label);
-    try (ParquetWriter<Group> writer = configure
-        .apply(builder(file, schema).withContentDefinedChunking(options(64 * 1024, 256 * 1024, 0)))
+    Path file = path(UUID.randomUUID().toString());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(file))
+        .withType(table.schema())
+        .withContentDefinedChunking(options)
+        .withRowGroupRowCountLimit(rowGroupLength)
+        .withDictionaryEncoding(false)
+        .withWriterVersion(version)
+        .withPageSize(Integer.MAX_VALUE)
+        .withPageRowCountLimit(Integer.MAX_VALUE)
         .build()) {
-      SimpleGroupFactory f = new SimpleGroupFactory(schema);
-      for (long x : lcg(200_000)) {
-        Group row = f.newGroup();
-        if (Long.remainderUnsigned(x, 11) != 0) {
-          Group list = row.addGroup("v");
-          for (int k = 0; k < Long.remainderUnsigned(x, 4); k++) {
-            list.addGroup("list").append("element", x >>> (16 * k));
-          }
-        }
+      for (Group row : table.rows()) {
         writer.write(row);
       }
+    }
+    try (ParquetReader<Group> reader = ParquetReader.builder(
+            new GroupReadSupport(), new org.apache.hadoop.fs.Path(file.toUri()))
+        .build()) {
+      for (Group row : table.rows()) {
+        assertThat(reader.read()).as("row read back").asString().isEqualTo(row.toString());
+      }
+      assertThat(reader.read())
+          .as("row read back beyond the written ones")
+          .isNull();
     }
     return file;
   }
 
-  private Configuration outputFormatConf() {
+  /** The configuration of a {@link ParquetOutputFormat} without the page size and row count limits. */
+  private static Configuration outputFormatConf(MessageType schema) {
     Configuration conf = new Configuration();
-    GroupWriteSupport.setSchema(SCHEMA, conf);
-    conf.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, GroupWriteSupport.class.getName());
+    GroupWriteSupport.setSchema(schema, conf);
     conf.setInt(ParquetOutputFormat.PAGE_ROW_COUNT_LIMIT, Integer.MAX_VALUE);
-    conf.setInt(ParquetOutputFormat.PAGE_SIZE, 1 << 30);
+    conf.setInt(ParquetOutputFormat.PAGE_SIZE, Integer.MAX_VALUE);
     conf.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, false);
     return conf;
   }
 
-  private Path writeThroughOutputFormat(Configuration conf, String label) throws Exception {
+  private Path writeThroughOutputFormat(Configuration conf, Table table, String label) throws Exception {
     Path file = path(label);
-    RecordWriter<Void, Group> writer =
-        new ParquetOutputFormat<Group>().getRecordWriter(conf, file, CompressionCodecName.UNCOMPRESSED);
+    RecordWriter<Void, Group> writer = new ExampleOutputFormat()
+        .getRecordWriter(conf, new org.apache.hadoop.fs.Path(file.toUri()), CompressionCodecName.UNCOMPRESSED);
     try {
-      SimpleGroupFactory f = new SimpleGroupFactory(SCHEMA);
-      for (int i = 0; i < ROWS; i++) {
-        writer.write(null, f.newGroup().append("id", (long) i).append("name", name(i)));
+      for (Group row : table.rows()) {
+        writer.write(null, row);
       }
     } finally {
       writer.close(null);
@@ -353,118 +657,353 @@ public class TestContentDefinedChunking {
     return file;
   }
 
-  private static List<String> read(Path file) throws IOException {
-    List<String> rows = new ArrayList<>();
-    try (ParquetReader<Group> reader =
-        ParquetReader.builder(new GroupReadSupport(), file).build()) {
-      for (Group row = reader.read(); row != null; row = reader.read()) {
-        rows.add(row.toString());
-      }
-    }
-    return rows;
+  private static ContentDefinedChunkingOptions options(long min, long max, int normLevel) {
+    return ContentDefinedChunkingOptions.builder()
+        .withMinChunkSize(min)
+        .withMaxChunkSize(max)
+        .withNormLevel(normLevel)
+        .build();
   }
 
-  /** Every type, nulls, lists and maps, and a column null in the first two row groups of 7000 rows. */
-  private static List<Group> randomRows(MessageType schema) {
-    SimpleGroupFactory f = new SimpleGroupFactory(schema);
-    Random random = new Random(31);
-    List<Group> rows = new ArrayList<>();
-    for (int i = 0; i < 30_000; i++) {
-      Group row = f.newGroup().append("i32", random.nextInt(1000)).append("d", random.nextDouble());
-      if (random.nextInt(4) > 0) {
-        row.append("i64", random.nextLong());
-      }
-      if (random.nextInt(8) > 0) {
-        row.append("f", random.nextFloat());
-      }
-      if (random.nextInt(3) > 0) {
-        row.append("b", random.nextBoolean());
-      }
-      if (random.nextInt(5) > 0) {
-        row.append("s", "v" + random.nextInt(random.nextBoolean() ? 300 : Integer.MAX_VALUE));
-      }
-      if (random.nextInt(5) > 0) {
-        row.append("x", String.format("%08x", random.nextInt()));
-      }
-      if (random.nextInt(5) > 0) {
-        row.append("t", new NanoTime(random.nextInt(3_000_000), random.nextLong()));
-      }
-      if (random.nextInt(6) > 0) {
-        Group list = row.addGroup("l");
-        for (int n = random.nextInt(4); n > 0; n--) {
-          Group element = list.addGroup("list");
-          if (random.nextInt(5) > 0) {
-            element.append("element", random.nextInt());
-          }
+  /**
+   * Arrow C++'s GetColumnParquetInfo: the value counts of the data pages of a column, in each row
+   * group, none of them empty.
+   */
+  private static List<List<Integer>> pageLengths(Path file, int column) throws IOException {
+    List<List<Integer>> rowGroups = new ArrayList<>();
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(file))) {
+      ColumnDescriptor path =
+          reader.getFileMetaData().getSchema().getColumns().get(column);
+      for (PageReadStore rowGroup = reader.readNextRowGroup();
+          rowGroup != null;
+          rowGroup = reader.readNextRowGroup()) {
+        List<Integer> pages = new ArrayList<>();
+        PageReader pageReader = rowGroup.getPageReader(path);
+        for (DataPage page = pageReader.readPage(); page != null; page = pageReader.readPage()) {
+          assertThat(page.getValueCount()).as("values of a data page").isPositive();
+          pages.add(page.getValueCount());
         }
+        rowGroups.add(pages);
       }
-      if (random.nextInt(6) > 0) {
-        Group map = row.addGroup("m");
-        for (int n = random.nextInt(3); n > 0; n--) {
-          Group entry = map.addGroup("key_value").append("key", "k" + n);
-          if (random.nextInt(4) > 0) {
-            entry.append("value", random.nextLong());
-          }
-        }
-      }
-      if (i >= 14_000 && i % 7_000 >= 5_000) {
-        row.append("sparse", random.nextLong());
-      }
-      rows.add(row);
     }
-    return rows;
+    return rowGroups;
   }
 
-  /** Where each page ends, counted in values from the start of the file. */
-  private static List<Long> pageEnds(List<List<Integer>> groups) {
-    List<Long> ends = new ArrayList<>();
-    long end = 0;
-    for (List<Integer> group : groups) {
-      for (int count : group) {
-        end += count;
+  /** Arrow C++'s GetPageEnds: where the pages of a column end, counted in values across its row groups. */
+  private static List<Integer> pageEnds(Path file, int column) throws IOException {
+    List<Integer> ends = new ArrayList<>();
+    int end = 0;
+    for (List<Integer> rowGroup : pageLengths(file, column)) {
+      for (int length : rowGroup) {
+        end += length;
         ends.add(end);
       }
     }
     return ends;
   }
 
-  private static <T> List<List<T>> pagesByRowGroup(Path file, int column, Function<DataPage, T> extract)
-      throws IOException {
-    List<List<T>> groups = new ArrayList<>();
-    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(file, new Configuration()))) {
-      ColumnDescriptor path =
-          reader.getFileMetaData().getSchema().getColumns().get(column);
-      PageReadStore rowGroup;
-      while ((rowGroup = reader.readNextRowGroup()) != null) {
-        List<T> pages = new ArrayList<>();
-        PageReader pageReader = rowGroup.getPageReader(path);
-        for (long read = 0; read < pageReader.getTotalValueCount(); ) {
-          DataPage page = pageReader.readPage();
-          pages.add(extract.apply(page));
-          read += page.getValueCount();
-        }
-        groups.add(pages);
+  /** A run of page lengths of each sequence that differ, as git shows a hunk side by side. */
+  record ChunkDiff(List<Integer> first, List<Integer> second) {
+
+    /** How many values more the second sequence's pages hold. */
+    int growth() {
+      return second.stream().mapToInt(Integer::intValue).sum()
+          - first.stream().mapToInt(Integer::intValue).sum();
+    }
+  }
+
+  /**
+   * Arrow C++'s FindDifferences: the runs of page lengths that differ between two sequences, aligned
+   * by their longest common subsequence. An insertion-only run is merged with a following
+   * deletion-only one, and the other way around, so that one change is not split in two.
+   */
+  static List<ChunkDiff> findDifferences(List<Integer> first, List<Integer> second) {
+    int n = first.size();
+    int m = second.size();
+    int[][] common = new int[n + 1][m + 1];
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < m; j++) {
+        common[i + 1][j + 1] = first.get(i).equals(second.get(j))
+            ? common[i][j] + 1
+            : Math.max(common[i + 1][j], common[i][j + 1]);
       }
     }
-    return groups;
-  }
 
-  private static List<List<Integer>> pageCountsByRowGroup(Path file, int column) throws IOException {
-    return pagesByRowGroup(file, column, DataPage::getValueCount);
-  }
-
-  private static List<List<Binary>> pageBytesByRowGroup(Path file, int column) throws IOException {
-    return pagesByRowGroup(file, column, page -> {
-      try {
-        return Binary.fromConstantByteArray(
-            ((DataPageV1) page).getBytes().toByteArray());
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
+    List<int[]> matches = new ArrayList<>();
+    for (int i = n, j = m; i > 0 && j > 0; ) {
+      if (first.get(i - 1).equals(second.get(j - 1))) {
+        matches.add(new int[] {--i, --j});
+      } else if (common[i - 1][j] >= common[i][j - 1]) {
+        i--;
+      } else {
+        j--;
       }
-    });
+    }
+    Collections.reverse(matches);
+
+    List<ChunkDiff> diffs = new ArrayList<>();
+    int lastI = 0;
+    int lastJ = 0;
+    for (int[] match : matches) {
+      if (match[0] > lastI || match[1] > lastJ) {
+        diffs.add(new ChunkDiff(first.subList(lastI, match[0]), second.subList(lastJ, match[1])));
+      }
+      lastI = match[0] + 1;
+      lastJ = match[1] + 1;
+    }
+    if (lastI < n || lastJ < m) {
+      diffs.add(new ChunkDiff(first.subList(lastI, n), second.subList(lastJ, m)));
+    }
+
+    List<ChunkDiff> merged = new ArrayList<>();
+    for (ChunkDiff diff : diffs) {
+      ChunkDiff previous = merged.isEmpty() ? null : merged.get(merged.size() - 1);
+      if (previous != null && previous.first().isEmpty() && diff.second().isEmpty()) {
+        merged.set(merged.size() - 1, new ChunkDiff(diff.first(), previous.second()));
+      } else if (previous != null
+          && previous.second().isEmpty()
+          && diff.first().isEmpty()) {
+        merged.set(merged.size() - 1, new ChunkDiff(previous.first(), diff.second()));
+      } else {
+        merged.add(diff);
+      }
+    }
+    return merged;
   }
 
-  private static List<Integer> pageCounts(Path file, int column) throws IOException {
-    return pageCountsByRowGroup(file, column).stream().flatMap(List::stream).collect(Collectors.toList());
+  /**
+   * Arrow C++'s AssertPageLengthDifferences: the page lengths differ in exactly as many runs holding
+   * as many values, more values or fewer, and those holding more or fewer by the length of the edit.
+   */
+  private static void assertPageLengthDifferences(
+      List<Integer> original,
+      List<Integer> modified,
+      int equalDiffs,
+      int largerDiffs,
+      int smallerDiffs,
+      int editLength) {
+    List<Integer> growths = findDifferences(original, modified).stream()
+        .map(ChunkDiff::growth)
+        .toList();
+    String description = "growth of each run of pages from " + original + " to " + modified;
+
+    assertThat(growths).as(description).filteredOn(growth -> growth == 0).hasSize(equalDiffs);
+    assertThat(growths).as(description).filteredOn(growth -> growth > 0).hasSize(largerDiffs);
+    assertThat(growths).as(description).filteredOn(growth -> growth < 0).hasSize(smallerDiffs);
+    assertThat(growths)
+        .as(description)
+        .allSatisfy(growth -> assertThat(Math.abs(growth)).isIn(0, editLength));
+  }
+
+  /**
+   * Arrow C++'s AssertPageLengthDifferences for updates, which shift no value: at most {@code
+   * maxEqualDiffs} runs, each holding as many values.
+   */
+  private static void assertPageLengthDifferences(List<Integer> original, List<Integer> modified, int maxEqualDiffs) {
+    List<Integer> growths = findDifferences(original, modified).stream()
+        .map(ChunkDiff::growth)
+        .toList();
+
+    assertThat(growths)
+        .as("growth of each run of pages from %s to %s", original, modified)
+        .hasSizeLessThanOrEqualTo(maxEqualDiffs)
+        .allMatch(growth -> growth == 0);
+  }
+
+  /** Arrow C++'s hash, which generates deterministic and platform independent data. */
+  static long hash(long seed, long index) {
+    long h = (index + seed) * 0xc4ceb9fe1a85ec53L;
+    h ^= h >>> 33;
+    h *= 0xff51afd7ed558ccdL;
+    h ^= h >>> 33;
+    h *= 0xc4ceb9fe1a85ec53L;
+    h ^= h >>> 33;
+    return h;
+  }
+
+  /** Arrow C++'s GenerateTable: rows of the fields, each field generated from the next seed. */
+  static Table generateTable(List<Field> fields, int length, long seed) {
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message m { " + fields.stream().map(Field::declaration).collect(Collectors.joining(" ")) + " }");
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    List<Group> rows = new ArrayList<>(length);
+    for (int index = 0; index < length; index++) {
+      Group row = factory.newGroup();
+      for (int i = 0; i < fields.size(); i++) {
+        fields.get(i).append(row, seed + 1 + i, index);
+      }
+      rows.add(row);
+    }
+    return new Table(schema, rows);
+  }
+
+  /** Rows, and the schema they follow. */
+  record Table(MessageType schema, List<Group> rows) {
+
+    /** Arrow C++'s ConcatAndCombine. */
+    static Table concat(Table... parts) {
+      return new Table(
+          parts[0].schema(),
+          Arrays.stream(parts).flatMap(part -> part.rows().stream()).toList());
+    }
+  }
+
+  /** A case of Arrow C++'s TestCDCSingleRowGroup: the column, and the version of its data pages. */
+  record Case(Field field, WriterVersion version) {
+
+    @Override
+    public String toString() {
+      return field.declaration() + " " + version;
+    }
+  }
+
+  /** A field, and how Arrow C++'s GenerateArray generates its values. */
+  interface Field {
+
+    String declaration();
+
+    /** Appends the value of the field in row {@code index}, unless it is null. */
+    void append(Group group, long seed, int index);
+  }
+
+  /** A field of a primitive type: one in ten values is null if the field is nullable. */
+  record Primitive(String name, Type type, boolean nullable) implements Field {
+
+    @Override
+    public String declaration() {
+      return (nullable ? "optional " : "required ") + String.format(type.declaration, name) + ";";
+    }
+
+    @Override
+    public void append(Group group, long seed, int index) {
+      long value = hash(seed, index);
+      if (!nullable || Long.remainderUnsigned(value, 10) != 0) {
+        type.writer.append(group, name, value);
+      }
+    }
+  }
+
+  /**
+   * A list field, of four lists over again: a null one, or an empty one if the field is not nullable,
+   * an empty one, one of an element and one of three. The elements are the next of the element field's
+   * values.
+   */
+  record ListOf(String name, Field element, boolean nullable) implements Field {
+
+    // Arrow C++'s list offsets in each run of four lists, from the run's first element
+    private static final int[] OFFSETS = {0, 0, 0, 1, 4};
+
+    @Override
+    public String declaration() {
+      return (nullable ? "optional" : "required") + " group " + name + " (LIST) { repeated group list { "
+          + element.declaration() + " } }";
+    }
+
+    @Override
+    public void append(Group group, long seed, int index) {
+      int kind = index % 4;
+      if (kind == 0 && nullable) {
+        return;
+      }
+      Group list = group.addGroup(name);
+      int start = index - kind;
+      for (int element = start + OFFSETS[kind]; element < start + OFFSETS[kind + 1]; element++) {
+        this.element.append(list.addGroup("list"), seed, element);
+      }
+    }
+  }
+
+  /** A struct field of one field, never null. */
+  record StructOf(String name, Field field, boolean nullable) implements Field {
+
+    @Override
+    public String declaration() {
+      return (nullable ? "optional" : "required") + " group " + name + " { " + field.declaration() + " }";
+    }
+
+    @Override
+    public void append(Group group, long seed, int index) {
+      field.append(group.addGroup(name), seed, index);
+    }
+  }
+
+  /**
+   * The primitive types, each with the value Arrow C++'s GenerateArray derives from a hash for the
+   * Arrow type that Arrow stores as it, and the width Arrow holds a value in, 0 for booleans and
+   * binaries.
+   */
+  enum Type {
+    BOOLEAN("boolean %s", 0, (group, field, value) -> group.append(field, (value & 1) == 0)),
+    UINT8("int32 %s (INTEGER(8,false))", 1, (group, field, value) -> group.append(field, (int) (value & 0xFF))),
+    UINT16("int32 %s (INTEGER(16,false))", 2, (group, field, value) -> group.append(field, (int) (value & 0xFFFF))),
+    UINT32("int32 %s (INTEGER(32,false))", 4, (group, field, value) -> group.append(field, (int) value)),
+    UINT64("int64 %s (INTEGER(64,false))", 8, (group, field, value) -> group.append(field, value)),
+    INT8("int32 %s (INTEGER(8,true))", 1, (group, field, value) -> group.append(field, (int) (byte) value)),
+    INT16("int32 %s (INTEGER(16,true))", 2, (group, field, value) -> group.append(field, (int) (short) value)),
+    INT32("int32 %s", 4, (group, field, value) -> group.append(field, (int) value)),
+    INT64("int64 %s", 8, (group, field, value) -> group.append(field, value)),
+    FLOAT16(
+        "fixed_len_byte_array(2) %s (FLOAT16)",
+        2, (group, field, value) -> {
+          int bits = (int) Long.remainderUnsigned(value, 1000);
+          group.append(field, Binary.fromConstantByteArray(new byte[] {(byte) bits, (byte) (bits >>> 8)}));
+        }),
+    FLOAT(
+        "float %s",
+        4, (group, field, value) -> group.append(field, (float) Long.remainderUnsigned(value, 1000) / 1000.0f)),
+    DOUBLE(
+        "double %s",
+        8,
+        (group, field, value) -> group.append(field, (double) Long.remainderUnsigned(value, 100000) / 1000.0)),
+    // Arrow's decimal128(18, 6), which parquet-java stores and hashes as an INT64
+    DECIMAL_18_6(
+        "int64 %s (DECIMAL(18,6))",
+        8, (group, field, value) -> group.append(field, Long.remainderUnsigned(value, 999_999_999_999L))),
+    // Arrow's decimal256(40, 6), its values limited to 9 digits
+    DECIMAL_40_6(
+        "fixed_len_byte_array(17) %s (DECIMAL(40,6))",
+        17,
+        (group, field, value) -> group.append(
+            field,
+            FixedBinaryTestUtils.getFixedBinary(
+                17, BigInteger.valueOf(Long.remainderUnsigned(value, 999_999_999L))))),
+    STRING(
+        "binary %s (STRING)",
+        0, (group, field, value) -> group.append(field, "str_" + Long.toUnsignedString(value))),
+    BINARY(
+        "binary %s",
+        0,
+        (group, field, value) -> group.append(field, Binary.fromString("bin_" + Long.toUnsignedString(value)))),
+    FIXED_LEN_BYTE_ARRAY(
+        "fixed_len_byte_array(16) %s",
+        16,
+        (group, field, value) -> group.append(
+            field, Binary.fromString(("bin_" + Long.toUnsignedString(value)).substring(0, 16)))),
+    DATE("int32 %s (DATE)", 4, (group, field, value) -> group.append(field, (int) value)),
+    TIME_MILLIS(
+        "int32 %s (TIME(MILLIS,true))",
+        4, (group, field, value) -> group.append(field, Math.abs((int) value % 86_400_000))),
+    TIME_NANOS(
+        "int64 %s (TIME(NANOS,true))",
+        8, (group, field, value) -> group.append(field, Math.abs(value % 86_400_000_000L))),
+    TIMESTAMP_NANOS("int64 %s (TIMESTAMP(NANOS,true))", 8, (group, field, value) -> group.append(field, value)),
+    // Not one of Arrow C++'s: NaNs with the hash as their payload, which Arrow C++ hashes as it is
+    NAN(
+        "double %s",
+        8, (group, field, value) -> group.append(field, Double.longBitsToDouble(0x7FF8000000000000L | value)));
+
+    private final String declaration;
+    private final int byteWidth;
+    private final ValueWriter writer;
+
+    Type(String declaration, int byteWidth, ValueWriter writer) {
+      this.declaration = declaration;
+      this.byteWidth = byteWidth;
+      this.writer = writer;
+    }
+  }
+
+  interface ValueWriter {
+    void append(Group group, String field, long value);
   }
 }

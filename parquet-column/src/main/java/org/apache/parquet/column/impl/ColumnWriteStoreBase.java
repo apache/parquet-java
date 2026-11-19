@@ -79,7 +79,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       public ColumnWriter getColumnWriter(ColumnDescriptor path) {
         ColumnWriterBase column = columns.get(path);
         if (column == null) {
-          column = createColumnWriterBase(path, pageWriteStore.getPageWriter(path), null, props);
+          column = createColumnWriterBase(path, pageWriteStore.getPageWriter(path), null, null, props);
           columns.put(path, column);
         }
         return column;
@@ -95,7 +95,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, props));
+      mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, null, props));
     }
     this.columns = unmodifiableMap(mcolumns);
 
@@ -124,17 +124,14 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       BloomFilterWriteStore bloomFilterWriteStore,
       ParquetProperties props,
       List<ContentDefinedChunker> chunkers) {
-    Preconditions.checkState(
-        chunkers != null || !props.isContentDefinedChunkingEnabled(),
-        "Content defined chunking needs the chunkers of the file");
-    Preconditions.checkArgument(
-        !props.isContentDefinedChunkingEnabled()
-            || chunkers.size() == schema.getColumns().size(),
-        "Expected a chunker per column");
+    Iterator<ContentDefinedChunker> columnChunkers = null;
+    if (props.isContentDefinedChunkingEnabled()) {
+      Preconditions.checkState(chunkers != null, "Content defined chunking needs the chunkers of the file");
+      Preconditions.checkArgument(chunkers.size() == schema.getColumns().size(), "Expected a chunker per column");
+      columnChunkers = chunkers.iterator();
+    }
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
-    Iterator<ContentDefinedChunker> columnChunkers =
-        props.isContentDefinedChunkingEnabled() ? chunkers.iterator() : null;
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
@@ -156,14 +153,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
         return columns.get(path);
       }
     };
-  }
-
-  private ColumnWriterBase createColumnWriterBase(
-      ColumnDescriptor path,
-      PageWriter pageWriter,
-      BloomFilterWriter bloomFilterWriter,
-      ParquetProperties props) {
-    return createColumnWriterBase(path, pageWriter, bloomFilterWriter, null, props);
   }
 
   private ColumnWriterBase createColumnWriterBase(
@@ -263,11 +252,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   public void endRecord() {
     ++rowCount;
     if (rowCount >= rowCountForNextSizeCheck) {
-      if (props.isContentDefinedChunkingEnabled()) {
-        // The column writers apply the page limits; this schedule only flushes cached nulls.
-        rowCountForNextSizeCheck = rowCount + props.getMaxRowCountForPageSizeCheck();
-        return;
-      }
       sizeCheck();
     }
   }

@@ -146,7 +146,7 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> sizeStatistics;
   private final ColumnProperty<CompressionCodecName> columnCodecs;
   private final ColumnProperty<Integer> columnCompressionLevels;
-  private final CdcOptions contentDefinedChunkingOptions;
+  private final ContentDefinedChunkingOptions contentDefinedChunkingOptions;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -378,7 +378,8 @@ public class ParquetProperties {
    * @param schema the schema of the row group
    * @param pageStore the page store of the row group
    * @param bloomFilterWriteStore the bloom filter store of the row group
-   * @param chunkers the content defined chunkers of the file
+   * @param chunkers the content defined chunkers of the file, or {@code null} without content defined
+   *     chunking, which ignores them
    * @return the column write store
    */
   public ColumnWriteStore newColumnWriteStore(
@@ -436,7 +437,7 @@ public class ParquetProperties {
    *
    * @return the chunking options, or {@code null} if content defined chunking is disabled
    */
-  public CdcOptions getContentDefinedChunkingOptions() {
+  public ContentDefinedChunkingOptions getContentDefinedChunkingOptions() {
     return contentDefinedChunkingOptions;
   }
 
@@ -586,7 +587,7 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
     private final ColumnProperty.Builder<CompressionCodecName> columnCodecs;
     private final ColumnProperty.Builder<Integer> columnCompressionLevels;
-    private CdcOptions contentDefinedChunkingOptions;
+    private ContentDefinedChunkingOptions contentDefinedChunkingOptions;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -952,9 +953,10 @@ public class ParquetProperties {
 
     /**
      * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, such as
-     * {@link CdcOptions#DEFAULT}, or disable it with {@code null}. Disabled by default. The page size
-     * and row count limits still apply, checked by each column writer at every record start instead of
-     * on the page size check schedule. Column write stores must then be made with
+     * {@link ContentDefinedChunkingOptions#DEFAULT}, or disable it with {@code null}. Disabled by default. The page size
+     * and row count limits still apply as without it, so page size cuts follow the page size check
+     * schedule and may move after an edit, unlike Arrow's, which count from the chunk start. Column
+     * write stores must then be made with
      * {@link ParquetProperties#newColumnWriteStore(MessageType, PageWriteStore, BloomFilterWriteStore,
      * List)}, passing every row group of a file the chunkers {@link ContentDefinedChunker#forColumns}
      * made for it.
@@ -962,7 +964,7 @@ public class ParquetProperties {
      * @param options the chunking options, or {@code null} to disable content defined chunking
      * @return this builder for method chaining.
      */
-    public Builder withContentDefinedChunking(CdcOptions options) {
+    public Builder withContentDefinedChunking(ContentDefinedChunkingOptions options) {
       this.contentDefinedChunkingOptions = options;
       return this;
     }

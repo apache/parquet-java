@@ -33,7 +33,7 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.parquet.column.CdcOptions;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -414,11 +414,53 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(PAGE_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_PAGE_ROW_COUNT_LIMIT);
   }
 
-  private static CdcOptions getContentDefinedChunkingOptions(Configuration conf) {
-    return CdcOptions.builder()
-        .withMinChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MIN_SIZE, CdcOptions.DEFAULT.getMinChunkSize()))
-        .withMaxChunkSize(conf.getLong(CONTENT_DEFINED_CHUNKING_MAX_SIZE, CdcOptions.DEFAULT.getMaxChunkSize()))
-        .withNormLevel(conf.getInt(CONTENT_DEFINED_CHUNKING_NORM_LEVEL, CdcOptions.DEFAULT.getNormLevel()))
+  /**
+   * EXPERIMENTAL: Enables content defined chunking of data pages with the given options, or disables it
+   * with {@code null}.
+   *
+   * @param jobContext the job context
+   * @param options the chunking options, or {@code null} to disable content defined chunking
+   * @see ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)
+   */
+  public static void setContentDefinedChunking(JobContext jobContext, ContentDefinedChunkingOptions options) {
+    setContentDefinedChunking(jobContext.getConfiguration(), options);
+  }
+
+  /**
+   * EXPERIMENTAL: Enables content defined chunking of data pages with the given options, or disables it
+   * with {@code null}.
+   *
+   * @param conf the configuration
+   * @param options the chunking options, or {@code null} to disable content defined chunking
+   * @see ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)
+   */
+  public static void setContentDefinedChunking(Configuration conf, ContentDefinedChunkingOptions options) {
+    conf.setBoolean(CONTENT_DEFINED_CHUNKING_ENABLED, options != null);
+    if (options != null) {
+      conf.setLong(CONTENT_DEFINED_CHUNKING_MIN_SIZE, options.getMinChunkSize());
+      conf.setLong(CONTENT_DEFINED_CHUNKING_MAX_SIZE, options.getMaxChunkSize());
+      conf.setInt(CONTENT_DEFINED_CHUNKING_NORM_LEVEL, options.getNormLevel());
+    }
+  }
+
+  /**
+   * EXPERIMENTAL: The content defined chunking options of the configuration.
+   *
+   * @param conf the configuration
+   * @return the chunking options, or {@code null} if content defined chunking is disabled
+   * @throws IllegalArgumentException if it is enabled with invalid options
+   */
+  public static ContentDefinedChunkingOptions getContentDefinedChunkingOptions(Configuration conf) {
+    if (!conf.getBoolean(CONTENT_DEFINED_CHUNKING_ENABLED, false)) {
+      return null;
+    }
+    return ContentDefinedChunkingOptions.builder()
+        .withMinChunkSize(conf.getLong(
+            CONTENT_DEFINED_CHUNKING_MIN_SIZE, ContentDefinedChunkingOptions.DEFAULT.getMinChunkSize()))
+        .withMaxChunkSize(conf.getLong(
+            CONTENT_DEFINED_CHUNKING_MAX_SIZE, ContentDefinedChunkingOptions.DEFAULT.getMaxChunkSize()))
+        .withNormLevel(conf.getInt(
+            CONTENT_DEFINED_CHUNKING_NORM_LEVEL, ContentDefinedChunkingOptions.DEFAULT.getNormLevel()))
         .build();
   }
 
@@ -548,11 +590,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .withStatisticsEnabled(getStatisticsEnabled(conf));
-    if (conf.getBoolean(CONTENT_DEFINED_CHUNKING_ENABLED, false)) {
-      // Only when enabled, as passing options enables content defined chunking.
-      propsBuilder.withContentDefinedChunking(getContentDefinedChunkingOptions(conf));
-    }
+        .withStatisticsEnabled(getStatisticsEnabled(conf))
+        .withContentDefinedChunking(getContentDefinedChunkingOptions(conf));
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)

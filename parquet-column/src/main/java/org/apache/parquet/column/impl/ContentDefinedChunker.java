@@ -18,88 +18,118 @@
  */
 package org.apache.parquet.column.impl;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 
 /**
- * Decides the content defined data page boundaries of one leaf column for a whole file. The column
- * writer asks {@code needNewPage} before writing each triplet, which this chunker answers by rolling
- * the triplet into its hash; a no-op chunker, {@link #noop()}, stands in while content defined
- * chunking is disabled.
+ * EXPERIMENTAL: Decides the content defined chunk boundaries of one leaf column for a whole file. The column writer
+ * asks {@code startsNewChunk} with each triplet before writing it; the chunker rolls the triplet into
+ * its hash and answers whether a chunk starts there, and the writer then ends its page. The page limits
+ * end pages as they do without content defined chunking.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
- * whose boundaries it must reproduce. Not thread safe.
+ * whose boundaries it must reproduce for the same values. They hash a value as Arrow holds it in
+ * memory, which for most columns is as Parquet stores it, but for an INT(8) or INT(16) in 1 or 2 bytes
+ * rather than the 4 of an INT32; see {@code byteWidth}. Where Arrow holds a value otherwise, the
+ * boundaries differ from Arrow's: a DECIMAL, which Arrow holds as a decimal128 or decimal256, and the
+ * legacy INT96, which it holds as a timestamp in nanoseconds. So do those of an Arrow writer that
+ * converts the values it is given before storing them, such as date64, time32[s] and timestamp[s],
+ * and uint32 at Parquet format 1.0, or that is given a dictionary array, whose indices it hashes.
+ *
+ * <p>As in Arrow, the file writer owns the chunkers of a file, made by {@link #forColumns}, and lends
+ * each row group's column writers theirs, so that the chunking continues across row groups. The class
+ * is public only for the file writers of other modules; Arrow keeps it internal. Not thread safe.
  */
-public class ContentDefinedChunker {
-
-  private static final ContentDefinedChunker NOOP = new NoopChunker();
+public final class ContentDefinedChunker {
 
   private final long minChunkSize;
   private final long maxChunkSize;
   private final long rollingHashMask;
   private final int maxDef;
   private final int maxRep;
-  private final long pageSizeThreshold;
-  private final int pageValueCountThreshold;
-  private final int pageRowCountLimit;
+  private final int byteWidth;
 
   private long rollingHash;
   private boolean hasMatched;
   private int nthRun;
   private long chunkSize;
 
+  /** Rolls the bytes written to it into the hash. */
+  private final OutputStream byteRoller = new OutputStream() {
+    @Override
+    public void write(int b) {
+      write(new byte[] {(byte) b}, 0, 1);
+    }
+
+    @Override
+    public void write(byte[] bytes, int offset, int length) {
+      long hash = rollingHash;
+      boolean matched = hasMatched;
+      long[] table = GearHashTable.TABLE[nthRun];
+      for (int i = offset; i < offset + length; ++i) {
+        hash = (hash << 1) + table[bytes[i] & 0xFF];
+        matched |= (hash & rollingHashMask) == 0;
+      }
+      rollingHash = hash;
+      hasMatched = matched;
+    }
+  };
+
   /**
-   * EXPERIMENTAL: The chunkers of a file, one per leaf column of {@code schema} in order, which
-   * every row group's column write store of the file continues.
+   * EXPERIMENTAL: The content defined chunkers of a file, one per leaf column of {@code schema} in
+   * order, which every row group's column write store of the file continues.
    *
    * @param schema the schema of the file
-   * @param props the writer properties, with content defined chunking enabled
+   * @param options the content defined chunking options of the file
    * @return the chunkers
    */
-  public static List<ContentDefinedChunker> forColumns(MessageType schema, ParquetProperties props) {
+  public static List<ContentDefinedChunker> forColumns(MessageType schema, ContentDefinedChunkingOptions options) {
     return schema.getColumns().stream()
-        .map(path -> new ContentDefinedChunker(path, props))
+        .map(path -> new ContentDefinedChunker(path, options))
         .collect(Collectors.toList());
   }
 
-  /** The chunker of a column without content defined chunking, which never ends a page. */
-  static ContentDefinedChunker noop() {
-    return NOOP;
-  }
-
-  ContentDefinedChunker(ColumnDescriptor path, ParquetProperties props) {
-    CdcOptions options = props.getContentDefinedChunkingOptions();
+  ContentDefinedChunker(ColumnDescriptor path, ContentDefinedChunkingOptions options) {
     this.minChunkSize = options.getMinChunkSize();
     this.maxChunkSize = options.getMaxChunkSize();
-    this.rollingHashMask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
+    this.rollingHashMask = calculateMask(options);
     this.maxDef = path.getMaxDefinitionLevel();
     this.maxRep = path.getMaxRepetitionLevel();
-    this.pageSizeThreshold = props.getPageSizeThreshold();
-    this.pageValueCountThreshold = props.getPageValueCountThreshold();
-    this.pageRowCountLimit = props.getPageRowCountLimit();
-  }
-
-  /** Only for {@link NoopChunker}, which uses none of the state. */
-  private ContentDefinedChunker() {
-    this.minChunkSize = 0;
-    this.maxChunkSize = 0;
-    this.rollingHashMask = 0;
-    this.maxDef = 0;
-    this.maxRep = 0;
-    this.pageSizeThreshold = 0;
-    this.pageValueCountThreshold = 0;
-    this.pageRowCountLimit = 0;
+    this.byteWidth = byteWidth(path.getPrimitiveType());
   }
 
   /**
-   * Derives the rolling hash mask, validating the envelope. Ported from Arrow C++
+   * The width in bytes Arrow holds a value of an integer column in, as Arrow reads the column by
+   * default ({@code GetArrowType} in Arrow C++ {@code parquet/arrow/schema_internal.cc}): an INT32 or
+   * INT64 at its own width, but an INT(8) or INT(16) as an int8 or int16. Zero for other columns.
+   *
+   * @param type the type of the column
+   * @return the width Arrow holds a value in, or zero
+   */
+  private static int byteWidth(PrimitiveType type) {
+    if (type.getLogicalTypeAnnotation() instanceof IntLogicalTypeAnnotation integer) {
+      return integer.getBitWidth() / Byte.SIZE;
+    }
+    return switch (type.getPrimitiveTypeName()) {
+      case INT32 -> Integer.BYTES;
+      case INT64 -> Long.BYTES;
+      default -> 0;
+    };
+  }
+
+  /**
+   * EXPERIMENTAL: Derives the rolling hash mask, rejecting options that cannot produce a usable one,
+   * which {@link ContentDefinedChunkingOptions} does when it is built. Ported from Arrow C++
    * {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
    * bit-identical to theirs.
    *
@@ -107,21 +137,14 @@ public class ContentDefinedChunker {
    * target is the average chunk size minus the skipped {@code minChunkSize}, divided by the
    * eight matches a boundary needs.
    *
-   * @param minChunkSize the minimum chunk size in bytes
-   * @param maxChunkSize the maximum chunk size in bytes
-   * @param normLevel the normalization level
+   * @param options the chunking options
    * @return the rolling hash mask
-   * @throws IllegalArgumentException if the arguments cannot produce a usable mask
+   * @throws IllegalArgumentException if the options cannot produce a usable mask
    */
-  public static long calculateMask(long minChunkSize, long maxChunkSize, int normLevel) {
-    Preconditions.checkArgument(
-        minChunkSize >= 0, "Invalid content defined chunking minimum chunk size (negative): %s", minChunkSize);
-    Preconditions.checkArgument(
-        maxChunkSize > minChunkSize,
-        "Invalid content defined chunking size range: maximum chunk size (%s) must be greater than minimum chunk size (%s)",
-        maxChunkSize,
-        minChunkSize);
-
+  public static long calculateMask(ContentDefinedChunkingOptions options) {
+    long minChunkSize = options.getMinChunkSize();
+    long maxChunkSize = options.getMaxChunkSize();
+    int normLevel = options.getNormLevel();
     // Halve before adding, so that the sum cannot overflow; the references do overflow there.
     long avgChunkSize = minChunkSize / 2 + maxChunkSize / 2 + (minChunkSize % 2 + maxChunkSize % 2) / 2;
     long targetSize = (avgChunkSize - minChunkSize) / GearHashTable.TABLE.length;
@@ -141,44 +164,60 @@ public class ContentDefinedChunker {
     return -1L << (Long.SIZE - effectiveBits);
   }
 
-  void roll(int value, int repetitionLevel, int definitionLevel) {
+  /**
+   * Rolls a triplet into the hash and answers whether it starts a new chunk, which only the first
+   * triplet of a record can; see {@link #needNewChunk()}.
+   *
+   * @param value the value of the triplet
+   * @param repetitionLevel the repetition level of the triplet
+   * @param definitionLevel the definition level of the triplet
+   * @return whether a chunk ends before the triplet
+   */
+  boolean startsNewChunk(int value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    roll(value, 4);
+    roll(value, byteWidth);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(long value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(long value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    roll(value, 8);
+    roll(value, byteWidth);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(float value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(float value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     // Raw bits: floatToIntBits canonicalizes NaN payloads and would diverge from the references.
     roll(Float.floatToRawIntBits(value), 4);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(double value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(double value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(Double.doubleToRawLongBits(value), 8);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(boolean value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(boolean value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     // One byte per boolean, not one bit, as the references hash it.
     roll(value ? 1 : 0, 1);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(Binary value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(Binary value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(value);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
   /**
    * Rolls the triplet of a null, which has no value to hash even when {@code definitionLevel ==
-   * maxDef}, as an omitted top-level required field does.
+   * maxDef}, as an omitted top-level required field does, and answers whether a chunk ends before it.
    */
-  void rollNull(int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
   /**
@@ -194,74 +233,17 @@ public class ContentDefinedChunker {
     }
   }
 
-  /**
-   * Whether the column writer should end its page before this triplet, which it asks before writing
-   * each one; {@code needNewPage(repetitionLevel, definitionLevel, writer)} asks for a null.
-   */
-  boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    rollNull(repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  /**
-   * At a record start, if a chunk ends there or a page limit is reached, counted from the page start
-   * so that it cuts in the same places after an edit. Asking consumes a match, so a match inside a
-   * record carries over to the next record start. A boundary on the first value of a page has no page
-   * to end.
-   */
-  private boolean pageEndsBefore(int repetitionLevel, ColumnWriterBase writer) {
-    if (repetitionLevel != 0) {
-      return false;
-    }
-    boolean chunkBoundary = needNewChunk();
-    return writer.getValueCount() > 0
-        && (chunkBoundary
-            || writer.getPageRowCount() >= pageRowCountLimit
-            || writer.getValueCount() >= pageValueCountThreshold
-            || writer.getCurrentPageBufferedSize() >= pageSizeThreshold);
-  }
-
-  /** Arrow C++ {@code Roll<kByteWidth>}: the {@code byteWidth} low-order bytes, little-endian. */
-  private void roll(long bits, int byteWidth) {
-    chunkSize += byteWidth;
+  /** Arrow C++ {@code Roll<kByteWidth>}: the {@code width} low-order bytes, little-endian. */
+  private void roll(long bits, int width) {
+    chunkSize += width;
     if (chunkSize < minChunkSize) {
       return;
     }
     long hash = rollingHash;
     boolean matched = hasMatched;
     long[] table = GearHashTable.TABLE[nthRun];
-    for (int i = 0; i < byteWidth; ++i) {
-      hash = (hash << 1) + table[(int) ((bits >>> (8 * i)) & 0xFF)];
+    for (int i = 0; i < width; ++i, bits >>>= 8) {
+      hash = (hash << 1) + table[(int) bits & 0xFF];
       matched |= (hash & rollingHashMask) == 0;
     }
     rollingHash = hash;
@@ -274,25 +256,23 @@ public class ContentDefinedChunker {
     if (chunkSize < minChunkSize) {
       return;
     }
-    // A view of the value's bytes, wherever they lie, not a copy.
-    ByteBuffer bytes = value.toByteBuffer();
-    long hash = rollingHash;
-    boolean matched = hasMatched;
-    long[] table = GearHashTable.TABLE[nthRun];
-    for (int i = bytes.position(); i < bytes.limit(); ++i) {
-      hash = (hash << 1) + table[bytes.get(i) & 0xFF];
-      matched |= (hash & rollingHashMask) == 0;
+    try {
+      // The value hands over its bytes as it does to the values writers, with no view or copy of a
+      // heap value allocated, even where several kinds of Binary reach this call.
+      value.writeTo(byteRoller);
+    } catch (IOException e) {
+      throw new ParquetEncodingException("could not hash bytes", e);
     }
-    rollingHash = hash;
-    hasMatched = matched;
   }
 
   /**
-   * Arrow C++ {@code NeedNewChunk}: a chunk ends after eight matches, each against the next gear
-   * hash table, which approximates a normal chunk size distribution; or at {@code maxChunkSize}.
-   * Neither resets the rolling hash, and the maximum size cut leaves the run counter alone.
+   * Arrow C++ {@code NeedNewChunk} and arrow-rs {@code need_new_chunk}: a chunk ends after eight
+   * matches, each against the next gear hash table, which approximates a normal chunk size
+   * distribution, or at {@code maxChunkSize}. Neither resets the rolling hash, and the maximum size cut
+   * leaves the run counter alone. Asked at record starts only, as they ask it, so a match or the maximum
+   * size reached inside a record is kept until the next one.
    */
-  boolean needNewChunk() {
+  private boolean needNewChunk() {
     if (hasMatched) {
       hasMatched = false;
       if (++nthRun >= GearHashTable.TABLE.length) {
@@ -306,43 +286,5 @@ public class ContentDefinedChunker {
       return true;
     }
     return false;
-  }
-
-  /** The chunker of a column without content defined chunking: it rolls nothing and ends no page. */
-  private static final class NoopChunker extends ContentDefinedChunker {
-    @Override
-    boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
   }
 }
