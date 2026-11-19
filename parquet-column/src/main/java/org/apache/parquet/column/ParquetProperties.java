@@ -371,15 +371,14 @@ public class ParquetProperties {
   }
 
   /**
-   * EXPERIMENTAL: Makes the column write store of one row group, continuing the content defined
-   * chunking of the file's previous row groups that shared {@code chunkers}. With content defined
-   * chunking enabled, every column write store must be made this way.
+   * EXPERIMENTAL: The column write store of a row group, continuing the chunking of the file's earlier
+   * row groups. Required with content defined chunking.
    *
    * @param schema the schema of the row group
    * @param pageStore the page store of the row group
    * @param bloomFilterWriteStore the bloom filter store of the row group
-   * @param chunkers the content defined chunkers of the file, or {@code null} without content defined
-   *     chunking, which ignores them
+   * @param chunkers the file's {@link ContentDefinedChunker#forColumns chunkers}, or {@code null}
+   *     without content defined chunking
    * @return the column write store
    */
   public ColumnWriteStore newColumnWriteStore(
@@ -424,7 +423,7 @@ public class ParquetProperties {
   }
 
   /**
-   * EXPERIMENTAL: Whether data page boundaries are derived from the content of the data.
+   * EXPERIMENTAL
    *
    * @return {@code true} if content defined chunking is enabled
    */
@@ -433,9 +432,9 @@ public class ParquetProperties {
   }
 
   /**
-   * EXPERIMENTAL: The content defined chunking options.
+   * EXPERIMENTAL
    *
-   * @return the chunking options, or {@code null} if content defined chunking is disabled
+   * @return the content defined chunking options, or {@code null} if it is disabled
    */
   public ContentDefinedChunkingOptions getContentDefinedChunkingOptions() {
     return contentDefinedChunkingOptions;
@@ -952,14 +951,11 @@ public class ParquetProperties {
     }
 
     /**
-     * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, such as
-     * {@link ContentDefinedChunkingOptions#DEFAULT}, or disable it with {@code null}. Disabled by default. The page size
-     * and row count limits still apply as without it, so page size cuts follow the page size check
-     * schedule and may move after an edit, unlike Arrow's, which count from the chunk start. Column
-     * write stores must then be made with
+     * EXPERIMENTAL: Enable content defined chunking of data pages, such as with
+     * {@link ContentDefinedChunkingOptions#DEFAULT}, or disable it with {@code null}, the default. The
+     * page size and row count limits still apply. Column write stores must then come from
      * {@link ParquetProperties#newColumnWriteStore(MessageType, PageWriteStore, BloomFilterWriteStore,
-     * List)}, passing every row group of a file the chunkers {@link ContentDefinedChunker#forColumns}
-     * made for it.
+     * List)}.
      *
      * @param options the chunking options, or {@code null} to disable content defined chunking
      * @return this builder for method chaining.

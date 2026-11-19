@@ -686,8 +686,7 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, or disable
-     * it with {@code null}; see {@link ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)}.
+     * EXPERIMENTAL: See {@link ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)}.
      *
      * @param options the chunking options, or {@code null} to disable content defined chunking
      * @return this builder for method chaining

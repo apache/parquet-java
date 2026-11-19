@@ -62,10 +62,8 @@ import org.junit.jupiter.params.ParameterizedClass;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Arrow C++'s {@code parquet/chunker_internal_test.cc}: tables generated as Arrow C++ generates them
- * are written with content defined chunking, and the pages read back are checked as Arrow C++ checks
- * them: the values of a page weigh between the minimum and the maximum chunk size, and an edit
- * changes only the pages around it.
+ * Arrow C++'s {@code parquet/chunker_internal_test.cc}: pages weigh between the minimum and maximum
+ * chunk size, and an edit changes only the pages around it.
  */
 public class TestContentDefinedChunking {
 
@@ -296,9 +294,9 @@ public class TestContentDefinedChunking {
     }
 
     /**
-     * Arrow C++'s AssertContentDefinedChunkSizes: the values of each page but the last weigh between
-     * the minimum and the maximum chunk size, as the chunker weighs them, and the last no more. Like
-     * Arrow C++, only for columns of a primitive type.
+     * Arrow C++'s AssertContentDefinedChunkSizes, for primitive columns only: with chunks of 4 to 16
+     * KiB, required int32 pages of 1024, 4096 and 100 values (4 KiB, 16 KiB, 400 B) pass, as only the
+     * last page may be under the minimum.
      */
     private void assertContentDefinedChunkSizes(Table table, List<Integer> pageLengths) {
       if (!(param.field() instanceof Primitive field)) {
@@ -330,10 +328,7 @@ public class TestContentDefinedChunking {
       assertThat(offset).as("values of the pages").isEqualTo(table.rows().size());
     }
 
-    /**
-     * How many values, levels rather than elements, an edit adds or removes: a null or empty list
-     * has a level, but no element.
-     */
+    /** How many levels an edit adds or removes: the lists null, [], [a] and [b, c, d] are 1 + 1 + 1 + 3. */
     private int editLength(Table edit) {
       if (!(param.field() instanceof ListOf field)) {
         return edit.rows().size();
@@ -478,13 +473,9 @@ public class TestContentDefinedChunking {
     }
 
     /**
-     * The pages of each row group of each column are those Arrow C++ writes for the same table. Arrow
-     * C++ keeps chunking across row groups since apache/arrow#51685, which no release has yet, so the
-     * page lengths come from a build of its main branch: {@code parquet::arrow::WriteTable} of the
-     * table, combined into one chunk, with row groups of 64Ki rows, a minimum chunk size of 64 KiB, a
-     * maximum of 256 KiB and normalization level 0, V1 data pages, no dictionary and no compression,
-     * and the data page size and rows per page limits lifted. The chunk sizes are larger than the
-     * other tests' to keep the page lengths few.
+     * The page lengths a build of Arrow C++'s main branch, which has the unreleased apache/arrow#51685,
+     * writes for this table: {@code WriteTable} with row groups of 64Ki rows, {@code CdcOptions{64 KiB,
+     * 256 KiB, 0}}, V1 pages, no dictionary or compression, and no page size or rows per page limit.
      */
     @Test
     public void pageLengthsMatchArrowCpp() throws IOException {
@@ -532,10 +523,9 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * The pages of a nullable list of strings and of NaNs of differing payloads are those Arrow C++
-   * writes for the same table, with chunks small enough that many end at the maximum chunk size. They
-   * come from the build and settings of {@link MultipleRowGroups#pageLengthsMatchArrowCpp}, with one
-   * row group, a minimum chunk size of 1 KiB, a maximum of 2 KiB and normalization level -1.
+   * As {@link MultipleRowGroups#pageLengthsMatchArrowCpp}, for a nullable list of strings and NaNs of
+   * differing payloads in one row group, with {@code CdcOptions{1 KiB, 2 KiB, -1}}, so that the NaN
+   * pages of 256 values end at the maximum chunk size.
    */
   @Test
   public void pageLengthsOfListsAndNaNsMatchArrowCpp() throws IOException {
@@ -555,6 +545,26 @@ public class TestContentDefinedChunking {
     assertThat(pageLengths(file, 1))
         .as("nan")
         .containsExactly(List.of(224, 233, 256, 217, 242, 256, 210, 221, 189));
+  }
+
+  /**
+   * The record writer's page size checks, which also flush held back nulls, only add page ends: with
+   * chunks ending after 100 and 250 values, pages may end after 40, 100, 180 and 250, never after 40,
+   * 120 and 250.
+   */
+  @Test
+  public void pageSizeCheckScheduleMovesNoChunkBoundary() throws Exception {
+    Table table =
+        generateTable(List.of(new ListOf("f0", new Primitive("element", Type.STRING, true), true)), 40_000, 0);
+    ContentDefinedChunkingOptions options = options(16 * 1024, 64 * 1024, 0);
+    Configuration conf = outputFormatConf(table.schema());
+    ParquetOutputFormat.setContentDefinedChunking(conf, options);
+    conf.setInt(ParquetOutputFormat.PAGE_SIZE, 8 * 1024);
+
+    List<Integer> chunks = pageEnds(writeTable(table, options, table.rows().size(), PARQUET_1_0), 0);
+    assertThat(pageEnds(writeThroughOutputFormat(conf, table, "scheduled"), 0))
+        .containsAll(chunks)
+        .hasSizeGreaterThan(2 * chunks.size());
   }
 
   @Test
@@ -597,11 +607,8 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * Arrow C++'s WriteTableToBuffer: writes the table with content defined chunking and, so that every
-   * page ends at a chunk or row group boundary, without the page size and row count limits. The rows
-   * read back must be the rows written. Unlike Arrow C++'s tests, which also check the dictionary page,
-   * only without dictionary encoding: the chunker weighs values before they are encoded, so the pages
-   * end at the same values with it.
+   * Arrow C++'s WriteTableToBuffer, checking that the rows read back are those written. Without page
+   * limits, pages end only at chunk and row group ends; dictionary encoding is off, as it moves none.
    */
   private Path writeTable(
       Table table, ContentDefinedChunkingOptions options, int rowGroupLength, WriterVersion version)
@@ -702,10 +709,10 @@ public class TestContentDefinedChunking {
     return ends;
   }
 
-  /** A run of page lengths of each sequence that differ, as git shows a hunk side by side. */
+  /** A run of page lengths that differ, like a hunk of a diff: [2, 3] to [7, 8]. */
   record ChunkDiff(List<Integer> first, List<Integer> second) {
 
-    /** How many values more the second sequence's pages hold. */
+    /** How many values the run gains: 10 from [2, 3] to [7, 8]. */
     int growth() {
       return second.stream().mapToInt(Integer::intValue).sum()
           - first.stream().mapToInt(Integer::intValue).sum();
@@ -713,9 +720,9 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * Arrow C++'s FindDifferences: the runs of page lengths that differ between two sequences, aligned
-   * by their longest common subsequence. An insertion-only run is merged with a following
-   * deletion-only one, and the other way around, so that one change is not split in two.
+   * Arrow C++'s FindDifferences, aligning the page lengths by their longest common subsequence: [1, 2,
+   * 3, 4, 5] and [1, 7, 8, 4, 5] differ in the run [2, 3] to [7, 8]. A run only inserting next to one
+   * only deleting is merged: [] to [9] and [6] to [] make [6] to [9].
    */
   static List<ChunkDiff> findDifferences(List<Integer> first, List<Integer> second) {
     int n = first.size();
@@ -772,8 +779,8 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * Arrow C++'s AssertPageLengthDifferences: the page lengths differ in exactly as many runs holding
-   * as many values, more values or fewer, and those holding more or fewer by the length of the edit.
+   * Arrow C++'s AssertPageLengthDifferences: deleting 128 values turns [100, 200, 300] into [100, 72,
+   * 300], so no run keeps its size, none grows and one shrinks, by the edit length.
    */
   private static void assertPageLengthDifferences(
       List<Integer> original,
@@ -796,8 +803,8 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * Arrow C++'s AssertPageLengthDifferences for updates, which shift no value: at most {@code
-   * maxEqualDiffs} runs, each holding as many values.
+   * Arrow C++'s AssertPageLengthDifferences for updates, which shift no value: [100, 200, 300] to [100,
+   * 150, 50, 300] is one run, holding as many values.
    */
   private static void assertPageLengthDifferences(List<Integer> original, List<Integer> modified, int maxEqualDiffs) {
     List<Integer> growths = findDifferences(original, modified).stream()
@@ -884,9 +891,8 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * A list field, of four lists over again: a null one, or an empty one if the field is not nullable,
-   * an empty one, one of an element and one of three. The elements are the next of the element field's
-   * values.
+   * A list field, its rows as Arrow C++ generates them: null, [], [e0], [e1, e2, e3], null, [], [e4],
+   * [e5, e6, e7] and so on, with [] for null if the field is not nullable.
    */
   record ListOf(String name, Field element, boolean nullable) implements Field {
 
@@ -928,9 +934,9 @@ public class TestContentDefinedChunking {
   }
 
   /**
-   * The primitive types, each with the value Arrow C++'s GenerateArray derives from a hash for the
-   * Arrow type that Arrow stores as it, and the width Arrow holds a value in, 0 for booleans and
-   * binaries.
+   * The primitive types, with the value Arrow C++'s GenerateArray derives from a hash and the width
+   * Arrow holds it in: INT16 appends {@code (short) hash} and weighs 2 bytes, as Arrow's int16. Booleans,
+   * which Arrow packs into bits, and binaries, whose width varies, weigh 0.
    */
   enum Type {
     BOOLEAN("boolean %s", 0, (group, field, value) -> group.append(field, (value & 1) == 0)),

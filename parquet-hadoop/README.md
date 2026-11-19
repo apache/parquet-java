@@ -286,18 +286,13 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 **Property:** `parquet.page.content-defined-chunking.enabled`  
 **Description:** EXPERIMENTAL: Whether data pages also end at boundaries derived from a rolling hash of the
-column's values, so that files sharing a run of values share pages that end at the same values, which a content
-addressable storage system can deduplicate. The files need no reader support. The boundaries are those Arrow C++
-and arrow-rs find for the same values; Arrow hashes some columns in another form than Parquet stores, such as
-decimals, INT96 timestamps and dictionary arrays, and chunks those differently. The page size and row count
-limits still end pages inside chunks, as they do without it. Row count cuts are counted from the page start and
-repeat after an edit, while page size cuts follow the page size check schedule, unlike Arrow's, which count from the
-chunk start, and may move, so pages the page size limit splits deduplicate less.  
-With dictionary encoding, pages hold dictionary indices numbered in the order values first appear in the row group,
-so an edit that adds values also changes the later pages of values first seen after it. And as parquet-java decides
-between dictionary and plain encoding on the first page of a column chunk, which chunking can make a few values
-long, as it continues across row groups, some column chunks fall back to plain encoding, where Arrow keeps the
-dictionary until it outgrows its size limit.  
+column's values, so that files sharing a run of values share pages, which content addressable storage can
+deduplicate. Readers need no support. The boundaries are those of Arrow C++ and arrow-rs for the same values,
+except where Arrow holds them in another form, such as decimals, INT96 and dictionary arrays. The page size and
+row count limits still apply; a page the size limit splits may deduplicate less, as the cut can move after an edit.  
+With dictionary encoding, an edit that adds values renumbers the indices of values first seen after it. As
+parquet-java chooses between dictionary and plain encoding on the first page of a column chunk, which chunking can
+cut short, some column chunks fall back to plain encoding.  
 **Default value:** `false`
 
 ---
@@ -318,9 +313,8 @@ when content defined chunking is enabled.
 
 **Property:** `parquet.page.content-defined-chunking.norm.level`  
 **Description:** EXPERIMENTAL: The normalization level of the rolling hash mask. Raising it makes chunk sizes
-more uniform at the cost of more small pages. The size range must be wide enough for it: at level 0 the maximum
-must exceed the minimum by at least 32 bytes, and each level up doubles that. Read only when content defined
-chunking is enabled.  
+more uniform at the cost of more small pages. At level 0, 1 or 2 the maximum must exceed the minimum by at least
+32, 64 or 128 bytes. Read only when content defined chunking is enabled.  
 **Default value:** `0`
 
 ---

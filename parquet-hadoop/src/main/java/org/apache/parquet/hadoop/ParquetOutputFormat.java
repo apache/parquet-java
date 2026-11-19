@@ -415,8 +415,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   /**
-   * EXPERIMENTAL: Enables content defined chunking of data pages with the given options, or disables it
-   * with {@code null}.
+   * EXPERIMENTAL: Enables content defined chunking of data pages, or disables it with {@code null}.
    *
    * @param jobContext the job context
    * @param options the chunking options, or {@code null} to disable content defined chunking
@@ -427,8 +426,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   /**
-   * EXPERIMENTAL: Enables content defined chunking of data pages with the given options, or disables it
-   * with {@code null}.
+   * EXPERIMENTAL: Enables content defined chunking of data pages, or disables it with {@code null}.
    *
    * @param conf the configuration
    * @param options the chunking options, or {@code null} to disable content defined chunking

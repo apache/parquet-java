@@ -23,20 +23,13 @@ import org.apache.parquet.column.impl.ContentDefinedChunker;
 
 /**
  * EXPERIMENTAL: Options of content defined chunking, which ends data pages at boundaries derived from
- * the column's values, so that files sharing a run of values share pages that end at the same values. Sizes are
- * measured on values and levels before encoding, a value at the width Arrow holds it in, so that one
- * of an INT(8) or INT(16) column counts 1 or 2 bytes although Parquet stores 4.
+ * the values, so that files sharing a run of values share pages. As Arrow C++ and arrow-rs
+ * {@code CdcOptions}, with the same defaults. Sizes count values and levels before encoding, at the
+ * width Arrow holds them in: an INT(16) value counts 2 bytes, although Parquet stores 4.
  *
- * <p>The settings and defaults match {@code CdcOptions} in Arrow C++ and arrow-rs, and so do the
- * chunk boundaries for the same values. Arrow hashes some columns in another form than Parquet stores,
- * such as decimals, INT96 timestamps and dictionary arrays, and chunks those differently.
- *
- * <p>With dictionary encoding, pages hold dictionary indices numbered in the order values first
- * appear in the row group, so an edit that adds values also changes the later pages of values first
- * seen after it. And as parquet-java decides between dictionary and plain encoding on the first page of
- * a column chunk, which chunking can make a few values long, as it continues across row groups, some
- * column chunks fall back to plain encoding, where Arrow keeps the dictionary until it outgrows its
- * size limit.
+ * <p>With dictionary encoding, an edit that adds values renumbers the indices of values first seen
+ * after it. As parquet-java chooses between dictionary and plain encoding on the first page of a column
+ * chunk, which chunking can cut short, some column chunks fall back to plain encoding.
  *
  * @see ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)
  */
@@ -142,8 +135,8 @@ public final class ContentDefinedChunkingOptions {
 
     /**
      * @return the options
-     * @throws IllegalArgumentException if the minimum chunk size is negative, the maximum is not
-     *     greater than the minimum, or the size range is too narrow for the normalization level
+     * @throws IllegalArgumentException if the minimum is negative, the maximum not above it, or the
+     *     range too narrow for the normalization level
      */
     public ContentDefinedChunkingOptions build() {
       return new ContentDefinedChunkingOptions(this);

@@ -32,23 +32,15 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
 /**
- * EXPERIMENTAL: Decides the content defined chunk boundaries of one leaf column for a whole file. The column writer
- * asks {@code startsNewChunk} with each triplet before writing it; the chunker rolls the triplet into
- * its hash and answers whether a chunk starts there, and the writer then ends its page. The page limits
- * end pages as they do without content defined chunking.
+ * EXPERIMENTAL: Decides the content defined chunk boundaries of one leaf column for a whole file: the
+ * column writer ends its page before a triplet {@code startsNewChunk} answers {@code true} for.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
- * whose boundaries it must reproduce for the same values. They hash a value as Arrow holds it in
- * memory, which for most columns is as Parquet stores it, but for an INT(8) or INT(16) in 1 or 2 bytes
- * rather than the 4 of an INT32; see {@code byteWidth}. Where Arrow holds a value otherwise, the
- * boundaries differ from Arrow's: a DECIMAL, which Arrow holds as a decimal128 or decimal256, and the
- * legacy INT96, which it holds as a timestamp in nanoseconds. So do those of an Arrow writer that
- * converts the values it is given before storing them, such as date64, time32[s] and timestamp[s],
- * and uint32 at Parquet format 1.0, or that is given a dictionary array, whose indices it hashes.
+ * with the same boundaries for the same values, except where Arrow holds them in another form, such as
+ * a DECIMAL, an INT96 or a dictionary array.
  *
- * <p>As in Arrow, the file writer owns the chunkers of a file, made by {@link #forColumns}, and lends
- * each row group's column writers theirs, so that the chunking continues across row groups. The class
- * is public only for the file writers of other modules; Arrow keeps it internal. Not thread safe.
+ * <p>The chunkers {@link #forColumns} makes continue across the row groups of a file. Public for the
+ * file writers of other modules only. Not thread safe.
  */
 public final class ContentDefinedChunker {
 
@@ -86,8 +78,7 @@ public final class ContentDefinedChunker {
   };
 
   /**
-   * EXPERIMENTAL: The content defined chunkers of a file, one per leaf column of {@code schema} in
-   * order, which every row group's column write store of the file continues.
+   * EXPERIMENTAL: The chunkers of a file, one per leaf column of {@code schema}, for every row group.
    *
    * @param schema the schema of the file
    * @param options the content defined chunking options of the file
@@ -109,12 +100,8 @@ public final class ContentDefinedChunker {
   }
 
   /**
-   * The width in bytes Arrow holds a value of an integer column in, as Arrow reads the column by
-   * default ({@code GetArrowType} in Arrow C++ {@code parquet/arrow/schema_internal.cc}): an INT32 or
-   * INT64 at its own width, but an INT(8) or INT(16) as an int8 or int16. Zero for other columns.
-   *
-   * @param type the type of the column
-   * @return the width Arrow holds a value in, or zero
+   * The bytes Arrow holds an integer in: 1 for an INT(8), 2 for an INT(16), 4 for other INT32s and 8 for
+   * INT64s. Zero for other columns.
    */
   private static int byteWidth(PrimitiveType type) {
     if (type.getLogicalTypeAnnotation() instanceof IntLogicalTypeAnnotation integer) {
@@ -128,18 +115,12 @@ public final class ContentDefinedChunker {
   }
 
   /**
-   * EXPERIMENTAL: Derives the rolling hash mask, rejecting options that cannot produce a usable one,
-   * which {@link ContentDefinedChunkingOptions} does when it is built. Ported from Arrow C++
-   * {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
-   * bit-identical to theirs.
-   *
-   * <p>A mask with the top {@code n} bits set matches a uniform hash with probability 1/2^n. The
-   * target is the average chunk size minus the skipped {@code minChunkSize}, divided by the
-   * eight matches a boundary needs.
+   * EXPERIMENTAL: The rolling hash mask, bit for bit as Arrow C++ {@code CalculateMask} derives it: the
+   * top 15 bits for the default 256 KiB to 1 MiB.
    *
    * @param options the chunking options
    * @return the rolling hash mask
-   * @throws IllegalArgumentException if the options cannot produce a usable mask
+   * @throws IllegalArgumentException if the mask would not have 1 to 63 bits
    */
   public static long calculateMask(ContentDefinedChunkingOptions options) {
     long minChunkSize = options.getMinChunkSize();
@@ -164,15 +145,7 @@ public final class ContentDefinedChunker {
     return -1L << (Long.SIZE - effectiveBits);
   }
 
-  /**
-   * Rolls a triplet into the hash and answers whether it starts a new chunk, which only the first
-   * triplet of a record can; see {@link #needNewChunk()}.
-   *
-   * @param value the value of the triplet
-   * @param repetitionLevel the repetition level of the triplet
-   * @param definitionLevel the definition level of the triplet
-   * @return whether a chunk ends before the triplet
-   */
+  /** Rolls a triplet into the hash and answers whether a chunk starts with it, as only a record's first can. */
   boolean startsNewChunk(int value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(value, byteWidth);
@@ -211,19 +184,13 @@ public final class ContentDefinedChunker {
     return repetitionLevel == 0 && needNewChunk();
   }
 
-  /**
-   * Rolls the triplet of a null, which has no value to hash even when {@code definitionLevel ==
-   * maxDef}, as an omitted top-level required field does, and answers whether a chunk ends before it.
-   */
+  /** The same for a triplet without a value: a null, or an omitted required field at {@code maxDef}. */
   boolean startsNewChunk(int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     return repetitionLevel == 0 && needNewChunk();
   }
 
-  /**
-   * The levels of a triplet as two bytes each, definition level first, as the references hash them,
-   * and only those the column has; Arrow C++ does this inline in {@code Calculate}.
-   */
+  /** The definition level, then the repetition level, as two bytes each, if the column has them. */
   private void rollLevels(int repetitionLevel, int definitionLevel) {
     if (maxDef > 0) {
       roll(definitionLevel, 2);
@@ -257,8 +224,7 @@ public final class ContentDefinedChunker {
       return;
     }
     try {
-      // The value hands over its bytes as it does to the values writers, with no view or copy of a
-      // heap value allocated, even where several kinds of Binary reach this call.
+      // Hands over a heap value's bytes without copying them, as to the values writers
       value.writeTo(byteRoller);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not hash bytes", e);
@@ -266,11 +232,8 @@ public final class ContentDefinedChunker {
   }
 
   /**
-   * Arrow C++ {@code NeedNewChunk} and arrow-rs {@code need_new_chunk}: a chunk ends after eight
-   * matches, each against the next gear hash table, which approximates a normal chunk size
-   * distribution, or at {@code maxChunkSize}. Neither resets the rolling hash, and the maximum size cut
-   * leaves the run counter alone. Asked at record starts only, as they ask it, so a match or the maximum
-   * size reached inside a record is kept until the next one.
+   * Arrow C++ {@code NeedNewChunk}: a chunk ends after a match against each of the eight gear hash
+   * tables in turn, or at {@code maxChunkSize}, which leaves the run counter alone.
    */
   private boolean needNewChunk() {
     if (hasMatched) {
