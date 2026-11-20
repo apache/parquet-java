@@ -2283,6 +2283,14 @@ public class ParquetFileReader implements Closeable {
       org.apache.parquet.column.statistics.Statistics<?> statistics =
           converter.fromParquetStatistics(getFileMetaData().getCreatedBy(), header.getStatistics(), type);
 
+      BytesInput pageBytes = this.readAsBytesInput(compressedPageSize);
+      if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+        verifyCrc(
+            pageHeader.getCrc(),
+            "could not verify page integrity, CRC checksum verification failed",
+            pageBytes);
+      }
+
       if (encryptedColumn && repetitionLevelsByteLength + definitionLevelsByteLength != 0) {
         if (repetitionLevelsByteLength < 0
             || definitionLevelsByteLength < 0
@@ -2295,46 +2303,16 @@ public class ParquetFileReader implements Closeable {
               + " bytes, of " + uncompressedPageSize + " bytes uncompressed");
         }
         int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
-        BytesInput pageBytes = this.readAsBytesInput(compressedPageSize);
-        if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-          verifyCrc(
-              pageHeader.getCrc(),
-              "could not verify page integrity, CRC checksum verification failed",
-              pageBytes);
-        }
-        switch (SingleModuleDataPageV2.detectLayout(
-            pageBytes, levelsByteLength, getFileMetaData().getCreatedBy())) {
-          case PLAINTEXT_LEVELS:
-            return pageWithPlaintextLevels(pageHeader, pageBytes, encoding, statistics);
-          case SINGLE_MODULE:
-          default:
-            return singleModulePage(pageHeader, pageBytes, encoding, statistics);
+        SingleModuleDataPageV2.Layout layout = SingleModuleDataPageV2.detectLayout(
+            pageBytes, levelsByteLength, getFileMetaData().getCreatedBy());
+        if (layout == SingleModuleDataPageV2.Layout.SINGLE_MODULE) {
+          return singleModulePage(pageHeader, pageBytes, encoding, statistics);
+        } else if (layout == SingleModuleDataPageV2.Layout.PLAINTEXT_LEVELS) {
+          return pageWithPlaintextLevels(pageHeader, pageBytes, encoding, statistics);
         }
       }
 
-      int dataSize = compressedPageSize - repetitionLevelsByteLength - definitionLevelsByteLength;
-      BytesInput repetitionLevels = this.readAsBytesInput(repetitionLevelsByteLength);
-      BytesInput definitionLevels = this.readAsBytesInput(definitionLevelsByteLength);
-      BytesInput values = this.readAsBytesInput(dataSize);
-      if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-        verifyCrc(
-            pageHeader.getCrc(),
-            "could not verify page integrity, CRC checksum verification failed",
-            repetitionLevels,
-            definitionLevels,
-            values);
-      }
-      return new DataPageV2(
-          header.getNum_rows(),
-          header.getNum_nulls(),
-          header.getNum_values(),
-          repetitionLevels,
-          definitionLevels,
-          encoding,
-          values,
-          uncompressedPageSize,
-          statistics,
-          header.isIs_compressed());
+      return pageWithPlaintextLevels(pageHeader, pageBytes, encoding, statistics);
     }
 
     /** Splits the plaintext levels off the front of the bytes after a page header. */
