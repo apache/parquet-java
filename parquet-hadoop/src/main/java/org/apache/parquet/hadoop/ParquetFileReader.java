@@ -2303,12 +2303,12 @@ public class ParquetFileReader implements Closeable {
               + " bytes, of " + uncompressedPageSize + " bytes uncompressed");
         }
         int levelsByteLength = repetitionLevelsByteLength + definitionLevelsByteLength;
-        SingleModuleDataPageV2.Layout layout = SingleModuleDataPageV2.detectLayout(
-            pageBytes, levelsByteLength, getFileMetaData().getCreatedBy());
-        if (layout == SingleModuleDataPageV2.Layout.SINGLE_MODULE) {
-          return singleModulePage(pageHeader, pageBytes, encoding, statistics);
-        } else if (layout == SingleModuleDataPageV2.Layout.PLAINTEXT_LEVELS) {
-          return pageWithPlaintextLevels(pageHeader, pageBytes, encoding, statistics);
+        switch (SingleModuleDataPageV2.detectLayout(
+            pageBytes, levelsByteLength, getFileMetaData().getCreatedBy())) {
+          case SINGLE_MODULE:
+            return singleModulePage(pageHeader, pageBytes, encoding, statistics);
+          case PLAINTEXT_LEVELS:
+            return pageWithPlaintextLevels(pageHeader, pageBytes, encoding, statistics);
         }
       }
 
