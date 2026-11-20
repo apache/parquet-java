@@ -514,7 +514,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof ListLogicalTypeAnnotation && !(obj instanceof FiniteVectorLogicalTypeAnnotation);
+      return obj != null && obj.getClass() == ListLogicalTypeAnnotation.class;
     }
 
     @Override
@@ -524,6 +524,11 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  /**
+   * Each non-null vector must contain exactly numElements non-null, finite elements. Writers are
+   * responsible for meeting these requirements. Record readers validate vector lengths but do not
+   * check finiteness.
+   */
   public static class FiniteVectorLogicalTypeAnnotation extends ListLogicalTypeAnnotation {
     private final int numElements;
 
