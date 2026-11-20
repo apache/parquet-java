@@ -84,16 +84,18 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
       State currentState = getState(0);
       do {
         ColumnReader columnReader = currentState.column;
+        int d = columnReader.getCurrentDefinitionLevel();
 
         // currentLevel = depth + 1 at this point
         // set the current value
-        if (columnReader.getCurrentDefinitionLevel() >= currentState.maxDefinitionLevel) {
+        if (d >= currentState.maxDefinitionLevel) {
           columnReader.skip();
         }
         columnReader.consume();
 
         // Based on repetition level work out next state to go to
         int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
+        currentState.validateVector(d, nextR);
         currentState = currentState.getNextState(nextR);
       } while (currentState != null);
       ++recordsRead;
