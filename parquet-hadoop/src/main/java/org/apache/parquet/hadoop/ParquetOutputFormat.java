@@ -539,15 +539,20 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .withStatisticsEnabled(getStatisticsEnabled(conf))
-        .withContentDefinedChunking(conf.getBoolean(CONTENT_DEFINED_CHUNKING_ENABLED, false))
-        .withContentDefinedChunkingMinSize(conf.getLong(
-            CONTENT_DEFINED_CHUNKING_MIN_SIZE, ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_MIN_SIZE))
-        .withContentDefinedChunkingMaxSize(conf.getLong(
-            CONTENT_DEFINED_CHUNKING_MAX_SIZE, ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_MAX_SIZE))
-        .withContentDefinedChunkingNormLevel(conf.getInt(
-            CONTENT_DEFINED_CHUNKING_NORM_LEVEL,
-            ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_NORM_LEVEL));
+        .withStatisticsEnabled(getStatisticsEnabled(conf));
+    if (conf.getBoolean(CONTENT_DEFINED_CHUNKING_ENABLED, false)) {
+      propsBuilder
+          .withContentDefinedChunking(true)
+          .withContentDefinedChunkingMinSize(conf.getLong(
+              CONTENT_DEFINED_CHUNKING_MIN_SIZE,
+              ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_MIN_SIZE))
+          .withContentDefinedChunkingMaxSize(conf.getLong(
+              CONTENT_DEFINED_CHUNKING_MAX_SIZE,
+              ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_MAX_SIZE))
+          .withContentDefinedChunkingNormLevel(conf.getInt(
+              CONTENT_DEFINED_CHUNKING_NORM_LEVEL,
+              ParquetProperties.DEFAULT_CONTENT_DEFINED_CHUNKING_NORM_LEVEL));
+    }
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)

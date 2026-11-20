@@ -548,6 +548,18 @@ public class TestContentDefinedChunking {
   }
 
   /**
+   * A chunk may end before the first value of a page, which leaves no page to end: 16-byte values end a
+   * chunk of at most 16 bytes before each value, so row groups of 5 values make 5 pages of 1 value.
+   */
+  @Test
+  public void chunkEndingBeforeAPageStartsWritesNoEmptyPage() throws IOException {
+    Table table = generateTable(List.of(new Primitive("f0", Type.FIXED_LEN_BYTE_ARRAY, false)), 10, 0);
+    Path file = writeTable(table, new CdcOptions(0, 16, -1), 5, PARQUET_1_0);
+
+    assertThat(pageLengths(file, 0)).containsExactly(List.of(1, 1, 1, 1, 1), List.of(1, 1, 1, 1, 1));
+  }
+
+  /**
    * The record writer's page size checks, which also flush held back nulls, only add page ends: with
    * chunks ending after 100 and 250 values, pages may end after 40, 100, 180 and 250, never after 40,
    * 120 and 250.
@@ -569,15 +581,17 @@ public class TestContentDefinedChunking {
         .hasSizeGreaterThan(2 * chunks.size());
   }
 
+  /** Chunk sizes such as "8m", which the keys do not accept, or a minimum above the maximum. */
   @Test
   public void invalidOptionsFailOnlyWhileEnabled() {
     Table empty = generateTable(List.of(new Primitive("f0", Type.INT32, false)), 0, 0);
     Configuration conf = outputFormatConf(empty.schema());
-    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, 8 * 1024 * 1024);
+    conf.set(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, "8m");
 
     conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, false);
     assertThatCode(() -> writeThroughOutputFormat(conf, empty, "off")).doesNotThrowAnyException();
 
+    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, 8 * 1024 * 1024);
     conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, true);
     assertThatThrownBy(() -> writeThroughOutputFormat(conf, empty, "on"))
         .isInstanceOf(IllegalArgumentException.class)
