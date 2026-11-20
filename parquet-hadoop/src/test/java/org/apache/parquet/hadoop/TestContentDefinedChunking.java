@@ -38,7 +38,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.PageReadStore;
@@ -142,7 +141,7 @@ public class TestContentDefinedChunking {
 
     private static final int PART_SIZE = 128 * 1024;
     private static final int EDIT_SIZE = 128;
-    private static final ContentDefinedChunkingOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
+    private static final CdcOptions OPTIONS = new CdcOptions(4 * 1024, 16 * 1024, 0);
     private static final int ROW_GROUP_LENGTH = 1024 * 1024;
 
     private final Case param;
@@ -320,9 +319,9 @@ public class TestContentDefinedChunking {
         if (page < pageLengths.size() - 1) {
           assertThat(size)
               .as("chunk size of page %s", page)
-              .isBetween(OPTIONS.getMinChunkSize(), OPTIONS.getMaxChunkSize());
+              .isBetween(OPTIONS.minChunkSize(), OPTIONS.maxChunkSize());
         } else {
-          assertThat(size).as("chunk size of the last page").isLessThanOrEqualTo(OPTIONS.getMaxChunkSize());
+          assertThat(size).as("chunk size of the last page").isLessThanOrEqualTo(OPTIONS.maxChunkSize());
         }
       }
       assertThat(offset).as("values of the pages").isEqualTo(table.rows().size());
@@ -351,7 +350,7 @@ public class TestContentDefinedChunking {
     private static final int PART_LENGTH = 128 * 1024;
     private static final int EDIT_LENGTH = 128;
     private static final int ROW_GROUP_LENGTH = 64 * 1024;
-    private static final ContentDefinedChunkingOptions OPTIONS = options(4 * 1024, 16 * 1024, 0);
+    private static final CdcOptions OPTIONS = new CdcOptions(4 * 1024, 16 * 1024, 0);
 
     private final List<Field> fields = List.of(
         new Primitive("int32", Type.INT32, true),
@@ -481,7 +480,7 @@ public class TestContentDefinedChunking {
     public void pageLengthsMatchArrowCpp() throws IOException {
       Path file = writeTable(
           Table.concat(part1, edit1, part2, part3),
-          options(64 * 1024, 256 * 1024, 0),
+          new CdcOptions(64 * 1024, 256 * 1024, 0),
           ROW_GROUP_LENGTH,
           PARQUET_1_0);
 
@@ -535,7 +534,8 @@ public class TestContentDefinedChunking {
             new Primitive("nan", Type.NAN, false)),
         2048,
         0);
-    Path file = writeTable(table, options(1024, 2048, -1), table.rows().size(), PARQUET_1_0);
+    Path file =
+        writeTable(table, new CdcOptions(1024, 2048, -1), table.rows().size(), PARQUET_1_0);
 
     assertThat(pageLengths(file, 0))
         .as("strings")
@@ -556,9 +556,11 @@ public class TestContentDefinedChunking {
   public void pageSizeCheckScheduleMovesNoChunkBoundary() throws Exception {
     Table table =
         generateTable(List.of(new ListOf("f0", new Primitive("element", Type.STRING, true), true)), 40_000, 0);
-    ContentDefinedChunkingOptions options = options(16 * 1024, 64 * 1024, 0);
+    CdcOptions options = new CdcOptions(16 * 1024, 64 * 1024, 0);
     Configuration conf = outputFormatConf(table.schema());
-    ParquetOutputFormat.setContentDefinedChunking(conf, options);
+    conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, true);
+    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, options.minChunkSize());
+    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MAX_SIZE, options.maxChunkSize());
     conf.setInt(ParquetOutputFormat.PAGE_SIZE, 8 * 1024);
 
     List<Integer> chunks = pageEnds(writeTable(table, options, table.rows().size(), PARQUET_1_0), 0);
@@ -588,8 +590,11 @@ public class TestContentDefinedChunking {
   public void configurationKeysReachTheWriter() throws Exception {
     Table table = generateTable(List.of(new Primitive("f0", Type.STRING, true)), 40_000, 0);
     Configuration conf = outputFormatConf(table.schema());
-    ContentDefinedChunkingOptions options = options(16 * 1024, 64 * 1024, 1);
-    ParquetOutputFormat.setContentDefinedChunking(conf, options);
+    CdcOptions options = new CdcOptions(16 * 1024, 64 * 1024, 1);
+    conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, true);
+    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MIN_SIZE, options.minChunkSize());
+    conf.setLong(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_MAX_SIZE, options.maxChunkSize());
+    conf.setInt(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_NORM_LEVEL, options.normLevel());
 
     List<List<Integer>> pages = pageLengths(writeThroughOutputFormat(conf, table, "configured"), 0);
     assertThat(pages)
@@ -597,7 +602,7 @@ public class TestContentDefinedChunking {
             pageLengths(writeTable(table, options, table.rows().size(), PARQUET_1_0), 0));
     assertThat(pages.get(0)).hasSizeGreaterThan(1);
 
-    ParquetOutputFormat.setContentDefinedChunking(conf, null);
+    conf.setBoolean(ParquetOutputFormat.CONTENT_DEFINED_CHUNKING_ENABLED, false);
     assertThat(pageLengths(writeThroughOutputFormat(conf, table, "unconfigured"), 0))
         .containsExactly(List.of(table.rows().size()));
   }
@@ -610,13 +615,15 @@ public class TestContentDefinedChunking {
    * Arrow C++'s WriteTableToBuffer, checking that the rows read back are those written. Without page
    * limits, pages end only at chunk and row group ends; dictionary encoding is off, as it moves none.
    */
-  private Path writeTable(
-      Table table, ContentDefinedChunkingOptions options, int rowGroupLength, WriterVersion version)
+  private Path writeTable(Table table, CdcOptions options, int rowGroupLength, WriterVersion version)
       throws IOException {
     Path file = path(UUID.randomUUID().toString());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(file))
         .withType(table.schema())
-        .withContentDefinedChunking(options)
+        .withContentDefinedChunking(true)
+        .withContentDefinedChunkingMinSize(options.minChunkSize())
+        .withContentDefinedChunkingMaxSize(options.maxChunkSize())
+        .withContentDefinedChunkingNormLevel(options.normLevel())
         .withRowGroupRowCountLimit(rowGroupLength)
         .withDictionaryEncoding(false)
         .withWriterVersion(version)
@@ -664,13 +671,8 @@ public class TestContentDefinedChunking {
     return file;
   }
 
-  private static ContentDefinedChunkingOptions options(long min, long max, int normLevel) {
-    return ContentDefinedChunkingOptions.builder()
-        .withMinChunkSize(min)
-        .withMaxChunkSize(max)
-        .withNormLevel(normLevel)
-        .build();
-  }
+  /** Arrow C++'s CdcOptions. */
+  record CdcOptions(long minChunkSize, long maxChunkSize, int normLevel) {}
 
   /**
    * Arrow C++'s GetColumnParquetInfo: the value counts of the data pages of a column, in each row

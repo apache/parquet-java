@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ContentDefinedChunkingOptions;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
@@ -81,19 +81,19 @@ public final class ContentDefinedChunker {
    * EXPERIMENTAL: The chunkers of a file, one per leaf column of {@code schema}, for every row group.
    *
    * @param schema the schema of the file
-   * @param options the content defined chunking options of the file
+   * @param props the properties of the file
    * @return the chunkers
    */
-  public static List<ContentDefinedChunker> forColumns(MessageType schema, ContentDefinedChunkingOptions options) {
+  public static List<ContentDefinedChunker> forColumns(MessageType schema, ParquetProperties props) {
     return schema.getColumns().stream()
-        .map(path -> new ContentDefinedChunker(path, options))
+        .map(path -> new ContentDefinedChunker(path, props))
         .collect(Collectors.toList());
   }
 
-  ContentDefinedChunker(ColumnDescriptor path, ContentDefinedChunkingOptions options) {
-    this.minChunkSize = options.getMinChunkSize();
-    this.maxChunkSize = options.getMaxChunkSize();
-    this.rollingHashMask = calculateMask(options);
+  ContentDefinedChunker(ColumnDescriptor path, ParquetProperties props) {
+    this.minChunkSize = props.getContentDefinedChunkingMinSize();
+    this.maxChunkSize = props.getContentDefinedChunkingMaxSize();
+    this.rollingHashMask = calculateMask(minChunkSize, maxChunkSize, props.getContentDefinedChunkingNormLevel());
     this.maxDef = path.getMaxDefinitionLevel();
     this.maxRep = path.getMaxRepetitionLevel();
     this.byteWidth = byteWidth(path.getPrimitiveType());
@@ -118,14 +118,21 @@ public final class ContentDefinedChunker {
    * EXPERIMENTAL: The rolling hash mask, bit for bit as Arrow C++ {@code CalculateMask} derives it: the
    * top 15 bits for the default 256 KiB to 1 MiB.
    *
-   * @param options the chunking options
+   * @param minChunkSize the minimum chunk size in bytes
+   * @param maxChunkSize the maximum chunk size in bytes
+   * @param normLevel the normalization level
    * @return the rolling hash mask
-   * @throws IllegalArgumentException if the mask would not have 1 to 63 bits
+   * @throws IllegalArgumentException if the minimum is negative, the maximum not above it, or the
+   *     mask would not have 1 to 63 bits
    */
-  public static long calculateMask(ContentDefinedChunkingOptions options) {
-    long minChunkSize = options.getMinChunkSize();
-    long maxChunkSize = options.getMaxChunkSize();
-    int normLevel = options.getNormLevel();
+  public static long calculateMask(long minChunkSize, long maxChunkSize, int normLevel) {
+    Preconditions.checkArgument(
+        minChunkSize >= 0, "Invalid content defined chunking minimum chunk size (negative): %s", minChunkSize);
+    Preconditions.checkArgument(
+        maxChunkSize > minChunkSize,
+        "Invalid content defined chunking size range: maximum chunk size (%s) must be greater than minimum chunk size (%s)",
+        maxChunkSize,
+        minChunkSize);
     // Halve before adding, so that the sum cannot overflow; the references do overflow there.
     long avgChunkSize = minChunkSize / 2 + maxChunkSize / 2 + (minChunkSize % 2 + maxChunkSize % 2) / 2;
     long targetSize = (avgChunkSize - minChunkSize) / GearHashTable.TABLE.length;

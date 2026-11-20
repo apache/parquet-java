@@ -26,7 +26,6 @@ import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.values.alp.AlpConfig;
@@ -686,13 +685,46 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * EXPERIMENTAL: See {@link ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)}.
+     * EXPERIMENTAL: See {@link ParquetProperties.Builder#withContentDefinedChunking(boolean)}.
      *
-     * @param options the chunking options, or {@code null} to disable content defined chunking
+     * @param enabled whether to enable content defined chunking
      * @return this builder for method chaining
      */
-    public SELF withContentDefinedChunking(ContentDefinedChunkingOptions options) {
-      encodingPropsBuilder.withContentDefinedChunking(options);
+    public SELF withContentDefinedChunking(boolean enabled) {
+      encodingPropsBuilder.withContentDefinedChunking(enabled);
+      return self();
+    }
+
+    /**
+     * EXPERIMENTAL: See {@link ParquetProperties.Builder#withContentDefinedChunkingMinSize(long)}.
+     *
+     * @param minSize the minimum chunk size in bytes
+     * @return this builder for method chaining
+     */
+    public SELF withContentDefinedChunkingMinSize(long minSize) {
+      encodingPropsBuilder.withContentDefinedChunkingMinSize(minSize);
+      return self();
+    }
+
+    /**
+     * EXPERIMENTAL: See {@link ParquetProperties.Builder#withContentDefinedChunkingMaxSize(long)}.
+     *
+     * @param maxSize the maximum chunk size in bytes
+     * @return this builder for method chaining
+     */
+    public SELF withContentDefinedChunkingMaxSize(long maxSize) {
+      encodingPropsBuilder.withContentDefinedChunkingMaxSize(maxSize);
+      return self();
+    }
+
+    /**
+     * EXPERIMENTAL: See {@link ParquetProperties.Builder#withContentDefinedChunkingNormLevel(int)}.
+     *
+     * @param normLevel the normalization level
+     * @return this builder for method chaining
+     */
+    public SELF withContentDefinedChunkingNormLevel(int normLevel) {
+      encodingPropsBuilder.withContentDefinedChunkingNormLevel(normLevel);
       return self();
     }
 

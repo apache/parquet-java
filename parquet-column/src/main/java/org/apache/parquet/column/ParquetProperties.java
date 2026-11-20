@@ -74,6 +74,9 @@ public class ParquetProperties {
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
+  public static final long DEFAULT_CONTENT_DEFINED_CHUNKING_MIN_SIZE = 256 * 1024;
+  public static final long DEFAULT_CONTENT_DEFINED_CHUNKING_MAX_SIZE = 1024 * 1024;
+  public static final int DEFAULT_CONTENT_DEFINED_CHUNKING_NORM_LEVEL = 0;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -146,7 +149,10 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> sizeStatistics;
   private final ColumnProperty<CompressionCodecName> columnCodecs;
   private final ColumnProperty<Integer> columnCompressionLevels;
-  private final ContentDefinedChunkingOptions contentDefinedChunkingOptions;
+  private final boolean contentDefinedChunkingEnabled;
+  private final long contentDefinedChunkingMinSize;
+  private final long contentDefinedChunkingMaxSize;
+  private final int contentDefinedChunkingNormLevel;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -182,7 +188,15 @@ public class ParquetProperties {
     this.sizeStatistics = builder.sizeStatistics.build();
     this.columnCodecs = builder.columnCodecs.build();
     this.columnCompressionLevels = builder.columnCompressionLevels.build();
-    this.contentDefinedChunkingOptions = builder.contentDefinedChunkingOptions;
+    this.contentDefinedChunkingEnabled = builder.contentDefinedChunkingEnabled;
+    this.contentDefinedChunkingMinSize = builder.contentDefinedChunkingMinSize;
+    this.contentDefinedChunkingMaxSize = builder.contentDefinedChunkingMaxSize;
+    this.contentDefinedChunkingNormLevel = builder.contentDefinedChunkingNormLevel;
+    if (contentDefinedChunkingEnabled) {
+      // Rejected here rather than once a writer has opened its file
+      ContentDefinedChunker.calculateMask(
+          contentDefinedChunkingMinSize, contentDefinedChunkingMaxSize, contentDefinedChunkingNormLevel);
+    }
   }
 
   public static Builder builder() {
@@ -428,16 +442,34 @@ public class ParquetProperties {
    * @return {@code true} if content defined chunking is enabled
    */
   public boolean isContentDefinedChunkingEnabled() {
-    return contentDefinedChunkingOptions != null;
+    return contentDefinedChunkingEnabled;
   }
 
   /**
    * EXPERIMENTAL
    *
-   * @return the content defined chunking options, or {@code null} if it is disabled
+   * @return the minimum content defined chunk size in bytes
    */
-  public ContentDefinedChunkingOptions getContentDefinedChunkingOptions() {
-    return contentDefinedChunkingOptions;
+  public long getContentDefinedChunkingMinSize() {
+    return contentDefinedChunkingMinSize;
+  }
+
+  /**
+   * EXPERIMENTAL
+   *
+   * @return the maximum content defined chunk size in bytes
+   */
+  public long getContentDefinedChunkingMaxSize() {
+    return contentDefinedChunkingMaxSize;
+  }
+
+  /**
+   * EXPERIMENTAL
+   *
+   * @return the normalization level of the content defined chunking's rolling hash mask
+   */
+  public int getContentDefinedChunkingNormLevel() {
+    return contentDefinedChunkingNormLevel;
   }
 
   public int getPageRowCountLimit() {
@@ -535,7 +567,10 @@ public class ParquetProperties {
         + "Bloom filter false positive probabilities are: " + bloomFilterFPPs + '\n'
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Content defined chunking is: "
-        + (contentDefinedChunkingOptions != null ? contentDefinedChunkingOptions : "off")
+        + (contentDefinedChunkingEnabled
+            ? contentDefinedChunkingMinSize + " to " + contentDefinedChunkingMaxSize
+                + " bytes, normalization level " + contentDefinedChunkingNormLevel
+            : "off")
         + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
@@ -586,7 +621,10 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
     private final ColumnProperty.Builder<CompressionCodecName> columnCodecs;
     private final ColumnProperty.Builder<Integer> columnCompressionLevels;
-    private ContentDefinedChunkingOptions contentDefinedChunkingOptions;
+    private boolean contentDefinedChunkingEnabled;
+    private long contentDefinedChunkingMinSize = DEFAULT_CONTENT_DEFINED_CHUNKING_MIN_SIZE;
+    private long contentDefinedChunkingMaxSize = DEFAULT_CONTENT_DEFINED_CHUNKING_MAX_SIZE;
+    private int contentDefinedChunkingNormLevel = DEFAULT_CONTENT_DEFINED_CHUNKING_NORM_LEVEL;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -640,7 +678,10 @@ public class ParquetProperties {
       this.sizeStatisticsEnabled = toCopy.sizeStatisticsEnabled;
       this.columnCodecs = ColumnProperty.builder(toCopy.columnCodecs);
       this.columnCompressionLevels = ColumnProperty.builder(toCopy.columnCompressionLevels);
-      this.contentDefinedChunkingOptions = toCopy.contentDefinedChunkingOptions;
+      this.contentDefinedChunkingEnabled = toCopy.contentDefinedChunkingEnabled;
+      this.contentDefinedChunkingMinSize = toCopy.contentDefinedChunkingMinSize;
+      this.contentDefinedChunkingMaxSize = toCopy.contentDefinedChunkingMaxSize;
+      this.contentDefinedChunkingNormLevel = toCopy.contentDefinedChunkingNormLevel;
     }
 
     /**
@@ -951,17 +992,57 @@ public class ParquetProperties {
     }
 
     /**
-     * EXPERIMENTAL: Enable content defined chunking of data pages, such as with
-     * {@link ContentDefinedChunkingOptions#DEFAULT}, or disable it with {@code null}, the default. The
-     * page size and row count limits still apply. Column write stores must then come from
+     * EXPERIMENTAL: Enable or disable content defined chunking, which also ends data pages where a
+     * rolling hash of the values matches, as Arrow C++ and arrow-rs do, so that files sharing a run of
+     * values share pages. Disabled by default. The page size and row count limits still apply. Column
+     * write stores must then come from
      * {@link ParquetProperties#newColumnWriteStore(MessageType, PageWriteStore, BloomFilterWriteStore,
-     * List)}.
+     * List)}, and {@link #build()} rejects an invalid chunk size range.
      *
-     * @param options the chunking options, or {@code null} to disable content defined chunking
+     * <p>With dictionary encoding, an edit that adds values renumbers the indices of values first seen
+     * after it. As parquet-java chooses between dictionary and plain encoding on the first page of a
+     * column chunk, which chunking can cut short, some column chunks fall back to plain encoding.
+     *
+     * @param enabled whether to enable content defined chunking
      * @return this builder for method chaining.
      */
-    public Builder withContentDefinedChunking(ContentDefinedChunkingOptions options) {
-      this.contentDefinedChunkingOptions = options;
+    public Builder withContentDefinedChunking(boolean enabled) {
+      this.contentDefinedChunkingEnabled = enabled;
+      return this;
+    }
+
+    /**
+     * EXPERIMENTAL: Set the minimum content defined chunk size, 256 KiB by default. Sizes count values
+     * and levels before encoding, at the width Arrow holds them in: an INT(16) value counts 2 bytes.
+     *
+     * @param minSize the minimum chunk size in bytes
+     * @return this builder for method chaining.
+     */
+    public Builder withContentDefinedChunkingMinSize(long minSize) {
+      this.contentDefinedChunkingMinSize = minSize;
+      return this;
+    }
+
+    /**
+     * EXPERIMENTAL: Set the maximum content defined chunk size, 1 MiB by default.
+     *
+     * @param maxSize the maximum chunk size in bytes
+     * @return this builder for method chaining.
+     */
+    public Builder withContentDefinedChunkingMaxSize(long maxSize) {
+      this.contentDefinedChunkingMaxSize = maxSize;
+      return this;
+    }
+
+    /**
+     * EXPERIMENTAL: Set the normalization level of the content defined chunking's rolling hash mask, 0
+     * by default. Raising it makes chunk sizes more uniform at the cost of more small pages.
+     *
+     * @param normLevel the normalization level
+     * @return this builder for method chaining.
+     */
+    public Builder withContentDefinedChunkingNormLevel(int normLevel) {
+      this.contentDefinedChunkingNormLevel = normLevel;
       return this;
     }
 

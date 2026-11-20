@@ -18,12 +18,12 @@
  */
 package org.apache.parquet.column.impl;
 
+import static org.apache.parquet.column.impl.ContentDefinedChunker.calculateMask;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
-import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.schema.MessageType;
@@ -48,7 +48,7 @@ public class TestContentDefinedChunker {
     "0, 128, 2"
   })
   public void chunkSizeParametersAreAccepted(long min, long max, int normLevel) {
-    assertThatCode(() -> options(min, max, normLevel)).doesNotThrowAnyException();
+    assertThatCode(() -> properties(min, max, normLevel)).doesNotThrowAnyException();
   }
 
   /** With norm level 0, 1 or 2 the maximum must exceed the minimum by at least 32, 64 or 128 bytes. */
@@ -71,7 +71,7 @@ public class TestContentDefinedChunker {
     "0, 123, 2"
   })
   public void chunkSizeParametersAreRejected(long min, long max, int normLevel) {
-    assertThatThrownBy(() -> options(min, max, normLevel))
+    assertThatThrownBy(() -> properties(min, max, normLevel))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("content defined chunking");
   }
@@ -80,31 +80,31 @@ public class TestContentDefinedChunker {
   public void rollingHashMaskCalculation() {
     long min = 256 * 1024;
     long max = 1024 * 1024;
-    assertThat(mask(min, max, 0)).isEqualTo(0xFFFE000000000000L);
-    assertThat(mask(min, max, 1)).isEqualTo(0xFFFC000000000000L);
-    assertThat(mask(min, max, 2)).isEqualTo(0xFFF8000000000000L);
-    assertThat(mask(min, max, 3)).isEqualTo(0xFFF0000000000000L);
-    assertThat(mask(min, max, -1)).isEqualTo(0xFFFF000000000000L);
+    assertThat(calculateMask(min, max, 0)).isEqualTo(0xFFFE000000000000L);
+    assertThat(calculateMask(min, max, 1)).isEqualTo(0xFFFC000000000000L);
+    assertThat(calculateMask(min, max, 2)).isEqualTo(0xFFF8000000000000L);
+    assertThat(calculateMask(min, max, 3)).isEqualTo(0xFFF0000000000000L);
+    assertThat(calculateMask(min, max, -1)).isEqualTo(0xFFFF000000000000L);
 
     // The mask bits must be between 1 and 63 once adjusted for the 8 gear hash tables
-    assertThatThrownBy(() -> mask(0, 16, 0))
+    assertThatThrownBy(() -> calculateMask(0, 16, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageStartingWith(MASK_OUT_OF_RANGE);
-    assertThat(mask(0, 32, 0)).isEqualTo(0x8000000000000000L);
-    assertThatThrownBy(() -> mask(0, 32, 1))
+    assertThat(calculateMask(0, 32, 0)).isEqualTo(0x8000000000000000L);
+    assertThatThrownBy(() -> calculateMask(0, 32, 1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageStartingWith(MASK_OUT_OF_RANGE);
-    assertThat(mask(0, 64, 0)).isEqualTo(0xC000000000000000L);
-    assertThat(mask(0, 16, -1)).isEqualTo(0x8000000000000000L);
+    assertThat(calculateMask(0, 64, 0)).isEqualTo(0xC000000000000000L);
+    assertThat(calculateMask(0, 16, -1)).isEqualTo(0x8000000000000000L);
 
     // Unrealistic, but checks the validation
-    assertThatThrownBy(() -> mask(128, 384, -60))
+    assertThatThrownBy(() -> calculateMask(128, 384, -60))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageStartingWith(MASK_OUT_OF_RANGE);
-    assertThat(mask(128, 384, -59)).isEqualTo(0xFFFFFFFFFFFFFFFEL);
+    assertThat(calculateMask(128, 384, -59)).isEqualTo(0xFFFFFFFFFFFFFFFEL);
 
     // Unlike Arrow C++, the average chunk size does not overflow
-    assertThat(mask(256 * 1024, Long.MAX_VALUE, 0)).isEqualTo(0xFFFFFFFFFFFFFFC0L);
+    assertThat(calculateMask(256 * 1024, Long.MAX_VALUE, 0)).isEqualTo(0xFFFFFFFFFFFFFFC0L);
   }
 
   /**
@@ -114,9 +114,8 @@ public class TestContentDefinedChunker {
   @Test
   public void storeWithoutTheChunkersOfTheFileIsRejected() {
     MessageType schema = MessageTypeParser.parseMessageType("message m { required int32 number; }");
-    ParquetProperties props = ParquetProperties.builder()
-        .withContentDefinedChunking(ContentDefinedChunkingOptions.DEFAULT)
-        .build();
+    ParquetProperties props =
+        ParquetProperties.builder().withContentDefinedChunking(true).build();
     String message = "Content defined chunking needs the chunkers of the file";
 
     assertThatThrownBy(() -> props.newColumnWriteStore(schema, new MemPageStore(1), column -> null))
@@ -136,15 +135,12 @@ public class TestContentDefinedChunker {
         .hasMessage("Expected a chunker per column");
   }
 
-  private static ContentDefinedChunkingOptions options(long min, long max, int normLevel) {
-    return ContentDefinedChunkingOptions.builder()
-        .withMinChunkSize(min)
-        .withMaxChunkSize(max)
-        .withNormLevel(normLevel)
+  private static ParquetProperties properties(long min, long max, int normLevel) {
+    return ParquetProperties.builder()
+        .withContentDefinedChunking(true)
+        .withContentDefinedChunkingMinSize(min)
+        .withContentDefinedChunkingMaxSize(max)
+        .withContentDefinedChunkingNormLevel(normLevel)
         .build();
-  }
-
-  private static long mask(long min, long max, int normLevel) {
-    return ContentDefinedChunker.calculateMask(options(min, max, normLevel));
   }
 }

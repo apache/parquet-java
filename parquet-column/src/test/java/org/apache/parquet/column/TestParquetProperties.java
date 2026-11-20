@@ -34,12 +34,6 @@ import org.junit.jupiter.api.Test;
 
 public class TestParquetProperties {
 
-  private static final ContentDefinedChunkingOptions CHUNKING = ContentDefinedChunkingOptions.builder()
-      .withMinChunkSize(4 * 1024)
-      .withMaxChunkSize(16 * 1024)
-      .withNormLevel(-1)
-      .build();
-
   private static final MessageType SCHEMA = MessageTypeParser.parseMessageType(
       "message test { required binary col_a; required int32 col_b; required double col_c; }");
 
@@ -203,14 +197,11 @@ public class TestParquetProperties {
   public void alp_onNonFloatOrDoubleColumn_failsAlsoWithContentDefinedChunking() {
     ParquetProperties props = ParquetProperties.builder()
         .withAlp("col_b")
-        .withContentDefinedChunking(CHUNKING)
+        .withContentDefinedChunking(true)
         .build();
 
     assertThatThrownBy(() -> props.newColumnWriteStore(
-            SCHEMA,
-            new MemPageStore(0),
-            column -> null,
-            ContentDefinedChunker.forColumns(SCHEMA, CHUNKING)))
+            SCHEMA, new MemPageStore(0), column -> null, ContentDefinedChunker.forColumns(SCHEMA, props)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("col_b")
         .hasMessageContaining("only supports FLOAT and DOUBLE");
@@ -370,30 +361,45 @@ public class TestParquetProperties {
   }
 
   @Test
-  public void withContentDefinedChunking_nullOptions_disablesChunking() {
-    ParquetProperties disabled = ParquetProperties.builder()
-        .withContentDefinedChunking(CHUNKING)
-        .withContentDefinedChunking(null)
+  public void contentDefinedChunking_sizes_surviveCopy() {
+    ParquetProperties original = ParquetProperties.builder()
+        .withContentDefinedChunking(true)
+        .withContentDefinedChunkingMinSize(4 * 1024)
+        .withContentDefinedChunkingMaxSize(16 * 1024)
+        .withContentDefinedChunkingNormLevel(-1)
         .build();
-
-    assertThat(disabled.isContentDefinedChunkingEnabled()).isFalse();
-    assertThat(disabled.getContentDefinedChunkingOptions()).isNull();
-  }
-
-  @Test
-  public void withContentDefinedChunking_options_enablesChunkingAndSurvivesCopy() {
-    ParquetProperties original =
-        ParquetProperties.builder().withContentDefinedChunking(CHUNKING).build();
     ParquetProperties copy = ParquetProperties.copy(original).build();
 
     assertThat(copy.isContentDefinedChunkingEnabled()).isTrue();
-    assertThat(copy.getContentDefinedChunkingOptions()).isSameAs(CHUNKING);
+    assertThat(copy.getContentDefinedChunkingMinSize()).isEqualTo(4 * 1024);
+    assertThat(copy.getContentDefinedChunkingMaxSize()).isEqualTo(16 * 1024);
+    assertThat(copy.getContentDefinedChunkingNormLevel()).isEqualTo(-1);
+    assertThat(ParquetProperties.copy(original)
+            .withContentDefinedChunking(false)
+            .build()
+            .isContentDefinedChunkingEnabled())
+        .isFalse();
   }
 
   @Test
-  public void contentDefinedChunkingOptions_default_matchesArrow() {
-    assertThat(ContentDefinedChunkingOptions.DEFAULT.getMinChunkSize()).isEqualTo(256 * 1024);
-    assertThat(ContentDefinedChunkingOptions.DEFAULT.getMaxChunkSize()).isEqualTo(1024 * 1024);
-    assertThat(ContentDefinedChunkingOptions.DEFAULT.getNormLevel()).isZero();
+  public void contentDefinedChunking_defaultSizes_matchArrow() {
+    ParquetProperties props = ParquetProperties.builder().build();
+
+    assertThat(props.getContentDefinedChunkingMinSize()).isEqualTo(256 * 1024);
+    assertThat(props.getContentDefinedChunkingMaxSize()).isEqualTo(1024 * 1024);
+    assertThat(props.getContentDefinedChunkingNormLevel()).isZero();
+  }
+
+  @Test
+  public void contentDefinedChunking_invalidSizes_failOnlyWhileEnabled() {
+    ParquetProperties.Builder builder = ParquetProperties.builder()
+        .withContentDefinedChunkingMinSize(16 * 1024)
+        .withContentDefinedChunkingMaxSize(4 * 1024);
+
+    assertThat(builder.build().isContentDefinedChunkingEnabled()).isFalse();
+    assertThatThrownBy(() -> builder.withContentDefinedChunking(true).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid content defined chunking size range: maximum chunk size (4096) must be greater "
+            + "than minimum chunk size (16384)");
   }
 }
