@@ -284,7 +284,7 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 ---
 
-**Property:** `parquet.page.content-defined-chunking.enabled`  
+**Property:** `parquet.content-defined-chunking.enabled`  
 **Description:** EXPERIMENTAL: Whether data pages also end at boundaries derived from a rolling hash of the
 column's values, so that files sharing a run of values share pages, which content addressable storage can
 deduplicate. Readers need no support. The boundaries are those of Arrow C++ and arrow-rs for the same values,
@@ -297,21 +297,21 @@ cut short, some column chunks fall back to plain encoding.
 
 ---
 
-**Property:** `parquet.page.content-defined-chunking.min.size`  
+**Property:** `parquet.content-defined-chunking.min.size`  
 **Description:** EXPERIMENTAL: The minimum content defined chunk size in bytes, at least 0. Read only when content
 defined chunking is enabled.  
 **Default value:** `262144` (256 KiB)
 
 ---
 
-**Property:** `parquet.page.content-defined-chunking.max.size`  
+**Property:** `parquet.content-defined-chunking.max.size`  
 **Description:** EXPERIMENTAL: The maximum content defined chunk size in bytes, greater than the minimum. Read only
 when content defined chunking is enabled.  
 **Default value:** `1048576` (1 MiB)
 
 ---
 
-**Property:** `parquet.page.content-defined-chunking.norm.level`  
+**Property:** `parquet.content-defined-chunking.norm.level`  
 **Description:** EXPERIMENTAL: The normalization level of the rolling hash mask. Raising it makes chunk sizes
 more uniform at the cost of more small pages. At level 0, 1 or 2 the maximum must exceed the minimum by at least
 32, 64 or 128 bytes. Read only when content defined chunking is enabled.  
