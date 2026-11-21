@@ -504,7 +504,9 @@ public class AvroSchemaConverter {
                 }
                 GroupType mapKeyValType =
                     parquetGroupType.getType(0).asGroupType();
-                if (!mapKeyValType.isRepetition(REPEATED) || mapKeyValType.getFieldCount() != 2) {
+                if (!mapKeyValType.isRepetition(REPEATED)
+                    || mapKeyValType.getFieldCount() < 1
+                    || mapKeyValType.getFieldCount() > 2) {
                   throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
                 }
                 Type keyType = mapKeyValType.getType(0);
@@ -515,6 +517,9 @@ public class AvroSchemaConverter {
                     || !keyType.getLogicalTypeAnnotation().equals(stringType())) {
                   throw new IllegalArgumentException(
                       "Map key type must be binary (UTF8): " + keyType);
+                }
+                if (mapKeyValType.getFieldCount() == 1) {
+                  return of(Schema.createMap(Schema.create(Schema.Type.NULL)));
                 }
                 Type valueType = mapKeyValType.getType(1);
                 if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
