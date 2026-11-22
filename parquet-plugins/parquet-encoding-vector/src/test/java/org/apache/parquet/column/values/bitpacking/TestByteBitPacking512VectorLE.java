@@ -133,9 +133,8 @@ public class TestByteBitPacking512VectorLE {
     final int finalItemCount = itemCount;
 
     // Test the first and last chunks to cover both low-range and high-range boundary values.
-    return IntStream.range(0, finalItemCount)
-        .filter(i -> i == 0 || i == finalItemCount - 1)
-        .mapToObj(i -> {
+    IntStream stream = IntStream.range(0, finalItemCount).filter(i -> i == 0 || i == finalItemCount - 1);
+    return stream.mapToObj(i -> {
       int len;
       if ((i == finalItemCount - 1) && mode != 0) {
         len = mode;
