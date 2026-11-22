@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.proto;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Offset.offset;
@@ -30,6 +31,7 @@ import java.time.LocalTime;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
@@ -1331,6 +1333,108 @@ public class ProtoWriteSupportTest {
     assertThat(gotBackFirst.getTimestamp()).isEqualTo(timestamp);
     assertThat(gotBackFirst.getDate()).isEqualTo(protoDate);
     assertThat(gotBackFirst.getTime()).isEqualTo(protoTime);
+  }
+
+  @Test
+  public void testTimestampUnwrappedWithMicrosRoundTrip(@TempDir java.nio.file.Path tempDir) throws Exception {
+    Timestamp timestamp = Timestamps.parse("2021-05-02T15:04:03.748123456Z");
+
+    Path tmpFilePath = new Path(tempDir.resolve("timestamp-micros.parquet").toUri());
+    try (ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.DateTimeMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .config(ProtoWriteSupport.PB_TIMESTAMP_UNIT, TimeUnit.MICROS.name())
+        .withValidation(true)
+        .build()) {
+      writer.write(TestProto3.DateTimeMessage.newBuilder()
+          .setTimestamp(timestamp)
+          .build());
+    }
+
+    List<TestProto3.DateTimeMessage> gotBack =
+        TestUtils.readMessages(tmpFilePath, TestProto3.DateTimeMessage.class);
+
+    assertThat(gotBack).hasSize(1);
+    // Micros resolution drops the sub-microsecond digits of the original timestamp.
+    assertThat(Timestamps.toMicros(gotBack.get(0).getTimestamp())).isEqualTo(Timestamps.toMicros(timestamp));
+  }
+
+  @Test
+  public void testTimestampUnwrappedWithMillisRoundTrip(@TempDir java.nio.file.Path tempDir) throws Exception {
+    Timestamp timestamp = Timestamps.parse("2021-05-02T15:04:03.748123456Z");
+
+    Path tmpFilePath = new Path(tempDir.resolve("timestamp-millis.parquet").toUri());
+    try (ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.DateTimeMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .config(ProtoWriteSupport.PB_TIMESTAMP_UNIT, TimeUnit.MILLIS.name())
+        .withValidation(true)
+        .build()) {
+      writer.write(TestProto3.DateTimeMessage.newBuilder()
+          .setTimestamp(timestamp)
+          .build());
+    }
+
+    List<TestProto3.DateTimeMessage> gotBack =
+        TestUtils.readMessages(tmpFilePath, TestProto3.DateTimeMessage.class);
+
+    assertThat(gotBack).hasSize(1);
+    assertThat(Timestamps.toMillis(gotBack.get(0).getTimestamp())).isEqualTo(Timestamps.toMillis(timestamp));
+  }
+
+  @Test
+  public void testTimestampUnwrappedWithMillisWritesMillisEpoch() throws Exception {
+    Timestamp timestamp = Timestamps.parse("2021-05-02T15:04:03.748Z");
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
+    ProtoWriteSupport.setTimestampUnit(conf, TimeUnit.MILLIS);
+    ProtoWriteSupport<TestProto3.DateTimeMessage> instance =
+        createReadConsumerInstance(TestProto3.DateTimeMessage.class, readConsumerMock, conf);
+
+    instance.write(
+        TestProto3.DateTimeMessage.newBuilder().setTimestamp(timestamp).build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("timestamp", 0);
+    inOrder.verify(readConsumerMock).addLong(Timestamps.toMillis(timestamp));
+    inOrder.verify(readConsumerMock).endField("timestamp", 0);
+  }
+
+  @Test
+  public void testTimestampWriterTruncatesTowardNegativeInfinity() {
+    // Timestamps before the epoch must floor, not round toward zero, so the stored value stays a
+    // lower bound of the original instant.
+    Timestamp oneNanoBeforeEpoch =
+        Timestamp.newBuilder().setSeconds(-1).setNanos(999_999_999).build();
+
+    assertThat(ProtoWriteSupport.toTimestampUnit(oneNanoBeforeEpoch, TimeUnit.MILLIS))
+        .isEqualTo(-1L);
+    assertThat(ProtoWriteSupport.toTimestampUnit(oneNanoBeforeEpoch, TimeUnit.MICROS))
+        .isEqualTo(-1L);
+  }
+
+  @Test
+  public void testTimestampUnitRejectsUnknownValue() {
+    Configuration conf = new Configuration();
+    conf.set(ProtoWriteSupport.PB_TIMESTAMP_UNIT, "SECONDS");
+
+    ProtoWriteSupport<TestProto3.DateTimeMessage> instance = new ProtoWriteSupport<>();
+    ProtoWriteSupport.setSchema(conf, TestProto3.DateTimeMessage.class);
+
+    assertThatThrownBy(() -> instance.init(conf))
+        .isInstanceOf(BadConfigurationException.class)
+        .hasMessageContaining(ProtoWriteSupport.PB_TIMESTAMP_UNIT)
+        .hasMessageContaining("SECONDS");
+  }
+
+  @Test
+  public void testTimestampUnitIsCaseInsensitive() {
+    assertThat(ProtoWriteSupport.parseTimestampUnit("micros")).isEqualTo(TimeUnit.MICROS);
+    assertThat(ProtoWriteSupport.parseTimestampUnit(" MILLIS ")).isEqualTo(TimeUnit.MILLIS);
+    assertThat(ProtoWriteSupport.parseTimestampUnit(null)).isEqualTo(TimeUnit.NANOS);
+    assertThat(ProtoWriteSupport.parseTimestampUnit("")).isEqualTo(TimeUnit.NANOS);
   }
 
   @Test

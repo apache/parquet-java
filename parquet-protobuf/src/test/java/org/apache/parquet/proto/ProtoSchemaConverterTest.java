@@ -18,12 +18,15 @@
  */
 package org.apache.parquet.proto;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.base.Joiner;
 import com.google.protobuf.Message;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
@@ -391,6 +394,57 @@ public class ProtoSchemaConverterTest {
             + "}";
 
     testConversion(TestProto3.DateTimeMessage.class, expectedSchema, false, true);
+  }
+
+  @Test
+  public void testProto3ConvertTimestampUnwrappedWithMicros() throws Exception {
+    String expectedSchema =
+        "message TestProto3.DateTimeMessage {\n" + "  optional int64 timestamp (TIMESTAMP(MICROS,true)) = 1;\n"
+            + "  optional int32 date (DATE) = 2;\n"
+            + "  optional int64 time (TIME(NANOS,true)) = 3;\n"
+            + "}";
+
+    testConversion(
+        TestProto3.DateTimeMessage.class,
+        expectedSchema,
+        new ProtoSchemaConverter(false, 5, true, TimeUnit.MICROS));
+  }
+
+  @Test
+  public void testProto3ConvertTimestampUnwrappedWithMillis() throws Exception {
+    String expectedSchema =
+        "message TestProto3.DateTimeMessage {\n" + "  optional int64 timestamp (TIMESTAMP(MILLIS,true)) = 1;\n"
+            + "  optional int32 date (DATE) = 2;\n"
+            + "  optional int64 time (TIME(NANOS,true)) = 3;\n"
+            + "}";
+
+    testConversion(
+        TestProto3.DateTimeMessage.class,
+        expectedSchema,
+        new ProtoSchemaConverter(false, 5, true, TimeUnit.MILLIS));
+  }
+
+  @Test
+  public void testTimestampUnitIsReadFromConfiguration() {
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
+    ProtoWriteSupport.setTimestampUnit(conf, TimeUnit.MICROS);
+
+    MessageType schema = new ProtoSchemaConverter(conf).convert(TestProto3.DateTimeMessage.class);
+
+    assertThat(schema.getType("timestamp").getLogicalTypeAnnotation())
+        .isEqualTo(timestampType(true, TimeUnit.MICROS));
+  }
+
+  @Test
+  public void testTimestampUnitDefaultsToNanos() {
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
+
+    MessageType schema = new ProtoSchemaConverter(conf).convert(TestProto3.DateTimeMessage.class);
+
+    assertThat(schema.getType("timestamp").getLogicalTypeAnnotation())
+        .isEqualTo(timestampType(true, TimeUnit.NANOS));
   }
 
   @Test

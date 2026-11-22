@@ -22,6 +22,7 @@ import static java.util.Optional.ofNullable;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 
 import com.google.protobuf.BoolValue;
 import com.google.protobuf.ByteString;
@@ -49,6 +50,7 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
@@ -83,8 +85,12 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static final String PB_UNWRAP_PROTO_WRAPPERS = "parquet.proto.unwrapProtoWrappers";
 
+  /** Precision used for unwrapped {@code google.protobuf.Timestamp} columns; defaults to {@code NANOS}. */
+  public static final String PB_TIMESTAMP_UNIT = "parquet.proto.timestampUnit";
+
   private boolean writeSpecsCompliant = false;
   private boolean unwrapProtoWrappers = false;
+  private TimeUnit timestampUnit = TimeUnit.NANOS;
   private RecordConsumer recordConsumer;
   private Class<? extends Message> protoMessage;
   private Descriptor descriptor;
@@ -125,6 +131,16 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static void setUnwrapProtoWrappers(Configuration configuration, boolean unwrapProtoWrappers) {
     configuration.setBoolean(PB_UNWRAP_PROTO_WRAPPERS, unwrapProtoWrappers);
+  }
+
+  /**
+   * Sets the precision used when unwrapping {@link Timestamp} fields. Ignored unless unwrapping is enabled.
+   *
+   * @param configuration The hadoop configuration
+   * @param unit          Logical type unit of the unwrapped column, defaults to {@link TimeUnit#NANOS}
+   */
+  public static void setTimestampUnit(Configuration configuration, TimeUnit unit) {
+    configuration.set(PB_TIMESTAMP_UNIT, unit.name());
   }
 
   /**
@@ -179,6 +195,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     unwrapProtoWrappers = configuration.getBoolean(PB_UNWRAP_PROTO_WRAPPERS, unwrapProtoWrappers);
+    timestampUnit = parseTimestampUnit(configuration.get(PB_TIMESTAMP_UNIT));
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
     MessageType rootSchema = new ProtoSchemaConverter(configuration).convert(descriptor);
     validatedMapping(descriptor, rootSchema);
@@ -188,6 +205,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, descriptor.toProto().toString());
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     extraMetaData.put(PB_UNWRAP_PROTO_WRAPPERS, String.valueOf(unwrapProtoWrappers));
+    // The schema carries the unwrapped precision, so only record the key when it was configured.
+    if (configuration.get(PB_TIMESTAMP_UNIT) != null) {
+      extraMetaData.put(PB_TIMESTAMP_UNIT, configuration.get(PB_TIMESTAMP_UNIT));
+    }
     return new WriteContext(rootSchema, extraMetaData);
   }
 
@@ -220,6 +241,37 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       enumMetadata.put(METADATA_ENUM_PREFIX + enumNameNumberMapping.getKey(), nameNumberPairs.toString());
     }
     return enumMetadata;
+  }
+
+  /**
+   * Converts a protobuf timestamp to the epoch value of the given logical type unit, truncating the
+   * sub-unit part. Truncation rather than rounding keeps the value monotonic and matches what a reader
+   * recovers, since the low-order digits are below the column's resolution.
+   */
+  static long toTimestampUnit(Timestamp timestamp, TimeUnit unit) {
+    long nanos = Timestamps.toNanos(timestamp);
+    switch (unit) {
+      case MILLIS:
+        return Math.floorDiv(nanos, 1_000_000L);
+      case MICROS:
+        return Math.floorDiv(nanos, 1_000L);
+      case NANOS:
+      default:
+        return nanos;
+    }
+  }
+
+  /** Parses the configured unit; an unset value means {@link TimeUnit#NANOS}. */
+  static TimeUnit parseTimestampUnit(String value) {
+    if (value == null || value.trim().isEmpty()) {
+      return TimeUnit.NANOS;
+    }
+    try {
+      return TimeUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new BadConfigurationException(
+          "Unknown " + PB_TIMESTAMP_UNIT + " value: " + value + ". Expected one of MILLIS, MICROS, NANOS.");
+    }
   }
 
   class FieldWriter {
@@ -708,7 +760,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     @Override
     void writeRawValue(Object value) {
       Timestamp timestamp = (Timestamp) value;
-      recordConsumer.addLong(Timestamps.toNanos(timestamp));
+      recordConsumer.addLong(toTimestampUnit(timestamp, timestampUnit));
     }
   }
 
