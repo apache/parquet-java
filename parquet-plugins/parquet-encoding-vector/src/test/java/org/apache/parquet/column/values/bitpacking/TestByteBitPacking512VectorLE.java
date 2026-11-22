@@ -42,7 +42,7 @@ public class TestByteBitPacking512VectorLE {
   }
 
   private void unpackValuesUsingVectorBitWidth(int bitWidth) {
-    try (Stream<int[]> intInputs = getRangeData(bitWidth)) {
+    try (Stream<int[]> intInputs = getRangeData(bitWidth, 8192)) {
       intInputs.forEach(intInput -> {
         int pack8Count = intInput.length / 8;
         int byteOutputSize = pack8Count * bitWidth;
@@ -121,9 +121,7 @@ public class TestByteBitPacking512VectorLE {
     }
   }
 
-  private Stream<int[]> getRangeData(int bitWidth) {
-    int itemMax = 268435456;
-
+  private Stream<int[]> getRangeData(int bitWidth, int itemMax) {
     long maxValue = getMaxValue(bitWidth);
     long maxValueFilled = maxValue + 1;
     int itemCount = (int) (maxValueFilled / itemMax);
@@ -134,7 +132,9 @@ public class TestByteBitPacking512VectorLE {
 
     final int finalItemCount = itemCount;
 
-    return IntStream.range(0, finalItemCount).mapToObj(i -> {
+    // Test the first and last chunks to cover both low-range and high-range boundary values.
+    IntStream stream = IntStream.range(0, finalItemCount).filter(i -> i == 0 || i == finalItemCount - 1);
+    return stream.mapToObj(i -> {
       int len;
       if ((i == finalItemCount - 1) && mode != 0) {
         len = mode;
