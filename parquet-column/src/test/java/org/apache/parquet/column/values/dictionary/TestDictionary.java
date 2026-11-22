@@ -828,6 +828,22 @@ public class TestDictionary {
   }
 
   @Test
+  public void testInvalidDictionaryId() throws IOException {
+    BytesInput dictionaryBytes = BytesInput.fromInt(34);
+    DictionaryPage dictionaryPage = new DictionaryPage(dictionaryBytes, 1, PLAIN);
+    ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, INT32, 0, 0);
+    Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
+    DictionaryValuesReader reader = new DictionaryValuesReader(dictionary);
+
+    // A bit width of 1 can represent dictionary id 1, but this dictionary only contains id 0.
+    reader.initFromPage(1, BytesInput.from(new byte[] {0x01, 0x02, 0x01}).toInputStream());
+
+    assertThatThrownBy(reader::readInteger)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Dictionary id 1 is outside the valid range 0 to 0");
+  }
+
+  @Test
   public void testBooleanDictionary() throws IOException {
     // Create a dictionary page with boolean values (false, true)
     // Bit-packed: bit 0 = false (0), bit 1 = true (1) => byte = 0b00000010 = 0x02
