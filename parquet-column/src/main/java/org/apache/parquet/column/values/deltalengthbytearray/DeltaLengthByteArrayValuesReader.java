@@ -49,7 +49,7 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 
   @Override
   public Binary readBytes() {
-    int length = lengthReader.readInteger();
+    int length = readLength();
     try {
       return Binary.fromConstantByteBuffer(in.slice(length));
     } catch (IOException e) {
@@ -64,14 +64,22 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 
   @Override
   public void skip(int n) {
-    int length = 0;
+    long length = 0;
     for (int i = 0; i < n; ++i) {
-      length += lengthReader.readInteger();
+      length += readLength();
     }
     try {
       in.skipFully(length);
     } catch (IOException e) {
       throw new ParquetDecodingException("Failed to skip " + length + " bytes");
     }
+  }
+
+  private int readLength() {
+    int length = lengthReader.readInteger();
+    if (length < 0) {
+      throw new ParquetDecodingException("Invalid DELTA_LENGTH_BYTE_ARRAY value length: " + length);
+    }
+    return length;
   }
 }
