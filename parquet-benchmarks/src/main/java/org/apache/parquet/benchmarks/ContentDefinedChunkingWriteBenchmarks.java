@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import org.apache.parquet.column.CdcOptions;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter;
@@ -88,7 +88,7 @@ public class ContentDefinedChunkingWriteBenchmarks {
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .withDictionaryEncoding(false)
         .withPageRowCountLimit(Integer.MAX_VALUE)
-        .withContentDefinedChunking(chunking ? CdcOptions.DEFAULT : null)
+        .withContentDefinedChunking(chunking ? ContentDefinedChunkingOptions.DEFAULT : null)
         .build()) {
       for (Group row : rows) {
         writer.write(row);

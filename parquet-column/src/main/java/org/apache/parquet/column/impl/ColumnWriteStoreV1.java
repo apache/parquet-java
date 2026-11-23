@@ -46,7 +46,6 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
     super(schema, pageWriteStore, bloomFilterWriteStore, props);
   }
 
-  /** EXPERIMENTAL: A store continuing the content defined chunking of the file's {@code chunkers}. */
   public ColumnWriteStoreV1(
       MessageType schema,
       PageWriteStore pageWriteStore,

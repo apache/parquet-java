@@ -73,7 +73,6 @@ class InternalParquetRecordWriter<T> {
   private long lastRowGroupEndPos = 0;
 
   private ColumnWriteStore columnStore;
-  // Continued by every row group of the file; null unless content defined chunking is enabled.
   private final List<ContentDefinedChunker> contentDefinedChunkers;
   private ColumnChunkPageWriteStore pageStore;
   private BloomFilterWriteStore bloomFilterWriteStore;
@@ -111,8 +110,9 @@ class InternalParquetRecordWriter<T> {
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
     this.rowGroupOrdinal = 0;
-    this.contentDefinedChunkers =
-        props.isContentDefinedChunkingEnabled() ? ContentDefinedChunker.forColumns(schema, props) : null;
+    this.contentDefinedChunkers = props.isContentDefinedChunkingEnabled()
+        ? ContentDefinedChunker.forColumns(schema, props.getContentDefinedChunkingOptions())
+        : null;
     initStore();
     recordCountForNextMemCheck = props.getMinRowCountForPageSizeCheck();
   }

@@ -22,96 +22,164 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.column.CdcOptions;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 
 /**
- * Decides the content defined data page boundaries of one leaf column for a whole file. The column
- * writer asks {@code needNewPage} before writing each triplet, which this chunker answers by rolling
- * the triplet into its hash; a no-op chunker, {@link #noop()}, stands in while content defined
- * chunking is disabled.
+ * Content defined chunking (CDC) divides data into variable-sized chunks based on the
+ * content of the data itself, rather than using fixed-size boundaries.
+ *
+ * <p>For example, given this sequence of values in a column:
+ *
+ * <pre>
+ * File1:    [1,2,3,   4,5,6,   7,8,9]
+ *            chunk1   chunk2   chunk3
+ * </pre>
+ *
+ * <p>Assume there is an inserted value between 3 and 4:
+ *
+ * <pre>
+ * File2:     [1,2,3,0,  4,5,6,   7,8,9]
+ *            new-chunk  chunk2   chunk3
+ * </pre>
+ *
+ * <p>The chunking process will adjust to maintain stable boundaries across data modifications. Each
+ * chunk defines a new parquet data page which is contiguously written out to the file. Since each page
+ * is compressed independently, the files' contents would look like the following with unique page
+ * identifiers:
+ *
+ * <pre>
+ * File1:     [Page1][Page2][Page3]...
+ * File2:     [Page4][Page2][Page3]...
+ * </pre>
+ *
+ * <p>Then the parquet file is uploaded to a content addressable storage (CAS) system which splits the
+ * byte stream into content defined blobs. The CAS system calculates a unique identifier for each blob,
+ * then stores the blob in a key-value store. If the same blob is encountered again, the system can
+ * refer to the hash instead of physically storing the blob again. In the example above, the CAS system
+ * would store Page1, Page2, Page3 and Page4 only once and the required metadata to reassemble the
+ * files. While the deduplication is performed by the CAS system, the parquet chunker makes it possible
+ * to efficiently deduplicate the data by consistently dividing the data into chunks.
+ *
+ * <p>Implementation details: only the parquet writer must be aware of the content defined chunking,
+ * the reader doesn't need to know about it. The file writer holds one chunker per leaf column, made by
+ * {@link #forColumns}, and passes it to the column writers of every row group. The chunker's state is
+ * maintained across the entire column without being reset between pages and row groups.
+ *
+ * <p>The column writer passes the (repetition level, definition level, value) triplets to the chunker
+ * one by one, which adjusts the column-global rolling hash based on each triplet. Whenever the rolling
+ * hash matches a predefined mask, a new chunk starts, and the column writer ends its page before that
+ * triplet. Note that the boundaries are deterministically calculated exclusively based on the data
+ * itself, so the same data will always produce the same chunks, given the same options.
  *
  * <p>Ported from Arrow C++ {@code parquet/chunker_internal} and arrow-rs {@code column/chunker/cdc.rs},
- * whose boundaries it must reproduce. Not thread safe.
+ * with the same boundaries for the same values, except where Arrow holds them in another form, such as
+ * a DECIMAL, an INT96 or a dictionary array. Public for the file writers of other modules only. Not
+ * thread safe.
+ *
+ * <p>References:
+ *
+ * <ul>
+ *   <li>FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication,
+ *       https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf
+ *   <li>Git is for Data (chunk size normalization used here is described in section 6.2.1),
+ *       https://www.cidrdb.org/cidr2023/papers/p43-low.pdf
+ * </ul>
  */
-public class ContentDefinedChunker {
+public final class ContentDefinedChunker {
 
-  private static final ContentDefinedChunker NOOP = new NoopChunker();
-
+  // Minimum chunk size in bytes, the rolling hash will not be updated until this size is reached for
+  // each chunk. Note that all data sent through the hash function is counted towards the chunk size,
+  // including definition and repetition levels.
   private final long minChunkSize;
   private final long maxChunkSize;
+  // The mask to match the rolling hash against to determine if a new chunk should be created. The mask
+  // is calculated based on min/max chunk size and the normalization level.
   private final long rollingHashMask;
-  private final int maxDef;
-  private final int maxRep;
-  private final long pageSizeThreshold;
-  private final int pageValueCountThreshold;
-  private final int pageRowCountLimit;
+  private final int maxDefinitionLevel;
+  private final int maxRepetitionLevel;
+  private final int byteWidth;
 
+  // Rolling hash state, never reset, only initialized once for the entire column.
   private long rollingHash;
+  // Whether the rolling hash has matched the mask since the last chunk creation. This flag is set to
+  // true by roll() when the mask is matched and reset to false by needNewChunk().
   private boolean hasMatched;
+  // The current run of the rolling hash, used to normalize the chunk size distribution by requiring
+  // multiple consecutive matches to create a new chunk.
   private int nthRun;
+  // Current chunk size in bytes, reset to 0 when a new chunk is created.
   private long chunkSize;
 
   /**
-   * EXPERIMENTAL: The chunkers of a file, one per leaf column of {@code schema} in order, which
-   * every row group's column write store of the file continues.
+   * The chunkers of a file, one per leaf column of {@code schema}, for every row group.
    *
    * @param schema the schema of the file
-   * @param props the writer properties, with content defined chunking enabled
+   * @param options the content defined chunking options of the file
    * @return the chunkers
    */
-  public static List<ContentDefinedChunker> forColumns(MessageType schema, ParquetProperties props) {
+  public static List<ContentDefinedChunker> forColumns(MessageType schema, ContentDefinedChunkingOptions options) {
     return schema.getColumns().stream()
-        .map(path -> new ContentDefinedChunker(path, props))
+        .map(path -> new ContentDefinedChunker(path, options))
         .collect(Collectors.toList());
   }
 
-  /** The chunker of a column without content defined chunking, which never ends a page. */
-  static ContentDefinedChunker noop() {
-    return NOOP;
-  }
-
-  ContentDefinedChunker(ColumnDescriptor path, ParquetProperties props) {
-    CdcOptions options = props.getContentDefinedChunkingOptions();
+  ContentDefinedChunker(ColumnDescriptor path, ContentDefinedChunkingOptions options) {
     this.minChunkSize = options.getMinChunkSize();
     this.maxChunkSize = options.getMaxChunkSize();
     this.rollingHashMask = calculateMask(minChunkSize, maxChunkSize, options.getNormLevel());
-    this.maxDef = path.getMaxDefinitionLevel();
-    this.maxRep = path.getMaxRepetitionLevel();
-    this.pageSizeThreshold = props.getPageSizeThreshold();
-    this.pageValueCountThreshold = props.getPageValueCountThreshold();
-    this.pageRowCountLimit = props.getPageRowCountLimit();
+    this.maxDefinitionLevel = path.getMaxDefinitionLevel();
+    this.maxRepetitionLevel = path.getMaxRepetitionLevel();
+    this.byteWidth = byteWidth(path.getPrimitiveType());
   }
 
-  /** Only for {@link NoopChunker}, which uses none of the state. */
-  private ContentDefinedChunker() {
-    this.minChunkSize = 0;
-    this.maxChunkSize = 0;
-    this.rollingHashMask = 0;
-    this.maxDef = 0;
-    this.maxRep = 0;
-    this.pageSizeThreshold = 0;
-    this.pageValueCountThreshold = 0;
-    this.pageRowCountLimit = 0;
+  /** The bytes an integer value is hashed as: 1 for an INT(8), 2 for an INT(16), 4 or 8 for other integers. */
+  private static int byteWidth(PrimitiveType type) {
+    if (type.getLogicalTypeAnnotation() instanceof IntLogicalTypeAnnotation integer) {
+      return integer.getBitWidth() / Byte.SIZE;
+    }
+    return switch (type.getPrimitiveTypeName()) {
+      case INT32 -> Integer.BYTES;
+      case INT64 -> Long.BYTES;
+      default -> 0;
+    };
   }
 
   /**
-   * Derives the rolling hash mask, validating the envelope. Ported from Arrow C++
-   * {@code CalculateMask} and arrow-rs {@code calculate_mask}; the arithmetic has to stay
-   * bit-identical to theirs.
+   * Calculate the mask to use for the rolling hash, the mask is used to determine if a new
+   * chunk should be created based on the rolling hash value. The mask is calculated based on the
+   * minChunkSize, maxChunkSize and normLevel parameters.
    *
-   * <p>A mask with the top {@code n} bits set matches a uniform hash with probability 1/2^n. The
-   * target is the average chunk size minus the skipped {@code minChunkSize}, divided by the
-   * eight matches a boundary needs.
+   * <p>Assuming that the gear hash has random values with a uniform distribution, then each bit in the
+   * actual value of the rolling hash has even probability of being set so a mask with the top N bits
+   * set has a probability of 1/2^N of matching the rolling hash. This is the judgment criteria for the
+   * original gear hash based content-defined chunking. The main drawback of this approach is the
+   * non-uniform distribution of the chunk sizes.
    *
-   * @param minChunkSize the minimum chunk size in bytes
-   * @param maxChunkSize the maximum chunk size in bytes
-   * @param normLevel the normalization level
-   * @return the rolling hash mask
-   * @throws IllegalArgumentException if the arguments cannot produce a usable mask
+   * <p>Later on the FastCDC has improved the process by introducing:
+   *
+   * <ul>
+   *   <li>sub-minimum chunk cut-point skipping (not hashing the first minChunkSize bytes)
+   *   <li>chunk size normalization (using two masks)
+   * </ul>
+   *
+   * <p>This implementation uses cut-point skipping because it improves the overall performance, and a
+   * more accurate alternative to have a less skewed chunk size distribution. Instead of using two
+   * different masks (one with a lower and one with a higher probability of matching and switching them
+   * based on the actual chunk size), we rather use 8 different gear hash tables and require having 8
+   * consecutive matches while switching between the used hash tables. This approach is based on the
+   * central limit theorem and approximates normal distribution of the chunk sizes.
+   *
+   * @param minChunkSize the minimum chunk size in bytes (default 256 KiB)
+   * @param maxChunkSize the maximum chunk size in bytes (default 1 MiB)
+   * @param normLevel the normalization level (default 0)
+   * @return the mask used to compare against the rolling hash
+   * @throws IllegalArgumentException if the minimum is negative, the maximum not above it, or the
+   *     mask would not have 1 to 63 bits
    */
   public static long calculateMask(long minChunkSize, long maxChunkSize, int normLevel) {
     Preconditions.checkArgument(
@@ -121,15 +189,21 @@ public class ContentDefinedChunker {
         "Invalid content defined chunking size range: maximum chunk size (%s) must be greater than minimum chunk size (%s)",
         maxChunkSize,
         minChunkSize);
-
-    // Halve before adding, so that the sum cannot overflow; the references do overflow there.
+    // Calculate the average size of the chunks, halving before adding so that the sum cannot overflow
     long avgChunkSize = minChunkSize / 2 + maxChunkSize / 2 + (minChunkSize % 2 + maxChunkSize % 2) / 2;
+    // Since we are skipping the first minChunkSize bytes for each chunk, we need to target a smaller
+    // chunk size to reach the average size after skipping the first minChunkSize bytes; also divide by
+    // the number of gear hash tables to have a more gaussian-like distribution
     long targetSize = (avgChunkSize - minChunkSize) / GearHashTable.TABLE.length;
+    // Assuming that the gear hash has a uniform distribution, we can calculate the mask by taking the
+    // floor(log2(targetSize))
     int targetBits = Long.SIZE - Long.numberOfLeadingZeros(targetSize);
     int maskBits = targetBits == 0 ? 0 : targetBits - 1;
+    // A user defined normLevel can be used to adjust the mask size, hence the matching probability: by
+    // increasing the normLevel we increase the probability of matching the mask, forcing the
+    // distribution closer to the average size
     int effectiveBits = maskBits - normLevel;
 
-    // Java takes a long's shift count modulo 64, so an out-of-range width must be rejected here.
     Preconditions.checkArgument(
         effectiveBits >= 1 && effectiveBits <= 63,
         "The content defined chunking mask must be between 1 and 63 bits but was %s"
@@ -138,143 +212,88 @@ public class ContentDefinedChunker {
         minChunkSize,
         maxChunkSize,
         normLevel);
+    // Create the mask by setting the top bits
     return -1L << (Long.SIZE - effectiveBits);
   }
 
-  void roll(int value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(int value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    roll(value, 4);
+    roll(value, byteWidth);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(long value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(long value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    roll(value, 8);
+    roll(value, byteWidth);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(float value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(float value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    // Raw bits: floatToIntBits canonicalizes NaN payloads and would diverge from the references.
+    // Raw bits, as floatToIntBits would canonicalize NaN payloads
     roll(Float.floatToRawIntBits(value), 4);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(double value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(double value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(Double.doubleToRawLongBits(value), 8);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(boolean value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(boolean value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
-    // One byte per boolean, not one bit, as the references hash it.
+    // One byte per boolean, not one bit
     roll(value ? 1 : 0, 1);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  void roll(Binary value, int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(Binary value, int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
     roll(value);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  /**
-   * Rolls the triplet of a null, which has no value to hash even when {@code definitionLevel ==
-   * maxDef}, as an omitted top-level required field does.
-   */
-  void rollNull(int repetitionLevel, int definitionLevel) {
+  boolean startsNewChunk(int repetitionLevel, int definitionLevel) {
     rollLevels(repetitionLevel, definitionLevel);
+    return repetitionLevel == 0 && needNewChunk();
   }
 
-  /**
-   * The levels of a triplet as two bytes each, definition level first, as the references hash them,
-   * and only those the column has; Arrow C++ does this inline in {@code Calculate}.
-   */
   private void rollLevels(int repetitionLevel, int definitionLevel) {
-    if (maxDef > 0) {
+    if (maxDefinitionLevel > 0) {
       roll(definitionLevel, 2);
     }
-    if (maxRep > 0) {
+    if (maxRepetitionLevel > 0) {
       roll(repetitionLevel, 2);
     }
   }
 
-  /**
-   * Whether the column writer should end its page before this triplet, which it asks before writing
-   * each one; {@code needNewPage(repetitionLevel, definitionLevel, writer)} asks for a null.
-   */
-  boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    roll(value, repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-    rollNull(repetitionLevel, definitionLevel);
-    return pageEndsBefore(repetitionLevel, writer);
-  }
-
-  /**
-   * At a record start, if a chunk ends there or a page limit is reached, counted from the page start
-   * so that it cuts in the same places after an edit. Asking consumes a match, so a match inside a
-   * record carries over to the next record start. A boundary on the first value of a page has no page
-   * to end.
-   */
-  private boolean pageEndsBefore(int repetitionLevel, ColumnWriterBase writer) {
-    if (repetitionLevel != 0) {
-      return false;
-    }
-    boolean chunkBoundary = needNewChunk();
-    return writer.getValueCount() > 0
-        && (chunkBoundary
-            || writer.getPageRowCount() >= pageRowCountLimit
-            || writer.getValueCount() >= pageValueCountThreshold
-            || writer.getCurrentPageBufferedSize() >= pageSizeThreshold);
-  }
-
-  /** Arrow C++ {@code Roll<kByteWidth>}: the {@code byteWidth} low-order bytes, little-endian. */
-  private void roll(long bits, int byteWidth) {
-    chunkSize += byteWidth;
+  private void roll(long bits, int width) {
+    chunkSize += width;
     if (chunkSize < minChunkSize) {
+      // Short-circuit if we haven't reached the minimum chunk size, this speeds up the chunking process
+      // since the gear hash doesn't need to be updated
       return;
     }
     long hash = rollingHash;
     boolean matched = hasMatched;
     long[] table = GearHashTable.TABLE[nthRun];
-    for (int i = 0; i < byteWidth; ++i) {
-      hash = (hash << 1) + table[(int) ((bits >>> (8 * i)) & 0xFF)];
+    for (int i = 0; i < width; ++i, bits >>>= 8) {
+      hash = (hash << 1) + table[(int) bits & 0xFF];
       matched |= (hash & rollingHashMask) == 0;
     }
     rollingHash = hash;
     hasMatched = matched;
   }
 
-  /** Arrow C++ {@code Roll(const uint8_t*, length)}: the value's bytes without a length prefix. */
   private void roll(Binary value) {
     chunkSize += value.length();
     if (chunkSize < minChunkSize) {
+      // Short-circuit if we haven't reached the minimum chunk size, this speeds up the chunking process
+      // since the gear hash doesn't need to be updated
       return;
     }
-    // A view of the value's bytes, wherever they lie, not a copy.
+    // A view of the value's bytes, whether on or off the heap, without copying them
     ByteBuffer bytes = value.toByteBuffer();
     long hash = rollingHash;
     boolean matched = hasMatched;
@@ -288,61 +307,30 @@ public class ContentDefinedChunker {
   }
 
   /**
-   * Arrow C++ {@code NeedNewChunk}: a chunk ends after eight matches, each against the next gear
-   * hash table, which approximates a normal chunk size distribution; or at {@code maxChunkSize}.
-   * Neither resets the rolling hash, and the maximum size cut leaves the run counter alone.
+   * Decide whether to create a new chunk based on the rolling hash; hasMatched is set to true if we
+   * encountered a match since the last needNewChunk() call.
    */
-  boolean needNewChunk() {
+  private boolean needNewChunk() {
     if (hasMatched) {
       hasMatched = false;
+      // In order to have a normal distribution of chunk sizes, we only create a new chunk if the adjusted
+      // mask matches the rolling hash 8 times in a row, each run uses a different gear hash table (gear
+      // hash's chunk size has geometric distribution, and we use central limit theorem to approximate
+      // normal distribution, see section 6.2.1 in paper https://www.cidrdb.org/cidr2023/papers/p43-low.pdf)
       if (++nthRun >= GearHashTable.TABLE.length) {
+        // Note that we choose not to reset the rolling hash state here, nor anywhere else in the code,
+        // in practice this doesn't seem to affect the chunking effectiveness
         nthRun = 0;
         chunkSize = 0;
         return true;
       }
     }
     if (chunkSize >= maxChunkSize) {
+      // We have a hard limit on the maximum chunk size, note that we don't reset the rolling hash state
+      // here, so the next needNewChunk() call will continue from the current state
       chunkSize = 0;
       return true;
     }
     return false;
-  }
-
-  /** The chunker of a column without content defined chunking: it rolls nothing and ends no page. */
-  private static final class NoopChunker extends ContentDefinedChunker {
-    @Override
-    boolean needNewPage(int value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(long value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(float value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(double value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(boolean value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(Binary value, int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
-
-    @Override
-    boolean needNewPage(int repetitionLevel, int definitionLevel, ColumnWriterBase writer) {
-      return false;
-    }
   }
 }

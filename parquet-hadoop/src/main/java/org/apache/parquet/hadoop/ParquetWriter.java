@@ -26,7 +26,7 @@ import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.column.CdcOptions;
+import org.apache.parquet.column.ContentDefinedChunkingOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.values.alp.AlpConfig;
@@ -686,13 +686,23 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * EXPERIMENTAL: Enable content defined chunking of data pages with the given options, or disable
-     * it with {@code null}; see {@link ParquetProperties.Builder#withContentDefinedChunking(CdcOptions)}.
+     * See {@link ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)},
+     * with {@link ContentDefinedChunkingOptions#DEFAULT}.
      *
-     * @param options the chunking options, or {@code null} to disable content defined chunking
      * @return this builder for method chaining
      */
-    public SELF withContentDefinedChunking(CdcOptions options) {
+    public SELF withContentDefinedChunking() {
+      encodingPropsBuilder.withContentDefinedChunking();
+      return self();
+    }
+
+    /**
+     * See {@link ParquetProperties.Builder#withContentDefinedChunking(ContentDefinedChunkingOptions)}.
+     *
+     * @param options the content defined chunking settings, or {@code null} to disable it
+     * @return this builder for method chaining
+     */
+    public SELF withContentDefinedChunking(ContentDefinedChunkingOptions options) {
       encodingPropsBuilder.withContentDefinedChunking(options);
       return self();
     }
