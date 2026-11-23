@@ -40,6 +40,11 @@ public abstract class NonBlockedDecompressor implements Decompressor {
   // Buffer for compressed input. This buffer grows as necessary.
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
 
+  // Heap scratch space used only by the direct byte[] fast path below; holds a copy of the
+  // (typically much smaller) compressed bytes so codecs that expose a byte[]-to-byte[] API
+  // (e.g. Snappy) can decompress straight into the caller's destination array. Grows as necessary.
+  private byte[] compressedScratch = new byte[0];
+
   private boolean finished;
 
   /**
@@ -70,6 +75,25 @@ public abstract class NonBlockedDecompressor implements Decompressor {
       Preconditions.checkArgument(outputBuffer.position() == 0, "Invalid position of 0.");
       // There is compressed input, decompress it now.
       int decompressedSize = maxUncompressedLength(inputBuffer, len);
+
+      if (decompressedSize <= len && supportsDirectDecompress()) {
+        // Fast path: the caller's buffer can hold the entire decompressed output in one call,
+        // which is always true for Parquet page decompression. Decompress directly into it,
+        // skipping the (potentially large) off-heap outputBuffer and the copy out of it. The
+        // compressed bytes still need a small heap-side copy since they live in a direct
+        // buffer, but compressed data is typically far smaller than decompressed data.
+        int compressedLen = inputBuffer.remaining();
+        if (compressedScratch.length < compressedLen) {
+          compressedScratch = new byte[compressedLen];
+        }
+        inputBuffer.get(compressedScratch, 0, compressedLen);
+        int size = uncompressDirect(compressedScratch, 0, compressedLen, buffer, off);
+        inputBuffer.clear();
+        inputBuffer.limit(0);
+        finished = true;
+        return size;
+      }
+
       if (decompressedSize > outputBuffer.capacity()) {
         ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
@@ -192,4 +216,31 @@ public abstract class NonBlockedDecompressor implements Decompressor {
    * @return uncompressed data size
    */
   protected abstract int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
+
+  /**
+   * @return true if this codec implements {@link #uncompressDirect}. The default is false;
+   * codecs whose underlying library exposes a byte[]-to-byte[] decompress API (e.g. Snappy)
+   * should override both this and {@link #uncompressDirect}.
+   */
+  protected boolean supportsDirectDecompress() {
+    return false;
+  }
+
+  /**
+   * Optional fast path: decompress directly into the caller-supplied destination array,
+   * avoiding the intermediate off-heap output buffer used by {@link #uncompress(ByteBuffer, ByteBuffer)}.
+   * Only called when {@link #supportsDirectDecompress()} returns true.
+   *
+   * @param compressed         buffer containing the compressed input
+   * @param compressedOffset   start offset of the compressed data
+   * @param compressedLength   length of the compressed data
+   * @param uncompressed       destination for the uncompressed data
+   * @param uncompressedOffset start offset to write the uncompressed data at
+   * @return the number of uncompressed bytes written
+   */
+  protected int uncompressDirect(
+      byte[] compressed, int compressedOffset, int compressedLength, byte[] uncompressed, int uncompressedOffset)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
 }

@@ -33,4 +33,16 @@ public class SnappyDecompressor extends NonBlockedDecompressor {
   protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
     return Snappy.uncompressedLength(compressed);
   }
+
+  @Override
+  protected boolean supportsDirectDecompress() {
+    return true;
+  }
+
+  @Override
+  protected int uncompressDirect(
+      byte[] compressed, int compressedOffset, int compressedLength, byte[] uncompressed, int uncompressedOffset)
+      throws IOException {
+    return Snappy.uncompress(compressed, compressedOffset, compressedLength, uncompressed, uncompressedOffset);
+  }
 } // class SnappyDecompressor

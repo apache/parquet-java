@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
@@ -46,6 +47,49 @@ public class TestSnappyCodec {
     TestSnappy(compressor, decompressor, "a", "blahblahblah", "abcdef");
     TestSnappy(compressor, decompressor, "");
     TestSnappy(compressor, decompressor, "FooBar");
+  }
+
+  @Test
+  public void testSnappyLargeValueUsesDirectDecompressFastPath() throws IOException {
+    // Large enough that the whole page is decompressed in a single call, exercising
+    // NonBlockedDecompressor's direct byte[] fast path (and its scratch buffer growth),
+    // rather than the small multi-call draining path covered by TestSnappyStream.
+    byte[] uncompressedData = new byte[2_000_000];
+    new Random(42).nextBytes(uncompressedData);
+
+    SnappyCompressor compressor = new SnappyCompressor();
+    compressor.setInput(uncompressedData, 0, uncompressedData.length);
+    compressor.finish();
+    byte[] compressedData = new byte[Snappy.maxCompressedLength(uncompressedData.length)];
+    int compressedSize = compressor.compress(compressedData, 0, compressedData.length);
+
+    SnappyDecompressor decompressor = new SnappyDecompressor();
+    decompressor.setInput(compressedData, 0, compressedSize);
+    byte[] decompressedData = new byte[uncompressedData.length];
+    int decompressedSize = decompressor.decompress(decompressedData, 0, decompressedData.length);
+
+    assertThat(decompressor.finished()).isTrue();
+    assertThat(decompressedSize).isEqualTo(uncompressedData.length);
+    assertThat(decompressedData).isEqualTo(uncompressedData);
+
+    // Reuse across multiple pages of different sizes to exercise the scratch buffer
+    // shrinking/growing (it never shrinks, but must grow correctly for a bigger page).
+    byte[] bigger = new byte[3_000_000];
+    new Random(7).nextBytes(bigger);
+    SnappyCompressor compressor2 = new SnappyCompressor();
+    compressor2.setInput(bigger, 0, bigger.length);
+    compressor2.finish();
+    byte[] compressed2 = new byte[Snappy.maxCompressedLength(bigger.length)];
+    int compressedSize2 = compressor2.compress(compressed2, 0, compressed2.length);
+
+    decompressor.reset();
+    decompressor.setInput(compressed2, 0, compressedSize2);
+    byte[] decompressed2 = new byte[bigger.length];
+    int decompressedSize2 = decompressor.decompress(decompressed2, 0, decompressed2.length);
+
+    assertThat(decompressor.finished()).isTrue();
+    assertThat(decompressedSize2).isEqualTo(bigger.length);
+    assertThat(decompressed2).isEqualTo(bigger);
   }
 
   @Test
