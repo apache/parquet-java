@@ -34,6 +34,15 @@ public interface PageReader extends AutoCloseable {
   long getTotalValueCount();
 
   /**
+   * @return the sum of the uncompressed sizes of the (data) pages in this column chunk, or -1 if
+   * unknown. Callers that use this to pre-size a buffer must treat -1 (or any non-positive value)
+   * as "no estimate available" and fall back to their default behavior.
+   */
+  default long getUncompressedSize() {
+    return -1;
+  }
+
+  /**
    * @return the next page in that chunk or null if after the last page
    */
   DataPage readPage();

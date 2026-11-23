@@ -70,6 +70,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     private final BytesInputDecompressor decompressor;
     private final long valueCount;
+    private final long uncompressedSize;
     private final Queue<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
     // null means no page synchronization is required; firstRowIndex will not be returned by the pages
@@ -98,10 +99,13 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
       long count = 0;
+      long uncompressed = 0;
       for (DataPage p : compressedPages) {
         count += p.getValueCount();
+        uncompressed += p.getUncompressedSize();
       }
       this.valueCount = count;
+      this.uncompressedSize = uncompressed;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
       this.options = options;
@@ -129,6 +133,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     @Override
     public long getTotalValueCount() {
       return valueCount;
+    }
+
+    @Override
+    public long getUncompressedSize() {
+      return uncompressedSize;
     }
 
     @Override
