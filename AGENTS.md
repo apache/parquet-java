@@ -24,6 +24,10 @@ linked document for the task at hand rather than loading everything up front.
 
 ## Tests
 
+The [developer container](./dev/docker/README.md) is an optional starting point
+for a local Java, Maven, and Thrift test environment. Tests can also run directly
+on the host when the required toolchain is installed.
+
 Tests use **JUnit 5 + [AssertJ](https://assertj.github.io/doc/)**. Before writing,
 reviewing, or migrating tests, read the relevant guide under
 [`agents/docs/`](./agents/docs):

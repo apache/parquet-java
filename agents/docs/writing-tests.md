@@ -693,5 +693,21 @@ After writing or changing tests, apply formatting and run tests for the affected
 
 ```bash
 ./mvnw spotless:apply -pl <module>
-mvn -pl <module> test
+./mvnw -pl <module> -am test
 ```
+
+The [developer container](../../dev/docker/README.md) is an optional starting
+point for a local test environment with Java, Maven, and Thrift. If using it,
+follow the image setup instructions there, then run the affected module and its
+prerequisites from the repository root:
+
+```bash
+docker run --rm --init \
+  --mount "type=bind,src=$PWD,dst=/workspace" \
+  --mount type=volume,src=parquet-java-m2,dst=/home/parquet/.m2 \
+  parquet-java-dev \
+  ./mvnw --batch-mode -pl <module> -am test
+```
+
+To apply formatting in the container, use the same invocation with
+`./mvnw spotless:apply -pl <module>` as the command.
