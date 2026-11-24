@@ -28,6 +28,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -74,10 +75,26 @@ public class TestColumnChunkPageReadStore {
         NOOP_DECOMPRESSOR, Collections.singletonList(page), null, null, 1L, null, null, 0, 0, options);
     try (ColumnChunkPageReadStore store = new ColumnChunkPageReadStore(1L)) {
       store.addColumn(COLUMN, reader);
+      assertThat(reader.getTotalUncompressedSize()).isEqualTo(bytes.length);
       assertThat(((DataPageV1) reader.readPage()).getBytes().toByteArray())
           .isEqualTo(bytes);
       verify(allocator, never()).allocate(anyInt());
     }
+  }
+
+  @Test
+  public void getTotalUncompressedSizeSumsAcrossMultiplePages() {
+    // Declared (header) uncompressed sizes, not the backing array lengths, are what the accumulator
+    // sums - distinct values here (4, 7, 10) prove it sums per-page sizes rather than e.g. returning
+    // just the last page's size.
+    DataPageV1 page1 = new DataPageV1(BytesInput.from(new byte[4]), 1, 4, null, RLE, RLE, PLAIN);
+    DataPageV1 page2 = new DataPageV1(BytesInput.from(new byte[4]), 1, 7, null, RLE, RLE, PLAIN);
+    DataPageV1 page3 = new DataPageV1(BytesInput.from(new byte[4]), 1, 10, null, RLE, RLE, PLAIN);
+    ParquetReadOptions options = ParquetReadOptions.builder().build();
+    ColumnChunkPageReader reader = new ColumnChunkPageReader(
+        NOOP_DECOMPRESSOR, Arrays.asList(page1, page2, page3), null, null, 3L, null, null, 0, 0, options);
+
+    assertThat(reader.getTotalUncompressedSize()).isEqualTo(21);
   }
 
   @Test

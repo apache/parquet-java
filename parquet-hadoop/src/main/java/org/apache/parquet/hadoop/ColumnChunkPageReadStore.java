@@ -136,7 +136,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     @Override
-    public long getUncompressedSize() {
+    public long getTotalUncompressedSize() {
       return uncompressedSize;
     }
 
