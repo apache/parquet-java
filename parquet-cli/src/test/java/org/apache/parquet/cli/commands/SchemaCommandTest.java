@@ -67,4 +67,19 @@ public class SchemaCommandTest extends ParquetFileTest {
         .isInstanceOf(FileAlreadyExistsException.class)
         .hasMessageContaining("File already exists");
   }
+
+  @Test
+  public void testSchemaCommandWithEncryptedFileParquetSchema() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_schema_parquet_test.parquet");
+
+    SchemaCommand command = new SchemaCommand(createLogger());
+    command.targets = Arrays.asList(encryptedFile.getAbsolutePath());
+    command.parquetSchema = true;
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
+  }
 }
