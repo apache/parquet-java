@@ -39,7 +39,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 
-@Parameters(commandDescription = "Check bloom filters for a Parquet column")
+@Parameters(commandDescription = "Show bloom filter metadata or check values for a Parquet column")
 public class ShowBloomFilterCommand extends BaseCommand {
 
   public ShowBloomFilterCommand(Logger console) {
@@ -51,46 +51,49 @@ public class ShowBloomFilterCommand extends BaseCommand {
 
   @Parameter(
       names = {"-c", "--column"},
-      description = "Check the bloom filter indexes for the given column",
-      required = true)
+      description = "Show or check the bloom filter for the given column only")
   String columnPath;
 
   @Parameter(
       names = {"-v", "--values"},
-      description = "Check if the given values match bloom filter",
-      required = true)
+      description = "Check if the given values match bloom filter (requires --column)")
   List<String> testValues;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
     Preconditions.checkArgument(file != null, "A Parquet file is required.");
+    Preconditions.checkArgument(columnPath != null || testValues == null, "A column is required to check values.");
 
     try (ParquetFileReader reader = createParquetFileReader(file)) {
       MessageType schema = reader.getFileMetaData().getSchema();
-      PrimitiveType type = Util.primitive(columnPath, schema);
+      PrimitiveType type = columnPath == null ? null : Util.primitive(columnPath, schema);
 
       int rowGroupIndex = 0;
       for (BlockMetaData block : reader.getFooter().getBlocks()) {
         console.info(String.format(
             "\nRow group %d: \n%s", rowGroupIndex, new TextStringBuilder(80).appendPadding(80, '-')));
 
-        Optional<ColumnChunkMetaData> maybeColumnMeta = block.getColumns().stream()
-            .filter(c -> columnPath.equals(c.getPath().toDotString()))
-            .findFirst();
-        if (!maybeColumnMeta.isPresent()) {
-          console.info("column {} doesn't exist.", columnPath);
+        if (testValues == null) {
+          showMetadata(reader, block);
         } else {
-          BloomFilterReader bloomFilterReader = reader.getBloomFilterDataReader(block);
-          BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(maybeColumnMeta.get());
-          if (bloomFilter == null) {
-            console.info("column {} has no bloom filter", columnPath);
+          Optional<ColumnChunkMetaData> maybeColumnMeta = block.getColumns().stream()
+              .filter(c -> columnPath.equals(c.getPath().toDotString()))
+              .findFirst();
+          if (!maybeColumnMeta.isPresent()) {
+            console.info("column {} doesn't exist.", columnPath);
           } else {
-            for (String value : testValues) {
-              if (bloomFilter.findHash(bloomFilter.hash(getOriginalType(value, type)))) {
-                console.info("value {} maybe exists.", value);
-              } else {
-                console.info("value {} NOT exists.", value);
+            BloomFilterReader bloomFilterReader = reader.getBloomFilterDataReader(block);
+            BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(maybeColumnMeta.get());
+            if (bloomFilter == null) {
+              console.info("column {} has no bloom filter", columnPath);
+            } else {
+              for (String value : testValues) {
+                if (bloomFilter.findHash(bloomFilter.hash(getOriginalType(value, type)))) {
+                  console.info("value {} maybe exists.", value);
+                } else {
+                  console.info("value {} NOT exists.", value);
+                }
               }
             }
           }
@@ -99,6 +102,26 @@ public class ShowBloomFilterCommand extends BaseCommand {
       }
     }
     return 0;
+  }
+
+  private void showMetadata(ParquetFileReader reader, BlockMetaData block) throws IOException {
+    BloomFilterReader bloomFilterReader = reader.getBloomFilterDataReader(block);
+    for (ColumnChunkMetaData column : block.getColumns()) {
+      String path = column.getPath().toDotString();
+      if (columnPath != null && !columnPath.equals(path)) {
+        continue;
+      }
+      console.info("bloom filter for column {}:", path);
+      BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(column);
+      if (bloomFilter == null) {
+        console.info("NONE");
+      } else {
+        console.info("Hash strategy: {}", bloomFilter.getHashStrategy());
+        console.info("Algorithm: {}", bloomFilter.getAlgorithm());
+        console.info("Compression: {}", bloomFilter.getCompression());
+        console.info("Bitset size: {}", bloomFilter.getBitsetSize());
+      }
+    }
   }
 
   private Object getOriginalType(String value, PrimitiveType type) {
@@ -121,6 +144,11 @@ public class ShowBloomFilterCommand extends BaseCommand {
   @Override
   public List<String> getExamples() {
     return Arrays.asList(
-        "# Show bloom filter for column 'col' from a Parquet file", "-c col -v 1,2,3 -i sample.parquet");
+        "# Show bloom filter metadata for all columns",
+        "sample.parquet",
+        "# Show bloom filter metadata for column 'col'",
+        "-c col sample.parquet",
+        "# Check values against the bloom filter for column 'col'",
+        "-c col -v 1,2,3 sample.parquet");
   }
 }
