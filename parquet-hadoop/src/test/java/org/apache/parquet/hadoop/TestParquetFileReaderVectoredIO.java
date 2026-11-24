@@ -392,7 +392,7 @@ public class TestParquetFileReaderVectoredIO {
 
   @Test
   public void testSplitsAdjacentFilteredPageRangesAtMaximumAllocation() throws Exception {
-    int maximumAllocation = 1416;
+    int maximumAllocation = 1774;
     RecordingAllocator allocator = new RecordingAllocator();
     RecordingSeekableInputStream stream = newStream(FailureMode.NONE);
     FilterPredicate predicate = or(ltEq(intColumn("id"), 99), gtEq(intColumn("id"), 120));
@@ -708,14 +708,14 @@ public class TestParquetFileReaderVectoredIO {
         .withMaxAllocationInBytes(maximumAllocation);
     if (filterPages) {
       FilterPredicate predicate =
-          or(ltEq(intColumn("id"), 99), and(gtEq(intColumn("id"), 108), ltEq(intColumn("id"), 115)));
+          or(ltEq(intColumn("id"), 95), and(gtEq(intColumn("id"), 104), ltEq(intColumn("id"), 111)));
       builder.useColumnIndexFilter(true).withRecordFilter(FilterCompat.get(predicate));
     }
     return builder.build();
   }
 
   private static void assertRows(PageReadStore pages, MessageType projection, boolean filtered) {
-    assertRows(pages, projection, filtered, filtered ? 108 : ROW_COUNT);
+    assertRows(pages, projection, filtered, filtered ? 104 : ROW_COUNT);
   }
 
   private static void assertRows(PageReadStore pages, MessageType projection, boolean filtered, long expectedRows) {

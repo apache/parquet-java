@@ -122,7 +122,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     }
     this.columns = unmodifiableMap(mcolumns);
 
-    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+    this.rowCountForNextSizeCheck = min(props.getMinRowCountForPageSizeCheck(), props.getPageRowCountLimit());
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
