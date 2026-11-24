@@ -693,7 +693,7 @@ After writing or changing tests, apply formatting and run tests for the affected
 
 ```bash
 ./mvnw spotless:apply -pl <module>
-./mvnw -pl <module> test
+./mvnw -pl <module> -am test
 ```
 
 The [developer container](../../dev/docker/README.md) is an optional starting
