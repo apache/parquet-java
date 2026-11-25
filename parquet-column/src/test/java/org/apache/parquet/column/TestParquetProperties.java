@@ -338,4 +338,37 @@ public class TestParquetProperties {
     assertThat(props.getColumnCompressionLevel(colB)).isEqualTo(7);
     assertThat(props.getColumnCompressionLevel(colC)).isNull();
   }
+
+  @Test
+  public void contentDefinedChunking_byDefault_isDisabled() {
+    ParquetProperties props = ParquetProperties.builder().build();
+
+    assertThat(props.isContentDefinedChunkingEnabled()).isFalse();
+    assertThat(props.getContentDefinedChunkingOptions()).isNull();
+  }
+
+  @Test
+  public void contentDefinedChunking_options_surviveCopy() {
+    ContentDefinedChunkingOptions options = new ContentDefinedChunkingOptions(4 * 1024, 16 * 1024, -1);
+    ParquetProperties original =
+        ParquetProperties.builder().withContentDefinedChunking(options).build();
+
+    assertThat(ParquetProperties.copy(original).build().getContentDefinedChunkingOptions())
+        .isSameAs(options);
+    assertThat(ParquetProperties.copy(original)
+            .withContentDefinedChunking(null)
+            .build()
+            .isContentDefinedChunkingEnabled())
+        .isFalse();
+  }
+
+  @Test
+  public void contentDefinedChunking_defaultOptions_matchArrow() {
+    ContentDefinedChunkingOptions options =
+        ParquetProperties.builder().withContentDefinedChunking().build().getContentDefinedChunkingOptions();
+
+    assertThat(options.getMinChunkSize()).isEqualTo(256 * 1024);
+    assertThat(options.getMaxChunkSize()).isEqualTo(1024 * 1024);
+    assertThat(options.getNormLevel()).isZero();
+  }
 }

@@ -23,10 +23,13 @@ import static java.lang.Math.min;
 import static java.util.Collections.unmodifiableMap;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
@@ -62,6 +65,8 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
   ColumnWriteStoreBase(final PageWriteStore pageWriteStore, final ParquetProperties props) {
+    Preconditions.checkState(
+        !props.isContentDefinedChunkingEnabled(), "Content defined chunking needs the chunkers of the file");
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
 
@@ -74,7 +79,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       public ColumnWriter getColumnWriter(ColumnDescriptor path) {
         ColumnWriterBase column = columns.get(path);
         if (column == null) {
-          column = createColumnWriterBase(path, pageWriteStore.getPageWriter(path), null, props);
+          column = createColumnWriterBase(path, pageWriteStore.getPageWriter(path), null, null, props);
           columns.put(path, column);
         }
         return column;
@@ -83,12 +88,14 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   }
 
   ColumnWriteStoreBase(MessageType schema, PageWriteStore pageWriteStore, ParquetProperties props) {
+    Preconditions.checkState(
+        !props.isContentDefinedChunkingEnabled(), "Content defined chunking needs the chunkers of the file");
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, props));
+      mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, null, props));
     }
     this.columns = unmodifiableMap(mcolumns);
 
@@ -108,16 +115,32 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       PageWriteStore pageWriteStore,
       BloomFilterWriteStore bloomFilterWriteStore,
       ParquetProperties props) {
+    this(schema, pageWriteStore, bloomFilterWriteStore, props, null);
+  }
+
+  ColumnWriteStoreBase(
+      MessageType schema,
+      PageWriteStore pageWriteStore,
+      BloomFilterWriteStore bloomFilterWriteStore,
+      ParquetProperties props,
+      List<ContentDefinedChunker> chunkers) {
+    Iterator<ContentDefinedChunker> columnChunkers = null;
+    if (props.isContentDefinedChunkingEnabled()) {
+      Preconditions.checkState(chunkers != null, "Content defined chunking needs the chunkers of the file");
+      Preconditions.checkArgument(chunkers.size() == schema.getColumns().size(), "Expected a chunker per column");
+      columnChunkers = chunkers.iterator();
+    }
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
+      ContentDefinedChunker chunker = columnChunkers != null ? columnChunkers.next() : null;
       if (props.isBloomFilterEnabled(path)) {
         BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
-        mcolumns.put(path, createColumnWriterBase(path, pageWriter, bloomFilterWriter, props));
+        mcolumns.put(path, createColumnWriterBase(path, pageWriter, bloomFilterWriter, chunker, props));
       } else {
-        mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, props));
+        mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, chunker, props));
       }
     }
     this.columns = unmodifiableMap(mcolumns);
@@ -136,14 +159,19 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       ColumnDescriptor path,
       PageWriter pageWriter,
       BloomFilterWriter bloomFilterWriter,
+      ContentDefinedChunker chunker,
       ParquetProperties props) {
-    ColumnWriterBase columnWriterBase = createColumnWriter(path, pageWriter, bloomFilterWriter, props);
+    ColumnWriterBase columnWriterBase = createColumnWriter(path, pageWriter, bloomFilterWriter, chunker, props);
     columnWriterBase.initStatusManager(statusManager);
     return columnWriterBase;
   }
 
   abstract ColumnWriterBase createColumnWriter(
-      ColumnDescriptor path, PageWriter pageWriter, BloomFilterWriter bloomFilterWriter, ParquetProperties props);
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      BloomFilterWriter bloomFilterWriter,
+      ContentDefinedChunker chunker,
+      ParquetProperties props);
 
   @Override
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {

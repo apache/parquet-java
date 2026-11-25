@@ -284,6 +284,32 @@ true if the reader is using a `DirectByteBufferAllocator`
 
 ---
 
+**Property:** `parquet.content-defined-chunking.enabled`  
+**Description:** EXPERIMENTAL: Whether to also end data pages at content defined chunk boundaries, as Arrow C++
+and arrow-rs do, so that files sharing runs of values share pages for deduplicating storage.  
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.content-defined-chunking.min.size`  
+**Description:** The minimum content defined chunk size in bytes.  
+**Default value:** `262144` (256 KiB)
+
+---
+
+**Property:** `parquet.content-defined-chunking.max.size`  
+**Description:** The maximum content defined chunk size in bytes.  
+**Default value:** `1048576` (1 MiB)
+
+---
+
+**Property:** `parquet.content-defined-chunking.norm.level`  
+**Description:** The normalization level of content defined chunking. Higher levels find chunk
+boundaries more often, improving deduplication at the cost of more small pages.  
+**Default value:** `0`
+
+---
+
 **Property:** `parquet.page.write-checksum.enabled`  
 **Description:** Whether to write out page level checksums.  
 **Default value:** `true`
