@@ -42,7 +42,7 @@ public interface PageReader extends AutoCloseable {
    * buffer must treat only -1 as "no estimate available" and fall back to their default behavior.
    * This value is derived from unvalidated page-header metadata in the Parquet file, not verified
    * against the actual bytes read; callers that pre-size an allocation from it should bound or chunk
-   * that allocation (e.g. as {@link org.apache.parquet.ParquetReadOptions#getMaxAllocationSize()}
+   * that allocation (e.g. as {@code org.apache.parquet.ParquetReadOptions#getMaxAllocationSize()}
    * does internally) rather than allocating the full reported size in one call.
    */
   default long getTotalUncompressedSize() {
