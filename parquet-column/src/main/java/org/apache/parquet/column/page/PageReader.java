@@ -29,7 +29,8 @@ public interface PageReader extends AutoCloseable {
   DictionaryPage readDictionaryPage();
 
   /**
-   * @return the total number of values in the column chunk
+   * @return the total number of values this reader will yield - which may be a filtered subset of
+   * the column chunk's values, e.g. when row-range/column-index filtering is applied
    */
   long getTotalValueCount();
 
