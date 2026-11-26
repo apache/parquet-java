@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.util.Utf8;
@@ -2159,7 +2160,8 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
   @Test
   public void testProjectionWithoutAvroSchemaKeepsElementTypes() throws Exception {
-    // No Avro schema in the file and no read schema: the records have the requested projection
+    // No Avro schema in the file and no read schema: the records have the schema converted from the
+    // projection, as before
     Path twoLevel = writeDirect(
         "message ProjectWithoutAvroSchema {"
             + "  optional group items (LIST) {"
@@ -2210,8 +2212,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         });
     Schema strings = record(
         "ProjectWithoutAvroSchema", optionalField("items", array(optional(primitive(Schema.Type.STRING)))));
-    assertReaderContains(
-        requestedProjectionReader(legacy, strings), strings, instance(strings, "items", Arrays.asList("a")));
+    // The records have the schema converted from the projection, as before
+    try (AvroParquetReader<GenericRecord> reader = requestedProjectionReader(legacy, strings)) {
+      assertThat(String.valueOf(reader.read().get("items"))).isEqualTo("[a]");
+    }
   }
 
   @Test
@@ -2250,10 +2254,11 @@ public class TestArrayCompatibility extends DirectWriterTest {
         field("id", primitive(Schema.Type.INT)),
         optionalField("tags", array(optional(primitive(Schema.Type.STRING)))));
 
-    assertReaderContains(
-        requestedProjectionReader(test, projection),
-        projection,
-        instance(projection, "id", 7, "tags", Arrays.asList("a")));
+    try (AvroParquetReader<GenericRecord> reader = requestedProjectionReader(test, projection)) {
+      GenericRecord record = reader.read();
+      assertThat(record.get("id")).isEqualTo(7);
+      assertThat(String.valueOf(record.get("tags"))).isEqualTo("[a]");
+    }
   }
 
   @Test
@@ -2289,7 +2294,116 @@ public class TestArrayCompatibility extends DirectWriterTest {
     GenericRecord expected = instance(projection, "points", Arrays.asList(instance(point, "x", 1)));
 
     assertReaderContains(projectionReader(test, projection), projection, expected);
-    assertReaderContains(requestedProjectionReader(test, projection), projection, expected);
+  }
+
+  @Test
+  public void testProjectionReadsSingleFieldTupleWithGroupField() throws Exception {
+    // The repeated group is the element, and its one field is itself a group: aligning the group as a
+    // wrapper of the element would add another x level
+    Path test = writeDirect(
+        "message ProjectTupleOfGroup {"
+            + "  optional group points (LIST) {"
+            + "    repeated group points_tuple {"
+            + "      required group x {"
+            + "        required int32 a;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("points", 0);
+          rc.startGroup();
+          rc.startField("points_tuple", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.startGroup();
+          rc.startField("a", 0);
+          rc.addInteger(1);
+          rc.endField("a", 0);
+          rc.endGroup();
+          rc.endField("x", 0);
+          rc.endGroup();
+          rc.endField("points_tuple", 0);
+          rc.endGroup();
+          rc.endField("points", 0);
+          rc.endMessage();
+        });
+
+    Schema x = record("x", field("a", primitive(Schema.Type.INT)));
+    Schema point = record("points_tuple", field("x", x));
+    Schema projection = record("ProjectTupleOfGroup", optionalField("points", array(point)));
+
+    assertReaderContains(
+        projectionReader(test, projection),
+        projection,
+        instance(projection, "points", Arrays.asList(instance(point, "x", instance(x, "a", 1)))));
+  }
+
+  @Test
+  public void testProjectionFollowsAliasesOfTheReadSchema() throws Exception {
+    // The read schema renames the list, with the file's name as an alias, as the converters allow
+    Path test = writeDirect(
+        "message ProjectAlias {"
+            + "  optional group items (LIST) {"
+            + "    repeated group points_tuple {"
+            + "      required int32 x;"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("items", 0);
+          rc.startGroup();
+          rc.startField("points_tuple", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(1);
+          rc.endField("x", 0);
+          rc.endGroup();
+          rc.endField("points_tuple", 0);
+          rc.endGroup();
+          rc.endField("items", 0);
+          rc.endMessage();
+        });
+
+    Schema point = record("points_tuple", field("x", primitive(Schema.Type.INT)));
+    Schema projection = record("ProjectAlias", optionalField("items", array(point)));
+    Schema.Field renamed = optionalField("points", array(point));
+    renamed.addAlias("items");
+    Schema readSchema = record("ProjectAlias", renamed);
+
+    assertReaderContains(
+        projectionReader(test, projection, readSchema),
+        readSchema,
+        instance(readSchema, "points", Arrays.asList(instance(point, "x", 1))));
+  }
+
+  @Test
+  public void testProjectionWithoutAvroSchemaKeepsTheConvertedSchema() throws Exception {
+    // Without a read schema or an Avro schema in the file, the records have the schema converted from the
+    // projection, as before: an ENUM column is a string, not an Avro enum
+    Path test = writeDirect("message ProjectEnum {" + "  required binary kind (ENUM);" + "}", rc -> {
+      rc.startMessage();
+      rc.startField("kind", 0);
+      rc.addBinary(Binary.fromString("A"));
+      rc.endField("kind", 0);
+      rc.endMessage();
+    });
+
+    Schema projection =
+        record("ProjectEnum", field("kind", Schema.createEnum("Kind", null, null, Arrays.asList("A", "B"))));
+
+    // The record converters, which read an Avro enum as one, unlike the compatible ones
+    Configuration conf = new Configuration();
+    AvroReadSupport.setRequestedProjection(conf, projection);
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(conf, test)) {
+      Object kind = reader.read().get("kind");
+      assertThat(kind).isNotInstanceOf(GenericEnumSymbol.class);
+      assertThat(kind).isInstanceOf(CharSequence.class);
+      assertThat(kind.toString()).isEqualTo("A");
+    }
   }
 
   @Test
@@ -2335,6 +2449,112 @@ public class TestArrayCompatibility extends DirectWriterTest {
   }
 
   @Test
+  public void testProjectionKeepsListWrapperNamedLikeAnAvroTypeForRecords() throws Exception {
+    // With a record element, the check of the wrapper named string would create an Avro record with
+    // that name, which Avro rejects, so the list keeps the converted projection, and the other fields
+    // read as before
+    Path test = writeDirect(
+        "message ProjectRecordWrapperName {"
+            + "  required int32 id;"
+            + "  optional group tags (LIST) {"
+            + "    repeated group string {"
+            + "      required group element {"
+            + "        required int32 x;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("id", 0);
+          rc.addInteger(7);
+          rc.endField("id", 0);
+          rc.startField("tags", 1);
+          rc.startGroup();
+          rc.startField("string", 0);
+          rc.startGroup();
+          rc.startField("element", 0);
+          rc.startGroup();
+          rc.startField("x", 0);
+          rc.addInteger(1);
+          rc.endField("x", 0);
+          rc.endGroup();
+          rc.endField("element", 0);
+          rc.endGroup();
+          rc.endField("string", 0);
+          rc.endGroup();
+          rc.endField("tags", 1);
+          rc.endMessage();
+        });
+
+    Schema element = record("element", field("x", primitive(Schema.Type.INT)));
+    Schema projection = record(
+        "ProjectRecordWrapperName",
+        field("id", primitive(Schema.Type.INT)),
+        optionalField("tags", array(element)));
+
+    try (AvroParquetReader<GenericRecord> reader = projectionReader(test, projection)) {
+      assertThat(reader.read().get("id")).isEqualTo(7);
+    }
+  }
+
+  @Test
+  public void testProjectionDoesNotReadNestedListOfKeyValueRecordsAsMap() throws Exception {
+    // The element of the outer list is a two-level LIST of key-value records named pair, whose paths
+    // the MAP projection would match if it took the file's name, so it must not, as at the top level
+    Path test = writeDirect(
+        "message ProjectNestedListAsMap {"
+            + "  optional group outer (LIST) {"
+            + "    repeated group pair (LIST) {"
+            + "      repeated group key_value {"
+            + "        required binary key (UTF8);"
+            + "        optional int32 value;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("outer", 0);
+          rc.startGroup();
+          rc.startField("pair", 0);
+          rc.startGroup();
+          rc.startField("key_value", 0);
+          for (int value : new int[] {1, 2}) {
+            rc.startGroup();
+            rc.startField("key", 0);
+            rc.addBinary(Binary.fromString("a"));
+            rc.endField("key", 0);
+            rc.startField("value", 1);
+            rc.addInteger(value);
+            rc.endField("value", 1);
+            rc.endGroup();
+          }
+          rc.endField("key_value", 0);
+          rc.endGroup();
+          rc.endField("pair", 0);
+          rc.endGroup();
+          rc.endField("outer", 0);
+          rc.endMessage();
+        });
+
+    Schema projection = record(
+        "ProjectNestedListAsMap",
+        optionalField("outer", array(Schema.createMap(optional(primitive(Schema.Type.INT))))));
+
+    try (AvroParquetReader<GenericRecord> reader = projectionReader(test, projection)) {
+      Object outer = reader.read().get("outer");
+      if (outer != null) {
+        for (Object map : (Iterable<?>) outer) {
+          assertThat(map)
+              .as("Should not collapse the list into a map")
+              .isNotInstanceOf(Map.class);
+        }
+      }
+    }
+  }
+
+  @Test
   public void testProjectionReadsRepeatedListAsElementOfTwoLevelList() throws Exception {
     // A two-level list whose element is a repeated LIST, with an inner field name other than the projection's
     Path test = writeDirect(
@@ -2374,7 +2594,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
         projectionReader(test, projection),
         projection,
         instance(projection, "lists", Arrays.asList(Arrays.asList(1, 2), Arrays.asList(3))));
-    // Also without a read schema, when the records have the requested projection
+    // Also without a read schema, with the schema converted from the projection
     assertReaderContains(
         requestedProjectionReader(test, projection),
         projection,

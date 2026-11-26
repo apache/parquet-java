@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
@@ -148,11 +149,11 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       projection = new AvroSchemaConverter(listEncodingConf).convert(avroRequestedProjection);
       Schema materializedSchema = materializedSchema(configuration, keyValueMetaData);
       if (materializedSchema == null) {
-        // Without a read schema or an Avro schema in the file, read with the requested projection, as
-        // parquet-cli does, rather than with a schema converted from the aligned projection, which can
-        // have another shape, such as records for the wrappers of a list's elements.
-        materializedSchema = avroRequestedProjection;
-        metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, requestedProjectionString);
+        // Without a read schema or an Avro schema in the file, read with the schema converted from the
+        // projection, as before. Converting the aligned projection instead could give its lists another
+        // shape, such as records for the wrappers of their elements.
+        materializedSchema = new AvroSchemaConverter(listEncodingConf).convert(projection);
+        metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, materializedSchema.toString());
       }
       boolean oldListStructure = listEncodingConf.getBoolean(
           AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT);
@@ -373,22 +374,35 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       alignedRepeated =
           alignElement(projectedElement, fileRepeated, elementSchema, readElementSchema, oldListStructure);
     } else {
-      // A group with one field that isn't repeated: the element is that field, unless the element is a
-      // record that the group itself matches. The checks convert the repeated field to Avro, so give them
-      // only the projected columns: a column the projection doesn't select, such as a MAP with integer
-      // keys, can have a type that Avro can not represent.
+      // A group with one field that isn't repeated: the group is the element if the element is a record
+      // that it matches, such as points_tuple { x } for a list of records with x, and otherwise it
+      // wraps the element. The checks convert the repeated field to Avro, so give them only the
+      // projected columns: a column the projection doesn't select, such as a MAP with integer keys, can
+      // have a type that Avro can not represent.
       GroupType fileRepeatedGroup = fileRepeated.asGroupType();
-      Type wrappedElement = alignElement(
-          projectedElement, fileRepeatedGroup.getType(0), elementSchema, readElementSchema, oldListStructure);
-      GroupType wrapper = wrappedElement == null ? null : fileRepeatedGroup.withNewFields(wrappedElement);
-      if (wrapper != null && !AvroRecordConverter.isElementType(wrapper, readElement)) {
-        repeatedIsElement = false;
-        alignedRepeated = wrapper;
-      } else {
-        // The group is the element, such as points_tuple { x } for a list of records with x
-        repeatedIsElement = true;
-        alignedRepeated = alignElement(
+      Type direct = null;
+      if (readElement != null
+          && readElement.getType() == Schema.Type.RECORD
+          && !projectedElement.isPrimitive()
+          && hasFields(fileRepeatedGroup, projectedElement.asGroupType())) {
+        direct = alignElement(
             projectedElement, fileRepeated, elementSchema, readElementSchema, oldListStructure);
+      }
+      Boolean directIsElement = direct == null ? Boolean.FALSE : isElementType(direct, readElement);
+      if (directIsElement == null) {
+        return projected;
+      } else if (directIsElement) {
+        repeatedIsElement = true;
+        alignedRepeated = direct;
+      } else {
+        repeatedIsElement = false;
+        Type wrappedElement = alignElement(
+            projectedElement,
+            fileRepeatedGroup.getType(0),
+            elementSchema,
+            readElementSchema,
+            oldListStructure);
+        alignedRepeated = wrappedElement == null ? null : fileRepeatedGroup.withNewFields(wrappedElement);
       }
     }
     if (alignedRepeated == null) {
@@ -397,7 +411,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     // The converter decides again on the aligned repeated field. Pruning a group element can change that
     // decision, for example when the read schema requires a field the projection leaves out, so keep the
     // converted projection rather than misread the list.
-    if (AvroRecordConverter.isElementType(alignedRepeated, readElement) != repeatedIsElement) {
+    if (!Boolean.valueOf(repeatedIsElement).equals(isElementType(alignedRepeated, readElement))) {
       return projected;
     }
     return projected.withNewFields(alignedRepeated);
@@ -441,7 +455,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   // allows null.
   private static Type alignElement(
       Type projected, Type file, Schema schema, Schema readSchema, boolean oldListStructure) {
-    if (projected.isPrimitive() != file.isPrimitive()) {
+    if (projected.isPrimitive() != file.isPrimitive()
+        || (!projected.isPrimitive() && !sameKind(projected.asGroupType(), file.asGroupType()))) {
       return null;
     }
     Type.Repetition repetition;
@@ -468,6 +483,29 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         .as(aligned.getLogicalTypeAnnotation())
         .addFields(aligned.getFields().toArray(new Type[0]))
         .named(file.getName());
+  }
+
+  // isElementType, or null if it can't convert the repeated field to Avro, such as a group with a record
+  // element whose name, for example string, isn't a valid name of an Avro record
+  private static Boolean isElementType(Type repeated, Schema elementSchema) {
+    try {
+      return AvroRecordConverter.isElementType(repeated, elementSchema);
+    } catch (AvroRuntimeException e) {
+      return null;
+    }
+  }
+
+  // Whether the group has a field for each field of the projected group
+  private static boolean hasFields(GroupType group, GroupType projected) {
+    return projected.getFields().stream().allMatch(field -> group.containsField(field.getName()));
+  }
+
+  // Whether the groups are both LISTs, both MAPs, or neither
+  private static boolean sameKind(GroupType projected, GroupType file) {
+    boolean projectedList =
+        projected.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation;
+    boolean fileList = file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation;
+    return projectedList == fileList && isMap(projected) == isMap(file);
   }
 
   private static boolean isRepeatedList(Type type) {
@@ -503,7 +541,17 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       return null;
     }
     Schema record = AvroSchemaConverter.getNonNull(readRecord);
-    Schema.Field field = record.getType() == Schema.Type.RECORD ? record.getField(name) : null;
+    if (record.getType() != Schema.Type.RECORD) {
+      return null;
+    }
+    Schema.Field field = record.getField(name);
+    if (field == null) {
+      // The converters also match a field of the read schema by its aliases
+      field = record.getFields().stream()
+          .filter(f -> f.aliases().contains(name))
+          .findFirst()
+          .orElse(null);
+    }
     return field == null ? null : field.schema();
   }
 
