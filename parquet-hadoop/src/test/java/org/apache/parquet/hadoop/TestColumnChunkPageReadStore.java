@@ -98,6 +98,23 @@ public class TestColumnChunkPageReadStore {
   }
 
   @Test
+  public void getTotalUncompressedSizeIsUnknownWhenAnyPageReportsANegativeSize() {
+    // A corrupt or malicious file can carry a negative page header size. Summing it in would cancel
+    // out the other pages' legitimate sizes and produce a wrong-but-plausible total, so the whole
+    // reader must fall back to -1 ("unknown") instead - even though most pages here are well-formed.
+    DataPageV1 page1 = new DataPageV1(BytesInput.from(new byte[4]), 1, 4, null, RLE, RLE, PLAIN);
+    DataPageV1 page2 = new DataPageV1(BytesInput.from(new byte[4]), 1, -7, null, RLE, RLE, PLAIN);
+    DataPageV1 page3 = new DataPageV1(BytesInput.from(new byte[4]), 1, 10, null, RLE, RLE, PLAIN);
+    ParquetReadOptions options = ParquetReadOptions.builder().build();
+    ColumnChunkPageReader reader = new ColumnChunkPageReader(
+        NOOP_DECOMPRESSOR, Arrays.asList(page1, page2, page3), null, null, 3L, null, null, 0, 0, options);
+
+    assertThat(reader.getTotalUncompressedSize()).isEqualTo(-1);
+    // Value counting is independent of the uncompressed-size bookkeeping and must still work.
+    assertThat(reader.getTotalValueCount()).isEqualTo(3);
+  }
+
+  @Test
   public void closeWithoutSetReleaserDoesNotThrow() {
     try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
       ParquetReadOptions options =

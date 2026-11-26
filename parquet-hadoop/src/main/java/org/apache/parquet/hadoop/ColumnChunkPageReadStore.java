@@ -102,7 +102,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       long uncompressed = 0;
       for (DataPage p : compressedPages) {
         count += p.getValueCount();
-        uncompressed += p.getUncompressedSize();
+        if (uncompressed != -1) {
+          int pageUncompressedSize = p.getUncompressedSize();
+          // Page headers are unvalidated file metadata; a negative size (corrupt or malicious file)
+          // would otherwise cancel out other pages' sizes and yield a wrong-but-plausible total.
+          uncompressed = pageUncompressedSize < 0 ? -1 : uncompressed + pageUncompressedSize;
+        }
       }
       this.valueCount = count;
       this.uncompressedSize = uncompressed;
