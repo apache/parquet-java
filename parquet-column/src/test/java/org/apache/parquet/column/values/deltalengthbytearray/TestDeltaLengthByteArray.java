@@ -19,12 +19,19 @@
 package org.apache.parquet.column.values.deltalengthbytearray;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
 
@@ -98,5 +105,50 @@ public class TestDeltaLengthByteArray {
     for (int i = 0; i < bin.length; i++) {
       assertThat(bin[i]).isEqualTo(values[i].length());
     }
+  }
+
+  @Test
+  public void testNegativeLength() throws IOException {
+    DeltaLengthByteArrayValuesReader reader = readerFor("abcd", 2, -2, 2);
+
+    assertThat(reader.readBytes()).isEqualTo(Binary.fromString("ab"));
+    assertThatThrownBy(reader::readBytes)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Invalid DELTA_LENGTH_BYTE_ARRAY value length: -2");
+  }
+
+  @Test
+  public void testSkipNegativeLength() throws IOException {
+    DeltaLengthByteArrayValuesReader reader = readerFor("abcd", 2, -2, 2);
+
+    assertThatThrownBy(() -> reader.skip(3))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Invalid DELTA_LENGTH_BYTE_ARRAY value length: -2");
+  }
+
+  @Test
+  public void testSkipLengthsOverflowingInt() throws IOException {
+    DeltaLengthByteArrayValuesReader reader = readerFor("abcd", Integer.MAX_VALUE, Integer.MAX_VALUE);
+
+    assertThatThrownBy(() -> reader.skip(2))
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Failed to skip 4294967294 bytes");
+  }
+
+  private static DeltaLengthByteArrayValuesReader readerFor(String data, int... lengths) throws IOException {
+    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+    reader.initFromPage(lengths.length, pageWithLengths(data, lengths));
+    return reader;
+  }
+
+  private static ByteBufferInputStream pageWithLengths(String data, int... lengths) throws IOException {
+    DeltaBinaryPackingValuesWriterForInteger lengthWriter =
+        new DeltaBinaryPackingValuesWriterForInteger(64, 64, new DirectByteBufferAllocator());
+    for (int length : lengths) {
+      lengthWriter.writeInteger(length);
+    }
+    byte[] page = BytesInput.concat(lengthWriter.getBytes(), BytesInput.from(data.getBytes(StandardCharsets.UTF_8)))
+        .toByteArray();
+    return ByteBufferInputStream.wrap(ByteBuffer.wrap(page));
   }
 }

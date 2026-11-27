@@ -19,14 +19,19 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.junit.jupiter.api.Test;
 
@@ -149,5 +154,29 @@ public class TestDeltaByteArray {
     assertThat(decoded[0]).isEqualTo(Binary.fromString("parquet-000"));
     assertThat(decoded[1]).isEqualTo(Binary.fromString("parquet-111"));
     assertThat(decoded[2]).isEqualTo(Binary.fromString("parquet-222"));
+  }
+
+  @Test
+  public void testNegativeSuffixLength() throws IOException {
+    DeltaBinaryPackingValuesWriterForInteger prefixLengths =
+        new DeltaBinaryPackingValuesWriterForInteger(64, 64, new DirectByteBufferAllocator());
+    DeltaBinaryPackingValuesWriterForInteger suffixLengths =
+        new DeltaBinaryPackingValuesWriterForInteger(64, 64, new DirectByteBufferAllocator());
+    for (int length : new int[] {2, -2, 2}) {
+      prefixLengths.writeInteger(0);
+      suffixLengths.writeInteger(length);
+    }
+    byte[] page = BytesInput.concat(
+            prefixLengths.getBytes(),
+            suffixLengths.getBytes(),
+            BytesInput.from("abcd".getBytes(StandardCharsets.UTF_8)))
+        .toByteArray();
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
+    reader.initFromPage(3, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
+
+    assertThat(reader.readBytes()).isEqualTo(Binary.fromString("ab"));
+    assertThatThrownBy(reader::readBytes)
+        .isInstanceOf(ParquetDecodingException.class)
+        .hasMessage("Invalid DELTA_LENGTH_BYTE_ARRAY value length: -2");
   }
 }
