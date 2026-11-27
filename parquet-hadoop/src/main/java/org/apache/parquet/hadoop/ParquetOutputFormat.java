@@ -33,8 +33,10 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -42,6 +44,7 @@ import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.apache.parquet.hadoop.util.HadoopCodecs;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -604,6 +607,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
           + "be reset by the new value: " + maxLoad);
     }
 
+    CompressionCodecFactory codecFactory = getCodecFactory(conf, props);
+    LOG.debug("Using codec factory: {}", codecFactory.getClass().getName());
+
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
@@ -614,7 +620,47 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         validating,
         props,
         memoryManager,
-        conf);
+        codecFactory,
+        () -> releaseCodecFactory(conf, props, codecFactory));
+  }
+
+  /**
+   * Returns the {@link CompressionCodecFactory codec factory} used for compressing the pages of the written file.
+   * <p>
+   * Subclasses may override this method to return a custom codec factory; for example the direct memory based one
+   * created by {@link HadoopCodecs#newDirectFactory(Configuration, ByteBufferAllocator, int)} to compress the pages
+   * without copying through the Java heap. The returned factory is passed to {@link #releaseCodecFactory} once the
+   * record writer returned by {@link #getRecordWriter(Configuration, Path, CompressionCodecName, Mode)} is closed,
+   * or if construction of that record writer fails after the factory was acquired.
+   *
+   * @param conf the Hadoop configuration providing the compression codec settings (e.g. per-codec compression
+   *             level) consumed by the default codec factory implementation
+   * @param props the parquet encoding properties of the written file
+   * @return the codec factory used for compressing the pages of the written file
+   */
+  protected CompressionCodecFactory getCodecFactory(Configuration conf, ParquetProperties props) {
+    return new CodecFactory(conf, props.getPageSizeThreshold());
+  }
+
+  /**
+   * Releases the {@link CompressionCodecFactory codec factory} returned by {@link #getCodecFactory} once the
+   * record writer it was created for is closed, or if construction of that record writer fails after the factory
+   * was acquired.
+   * <p>
+   * The default implementation calls {@link CompressionCodecFactory#release()}. Subclasses that return the same
+   * factory instance from multiple {@link #getCodecFactory} calls (for example to amortize the cost of
+   * initializing a native/direct memory codec across several {@link #getRecordWriter} calls) must override this
+   * method to make it a no-op (or reference count the shared instance) and manage the shared factory's lifecycle
+   * themselves; otherwise the factory would be torn down as soon as the first writer sharing it closes, while a
+   * sibling writer may still be using it.
+   *
+   * @param conf the Hadoop configuration that was passed to {@link #getCodecFactory}
+   * @param props the parquet encoding properties that were passed to {@link #getCodecFactory}
+   * @param codecFactory the factory {@link #getCodecFactory} returned for this writer
+   */
+  protected void releaseCodecFactory(
+      Configuration conf, ParquetProperties props, CompressionCodecFactory codecFactory) {
+    codecFactory.release();
   }
 
   /**

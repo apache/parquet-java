@@ -26,6 +26,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -42,7 +43,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private final InternalParquetRecordWriter<T> internalWriter;
   private final MemoryManager memoryManager;
-  private final CodecFactory codecFactory;
+  private final Runnable codecFactoryReleaser;
 
   @Deprecated
   public ParquetRecordWriter(
@@ -106,7 +107,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     internalWriter = new InternalParquetRecordWriter<T>(
         w, writeSupport, schema, extraMetaData, blockSize, col -> compressor, validating, props);
     this.memoryManager = null;
-    this.codecFactory = null;
+    this.codecFactoryReleaser = null;
   }
 
   @Deprecated
@@ -176,7 +177,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         w, writeSupport, schema, extraMetaData, blockSize, col -> compressor, validating, props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
-    this.codecFactory = null;
+    this.codecFactoryReleaser = null;
   }
 
   /**
@@ -188,6 +189,8 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param codec         the compression codec used to compress the pages
    * @param validating    if schema validation should be turned on
    * @param props         parquet encoding properties
+   * @param memoryManager memory manager for the write
+   * @param conf          the Hadoop configuration used to build the default codec factory
    */
   ParquetRecordWriter(
       ParquetFileWriter w,
@@ -200,18 +203,108 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       ParquetProperties props,
       MemoryManager memoryManager,
       Configuration conf) {
-    this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
-    internalWriter = new InternalParquetRecordWriter<T>(
+    this(
         w,
         writeSupport,
         schema,
         extraMetaData,
         blockSize,
-        ColumnChunkPageWriteStore.compressorProvider(codecFactory, codec, props),
+        codec,
         validating,
-        props);
-    this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
-    memoryManager.addWriter(internalWriter, blockSize);
+        props,
+        memoryManager,
+        new CodecFactory(conf, props.getPageSizeThreshold()));
+  }
+
+  /**
+   * @param w             the file to write to
+   * @param writeSupport  the class to convert incoming records
+   * @param schema        the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param blockSize     the size of a block in the file (this will be approximate)
+   * @param codec         the compression codec used to compress the pages
+   * @param validating    if schema validation should be turned on
+   * @param props         parquet encoding properties
+   * @param memoryManager memory manager for the write
+   * @param codecFactory  the codec factory used to compress the pages; it is released (via
+   *                      {@link CompressionCodecFactory#release()}) when this record writer is closed, or if
+   *                      construction fails after the factory has already been assigned
+   */
+  ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long blockSize,
+      CompressionCodecName codec,
+      boolean validating,
+      ParquetProperties props,
+      MemoryManager memoryManager,
+      CompressionCodecFactory codecFactory) {
+    this(
+        w,
+        writeSupport,
+        schema,
+        extraMetaData,
+        blockSize,
+        codec,
+        validating,
+        props,
+        memoryManager,
+        codecFactory,
+        codecFactory::release);
+  }
+
+  /**
+   * @param w                   the file to write to
+   * @param writeSupport        the class to convert incoming records
+   * @param schema              the schema of the records
+   * @param extraMetaData       extra meta data to write in the footer of the file
+   * @param blockSize           the size of a block in the file (this will be approximate)
+   * @param codec               the compression codec used to compress the pages
+   * @param validating          if schema validation should be turned on
+   * @param props               parquet encoding properties
+   * @param memoryManager       memory manager for the write
+   * @param codecFactory        the codec factory used to compress the pages
+   * @param codecFactoryReleaser invoked to release {@code codecFactory} when this record writer is closed, or if
+   *                             construction fails after the factory has already been assigned; a caller that
+   *                             shares {@code codecFactory} across multiple writers can pass a no-op here and
+   *                             manage the shared factory's lifecycle itself
+   */
+  ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long blockSize,
+      CompressionCodecName codec,
+      boolean validating,
+      ParquetProperties props,
+      MemoryManager memoryManager,
+      CompressionCodecFactory codecFactory,
+      Runnable codecFactoryReleaser) {
+    Objects.requireNonNull(codecFactory, "codecFactory cannot be null");
+    this.codecFactoryReleaser = Objects.requireNonNull(codecFactoryReleaser, "codecFactoryReleaser cannot be null");
+    try {
+      internalWriter = new InternalParquetRecordWriter<T>(
+          w,
+          writeSupport,
+          schema,
+          extraMetaData,
+          blockSize,
+          ColumnChunkPageWriteStore.compressorProvider(codecFactory, codec, props),
+          validating,
+          props);
+      this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
+      memoryManager.addWriter(internalWriter, blockSize);
+    } catch (RuntimeException | Error t) {
+      try {
+        codecFactoryReleaser.run();
+      } catch (RuntimeException | Error suppressed) {
+        t.addSuppressed(suppressed);
+      }
+      throw t;
+    }
   }
 
   /**
@@ -223,8 +316,8 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       internalWriter.close();
       // release after the writer closes in case it is used for a last flush
     } finally {
-      if (codecFactory != null) {
-        codecFactory.release();
+      if (codecFactoryReleaser != null) {
+        codecFactoryReleaser.run();
       }
       if (memoryManager != null) {
         memoryManager.removeWriter(internalWriter);
