@@ -94,6 +94,7 @@ public class ProtoSchemaConverter {
 
   private final boolean parquetSpecsCompliant;
   private final boolean unwrapProtoWrappers;
+  private final TimeUnit timestampUnit;
   // TODO: use proto custom options to override per field.
   private final int maxRecursion;
 
@@ -138,7 +139,8 @@ public class ProtoSchemaConverter {
     this(
         config.getBoolean(ProtoWriteSupport.PB_SPECS_COMPLIANT_WRITE, false),
         config.getInt(PB_MAX_RECURSION, 5),
-        config.getBoolean(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, false));
+        config.getBoolean(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, false),
+        ProtoWriteSupport.parseTimestampUnit(config.get(ProtoWriteSupport.PB_TIMESTAMP_UNIT)));
   }
 
   /**
@@ -169,9 +171,29 @@ public class ProtoSchemaConverter {
    *                              except oneof members, which remain optional because only one can be set.
    */
   public ProtoSchemaConverter(boolean parquetSpecsCompliant, int maxRecursion, boolean unwrapProtoWrappers) {
+    this(parquetSpecsCompliant, maxRecursion, unwrapProtoWrappers, TimeUnit.NANOS);
+  }
+
+  /**
+   * Instantiate a schema converter with an explicit precision for unwrapped {@link Timestamp} fields.
+   *
+   * @param parquetSpecsCompliant If set to false, the parquet schema generated will be using the old
+   *                              schema style (prior to PARQUET-968) to provide backward-compatibility
+   *                              but which does not use LIST and MAP wrappers around collections as required
+   *                              by the parquet specifications. If set to true, specs compliant schemas are used.
+   * @param maxRecursion          The maximum recursion depth messages are allowed to go before terminating as
+   *                              bytes instead of their actual schema.
+   * @param unwrapProtoWrappers   If set to true, unwrap common Proto wrappers like Timestamp and DoubleValue
+   *                              with corresponding OPTIONAL logical annotations. Primitive types become REQUIRED,
+   *                              except oneof members, which remain optional because only one can be set.
+   * @param timestampUnit         Logical type unit of unwrapped Timestamp columns.
+   */
+  public ProtoSchemaConverter(
+      boolean parquetSpecsCompliant, int maxRecursion, boolean unwrapProtoWrappers, TimeUnit timestampUnit) {
     this.parquetSpecsCompliant = parquetSpecsCompliant;
     this.maxRecursion = maxRecursion;
     this.unwrapProtoWrappers = unwrapProtoWrappers;
+    this.timestampUnit = timestampUnit;
   }
 
   /**
@@ -247,7 +269,7 @@ public class ProtoSchemaConverter {
       if (unwrapProtoWrappers) {
         Descriptor messageType = descriptor.getMessageType();
         if (messageType.equals(Timestamp.getDescriptor())) {
-          return builder.primitive(INT64, getRepetition(descriptor)).as(timestampType(true, TimeUnit.NANOS));
+          return builder.primitive(INT64, getRepetition(descriptor)).as(timestampType(true, timestampUnit));
         }
         if (messageType.equals(Date.getDescriptor())) {
           return builder.primitive(INT32, getRepetition(descriptor)).as(dateType());

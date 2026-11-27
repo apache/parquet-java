@@ -22,6 +22,16 @@ parquet-protobuf
 
 Protocol Buffer support for Parquet columnar format.
 
+## Unwrapping wrapper messages
+
+With `parquet.proto.unwrapProtoWrappers` set, wrapper messages such as `google.protobuf.Timestamp`,
+`google.type.Date`, `google.protobuf.*Value` and `google.type.TimeOfDay` are stored as the
+primitive value they carry instead of a nested group, annotated with the matching logical type.
+Unwrapped `Timestamp` columns use microsecond (`parquet.proto.timestampUnit=MICROS`) or
+millisecond (`MILLIS`) resolution when a reader or platform cannot consume nanosecond timestamps,
+for example Iceberg v2 clients. The default stays `NANOS`. Values are truncated toward negative
+infinity to the configured unit, so the stored value never lands after the original instant.
+
 ## Message fields stored as proto bytes
 
 Two kinds of message fields cannot be mapped to a Parquet group, so `ProtoSchemaConverter`
