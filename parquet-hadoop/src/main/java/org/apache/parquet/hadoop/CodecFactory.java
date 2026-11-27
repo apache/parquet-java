@@ -33,16 +33,19 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.DirectDecompressor;
 import org.apache.hadoop.io.compress.zlib.ZlibCompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.ReusingByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.codec.BrotliCodec;
-import org.apache.parquet.hadoop.codec.Lz4RawCodec;
 import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
@@ -163,14 +166,64 @@ public class CodecFactory implements CompressionCodecFactory {
     return new DirectCodecFactory(config, allocator, pageSize);
   }
 
+  /**
+   * Runs a {@link DirectDecompressor} between two buffers in one shot and returns the number of
+   * bytes actually written. {@link DirectDecompressor} implementations are inconsistent about
+   * whether they advance {@code output}'s position by the decompressed size or leave it alone and
+   * rely on the limit instead, so both conventions are handled here. Shared by {@link
+   * HeapBytesDecompressor} and {@link DirectCodecFactory.FullDirectDecompressor}, which both wrap
+   * this same Hadoop interface.
+   */
+  static int runDirectDecompressor(DirectDecompressor directDecompressor, ByteBuffer input, ByteBuffer output)
+      throws IOException {
+    int startPos = output.position();
+    directDecompressor.decompress(input, output);
+    int size = output.position() - startPos;
+    // Some decompressors flip the output buffer, some don't: rely on the limit if the
+    // position did not change.
+    return size == 0 ? output.limit() : size;
+  }
+
+  /**
+   * Validates a decompression result against the uncompressed size declared in the page header,
+   * so a page whose actual decompressed size disagrees with that declaration (storage corruption,
+   * a buggy writer, etc.) fails loudly here instead of silently handing back a short BytesInput
+   * that a caller downstream (e.g. ColumnChunkPageReadStore, which trusts the page header's own
+   * getUncompressedSize()) has no way to detect. Shared by {@link HeapBytesDecompressor} and
+   * {@link DirectCodecFactory.BaseDecompressor}'s two decompress overloads.
+   */
+  static void validateDecompressedSize(int actualSize, int expectedSize) throws IOException {
+    if (actualSize != expectedSize) {
+      throw new IOException("Unexpected decompressed size: " + actualSize + " != " + expectedSize);
+    }
+  }
+
   class HeapBytesDecompressor extends BytesDecompressor {
 
     private final CompressionCodec codec;
     private final Decompressor decompressor;
 
+    // Only created when decompressor is a DirectDecompressor (SNAPPY/LZ4_RAW). Reused across
+    // calls -- rather than a fresh ByteBuffer.allocateDirect() per page -- for two reasons: (1)
+    // ByteBuffer.allocateDirect() contends on a JVM-wide accounting lock, so allocating fresh
+    // buffers on every call scales badly under concurrent decompression (it can be faster
+    // single-threaded but loses to the old streaming path as concurrency grows); (2) it bounds
+    // native memory to one buffer per decompressor instance (which CodecPool already hands out
+    // per working thread) instead of relying on GC/Cleaner timing to reclaim a new buffer every
+    // page.
+    private final ReusingByteBufferAllocator inputAllocator;
+    private final ReusingByteBufferAllocator outputAllocator;
+
     HeapBytesDecompressor(CompressionCodec codec) {
       this.codec = Objects.requireNonNull(codec);
       decompressor = CodecPool.getDecompressor(codec);
+      if (decompressor instanceof DirectDecompressor) {
+        inputAllocator = ReusingByteBufferAllocator.strict(DirectByteBufferAllocator.getInstance());
+        outputAllocator = ReusingByteBufferAllocator.strict(DirectByteBufferAllocator.getInstance());
+      } else {
+        inputAllocator = null;
+        outputAllocator = null;
+      }
     }
 
     @Override
@@ -179,6 +232,36 @@ public class CodecFactory implements CompressionCodecFactory {
       if (decompressor != null) {
         decompressor.reset();
       }
+
+      if (decompressor instanceof DirectDecompressor) {
+        // Parquet always knows both the compressed size (bytes.size()) and the uncompressed
+        // size (decompressedSize) up front, from the page header. Decompress directly between
+        // two exactly-sized buffers via the standard DirectDecompressor contract instead of
+        // going through the generic streaming Decompressor API, whose setInput() funnels the
+        // input through a scratch buffer that grows incrementally (see SNAPPY/LZ4_RAW's shared
+        // NonBlockedDecompressor base class) -- wasteful for multi-MB pages, and the reason this
+        // previously needed one-shot special-casing per codec below (see #3478).
+        try (ByteBufferReleaser releaser = inputAllocator.getReleaser()) {
+          ByteBuffer compressedBuf = bytes.toByteBuffer(releaser);
+          ByteBuffer uncompressedBuf = outputAllocator.allocate(decompressedSize);
+          try {
+            decompressOneShot(
+                (DirectDecompressor) decompressor, compressedBuf, uncompressedBuf, decompressedSize);
+            // Copy out to an independently-owned array: callers such as
+            // ParquetFileReader.readDictionaryPage retain the returned BytesInput without
+            // copying it, and uncompressedBuf is reused by this same decompressor on its next
+            // call.
+            byte[] uncompressedArr = new byte[decompressedSize];
+            uncompressedBuf.rewind();
+            uncompressedBuf.get(uncompressedArr);
+            decompressed = BytesInput.from(uncompressedArr);
+          } finally {
+            outputAllocator.release(uncompressedBuf);
+          }
+        }
+        return decompressed;
+      }
+
       InputStream is;
       if (codec instanceof BrotliCodec) {
         // Brotli is decoded in one shot; bound the output by the size declared in the page header.
@@ -189,10 +272,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
       // Eagerly materialize the decompressed stream for codecs that require all input in a single buffer.
       // ZSTD: releases off-heap resources early to avoid fragmentation (see parquet-format#398).
-      // LZ4_RAW: requires one-shot decompression; the lazy StreamBytesInput.writeInto() path reads via
-      // Channels.newChannel() in ~8KB chunks, causing the decompressor to be called with an undersized
-      // output buffer (see #3478).
-      if (codec instanceof ZstandardCodec || codec instanceof Lz4RawCodec) {
+      if (codec instanceof ZstandardCodec) {
         decompressed = BytesInput.copy(BytesInput.from(is, decompressedSize));
         is.close();
       } else {
@@ -206,6 +286,30 @@ public class CodecFactory implements CompressionCodecFactory {
         throws IOException {
       Preconditions.checkArgument(
           input.remaining() >= compressedSize, "Not enough bytes available in the input buffer");
+
+      // The one-shot DirectDecompressor contract (e.g. xerial Snappy) requires direct buffers.
+      // This overload's own contract (CompressionCodecFactory.BytesInputDecompressor) makes no
+      // such requirement, so a heap buffer here must not be routed into the direct-only path --
+      // fall through to the BytesInput-based overload below, which converts to direct via the
+      // same reused inputAllocator as needed.
+      if (decompressor instanceof DirectDecompressor && input.isDirect() && output.isDirect()) {
+        decompressor.reset();
+        int origInputLimit = input.limit();
+        input.limit(input.position() + compressedSize);
+        int origOutputLimit = output.limit();
+        output.limit(output.position() + decompressedSize);
+        try {
+          decompressOneShot(
+              (DirectDecompressor) decompressor, input.slice(), output.slice(), decompressedSize);
+        } finally {
+          input.position(input.limit());
+          input.limit(origInputLimit);
+          output.position(output.limit());
+          output.limit(origOutputLimit);
+        }
+        return;
+      }
+
       int origLimit = input.limit();
       int origPosition = input.position();
       input.limit(origPosition + compressedSize);
@@ -216,9 +320,23 @@ public class CodecFactory implements CompressionCodecFactory {
       input.position(origPosition + compressedSize);
     }
 
+    /** Runs a {@link DirectDecompressor} between two exactly-sized buffers in one shot. */
+    private void decompressOneShot(
+        DirectDecompressor directDecompressor, ByteBuffer input, ByteBuffer output, int expectedSize)
+        throws IOException {
+      int size = runDirectDecompressor(directDecompressor, input, output);
+      validateDecompressedSize(size, expectedSize);
+    }
+
     public void release() {
       if (decompressor != null) {
         CodecPool.returnDecompressor(decompressor);
+      }
+      if (inputAllocator != null) {
+        inputAllocator.close();
+      }
+      if (outputAllocator != null) {
+        outputAllocator.close();
       }
     }
   }
