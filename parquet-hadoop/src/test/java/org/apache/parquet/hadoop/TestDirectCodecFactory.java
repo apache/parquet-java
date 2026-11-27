@@ -441,4 +441,38 @@ public class TestDirectCodecFactory {
       direct.release();
     }
   }
+
+  /**
+   * A page whose actual decompressed size disagrees with the declared size must surface as an
+   * IOException here too, matching CodecFactory.HeapBytesDecompressor's behavior for the same
+   * failure, so callers like ColumnChunkPageReadStore's existing {@code catch (IOException e)}
+   * wrapping into ParquetDecodingException works regardless of which CodecFactory is configured.
+   */
+  @Test
+  public void directFactoryThrowsIOExceptionOnSizeMismatch() throws IOException {
+    final int size = 1024;
+    final byte[] raw = new byte[size];
+    new Random(42).nextBytes(raw);
+
+    CodecFactory direct =
+        CodecFactory.createDirectCodecFactory(new Configuration(), new DirectByteBufferAllocator(), pageSize);
+    try {
+      // LZ4_RAW always resolves to FullDirectDecompressor (our own implementation), regardless of
+      // whether native Hadoop codecs are available in this environment -- see the comment in
+      // test(int, CompressionCodecName, boolean, Decompression) above.
+      BytesInputCompressor compressor = direct.getCompressor(LZ4_RAW);
+      BytesInputDecompressor decompressor = direct.getDecompressor(LZ4_RAW);
+
+      BytesInput compressed = compressor.compress(BytesInput.from(raw));
+
+      assertThatThrownBy(() -> decompressor.decompress(compressed, size + 100))
+          .isInstanceOf(IOException.class)
+          .hasMessageContaining("Unexpected decompressed size");
+
+      compressor.release();
+      decompressor.release();
+    } finally {
+      direct.release();
+    }
+  }
 }

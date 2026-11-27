@@ -193,10 +193,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         ByteBuffer input = bytes.toByteBuffer(releaser);
         ByteBuffer output = outputAllocator.allocate(decompressedSize);
         int size = decompress(input.slice(), output.slice());
-        if (size != decompressedSize) {
-          throw new DirectCodecPool.ParquetCompressionCodecException(
-              "Unexpected decompressed size: " + size + " != " + decompressedSize);
-        }
+        validateDecompressedSize(size, decompressedSize);
         output.limit(size);
         return BytesInput.from(output);
       }
@@ -212,10 +209,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       int origOutputLimit = output.limit();
       output.limit(output.position() + decompressedSize);
       int size = decompress(input.slice(), output.slice());
-      if (size != decompressedSize) {
-        throw new DirectCodecPool.ParquetCompressionCodecException(
-            "Unexpected decompressed size: " + size + " != " + decompressedSize);
-      }
+      validateDecompressedSize(size, decompressedSize);
       input.position(input.limit());
       input.limit(origInputLimit);
       output.position(output.limit());
@@ -303,12 +297,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     int decompress(ByteBuffer input, ByteBuffer output) throws IOException {
-      int startPos = output.position();
-      decompressor.decompress(input, output);
-      int size = output.position() - startPos;
-      // Some decompressors flip the output buffer, some don't:
-      // Let's rely on the limit if the position did not change
-      return size == 0 ? output.limit() : size;
+      return runDirectDecompressor(decompressor, input, output);
     }
 
     @Override
