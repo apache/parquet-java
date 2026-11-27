@@ -495,6 +495,10 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
           }
         };
 
+        if (keyValueType.getFieldCount() == 1) {
+          valueConverter = null;
+          return;
+        }
         Type valueType = keyValueType.getType(1);
         Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(mapSchema.getValueType());
         valueConverter = newConverter(nonNullValueSchema, valueType, model, new ParentValueContainer() {

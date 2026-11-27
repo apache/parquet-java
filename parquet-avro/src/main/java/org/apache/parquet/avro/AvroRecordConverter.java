@@ -1146,6 +1146,10 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
             },
             validator);
 
+        if (keyValueType.getFieldCount() == 1) {
+          valueConverter = null;
+          return;
+        }
         Type valueType = keyValueType.getType(1);
         Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(mapSchema.getValueType());
         valueConverter = newConverter(

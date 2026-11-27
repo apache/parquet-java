@@ -308,6 +308,56 @@ public class TestReadWrite {
 
   @ParameterizedTest
   @MethodSource("data")
+  public void testMapWithoutValue(
+      Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
+      throws Exception {
+    init(converter, fileLocation, conf, codecs);
+    for (String repetition : Arrays.asList("required", "optional")) {
+      MessageType schema = MessageTypeParser.parseMessageType("message map_test { "
+          + repetition + " group m (MAP) { repeated group key_value { "
+          + "required binary key (STRING); } } }");
+      SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+      Group record = factory.newGroup();
+      Group map = record.addGroup("m");
+      map.addGroup("key_value").append("key", "a");
+      map.addGroup("key_value").append("key", "b");
+      Group empty = factory.newGroup();
+      empty.addGroup("m");
+      String file = createTempFile().toUri().getPath();
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(file))
+          .withConf(testConf)
+          .withType(schema)
+          .build()) {
+        writer.write(record);
+        writer.write(empty);
+        if (repetition.equals("optional")) {
+          writer.write(factory.newGroup());
+        }
+        writer.write(record);
+      }
+
+      Map<CharSequence, Object> expected = new HashMap<>();
+      expected.put(str("a"), null);
+      expected.put(str("b"), null);
+      try (ParquetReader<GenericRecord> reader = reader(file)) {
+        GenericRecord actual = reader.read();
+        assertThat(AvroSchemaConverter.getNonNull(
+                    actual.getSchema().getField("m").schema())
+                .getValueType())
+            .isEqualTo(Schema.create(Schema.Type.NULL));
+        assertThat(actual.get("m")).isEqualTo(expected);
+        assertThat(reader.read().get("m")).isEqualTo(Collections.emptyMap());
+        if (repetition.equals("optional")) {
+          assertThat(reader.read().get("m")).isNull();
+        }
+        assertThat(reader.read().get("m")).isEqualTo(expected);
+        assertThat(reader.read()).isNull();
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("data")
   public void testMapRequiredValueWithNull(
       Converters converter, FileLocation fileLocation, ConfigurationType conf, CodecFactory codecs)
       throws Exception {
