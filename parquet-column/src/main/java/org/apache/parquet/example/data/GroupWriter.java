@@ -20,6 +20,8 @@ package org.apache.parquet.example.data;
 
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.IntLogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
 
 public class GroupWriter {
@@ -48,6 +50,19 @@ public class GroupWriter {
         recordConsumer.startField(fieldName, field);
         for (int index = 0; index < valueCount; ++index) {
           if (fieldType.isPrimitive()) {
+            LogicalTypeAnnotation annotation = fieldType.getLogicalTypeAnnotation();
+            if (annotation instanceof IntLogicalTypeAnnotation) {
+              IntLogicalTypeAnnotation integer = (IntLogicalTypeAnnotation) annotation;
+              // UINT32 and UINT64 use the entire physical value's bit pattern.
+              // Smaller unsigned types must be zero-extended in their INT32.
+              if (!integer.isSigned() && integer.getBitWidth() < 32) {
+                int value = group.getInteger(field, index);
+                if (value < 0 || (value >>> integer.getBitWidth()) != 0) {
+                  throw new IllegalArgumentException("Value " + value + " for field " + fieldName
+                      + " is out of range for " + annotation);
+                }
+              }
+            }
             group.writeValue(field, index, recordConsumer);
           } else {
             recordConsumer.startGroup();
