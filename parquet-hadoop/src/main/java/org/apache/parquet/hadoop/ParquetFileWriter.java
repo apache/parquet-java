@@ -1163,11 +1163,14 @@ public class ParquetFileWriter implements AutoCloseable {
         statistics,
         null,
         null,
+        null,
+        null,
         null);
   }
 
   /**
-   * Writes a single v2 data page
+   * Writes a single v2 data page. The levels and data bytes are written as given, without encryption.
+   * For encrypted columns, use the overload that takes a page block encryptor.
    *
    * @param rowCount             count of rows
    * @param nullCount            count of nulls
@@ -1206,11 +1209,18 @@ public class ParquetFileWriter implements AutoCloseable {
         statistics,
         null,
         null,
+        null,
+        null,
         null);
   }
 
   /**
    * Writes a single v2 data page
+   *
+   * <p><b>Do not use for encrypted columns.</b> If {@code metadataBlockEncryptor} is set, only the page
+   * header is encrypted by this method: the repetition and definition levels are written in plaintext,
+   * and the data bytes are written as given. Such pages do not follow the Parquet encryption spec,
+   * cannot be read by other Parquet implementations, and leave the levels unprotected.
    *
    * @param rowCount               count of rows
    * @param nullCount              count of nulls
@@ -1221,10 +1231,12 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param compressedData         compressed data bytes
    * @param uncompressedDataSize   the size of uncompressed data
    * @param statistics             the statistics of the page
-   * @param metadataBlockEncryptor encryptor for block data
+   * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD          pageHeader AAD
    * @throws IOException if any I/O error occurs during writing the file
-   * @deprecated will be removed in 2.0.0. Use {@link ParquetFileWriter#writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[])} instead
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
   @Deprecated
   public void writeDataPageV2(
@@ -1259,6 +1271,11 @@ public class ParquetFileWriter implements AutoCloseable {
   /**
    * Writes a single v2 data page
    *
+   * <p><b>Do not use for encrypted columns.</b> If {@code metadataBlockEncryptor} is set, only the page
+   * header is encrypted by this method: the repetition and definition levels are written in plaintext,
+   * and the data bytes are written as given. Such pages do not follow the Parquet encryption spec,
+   * cannot be read by other Parquet implementations, and leave the levels unprotected.
+   *
    * @param rowCount               count of rows
    * @param nullCount              count of nulls
    * @param valueCount             count of values
@@ -1269,10 +1286,14 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param compressed             whether the data bytes is compressed
    * @param uncompressedDataSize   the size of uncompressed data
    * @param statistics             the statistics of the page
-   * @param metadataBlockEncryptor encryptor for block data
+   * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD          pageHeader AAD
    * @throws IOException if any I/O error occurs during writing the file
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
+  @Deprecated
   public void writeDataPageV2(
       int rowCount,
       int nullCount,
@@ -1306,6 +1327,11 @@ public class ParquetFileWriter implements AutoCloseable {
   /**
    * Writes a single v2 data page
    *
+   * <p><b>Do not use for encrypted columns.</b> If {@code metadataBlockEncryptor} is set, only the page
+   * header is encrypted by this method: the repetition and definition levels are written in plaintext,
+   * and the data bytes are written as given. Such pages do not follow the Parquet encryption spec,
+   * cannot be read by other Parquet implementations, and leave the levels unprotected.
+   *
    * @param rowCount count of rows
    * @param nullCount count of nulls
    * @param valueCount count of values
@@ -1315,11 +1341,13 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param compressedData compressed data bytes
    * @param uncompressedDataSize the size of uncompressed data
    * @param statistics the statistics of the page
-   * @param metadataBlockEncryptor encryptor for block data
+   * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
    * @throws IOException if any I/O error occurs during writing the file
-   * @deprecated will be removed in 2.0.0. Use {@link ParquetFileWriter#writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics)} instead
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
   @Deprecated
   public void writeDataPageV2(
@@ -1355,6 +1383,11 @@ public class ParquetFileWriter implements AutoCloseable {
   /**
    * Writes a single v2 data page
    *
+   * <p><b>Do not use for encrypted columns.</b> If {@code metadataBlockEncryptor} is set, only the page
+   * header is encrypted by this method: the repetition and definition levels are written in plaintext,
+   * and the data bytes are written as given. Such pages do not follow the Parquet encryption spec,
+   * cannot be read by other Parquet implementations, and leave the levels unprotected.
+   *
    * @param rowCount count of rows
    * @param nullCount count of nulls
    * @param valueCount count of values
@@ -1365,11 +1398,15 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param compressed whether the data bytes is compressed
    * @param uncompressedDataSize the size of uncompressed data
    * @param statistics the statistics of the page
-   * @param metadataBlockEncryptor encryptor for block data
+   * @param metadataBlockEncryptor encryptor for the page header
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
    * @throws IOException if any I/O error occurs during writing the file
+   * @deprecated will be removed in 2.0.0. Use {@link #writeDataPageV2(int, int, int, BytesInput,
+   *     BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[],
+   *     SizeStatistics, BlockCipher.Encryptor, byte[])} instead
    */
+  @Deprecated
   public void writeDataPageV2(
       int rowCount,
       int nullCount,
@@ -1385,16 +1422,126 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
+    writeDataPageV2Parts(
+        rowCount,
+        nullCount,
+        valueCount,
+        toIntWithCheck(repetitionLevels.size(), "page repetition levels"),
+        toIntWithCheck(definitionLevels.size(), "page definition levels"),
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        bytes,
+        compressed,
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        sizeStatistics);
+  }
+
+  /**
+   * Writes a single v2 data page. If {@code pageBlockEncryptor} is not null, the repetition levels,
+   * definition levels and data bytes are encrypted together as one module.
+   *
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
+   * @param repetitionLevels repetition level bytes
+   * @param definitionLevels definition level bytes
+   * @param dataEncoding encoding for data
+   * @param bytes data bytes, not yet encrypted
+   * @param compressed whether the data bytes is compressed
+   * @param uncompressedDataSize the size of uncompressed data
+   * @param statistics the statistics of the page
+   * @param metadataBlockEncryptor encryptor for the page header
+   * @param pageHeaderAAD pageHeader AAD
+   * @param sizeStatistics size statistics for the page
+   * @param pageBlockEncryptor encryptor for the levels and data bytes, or null if the column is not
+   *                           encrypted; null if and only if {@code metadataBlockEncryptor} is null
+   * @param dataPageAAD data page AAD, updated for this page's ordinal; required if
+   *                    {@code pageBlockEncryptor} is not null
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput bytes,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics,
+      BlockCipher.Encryptor pageBlockEncryptor,
+      byte[] dataPageAAD)
+      throws IOException {
+    Preconditions.checkArgument(
+        (metadataBlockEncryptor == null) == (pageBlockEncryptor == null),
+        "Both the page header and the page of an encrypted column must be encrypted");
+    int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
+    int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
+    if (pageBlockEncryptor != null) {
+      Preconditions.checkArgument(dataPageAAD != null, "dataPageAAD is required to encrypt the page");
+      // The levels are encrypted with the data bytes as one module, which is written in place of all three
+      bytes = BytesInput.from(pageBlockEncryptor.encrypt(
+          BytesInput.concat(repetitionLevels, definitionLevels, bytes).toByteArray(), dataPageAAD));
+      repetitionLevels = BytesInput.empty();
+      definitionLevels = BytesInput.empty();
+    }
+    writeDataPageV2Parts(
+        rowCount,
+        nullCount,
+        valueCount,
+        rlByteLength,
+        dlByteLength,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        bytes,
+        compressed,
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        sizeStatistics);
+  }
+
+  /**
+   * @param rlByteLength the repetition levels length written in the page header
+   * @param dlByteLength the definition levels length written in the page header
+   * @param repetitionLevels the repetition level bytes written after the page header, empty if they
+   *                         are encrypted in {@code bytes}
+   * @param definitionLevels the definition level bytes written after the page header, empty if they
+   *                         are encrypted in {@code bytes}
+   */
+  private void writeDataPageV2Parts(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      int rlByteLength,
+      int dlByteLength,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput bytes,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
+      throws IOException {
     withAbortOnFailure(() -> {
       state = state.write();
-      int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
-      int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
-
       int compressedSize =
           toIntWithCheck(bytes.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
-      int uncompressedSize =
-          toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
+      int uncompressedSize = toIntWithCheck((long) uncompressedDataSize + rlByteLength + dlByteLength, "page");
 
       long beforeHeader = out.getPos();
       if (currentChunkFirstDataPage < 0) {
