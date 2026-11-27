@@ -18,7 +18,10 @@
  */
 package org.apache.parquet.avro;
 
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,7 +38,9 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,9 +144,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
-      Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      projection = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
-          .convert(avroRequestedProjection);
+      projection = project(configuration, keyValueMetaData, fileSchema, requestedProjectionString).parquetSchema;
     }
 
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
@@ -184,6 +187,11 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     } else if (keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY) != null) {
       // use the Avro schema from the file metadata if present
       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY));
+    } else if (configuration.get(AVRO_REQUESTED_PROJECTION) != null) {
+      // the schema converted from the requested projection, with the record names init aligned
+      avroSchema = project(
+              configuration, keyValueMetaData, fileSchema, configuration.get(AVRO_REQUESTED_PROJECTION))
+          .avroSchema;
     } else {
       // default to converting the Parquet schema into an Avro schema
       avroSchema = new AvroSchemaConverter(getDerivedListEncodingConf(configuration, fileSchema))
@@ -267,6 +275,441 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     copiedConfiguration.setBoolean(AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
 
     return copiedConfiguration;
+  }
+
+  // The requested projection, with the list structures of the file, and the Avro schema the converters
+  // read it with
+  private static final class Projection {
+    private final MessageType parquetSchema;
+    private final Schema avroSchema;
+
+    private Projection(MessageType parquetSchema, Schema avroSchema) {
+      this.parquetSchema = parquetSchema;
+      this.avroSchema = avroSchema;
+    }
+  }
+
+  private static final class Alignment {
+    private final boolean oldListStructure;
+    // Whether the converters read with the schema converted from the projection, as they do without a
+    // read schema or an Avro schema in the file. Its record names come from the Parquet names of the
+    // projection, not from the caller, so the alignment may give a list's element record the file's name
+    // of the element, as a read without a projection names it.
+    private final boolean convertedReadSchema;
+    private final Map<Schema, String> recordNames = new IdentityHashMap<>();
+
+    private Alignment(boolean oldListStructure, boolean convertedReadSchema) {
+      this.oldListStructure = oldListStructure;
+      this.convertedReadSchema = convertedReadSchema;
+    }
+  }
+
+  // init and prepareForRead both call this, so prepareForRead gets the converted schema without its
+  // JSON: two records of a converted schema can have the same full name, which the JSON can't hold.
+  private static Projection project(
+      ParquetConfiguration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      String requestedProjection) {
+    Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjection);
+    ParquetConfiguration listEncodingConf = getDerivedListEncodingConf(configuration, fileSchema);
+    MessageType projection = new AvroSchemaConverter(listEncodingConf).convert(avroRequestedProjection);
+    Schema readSchema = materializedSchema(configuration, keyValueMetaData);
+    boolean convertedReadSchema = readSchema == null;
+    if (convertedReadSchema) {
+      // As before: converting the aligned projection instead could give its lists another shape, such as
+      // records for the wrappers of their elements
+      readSchema = new AvroSchemaConverter(listEncodingConf).convert(projection);
+    }
+    Alignment alignment = new Alignment(
+        listEncodingConf.getBoolean(
+            AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE, AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT),
+        convertedReadSchema);
+    MessageType aligned = new MessageType(
+        projection.getName(),
+        alignListStructures(projection, fileSchema, avroRequestedProjection, readSchema, alignment));
+    return new Projection(
+        aligned, convertedReadSchema ? withRecordNames(readSchema, alignment.recordNames) : readSchema);
+  }
+
+  // The projection converted from the Avro schema writes every list with the same structure, so it
+  // only selects a list's columns if the file wrote the list that way too. Use the repeated and
+  // element names of each list in the file instead; the converters read all the
+  // backward-compatible list structures.
+  private static List<Type> alignListStructures(
+      GroupType projected, GroupType file, Schema record, Schema readRecord, Alignment alignment) {
+    List<Type> fields = new ArrayList<>(projected.getFieldCount());
+    for (Type field : projected.getFields()) {
+      Schema.Field avroField = record.getField(field.getName());
+      // A LIST field of a record must not be repeated; only the element of a two-level list can be
+      if (avroField != null
+          && file.containsField(field.getName())
+          && !isRepeatedList(file.getType(field.getName()))) {
+        fields.add(alignListStructures(
+            field,
+            file.getType(field.getName()),
+            avroField.schema(),
+            readField(readRecord, field.getName()),
+            alignment));
+      } else {
+        fields.add(field);
+      }
+    }
+    return fields;
+  }
+
+  private static Type alignListStructures(
+      Type projected, Type file, Schema schema, Schema readSchema, Alignment alignment) {
+    if (projected.isPrimitive() || file.isPrimitive()) {
+      return projected;
+    }
+    GroupType projectedGroup = projected.asGroupType();
+    GroupType fileGroup = file.asGroupType();
+    Schema nonNullSchema = AvroSchemaConverter.getNonNull(schema);
+    switch (nonNullSchema.getType()) {
+      case RECORD:
+        return projectedGroup.withNewFields(
+            alignListStructures(projectedGroup, fileGroup, nonNullSchema, readSchema, alignment));
+      case ARRAY:
+        return alignList(
+            projectedGroup,
+            fileGroup,
+            nonNullSchema.getElementType(),
+            readChild(readSchema, Schema.Type.ARRAY),
+            alignment);
+      case MAP:
+        return alignMap(
+            projectedGroup,
+            fileGroup,
+            nonNullSchema.getValueType(),
+            readChild(readSchema, Schema.Type.MAP),
+            alignment);
+      default:
+        return projected;
+    }
+  }
+
+  private static Type alignList(
+      GroupType projected, GroupType file, Schema elementSchema, Schema readElementSchema, Alignment alignment) {
+    // The list itself may be repeated, as the element of a two-level list
+    if (!(projected.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation)
+        || !(file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation)
+        || file.getFieldCount() != 1
+        || !file.getType(0).isRepetition(Type.Repetition.REPEATED)) {
+      return projected;
+    }
+    Type projectedRepeated = projected.getType(0);
+    Type projectedElement = alignment.oldListStructure
+        ? projectedRepeated
+        : projectedRepeated.asGroupType().getType(0);
+    Type fileRepeated = file.getType(0);
+    Schema readElement = readElementSchema == null ? null : AvroSchemaConverter.getNonNull(readElementSchema);
+    // Decide which field is the element the same way AvroCollectionConverter does, with the schema it
+    // reads with. Its structural rules don't depend on the projection, so check them first, and align
+    // the repeated field as a wrapper only if they don't decide.
+    Type alignedRepeated;
+    boolean repeatedIsElement;
+    // The read element under the name the alignment gives it, which the converter checks
+    Schema readElementRecord = readElement;
+    if (AvroRecordConverter.isElementType(fileRepeated, null)) {
+      repeatedIsElement = true;
+      alignedRepeated = alignElement(projectedElement, fileRepeated, elementSchema, readElementSchema, alignment);
+    } else {
+      // A group with one field that isn't repeated: the group is the element if the element is a record
+      // that it matches, such as points_tuple { x } for a list of records with x, and otherwise it
+      // wraps the element. The checks convert the repeated field to Avro, so give them only the
+      // projected columns: a column the projection doesn't select, such as a MAP with integer keys, can
+      // have a type that Avro can not represent.
+      GroupType fileRepeatedGroup = fileRepeated.asGroupType();
+      Type direct = null;
+      Schema directRecord = readElement;
+      if (readElement != null
+          && readElement.getType() == Schema.Type.RECORD
+          && !projectedElement.isPrimitive()
+          && hasFields(fileRepeatedGroup, projectedElement.asGroupType())) {
+        direct = alignElement(projectedElement, fileRepeated, elementSchema, readElementSchema, alignment);
+        if (direct != null && alignment.convertedReadSchema) {
+          Map<Schema, String> names = new IdentityHashMap<>(alignment.recordNames);
+          names.put(readElement, fileRepeated.getName());
+          directRecord = withRecordNames(readElement, names);
+        }
+      }
+      if (direct != null
+          && compatible(direct, fileRepeated)
+          && AvroRecordConverter.isElementType(direct, directRecord)) {
+        repeatedIsElement = true;
+        alignedRepeated = direct;
+        readElementRecord = directRecord;
+      } else {
+        repeatedIsElement = false;
+        Type wrappedElement = alignElement(
+            projectedElement, fileRepeatedGroup.getType(0), elementSchema, readElementSchema, alignment);
+        alignedRepeated = wrappedElement == null ? null : fileRepeatedGroup.withNewFields(wrappedElement);
+      }
+    }
+    // Keep the converted projection, as before, unless the converters read the aligned list: each of its
+    // columns has the file's type, the read schema can read its element, and the converter decides
+    // again, on the aligned repeated field, that the same field is the element. Pruning a group element
+    // can change that decision, for example when the read schema requires a field the projection leaves
+    // out.
+    if (alignedRepeated == null
+        || !compatible(alignedRepeated, fileRepeated)
+        || !readsAs(
+            repeatedIsElement
+                ? alignedRepeated
+                : alignedRepeated.asGroupType().getType(0),
+            readElement)
+        || repeatedIsElement != AvroRecordConverter.isElementType(alignedRepeated, readElementRecord)) {
+      return projected;
+    }
+    if (readElementRecord != readElement) {
+      alignment.recordNames.put(readElement, fileRepeated.getName());
+    }
+    return projected.withNewFields(alignedRepeated);
+  }
+
+  private static Type alignMap(
+      GroupType projected, GroupType file, Schema valueSchema, Schema readValueSchema, Alignment alignment) {
+    // Only a MAP in the file: a list of key-value records would lose the entries that repeat a key
+    if (!isMap(file)) {
+      return projected;
+    }
+    if (projected.getFieldCount() != 1
+        || file.getFieldCount() != 1
+        || file.getType(0).isPrimitive()
+        || !file.getType(0).isRepetition(Type.Repetition.REPEATED)) {
+      return projected;
+    }
+    GroupType projectedKeyValue = projected.getType(0).asGroupType();
+    GroupType fileKeyValue = file.getType(0).asGroupType();
+    if (projectedKeyValue.getFieldCount() != 2
+        || fileKeyValue.getFieldCount() != 2
+        || !isStringKey(fileKeyValue.getType(0))) {
+      return projected;
+    }
+    // Keep the projected key type, so the requested string key is still checked against the file
+    Type alignedKey = alignElement(
+        projectedKeyValue.getType(0),
+        fileKeyValue.getType(0),
+        Schema.create(Schema.Type.STRING),
+        null,
+        alignment);
+    Type alignedValue = alignElement(
+        projectedKeyValue.getType(1), fileKeyValue.getType(1), valueSchema, readValueSchema, alignment);
+    return alignedKey == null || alignedValue == null
+        ? projected
+        : projected.withNewFields(fileKeyValue.withNewFields(alignedKey, alignedValue));
+  }
+
+  // Returns the projected element under the name of the file's element, or null if one of them is a
+  // group and the other is not. The type stays the projected one, so the requested schema is still
+  // checked against the file. The repetition is the one the converted projection gives the element:
+  // repeated if the file's repeated field is the element, otherwise optional only if the Avro schema
+  // allows null.
+  private static Type alignElement(Type projected, Type file, Schema schema, Schema readSchema, Alignment alignment) {
+    if (projected.isPrimitive() != file.isPrimitive()
+        || (!projected.isPrimitive() && !sameKind(projected.asGroupType(), file.asGroupType()))) {
+      return null;
+    }
+    Type.Repetition repetition;
+    if (file.isRepetition(Type.Repetition.REPEATED)) {
+      repetition = Type.Repetition.REPEATED;
+    } else if (isNullable(schema)) {
+      repetition = Type.Repetition.OPTIONAL;
+    } else {
+      repetition = Type.Repetition.REQUIRED;
+    }
+    if (file.isPrimitive()) {
+      PrimitiveType primitive = projected.asPrimitiveType();
+      Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(
+              primitive.getPrimitiveTypeName(), repetition)
+          .as(primitive.getLogicalTypeAnnotation());
+      if (primitive.getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+        builder = builder.length(primitive.getTypeLength());
+      }
+      return builder.named(file.getName());
+    }
+    GroupType aligned = alignListStructures(projected, file, schema, readSchema, alignment)
+        .asGroupType();
+    return Types.buildGroup(repetition)
+        .as(aligned.getLogicalTypeAnnotation())
+        .addFields(aligned.getFields().toArray(new Type[0]))
+        .named(file.getName());
+  }
+
+  // Whether each field of the requested type that the file has is a group or a primitive in both, as
+  // ColumnIO requires. A field the file doesn't have reads as null.
+  private static boolean compatible(Type requested, Type file) {
+    if (requested.isPrimitive() || file.isPrimitive()) {
+      return requested.isPrimitive() == file.isPrimitive();
+    }
+    GroupType fileGroup = file.asGroupType();
+    return requested.asGroupType().getFields().stream()
+        .allMatch(field -> !fileGroup.containsField(field.getName())
+            || compatible(field, fileGroup.getType(field.getName())));
+  }
+
+  // Whether the converters can read the element with the read schema's element: a record from a group
+  // that is neither a LIST nor a MAP, a map from a MAP, an array from a group or a repeated field, and
+  // any other type from a primitive
+  private static boolean readsAs(Type element, Schema readElement) {
+    if (readElement == null) {
+      return true;
+    }
+    switch (readElement.getType()) {
+      case RECORD:
+        return !element.isPrimitive()
+            && !(element.getLogicalTypeAnnotation()
+                instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation)
+            && !isMap(element.asGroupType());
+      case MAP:
+        return !element.isPrimitive() && isMap(element.asGroupType());
+      case ARRAY:
+        return !element.isPrimitive() || element.isRepetition(Type.Repetition.REPEATED);
+      case UNION:
+        return true;
+      default:
+        return element.isPrimitive();
+    }
+  }
+
+  // Avro reads a map's keys as strings. BINARY keys the file doesn't annotate as strings may not be UTF-8,
+  // and two of them could decode to the same string, which would overwrite an entry. Keys of another
+  // type still fail the check of the requested string key.
+  private static boolean isStringKey(Type key) {
+    if (!key.isPrimitive()
+        || key.asPrimitiveType().getPrimitiveTypeName() != PrimitiveType.PrimitiveTypeName.BINARY) {
+      return true;
+    }
+    LogicalTypeAnnotation annotation = key.getLogicalTypeAnnotation();
+    return annotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation
+        || annotation instanceof LogicalTypeAnnotation.EnumLogicalTypeAnnotation;
+  }
+
+  // A copy of the schema whose records have the given names. The schema is converted from Parquet, so it
+  // has no recursive records.
+  private static Schema withRecordNames(Schema schema, Map<Schema, String> names) {
+    if (names.isEmpty()) {
+      return schema;
+    }
+    switch (schema.getType()) {
+      case RECORD: {
+        List<Schema.Field> fields = new ArrayList<>(schema.getFields().size());
+        boolean changed = names.containsKey(schema);
+        for (Schema.Field field : schema.getFields()) {
+          Schema fieldSchema = withRecordNames(field.schema(), names);
+          changed |= fieldSchema != field.schema();
+          fields.add(new Schema.Field(field, fieldSchema));
+        }
+        if (!changed) {
+          return schema;
+        }
+        Schema record = Schema.createRecord(
+            names.getOrDefault(schema, schema.getName()),
+            schema.getDoc(),
+            schema.getNamespace(),
+            schema.isError(),
+            fields);
+        schema.getObjectProps().forEach(record::addProp);
+        return record;
+      }
+      case ARRAY: {
+        Schema element = withRecordNames(schema.getElementType(), names);
+        return element == schema.getElementType() ? schema : Schema.createArray(element);
+      }
+      case MAP: {
+        Schema value = withRecordNames(schema.getValueType(), names);
+        return value == schema.getValueType() ? schema : Schema.createMap(value);
+      }
+      case UNION: {
+        List<Schema> types = new ArrayList<>(schema.getTypes().size());
+        boolean changed = false;
+        for (Schema type : schema.getTypes()) {
+          Schema renamed = withRecordNames(type, names);
+          changed |= renamed != type;
+          types.add(renamed);
+        }
+        return changed ? Schema.createUnion(types) : schema;
+      }
+      default:
+        return schema;
+    }
+  }
+
+  // Whether the group has a field for each field of the projected group
+  private static boolean hasFields(GroupType group, GroupType projected) {
+    return projected.getFields().stream().allMatch(field -> group.containsField(field.getName()));
+  }
+
+  // Whether the groups are both LISTs, both MAPs, or neither
+  private static boolean sameKind(GroupType projected, GroupType file) {
+    boolean projectedList =
+        projected.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation;
+    boolean fileList = file.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation;
+    return projectedList == fileList && isMap(projected) == isMap(file);
+  }
+
+  private static boolean isRepeatedList(Type type) {
+    return type.isRepetition(Type.Repetition.REPEATED)
+        && type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation;
+  }
+
+  // Whether the group is a MAP in the file, also with the MAP_KEY_VALUE annotation older writers use
+  private static boolean isMap(GroupType group) {
+    LogicalTypeAnnotation annotation = group.getLogicalTypeAnnotation();
+    return annotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation
+        || annotation instanceof LogicalTypeAnnotation.MapKeyValueTypeAnnotation
+        || (group.getFieldCount() == 1
+            && group.getType(0).getLogicalTypeAnnotation()
+                instanceof LogicalTypeAnnotation.MapKeyValueTypeAnnotation);
+  }
+
+  // The Avro schema the converters read with, as prepareForRead chooses it, or null if the file has
+  // none and the caller sets no read schema.
+  private static Schema materializedSchema(ParquetConfiguration configuration, Map<String, String> keyValueMetaData) {
+    String schema = configuration.get(AVRO_READ_SCHEMA);
+    if (schema == null) {
+      schema = keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY);
+    }
+    if (schema == null) {
+      schema = keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY);
+    }
+    return schema == null ? null : new Schema.Parser().parse(schema);
+  }
+
+  private static Schema readField(Schema readRecord, String name) {
+    if (readRecord == null) {
+      return null;
+    }
+    Schema record = AvroSchemaConverter.getNonNull(readRecord);
+    if (record.getType() != Schema.Type.RECORD) {
+      return null;
+    }
+    Schema.Field field = record.getField(name);
+    if (field == null) {
+      // The converters also match a field of the read schema by its aliases
+      field = record.getFields().stream()
+          .filter(f -> f.aliases().contains(name))
+          .findFirst()
+          .orElse(null);
+    }
+    return field == null ? null : field.schema();
+  }
+
+  private static Schema readChild(Schema readSchema, Schema.Type type) {
+    if (readSchema == null) {
+      return null;
+    }
+    Schema schema = AvroSchemaConverter.getNonNull(readSchema);
+    if (schema.getType() != type) {
+      return null;
+    }
+    return type == Schema.Type.ARRAY ? schema.getElementType() : schema.getValueType();
+  }
+
+  private static boolean isNullable(Schema schema) {
+    return schema.getType() == Schema.Type.UNION
+        && schema.getTypes().stream().anyMatch(s -> s.getType() == Schema.Type.NULL);
   }
 
   private static boolean writesNewListStructure(MessageType schema) {

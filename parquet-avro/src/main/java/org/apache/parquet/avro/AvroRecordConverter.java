@@ -48,6 +48,7 @@ import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaParseException;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.AvroIgnore;
 import org.apache.avro.reflect.AvroName;
@@ -1016,7 +1017,14 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // synthetic wrapper. Must be a group with one optional or required field
       return true;
     } else if (elementSchema != null && elementSchema.getType() == Schema.Type.RECORD) {
-      Schema schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
+      Schema schemaFromRepeated;
+      try {
+        schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
+      } catch (AvroTypeException | SchemaParseException e) {
+        // The group's name, such as string, isn't a valid name of an Avro record, so the group can't be
+        // the element record, whose name is valid: it is a synthetic wrapper
+        return false;
+      }
       if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
               .getType()
           == COMPATIBLE) {
