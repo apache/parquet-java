@@ -1171,10 +1171,11 @@ public class ParquetFileReader implements Closeable {
     // prepare the list of consecutive parts to read them in one scan
     List<ConsecutivePartList> allParts = new ArrayList<>();
     ConsecutivePartList currentParts = null;
+    Set<ColumnPath> selectedPaths = new HashSet<>();
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
-      if (columnDescriptor != null) {
+      if (columnDescriptor != null && (pathKey.size() != 1 || selectedPaths.add(pathKey))) {
         BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
         long startingPos = mc.getStartingPos();
         // first part or not consecutive => new list
@@ -1569,10 +1570,11 @@ public class ParquetFileReader implements Closeable {
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
     List<ConsecutivePartList> allParts = new ArrayList<>();
     ConsecutivePartList currentParts = null;
+    Set<ColumnPath> selectedPaths = new HashSet<>();
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
-      if (columnDescriptor != null) {
+      if (columnDescriptor != null && (pathKey.size() != 1 || selectedPaths.add(pathKey))) {
         OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
 
         OffsetIndex filteredOffsetIndex =
