@@ -693,5 +693,9 @@ After writing or changing tests, apply formatting and run tests for the affected
 
 ```bash
 ./mvnw spotless:apply -pl <module>
-mvn -pl <module> test
+./mvnw -pl <module> -am test
 ```
+
+The [developer container](../../dev/docker/README.md) is an optional starting
+point for a local test environment with Java, Maven, and Thrift. See its README
+for setup and testing instructions.
