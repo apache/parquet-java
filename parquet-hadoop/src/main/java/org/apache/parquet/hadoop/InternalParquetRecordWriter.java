@@ -216,19 +216,33 @@ class InternalParquetRecordWriter<T> {
             props.getMaxRowCountForPageSizeCheck());
         this.lastRowGroupEndPos = parquetFileWriter.getPos();
       } else {
-        recordCountForNextMemCheck = min(
-            max(
-                props.getMinRowCountForPageSizeCheck(),
-                (recordCount + (long) (nextRowGroupSize / ((float) recordSize)))
-                    / 2), // will check halfway
-            recordCount
-                + props.getMaxRowCountForPageSizeCheck() // will not look more than max records ahead
-            );
+        recordCountForNextMemCheck = nextMemCheck(recordCount, recordSize, nextRowGroupSize, props);
         if (LOG.isDebugEnabled()) {
           LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
         }
       }
     }
+  }
+
+  /**
+   * Estimates the record count at which the buffered size should be checked again: halfway to the number of records
+   * that fit in the row group, at least the minimum and at most the maximum row count for a size check ahead.
+   * <p>
+   * The estimate is computed in floating point. Records smaller than a byte on average have a {@code recordSize} of
+   * 0, and the estimated number of records is then infinite: it must saturate, not overflow to a negative value that
+   * would make the writer check the buffered size after every record.
+   *
+   * @param recordCount  the number of records written to the current row group
+   * @param recordSize   the average size of the records written so far, in bytes
+   * @param rowGroupSize the target size of the row group, in bytes
+   * @param props        the properties providing the minimum and maximum row count for a size check
+   * @return the record count at which to check the buffered size again
+   */
+  static long nextMemCheck(long recordCount, long recordSize, long rowGroupSize, ParquetProperties props) {
+    long halfway = (long) ((recordCount + rowGroupSize / (double) recordSize) / 2);
+    return min(
+        max(props.getMinRowCountForPageSizeCheck(), halfway),
+        recordCount + props.getMaxRowCountForPageSizeCheck()); // will not look more than max records ahead
   }
 
   private void flushRowGroupToStore() throws IOException {
