@@ -49,6 +49,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -351,6 +352,34 @@ public class TestParquetWriter {
       assertThat(readRecordCount)
           .as("Number of written records should be equal to the read one")
           .isEqualTo(recordCount);
+    }
+  }
+
+  @Test
+  public void testPageRowCountLimitAppliesToFirstPage() throws IOException {
+    MessageType schema = Types.buildMessage().required(INT32).named("id").named("msg");
+    GroupFactory factory = new SimpleGroupFactory(schema);
+
+    Path path = newTempPath();
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
+        .withType(schema)
+        .withPageRowCountLimit(10)
+        .withDictionaryEncoding(false)
+        .build()) {
+      for (int i = 0; i < 100; ++i) {
+        writer.write(factory.newGroup().append("id", i));
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      PageReader pageReader =
+          reader.readNextRowGroup().getPageReader(schema.getColumns().get(0));
+      List<Integer> pageRowCounts = new ArrayList<>();
+      for (DataPage page = pageReader.readPage(); page != null; page = pageReader.readPage()) {
+        pageRowCounts.add(page.getValueCount());
+      }
+      assertThat(pageRowCounts).containsExactly(10, 10, 10, 10, 10, 10, 10, 10, 10, 10);
     }
   }
 
