@@ -479,6 +479,11 @@ struct GeographyType {
 struct FileType {
 }
 
+// A fixed-length LIST with exactly num_elements required, finite primitive elements.
+struct FiniteVectorType {
+  1: required i32 num_elements
+}
+
 /**
  * LogicalType annotations to replace ConvertedType.
  *
@@ -513,6 +518,7 @@ union LogicalType {
   17: GeometryType GEOMETRY   // no compatible ConvertedType
   18: GeographyType GEOGRAPHY // no compatible ConvertedType
   19: FileType FILE           // no compatible ConvertedType
+  20: FiniteVectorType FINITE_VECTOR // use ConvertedType LIST
 }
 
 /**
@@ -1129,6 +1135,7 @@ union ColumnOrder {
    *   GEOMETRY - undefined
    *   GEOGRAPHY - undefined
    *   FILE - undefined
+   *   FINITE_VECTOR - undefined
    *
    * In the absence of logical types, the sort order is determined by the physical type:
    *   BOOLEAN - false, true

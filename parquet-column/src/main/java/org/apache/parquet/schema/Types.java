@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
+import org.apache.parquet.schema.LogicalTypeAnnotation.FiniteVectorLogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
 import org.slf4j.Logger;
@@ -846,11 +847,13 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      if (newLogicalTypeSet) {
-        return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
-      } else {
-        return new GroupType(repetition, name, getOriginalType(), fields, id);
+      GroupType group = newLogicalTypeSet
+          ? new GroupType(repetition, name, logicalTypeAnnotation, fields, id)
+          : new GroupType(repetition, name, getOriginalType(), fields, id);
+      if (logicalTypeAnnotation instanceof FiniteVectorLogicalTypeAnnotation) {
+        TypeUtil.checkFiniteVector(group);
       }
+      return group;
     }
 
     public MapBuilder<THIS> map(Type.Repetition repetition) {
